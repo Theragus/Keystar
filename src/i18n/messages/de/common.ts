@@ -1,0 +1,72 @@
+import type { common as en } from "../en/common";
+import { FORMATTERS } from "@/lib/format";
+
+const n = FORMATTERS.de.integer;
+
+export const common: typeof en = {
+  appTagline: "Selbst gehostetes Dashboard für EVE-Online-Corporations",
+  unknown: "unbekannt",
+  never: "nie",
+  status: {
+    ok: "OK",
+    error: "Fehler",
+    warning: "Warnung",
+    running: "Läuft",
+    pending: "Ausstehend",
+  },
+  roles: {
+    guest: { label: "Gast", description: "Angemeldet, aber noch nicht freigeschaltet. Kann nur die eigenen Charaktere verwalten." },
+    member: { label: "Mitglied", description: "Sieht nur Daten der eigenen Charaktere und ESI-Tokens." },
+    viewer: { label: "Betrachter", description: "Lesezugriff auf alle Corporation-Daten." },
+    contributor: { label: "Mitwirkender", description: "Wie Betrachter, plus geteilte Inhalte und manuelle Syncs." },
+    director: { label: "Direktor", description: "Verwaltet Mitglieder, Freischaltungen und Rollen unterhalb von Direktor." },
+    admin: { label: "Admin", description: "Volle Kontrolle, einschließlich App-Einstellungen und Admin-Vergabe." },
+  },
+  datePresets: {
+    "7d": "7 Tage",
+    "30d": "30 Tage",
+    "90d": "90 Tage",
+    mtd: "Dieser Monat",
+    lm: "Letzter Monat",
+    ytd: "Seit Jahresbeginn",
+  },
+  dateRange: {
+    custom: "Eigener Zeitraum (EVE-Zeit)",
+    from: "Von",
+    to: "Bis",
+    apply: "Zeitraum übernehmen",
+  },
+  multiSelect: {
+    all: "Alle",
+    search: (label: string) => `${label} durchsuchen …`,
+    selectAll: "Alle auswählen",
+    selectMatches: "Treffer auswählen",
+    clear: "Leeren",
+    noMatches: "Keine Treffer",
+    selected: (count: number) => `${n(count)} ausgewählt`,
+    apply: (count: number) => (count ? `Übernehmen (${n(count)})` : "Übernehmen"),
+  },
+  table: {
+    empty: "Nichts in diesem Zeitraum.",
+    showFewer: "Weniger anzeigen",
+    showAll: (count: number) => `Alle ${n(count)} anzeigen`,
+  },
+  copy: {
+    copy: "Kopieren",
+    copied: "Kopiert",
+    failed: "Kopieren fehlgeschlagen",
+    failedHint: "Kopieren fehlgeschlagen – markiere den Text und kopiere ihn von Hand",
+  },
+  error: {
+    title: "Etwas ist schiefgelaufen",
+    unexpected: "Ein unerwarteter Fehler ist aufgetreten.",
+    retry: "Erneut versuchen",
+    reference: (digest: string) => `Referenz: ${digest}`,
+  },
+  forbidden: {
+    metaTitle: "Zugriff verweigert",
+    title: "Du hast keinen Zugriff auf diese Seite",
+    body: "Deine Keystar-Rolle enthält nicht die Berechtigung, die diese Seite braucht. Wende dich an einen Direktor oder Admin, wenn du das für einen Fehler hältst.",
+    back: "Zurück zum Dashboard",
+  },
+};

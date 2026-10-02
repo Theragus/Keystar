@@ -10,6 +10,7 @@ export function Popover({
   trigger,
   children,
   align = "left",
+  side = "bottom",
   className,
 }: {
   open: boolean;
@@ -17,6 +18,8 @@ export function Popover({
   trigger: ReactNode;
   children: ReactNode;
   align?: "left" | "right";
+  /** "top" opens upwards, for triggers near the bottom of the screen. */
+  side?: "top" | "bottom";
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -40,7 +43,8 @@ export function Popover({
       {open && (
         <div
           className={cn(
-            "glass absolute top-[calc(100%+6px)] z-50 bg-space-800/95 shadow-2xl",
+            "glass absolute z-50 bg-space-800/95 shadow-2xl",
+            side === "top" ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]",
             align === "right" ? "right-0" : "left-0",
             className,
           )}

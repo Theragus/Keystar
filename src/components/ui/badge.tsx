@@ -1,6 +1,9 @@
+"use client";
+
 import { AlertTriangle, CheckCircle2, CircleDashed, Clock3, XCircle } from "lucide-react";
 import type { ReactNode } from "react";
-import { ROLE_META, type Role } from "@/core/rbac/roles";
+import type { Role } from "@/core/rbac/roles";
+import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 type Tone = "neutral" | "accent" | "gold" | "good" | "warning" | "critical";
@@ -38,44 +41,46 @@ const roleTone: Record<Role, Tone> = {
 };
 
 export function RoleBadge({ role }: { role: Role }) {
+  const { t } = useI18n();
   return (
     <Badge tone={roleTone[role]} className="rounded px-1.5 font-mono text-3xs tracking-wider uppercase">
-      {ROLE_META[role].label}
+      {t.common.roles[role].label}
     </Badge>
   );
 }
 
 /** Status always pairs color with an icon and a label. */
 export function StatusBadge({ status, label }: { status: "ok" | "error" | "running" | "pending" | "skipped" | "warning"; label?: string }) {
+  const { t } = useI18n();
   switch (status) {
     case "ok":
       return (
         <Badge tone="good">
-          <CheckCircle2 className="size-3" aria-hidden /> {label ?? "OK"}
+          <CheckCircle2 className="size-3" aria-hidden /> {label ?? t.common.status.ok}
         </Badge>
       );
     case "error":
       return (
         <Badge tone="critical">
-          <XCircle className="size-3" aria-hidden /> {label ?? "Error"}
+          <XCircle className="size-3" aria-hidden /> {label ?? t.common.status.error}
         </Badge>
       );
     case "warning":
       return (
         <Badge tone="warning">
-          <AlertTriangle className="size-3" aria-hidden /> {label ?? "Warning"}
+          <AlertTriangle className="size-3" aria-hidden /> {label ?? t.common.status.warning}
         </Badge>
       );
     case "running":
       return (
         <Badge tone="accent">
-          <Clock3 className="size-3" aria-hidden /> {label ?? "Running"}
+          <Clock3 className="size-3" aria-hidden /> {label ?? t.common.status.running}
         </Badge>
       );
     default:
       return (
         <Badge>
-          <CircleDashed className="size-3" aria-hidden /> {label ?? "Pending"}
+          <CircleDashed className="size-3" aria-hidden /> {label ?? t.common.status.pending}
         </Badge>
       );
   }

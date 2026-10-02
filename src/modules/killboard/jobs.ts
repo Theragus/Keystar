@@ -10,7 +10,7 @@ import { planSync, syncCorporationKillmails, type KillboardSyncState } from "./s
 /** Kills and losses of the home corporation from zKillboard (public data, no token needed). */
 export const zkillSyncJob: JobDefinition = {
   key: "killboard.zkill-sync",
-  label: "Killboard (zKillboard)",
+  label: (t) => t.killboard.module.jobs.zkillSync,
   module: "killboard",
   owner: "global",
   // zKillboard caches API responses for an hour.
@@ -32,7 +32,7 @@ export const zkillSyncJob: JobDefinition = {
 /** Writes the weekly situation report once the latest 7-day window has closed. */
 export const situationReportJob: JobDefinition = {
   key: "killboard.situation-report",
-  label: "Killboard situation report",
+  label: (t) => t.killboard.module.jobs.situationReport,
   module: "killboard",
   owner: "global",
   intervalSeconds: 3600,

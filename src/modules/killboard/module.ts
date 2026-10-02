@@ -15,25 +15,25 @@ export const killboardModule: KeystarModule = {
   permissions: [
     {
       key: KILLBOARD_PERMISSIONS.view,
-      label: "View killboard",
-      description: "See the corporation's kills, losses, ship and pilot statistics and the situation report.",
-      group: "Killboard",
+      label: (t) => t.killboard.module.permissions.view.label,
+      description: (t) => t.killboard.module.permissions.view.description,
+      group: (t) => t.killboard.module.permissionGroup,
       defaultMinRole: "member",
     },
     {
       key: KILLBOARD_PERMISSIONS.manage,
-      label: "Manage killboard",
-      description: "Rewrite the weekly situation report.",
-      group: "Killboard",
+      label: (t) => t.killboard.module.permissions.manage.label,
+      description: (t) => t.killboard.module.permissions.manage.description,
+      group: (t) => t.killboard.module.permissionGroup,
       defaultMinRole: "director",
     },
   ],
   nav: [
     {
       id: "combat",
-      label: "Combat",
+      label: (t) => t.killboard.module.navSection,
       order: 15,
-      items: [{ href: "/killboard", label: "Killboard", icon: Swords, anyPermission: [KILLBOARD_PERMISSIONS.view] }],
+      items: [{ href: "/killboard", label: (t) => t.killboard.module.nav.killboard, icon: Swords, anyPermission: [KILLBOARD_PERMISSIONS.view] }],
     },
   ],
 };

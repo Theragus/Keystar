@@ -4,8 +4,10 @@ import type { CurrentUser } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { navSections } from "@/core/modules/registry";
 import { KEYSTAR_VERSION } from "@/core/version";
+import { getI18n } from "@/i18n/server";
 import { Portrait } from "@/components/ui/eve-image";
 import { RoleBadge } from "@/components/ui/badge";
+import { LanguageSwitcher } from "./language-switcher";
 import { KeystarMark } from "./logo";
 import { NavLink } from "./nav-link";
 
@@ -19,8 +21,9 @@ export function visibleNav(user: CurrentUser) {
 }
 
 /** Docked, full-height sidebar with a translucent glass surface and a hairline edge. */
-export function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: string | null }) {
+export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: string | null }) {
   const { sections, hasNested } = visibleNav(user);
+  const { t } = await getI18n();
 
   return (
     <aside className="sticky top-0 flex h-screen w-[232px] shrink-0 flex-col border-r border-white/[0.07] bg-space-900/70 backdrop-blur-xl">
@@ -28,16 +31,16 @@ export function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: s
         <KeystarMark className="size-7" />
         <span className="font-display text-[1.05rem] font-bold tracking-[0.2em] text-ink">KEYSTAR</span>
       </Link>
-      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Main">
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label={t.shell.mainNav}>
         {sections.map((section) => (
           <div key={section.id}>
-            <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3">{section.label}</div>
+            <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3">{section.label(t)}</div>
             <ul className="space-y-0.5">
               {section.items.map((item) => (
                 <li key={item.href}>
                   <NavLink href={item.href} exact={hasNested(item.href)}>
                     <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
-                    {item.label}
+                    {item.label(t)}
                   </NavLink>
                 </li>
               ))}
@@ -45,15 +48,18 @@ export function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: s
           </div>
         ))}
       </nav>
-      <a
-        href={`${env().SOURCE_URL}/releases`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="px-5 pb-2 font-mono text-3xs text-ink-3 hover:text-ink-2"
-        title="Release notes"
-      >
-        Keystar v{KEYSTAR_VERSION}
-      </a>
+      <div className="flex items-center justify-between gap-2 px-3 pb-2">
+        <LanguageSwitcher />
+        <a
+          href={`${env().SOURCE_URL}/releases`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-2 font-mono text-3xs text-ink-3 hover:text-ink-2"
+          title={t.shell.releaseNotes}
+        >
+          Keystar v{KEYSTAR_VERSION}
+        </a>
+      </div>
       <div className="border-t border-white/[0.07] p-3">
         <div className="flex items-center gap-2.5">
           {user.main ? (
@@ -62,7 +68,7 @@ export function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: s
             <div className="size-8 rounded-full bg-space-700" />
           )}
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[0.82rem] font-medium">{user.main?.name ?? "Unknown pilot"}</div>
+            <div className="truncate text-[0.82rem] font-medium">{user.main?.name ?? t.shell.unknownPilot}</div>
             <div className="mt-0.5 flex items-center gap-1.5">
               <RoleBadge role={user.role} />
               {corpTicker && <span className="font-mono text-3xs text-ink-3">[{corpTicker}]</span>}
@@ -71,8 +77,8 @@ export function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: s
           <form action="/auth/logout" method="post">
             <button
               type="submit"
-              title="Sign out"
-              aria-label="Sign out"
+              title={t.shell.signOut}
+              aria-label={t.shell.signOut}
               className="grid size-7 place-items-center rounded-md text-ink-3 transition hover:bg-white/[0.06] hover:text-ink"
             >
               <LogOut className="size-3.5" aria-hidden />
