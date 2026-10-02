@@ -1,0 +1,279 @@
+import type { ReactNode } from "react";
+import { FORMATTERS } from "@/lib/format";
+import type { mining as en } from "../en/mining";
+
+const n = FORMATTERS.de.integer;
+const plural = (count: number, one: string, many: string) => `${n(count)} ${count === 1 ? one : many}`;
+
+export const mining: typeof en = {
+  module: {
+    navSection: "Industrie",
+    nav: {
+      overview: "Mining-Übersicht",
+      ledger: "Mining-Ledger",
+      observers: "Mond-Observer",
+      estimator: "Feldschätzer",
+    },
+    permissionGroup: "Mining",
+    permissions: {
+      viewOwn: { label: "Eigenes Mining ansehen", description: "Das Mining-Ledger der eigenen Charaktere sehen." },
+      viewCorp: {
+        label: "Mining der Corporation ansehen",
+        description: "Das Mining aller Mitglieder und der Raffinerie-Observer sehen.",
+      },
+      export: { label: "Mining-Daten exportieren", description: "Ledger als CSV herunterladen." },
+    },
+    scopes: {
+      characterMining: "Liest dein persönliches Mining-Ledger (Erz, Eis, Gas und Mond-Mining der letzten 30 Tage).",
+      corporationMining: "Liest die Mond-Mining-Observer der Raffinerien deiner Corporation.",
+      structures: "Benennt Raffinerien in der Observer-Ansicht.",
+    },
+    jobs: {
+      characterLedger: "Persönliches Mining-Ledger",
+      observers: "Mond-Mining-Observer",
+      structures: "Raffinerie-Namen",
+    },
+  },
+
+  valuation: {
+    modes: {
+      historical: "Preis am Abbautag",
+      current: "aktuelle Preise",
+    },
+  },
+
+  sources: {
+    all: { label: "Kombiniert", hint: "Mitglieder-Ledger plus Observer-Einträge, die dort noch nicht enthalten sind" },
+    personal: { label: "Mitglieder-Ledger", hint: "Persönliche Ledger registrierter Charaktere (sämtliches Mining)" },
+    observer: { label: "Raffinerien", hint: "Mond-Mining, erfasst von den Raffinerien der Corporation (alle Piloten)" },
+  },
+
+  metrics: {
+    value: "ISK",
+    volume: "m³",
+    quantity: "Einheiten",
+  },
+
+  chartClasses: {
+    moon: "Monderz",
+    ore: "Asteroidenerz",
+    ice: "Eis",
+    gas: "Gas",
+    other: "Sonstiges",
+  },
+
+  moonRarity: {
+    moon_r4: "R4 Allgegenwärtig",
+    moon_r8: "R8 Häufig",
+    moon_r16: "R16 Ungewöhnlich",
+    moon_r32: "R32 Selten",
+    moon_r64: "R64 Außergewöhnlich",
+  },
+
+  columns: {
+    date: "Datum",
+    character: "Charakter",
+    ore: "Erz",
+    location: "Ort",
+    source: "Quelle",
+    system: "System",
+    miners: "Miner",
+    rocks: "Asteroiden",
+    units: "Einheiten",
+    volume: "Volumen",
+    unitPrice: "Stückpreis",
+    value: "Wert",
+    scanner: "Scanner",
+    keystar: "Keystar",
+    share: "Anteil",
+  },
+
+  exportCsv: "CSV exportieren",
+
+  filters: {
+    members: "Mitglieder",
+    registered: "Registriert",
+    notRegistered: "Nicht registriert",
+    class: "Klasse",
+    ore: "Erz",
+    system: "System",
+    dataSource: "Datenquelle",
+    measure: "Kennzahl",
+    reset: "Zurücksetzen",
+  },
+
+  groupBy: {
+    label: "Miner gruppieren nach",
+    pilots: "Piloten",
+    pilotsHint: "Alts unter ihrem Hauptcharakter zusammenfassen",
+    characters: "Charaktere",
+  },
+
+  chart: {
+    legend: "Legende",
+    view: "Diagramm oder Tabelle",
+    chart: "Diagramm",
+    table: "Tabelle",
+    noMining: "Kein Mining",
+    total: "Gesamt",
+  },
+
+  breakdowns: {
+    characters: (count: number) => plural(count, "Char", "Chars"),
+    notRegistered: "nicht registriert",
+    moonByRarity: "Monderz nach Seltenheit",
+    unknownLocation: "Unbekannter Ort",
+  },
+
+  overview: {
+    metaTitle: "Mining",
+    description: {
+      corp: "Erz-, Eis-, Gas- und Mond-Mining der Charaktere der Heimat-Corporation und an den Raffinerien der Corporation.",
+      noHomeCorp:
+        "Mining deiner eigenen Charaktere. Corporation-weite Ansichten erscheinen, sobald ein Admin die Heimat-Corporation festlegt.",
+      own: "Mining deiner eigenen Charaktere. Frag einen Direktor nach Corporation-weitem Zugriff.",
+    },
+    ledger: "Ledger",
+    empty: {
+      title: "Noch keine Mining-Daten",
+      action: "Charaktere verwalten",
+      body: "Verknüpfe deine Charaktere mit dem Mining-Ledger-Scope. Der Worker synchronisiert persönliche Ledger alle 15 Minuten und Raffinerie-Observer stündlich; ESI hält die letzten 30 Tage vor, Keystar behält ab dann alles.",
+    },
+    priorPeriod: (days: number) => `Vorperiode (${plural(days, "Tag", "Tage")})`,
+    valueMined: (from: string, to: string) => `Abgebauter Wert · ${from} – ${to}`,
+    volume: "Volumen",
+    units: "Einheiten",
+    activePilots: "Aktive Piloten",
+    characters: (count: number) => plural(count, "Charakter", "Charaktere"),
+    valuePerActiveDay: "Wert pro aktivem Tag",
+    activeDays: (active: number, span: number) => `${n(active)} von ${plural(span, "Tag", "Tagen")} aktiv`,
+    daily: {
+      value: "ISK pro Tag nach Ressource",
+      volume: "m³ pro Tag nach Ressource",
+      quantity: "Einheiten pro Tag nach Ressource",
+    },
+    eveDays: "Tage in EVE-Zeit (UTC)",
+    resourceMix: "Ressourcen-Mix",
+    shareOf: {
+      value: "Anteil an ISK",
+      volume: "Anteil am Volumen",
+      quantity: "Anteil an Einheiten",
+    },
+    topMiners: "Top-Miner",
+    topMinersGrouped: "Alts unter ihrem Hauptcharakter zusammengefasst",
+    topMinersDrill: "Klicke auf einen Charakter, um nur ihn anzuzeigen",
+    noMiners: "In diesem Zeitraum hat niemand gemint.",
+    oreBreakdown: "Aufschlüsselung nach Erz",
+    noOre: "Kein Erz in diesem Zeitraum.",
+    systems: "Systeme",
+    systemsSubtitle: "Wo abgebaut wurde",
+    coverage: {
+      title: "Datenabdeckung",
+      subtitle: "Wie vollständig diese Zahlen sind",
+      tracked: "Charaktere mit Zugriff auf das Mining-Ledger",
+      missingScope: "Charaktere ohne Mining-Scope",
+      invalidTokens: "Widerrufene oder abgelaufene Tokens",
+      unregistered: "Nicht registrierte Corp-Mitglieder",
+      lastLedgerSync: "Letzter Sync der persönlichen Ledger",
+      lastObserverSync: "Letzter Sync der Raffinerie-Observer",
+      notConfigured: "nicht eingerichtet",
+      unpriced: (rows: number) =>
+        rows === 1
+          ? "1 Ledger-Zeile hat noch keinen Preis und zählt als 0 ISK."
+          : `${n(rows)} Ledger-Zeilen haben noch keinen Preis und zählen als 0 ISK.`,
+      note: (valuation: string) =>
+        `ESI-Ledger sind Tagessummen pro Erz und System. „Kombiniert“ zählt Raffinerie-Einträge nur, wenn sie nicht schon im persönlichen Ledger eines Mitglieds stehen. ISK-Bewertung: ${valuation}.`,
+    },
+  },
+
+  ledger: {
+    metaTitle: "Mining-Ledger",
+    description: "Jeder Ledger-Eintrag: ESI meldet eine Zeile pro Charakter, Tag, Erz und System (oder Raffinerie).",
+    overview: "Übersicht",
+    entries: (count: number, value: ReactNode) => (
+      <>
+        {value} {count === 1 ? "Eintrag" : "Einträge"}
+      </>
+    ),
+    pageOf: (page: number, pages: number) => `Seite ${n(page)} von ${n(pages)}`,
+    empty: "Keine Ledger-Einträge passen zu diesen Filtern.",
+    unknownSystem: "Unbekannt",
+    sourceBadge: {
+      personal: "Persönlich",
+      observer: "Raffinerie",
+    },
+    pagination: "Seitennavigation",
+    previous: "Zurück",
+    next: "Weiter",
+  },
+
+  observers: {
+    metaTitle: "Mond-Observer",
+    description:
+      "Mond-Mining, erfasst von den Raffinerien der Corporation – auch von Piloten, die sich nie bei Keystar registriert haben.",
+    noHomeCorp: {
+      title: "Keine Heimat-Corporation festgelegt",
+      body: "Raffinerie-Observer gehören zur Heimat-Corporation. Ein Admin kann sie unter Administration → Einstellungen festlegen.",
+    },
+    noObservers: {
+      title: "Noch keine Raffinerie-Observer",
+      body: (strong: (text: string) => ReactNode) => (
+        <>
+          Ein Direktor oder Accountant muss einen Charakter mit Corporation-Scopes verknüpfen (Meine Charaktere → „Mit
+          Corporation-Zugriff verknüpfen“). Der Charakter braucht die Ingame-Rolle {strong("Accountant")}, um Observer zu
+          lesen, und {strong("Station Manager")} für die Raffinerie-Namen.
+        </>
+      ),
+    },
+    structure: (id: number) => `Struktur ${id}`,
+    unknownSystem: "Unbekanntes System",
+    lastActivity: (date: string) => `letzte Aktivität ${date}`,
+    ledgerLink: "Ledger →",
+    value: "Wert",
+    volume: "Volumen",
+    pilots: "Piloten",
+    outsideCorpCount: (count: number) => `${n(count)} außerhalb der Corp`,
+    outsideCorp: "außerhalb der Corp",
+    units: (quantity: string) => `${quantity} Einheiten`,
+    noMining: "Kein Mining in diesem Zeitraum.",
+  },
+
+  estimator: {
+    metaTitle: "Feldschätzer",
+    title: "Feldschätzer",
+    description:
+      "Füge ein Ergebnis des Survey-Scanners ein, um einen Asteroidengürtel oder Mond-Chunk zu bewerten – gruppiert nach Erz und Stufe.",
+    scan: {
+      title: "Survey-Scan",
+      subtitle: "Survey-Scanner → alles auswählen → kopieren, dann hier einfügen",
+      example: "Beispiel",
+      clear: "Leeren",
+      input: "Ergebnis des Survey-Scanners",
+    },
+    skipped: (count: number, lines: string) =>
+      count === 1
+        ? `1 Zeile übersprungen, die nicht nach einem Asteroiden aussah (Zeile ${lines}).`
+        : `${n(count)} Zeilen übersprungen, die nicht nach Asteroiden aussahen (Zeilen ${lines}).`,
+    maxDistance: "Max. Entfernung",
+    anyDistance: "beliebig",
+    fleetYield: "Flottenertrag",
+    fleetYieldPlaceholder: "z. B. 60000",
+    keystarValue: "Keystar-Wert",
+    pricing: "bewerte …",
+    unpriced: (count: number) => `${plural(count, "Typ", "Typen")} ohne Preis`,
+    scannerEstimate: "Scanner-Schätzung",
+    eveAverage: "EVE-Durchschnittspreis",
+    volume: "Volumen",
+    perM3: (price: string) => `${price} pro m³`,
+    timeToClear: "Abbaudauer",
+    asteroids: "Asteroiden",
+    duration: (hours: number, minutes: number) => `${n(hours)} Std. ${minutes} Min.`,
+    asteroidCount: (count: number) => plural(count, "Asteroid", "Asteroiden"),
+    oreTypes: (count: number) => plural(count, "Erzsorte", "Erzsorten"),
+    priceError: "Keystar-Preise konnten nicht geladen werden – es werden nur die Scanner-Werte angezeigt.",
+    empty: "Füge einen Survey-Scan ein, um das Feld nach Erz und Stufe aufgeschlüsselt zu sehen.",
+    grades: (count: number) => plural(count, "Stufe", "Stufen"),
+    baseGrade: "Basis",
+    closest: (km: string) => `nächster in ${km} km`,
+  },
+};

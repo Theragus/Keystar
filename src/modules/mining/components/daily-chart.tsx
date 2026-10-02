@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Segmented } from "@/components/ui/segmented";
-import { compact, formatMetric, shortDate } from "@/lib/format";
+import { useI18n } from "@/i18n/client";
 import { CHART_CLASSES, type ChartClass } from "../class-colors";
 
 export interface DailyChartRow {
@@ -52,24 +52,25 @@ function ChartTooltip({
   payload?: { payload: Record<string, number | string> }[];
   metric: Metric;
 }) {
+  const { t, f } = useI18n();
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   const rows = CHART_CLASSES.filter((c) => Number(row[c.id]) > 0);
   return (
     <div className="glass min-w-[200px] rounded-2xl bg-space-800/85 px-4 py-3 text-xs">
-      <div className="eve-label mb-2 text-2xs text-ink-3">{shortDate(String(row.date))}</div>
-      {rows.length === 0 && <div className="text-ink-3">No mining</div>}
+      <div className="eve-label mb-2 text-2xs text-ink-3">{f.shortDate(String(row.date))}</div>
+      {rows.length === 0 && <div className="text-ink-3">{t.mining.chart.noMining}</div>}
       {rows.map((c) => (
         <div key={c.id} className="flex items-center gap-2 py-0.5">
           <span className="h-0.5 w-3 rounded-full" style={{ background: c.color }} aria-hidden />
-          <span className="font-semibold text-ink tabular-nums">{formatMetric(metric, Number(row[c.id]))}</span>
-          <span className="text-ink-3">{c.label}</span>
+          <span className="font-semibold text-ink tabular-nums">{f.formatMetric(metric, Number(row[c.id]))}</span>
+          <span className="text-ink-3">{t.mining.chartClasses[c.id]}</span>
         </div>
       ))}
       {rows.length > 1 && (
         <div className="mt-1.5 flex items-center gap-2 border-t border-white/10 pt-1.5">
-          <span className="font-semibold text-ink tabular-nums">{formatMetric(metric, Number(row.total))}</span>
-          <span className="text-ink-3">Total</span>
+          <span className="font-semibold text-ink tabular-nums">{f.formatMetric(metric, Number(row.total))}</span>
+          <span className="text-ink-3">{t.mining.chart.total}</span>
         </div>
       )}
     </div>
@@ -77,6 +78,7 @@ function ChartTooltip({
 }
 
 export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Metric }) {
+  const { t, f } = useI18n();
   const [view, setView] = useState<"chart" | "table">("chart");
   const present = CHART_CLASSES.filter((c) => rows.some((r) => r.values[c.id] > 0));
   const order = present.map((c) => c.id);
@@ -87,23 +89,23 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         {/* Legend: always present for 2+ series; mirrors the mark (rect for bars). */}
-        <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" aria-label="Legend">
+        <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" aria-label={t.mining.chart.legend}>
           {present.map((c) => (
             <li key={c.id} className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-[3px]" style={{ background: c.color }} aria-hidden />
-              <span className="text-ink-2">{c.label}</span>
-              <span className="text-ink-3 tabular-nums">{formatMetric(metric, sumBy(c.id))}</span>
+              <span className="text-ink-2">{t.mining.chartClasses[c.id]}</span>
+              <span className="text-ink-3 tabular-nums">{f.formatMetric(metric, sumBy(c.id))}</span>
             </li>
           ))}
         </ul>
         <Segmented
           size="sm"
-          label="Chart or table"
+          label={t.mining.chart.view}
           value={view}
           onChange={setView}
           options={[
-            { value: "chart", label: "Chart" },
-            { value: "table", label: "Table" },
+            { value: "chart", label: t.mining.chart.chart },
+            { value: "table", label: t.mining.chart.table },
           ]}
         />
       </div>
@@ -115,7 +117,7 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
               <CartesianGrid vertical={false} strokeWidth={1} />
               <XAxis
                 dataKey="date"
-                tickFormatter={(d: string) => shortDate(d)}
+                tickFormatter={(d: string) => f.shortDate(d)}
                 tickLine={false}
                 axisLine={{ stroke: "var(--axis)" }}
                 minTickGap={28}
@@ -123,7 +125,7 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
                 dy={6}
               />
               <YAxis
-                tickFormatter={(v: number) => compact(v, 1)}
+                tickFormatter={(v: number) => f.compact(v, 1)}
                 tickLine={false}
                 axisLine={false}
                 width={52}
@@ -143,7 +145,7 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
                   maxBarSize={24}
                   isAnimationActive={false}
                   shape={makeSegmentShape(c.id, order)}
-                  name={c.label}
+                  name={t.mining.chartClasses[c.id]}
                 />
               ))}
             </BarChart>
@@ -154,13 +156,13 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
           <table className="ks-table">
             <thead className="sticky top-0 bg-space-800/90 backdrop-blur">
               <tr>
-                <th>Date</th>
+                <th>{t.mining.columns.date}</th>
                 {present.map((c) => (
                   <th key={c.id} className="num">
-                    {c.label}
+                    {t.mining.chartClasses[c.id]}
                   </th>
                 ))}
-                <th className="num">Total</th>
+                <th className="num">{t.mining.chart.total}</th>
               </tr>
             </thead>
             <tbody>
@@ -169,10 +171,10 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
                   <td className="tabular-nums text-ink-2">{r.date}</td>
                   {present.map((c) => (
                     <td key={c.id} className="num">
-                      {r.values[c.id] ? formatMetric(metric, r.values[c.id]) : "—"}
+                      {r.values[c.id] ? f.formatMetric(metric, r.values[c.id]) : "—"}
                     </td>
                   ))}
-                  <td className="num font-semibold">{formatMetric(metric, r.total)}</td>
+                  <td className="num font-semibold">{f.formatMetric(metric, r.total)}</td>
                 </tr>
               ))}
             </tbody>
