@@ -41,8 +41,11 @@ export async function updateUserRole(userId: string, formData: FormData) {
 
 export async function approveUser(userId: string) {
   const actor = await assertPermission("users.manage");
+  if (actor.id === userId) throw new Error("You can't approve yourself");
   const target = await loadTarget(userId);
   if (target.role !== "guest") return;
+  if (!canManageRole(actor.role, target.role)) throw new Error("You can only manage users below your own role");
+  if (!assignableRoles(actor.role).includes("member")) throw new Error("You can't assign that role");
   await getDb().update(users).set({ role: "member", updatedAt: new Date() }).where(eq(users.id, userId));
   await audit({
     actorUserId: actor.id,
@@ -72,8 +75,17 @@ export async function setUserDisabled(userId: string, disabled: boolean) {
 }
 
 export async function triggerSyncJob(jobId: number) {
-  await assertPermission("sync.trigger");
-  await triggerJobs({ id: jobId });
+  const actor = await assertPermission("sync.trigger");
+  const [job] = await triggerJobs({ id: jobId });
+  if (!job) throw new Error("Sync job not found or disabled");
+  await audit({
+    actorUserId: actor.id,
+    actorName: actor.main?.name,
+    action: "sync.triggered",
+    targetType: "sync_job",
+    targetId: job.id,
+    details: { job: job.jobKey, ownerType: job.ownerType, ownerId: job.ownerId },
+  });
   revalidatePath("/admin/sync");
 }
 

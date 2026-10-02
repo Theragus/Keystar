@@ -267,8 +267,9 @@ export async function triggerJobs(filter: { id?: number; ownerType?: SyncOwnerTy
   if (filter.ownerType) conditions.push(eq(syncJobs.ownerType, filter.ownerType));
   if (filter.ownerId !== undefined) conditions.push(eq(syncJobs.ownerId, filter.ownerId));
   if (filter.jobKey) conditions.push(eq(syncJobs.jobKey, filter.jobKey));
-  await getDb()
+  return getDb()
     .update(syncJobs)
     .set({ nextRunAt: new Date(), updatedAt: new Date() })
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .returning({ id: syncJobs.id, jobKey: syncJobs.jobKey, ownerType: syncJobs.ownerType, ownerId: syncJobs.ownerId });
 }

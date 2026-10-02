@@ -41,26 +41,17 @@ export function ButtonLink({
   size = "md",
   className,
   href,
-  children,
   prefetch,
   ...props
-}: Omit<ComponentPropsWithoutRef<typeof Link>, "href"> & {
+}: Omit<ComponentPropsWithoutRef<"a">, "href"> & {
   href: string;
+  prefetch?: boolean;
   variant?: Variant;
   size?: Size;
   children: ReactNode;
 }) {
+  const classes = buttonClass(variant, size, className);
   // Auth routes are plain anchors so the browser follows the SSO redirect.
-  if (href.startsWith("/auth/")) {
-    return (
-      <a href={href} className={buttonClass(variant, size, className)}>
-        {children}
-      </a>
-    );
-  }
-  return (
-    <Link href={href} prefetch={prefetch} className={buttonClass(variant, size, className)} {...props}>
-      {children}
-    </Link>
-  );
+  if (href.startsWith("/auth/")) return <a href={href} className={classes} {...props} />;
+  return <Link href={href} prefetch={prefetch} className={classes} {...props} />;
 }

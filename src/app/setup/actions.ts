@@ -17,18 +17,29 @@ export async function saveSetupCorporation(formData: FormData) {
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Choose a corporation or enter a numeric corporation ID");
   await refreshCorporations([id]);
   await setSetting("corp.homeCorporationId", id, actor.id);
+  await audit({
+    actorUserId: actor.id,
+    actorName: actor.main?.name,
+    action: "settings.updated",
+    details: { source: "setup", homeCorporationId: id },
+  });
   redirect("/setup?step=2");
 }
 
 export async function saveSetupAccess(formData: FormData) {
   const actor = await assertPermission("app.settings.manage");
-  await setSetting("access.autoApproveCorpMembers", formData.get("autoApproveCorpMembers") === "on", actor.id);
-  await setSetting("access.autoApproveAllianceMembers", formData.get("autoApproveAllianceMembers") === "on", actor.id);
-  await setSetting(
-    "mining.valuationSource",
-    String(formData.get("valuationSource")) as Settings["mining.valuationSource"],
-    actor.id,
-  );
+  const autoApproveCorpMembers = formData.get("autoApproveCorpMembers") === "on";
+  const autoApproveAllianceMembers = formData.get("autoApproveAllianceMembers") === "on";
+  const valuationSource = String(formData.get("valuationSource")) as Settings["mining.valuationSource"];
+  await setSetting("access.autoApproveCorpMembers", autoApproveCorpMembers, actor.id);
+  await setSetting("access.autoApproveAllianceMembers", autoApproveAllianceMembers, actor.id);
+  await setSetting("mining.valuationSource", valuationSource, actor.id);
+  await audit({
+    actorUserId: actor.id,
+    actorName: actor.main?.name,
+    action: "settings.updated",
+    details: { source: "setup", autoApproveCorpMembers, autoApproveAllianceMembers, valuationSource },
+  });
   redirect("/setup?step=3");
 }
 
