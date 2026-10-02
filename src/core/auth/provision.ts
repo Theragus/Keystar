@@ -1,7 +1,7 @@
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { audit } from "@/core/audit";
 import { encryptToken } from "@/core/crypto";
-import { characters, esiTokens, eveCorporations, getDb, users } from "@/core/db";
+import { characters, esiTokens, eveCorporations, getDb, sessions, users, type Db } from "@/core/db";
 import { env } from "@/core/env";
 import { getEsi } from "@/core/esi";
 import { ensureNames, refreshCorporations } from "@/core/eve/resolver";
@@ -20,6 +20,41 @@ export class ProvisionError extends Error {
     super(message);
     this.name = "ProvisionError";
   }
+}
+
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/**
+ * Removes a character whose EVE account changed (sold or transferred) from its
+ * previous Keystar account. An account left without characters is retired:
+ * disabled and signed out everywhere, so the previous owner can't keep using an
+ * existing session. It keeps its role, so a former admin still counts for the
+ * first-user bootstrap and a newcomer can't become admin that way.
+ */
+export async function detachTransferredCharacter(
+  tx: Tx,
+  characterId: number,
+  previousUserId: string,
+  opts: { keepAccount: boolean },
+): Promise<{ retired: boolean }> {
+  await tx.delete(characters).where(eq(characters.characterId, characterId));
+  const [next] = await tx
+    .select({ characterId: characters.characterId })
+    .from(characters)
+    .where(eq(characters.userId, previousUserId))
+    .orderBy(asc(characters.characterId))
+    .limit(1);
+  const retired = !next && !opts.keepAccount;
+  await tx
+    .update(users)
+    .set({
+      mainCharacterId: sql`CASE WHEN ${users.mainCharacterId} = ${characterId} THEN ${next?.characterId ?? null}::bigint ELSE ${users.mainCharacterId} END`,
+      ...(retired ? { isDisabled: true } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, previousUserId));
+  if (retired) await tx.delete(sessions).where(eq(sessions.userId, previousUserId));
+  return { retired };
 }
 
 export interface ProvisionResult {
@@ -62,16 +97,15 @@ export async function provisionFromSso(params: {
 
     if (existing && existing.ownerHash !== verified.ownerHash) {
       // The character was sold/transferred: the old account loses it entirely.
-      await tx.delete(characters).where(eq(characters.characterId, verified.characterId));
-      await tx
-        .update(users)
-        .set({ mainCharacterId: null })
-        .where(sql`${users.id} = ${existing.userId} AND ${users.mainCharacterId} = ${verified.characterId}`);
+      // Keep the account when it is linking the character back to itself.
+      const { retired } = await detachTransferredCharacter(tx, verified.characterId, existing.userId, {
+        keepAccount: linking && existing.userId === currentUserId,
+      });
       await audit({
         action: "character.transferred",
         targetType: "character",
         targetId: verified.characterId,
-        details: { previousUserId: existing.userId, name: verified.name },
+        details: { previousUserId: existing.userId, name: verified.name, previousAccountRetired: retired },
       });
     }
     const owned = existing && existing.ownerHash === verified.ownerHash ? existing : undefined;

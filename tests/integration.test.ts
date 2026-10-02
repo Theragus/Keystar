@@ -125,6 +125,19 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(mine.current.value).toBe(1000 * 10 + 7000 * 10);
     });
 
+    it("shows no corporation-wide data until a home corporation is set", async () => {
+      const viewer = { can: (perm: string) => perm === "mining.view.corp", characterIds: [1] };
+      const scope = q.miningScope(viewer, null);
+      expect(scope.corp).toBe(false);
+      const mine = await q.getMiningSummary(filters({ source: "personal" }), scope, val);
+      expect(mine.current.value).toBe(1000 * 10);
+
+      // A hand-built corporation scope without a home corporation fails closed.
+      const unscoped = await q.getMiningSummary(filters(), { ...corp, homeCorporationId: null }, val);
+      expect(unscoped.current.quantity).toBe(0);
+      expect(await q.getObserverSummaries(filters(), val, null)).toEqual([]);
+    });
+
     it("filters by ore class and system", async () => {
       const moon = await q.getMiningSummary(filters({ classes: "moon_r4" }), corp, val);
       expect(moon.current.value).toBe(90_000);
@@ -178,6 +191,37 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await validateSessionToken(token)).not.toBeNull();
       const [row] = await db().select().from(schema.sessions);
       expect(row.expiresAt.getTime()).toBeGreaterThan(Date.now() + 29 * 24 * 3600 * 1000);
+    });
+
+    it("retires an account whose last character was transferred", async () => {
+      const { createSession } = await import("@/core/auth/session");
+      const { detachTransferredCharacter } = await import("@/core/auth/provision");
+      await createSession(userA);
+      await createSession(userB);
+
+      // Bravo keeps an alt: the account stays active and the alt becomes main.
+      const bravo = await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB, { keepAccount: false }));
+      expect(bravo.retired).toBe(false);
+      // Alpha loses their only character: disabled and signed out.
+      const alpha = await db().transaction((tx) => detachTransferredCharacter(tx, 1, userA, { keepAccount: false }));
+      expect(alpha.retired).toBe(true);
+
+      const users = await db().select().from(schema.users);
+      const a = users.find((u) => u.id === userA)!;
+      const b = users.find((u) => u.id === userB)!;
+      expect(a).toMatchObject({ isDisabled: true, mainCharacterId: null, role: "member" });
+      expect(b).toMatchObject({ isDisabled: false, mainCharacterId: 3 });
+      const remaining = await db().select().from(schema.sessions);
+      expect(remaining.map((r) => r.userId)).toEqual([userB]);
+      expect((await db().select().from(schema.characters)).map((c) => c.characterId)).toEqual([3]);
+    });
+
+    it("keeps the account when it links a transferred character back to itself", async () => {
+      const { detachTransferredCharacter } = await import("@/core/auth/provision");
+      const result = await db().transaction((tx) => detachTransferredCharacter(tx, 1, userA, { keepAccount: true }));
+      expect(result.retired).toBe(false);
+      const [a] = await db().select().from(schema.users).where(sql`id = ${userA}`);
+      expect(a.isDisabled).toBe(false);
     });
 
     it("only invalidates a token on invalid_grant", async () => {

@@ -48,13 +48,13 @@ export default async function OverviewPage() {
   const settings = await getSettings();
   const today = isoDate(new Date());
   const canMining = user.canAny(MINING_PERMISSIONS.viewOwn, MINING_PERMISSIONS.viewCorp);
-  const corpScope = user.can(MINING_PERMISSIONS.viewCorp);
   const range = DATE_PRESETS.find((p) => p.id === "30d")!.range(today);
   const filters = parseMiningFilters(range, today);
   const valuation = { source: settings["mining.valuationSource"], mode: settings["mining.valuationMode"] };
 
   const homeCorpId = settings["corp.homeCorporationId"];
   const scope = miningScope(user, homeCorpId);
+  const corpScope = scope.corp;
   const [own, corp, daily, top, tokens, syncStats, pendingUsers, homeCorp, corpStats, workers] = await Promise.all([
     canMining ? getMiningSummary(filters, { ...scope, corp: false }, valuation) : null,
     corpScope ? getMiningSummary(filters, scope, valuation) : null,

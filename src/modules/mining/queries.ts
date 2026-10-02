@@ -22,25 +22,34 @@ export interface MiningScope {
   homeCorporationId: number | null;
 }
 
+/**
+ * Corporation-wide access needs a home corporation to isolate to; until one is
+ * configured, users with corporation access see their own characters only.
+ */
 export function miningScope(
   user: { can: (permission: string) => boolean; characterIds: number[] },
   homeCorporationId: number | null,
 ): MiningScope {
-  return { corp: user.can("mining.view.corp"), ownCharacterIds: user.characterIds, homeCorporationId };
+  return {
+    corp: user.can("mining.view.corp") && homeCorporationId !== null,
+    ownCharacterIds: user.characterIds,
+    homeCorporationId,
+  };
 }
 
 /**
  * Corporation-wide views must not show data from other corporations (guests,
- * a previous home corporation's refineries, characters that left).
+ * a previous home corporation's refineries, characters that left). Without a
+ * home corporation they show nothing rather than everything.
  */
 function homeCorpConds(scope: MiningScope) {
-  const home = scope.corp ? scope.homeCorporationId : null;
+  if (!scope.corp) return { personal: () => sql``, observer: () => sql`` };
+  const home = scope.homeCorporationId;
+  if (!home) return { personal: () => sql`AND false`, observer: () => sql`AND false` };
   return {
     personal: (col: string) =>
-      home
-        ? sql`AND EXISTS (SELECT 1 FROM characters hc WHERE hc.character_id = ${sql.raw(col)} AND hc.corporation_id = ${home})`
-        : sql``,
-    observer: (col: string) => (home ? sql`AND ${sql.raw(col)} = ${home}` : sql``),
+      sql`AND EXISTS (SELECT 1 FROM characters hc WHERE hc.character_id = ${sql.raw(col)} AND hc.corporation_id = ${home})`,
+    observer: (col: string) => sql`AND ${sql.raw(col)} = ${home}`,
   };
 }
 
@@ -506,6 +515,7 @@ export interface ObserverSummary {
 
 /** Per-refinery totals for the date range (corporation scope only). */
 export async function getObserverSummaries(f: MiningFilters, val: Valuation, homeCorporationId: number | null) {
+  if (homeCorporationId === null) return [];
   const obsFilters: MiningFilters = { ...f, source: "observer" };
   const scope: MiningScope = { corp: true, ownCharacterIds: [], homeCorporationId };
   const db = getDb();
@@ -594,7 +604,7 @@ export async function getCoverage(scope: MiningScope): Promise<Coverage> {
   const charFilter = scope.corp
     ? homeCorporationId
       ? sql`AND c.corporation_id = ${homeCorporationId}`
-      : sql``
+      : sql`AND false`
     : own.length
       ? sql`AND c.character_id IN (${list(own)})`
       : sql`AND false`;

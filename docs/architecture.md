@@ -61,7 +61,8 @@ docker/                entrypoint, Caddyfile
 2. `/auth/callback` exchanges the code, validates the JWT (signature via CCP's JWKS, issuer, audience contains the
    client id **and** `"EVE Online"`, expiry) and calls `provisionFromSso()`.
 3. Provisioning creates or finds the user, links the character, stores the encrypted refresh token, applies the role
-   policy and detects **character transfers** (the SSO `owner` hash changes → the old account loses the character).
+   policy and detects **character transfers** (the SSO `owner` hash changes → the old account loses the character;
+   an account left without characters is disabled and signed out).
 4. Sessions are random 32-byte tokens; only their SHA-256 hash is stored. 30-day sliding expiry: the database row
    is extended on activity (authoritative) and `src/proxy.ts` renews the cookie on each navigation.
 
@@ -132,7 +133,7 @@ Current jobs:
   so moon mining by registered members is never counted twice.
 - **Corporation-wide views** include characters currently in the home corporation and refineries owned by it —
   guests from other corporations or a previous home corporation's data never show up. A member's own view always
-  includes all of their characters.
+  includes all of their characters. Until a home corporation is set, everyone sees only their own characters.
 - Values come from `type_values` (current) or `type_value_history` (price on the day mined). Raw ore without its own
   market falls back to its compressed variant (by portion size), then the ESI average and adjusted prices.
 

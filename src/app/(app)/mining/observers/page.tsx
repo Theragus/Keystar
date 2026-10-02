@@ -37,7 +37,13 @@ export default async function ObserversPage({ searchParams }: PageProps<"/mining
         />
         <MiningFilterBar filters={filters} options={options} presets={ctx.presets} showMetric={false} showSource={false} />
 
-        {observers.length === 0 ? (
+        {ctx.homeCorporationId === null ? (
+          <Glass>
+            <EmptyState icon={Gem} title="No home corporation set">
+              Refinery observers belong to the home corporation. An admin can set it under Admin → Settings.
+            </EmptyState>
+          </Glass>
+        ) : observers.length === 0 ? (
           <Glass>
             <EmptyState icon={Gem} title="No refinery observers yet">
               A director or accountant needs to link a character with corporation scopes (My Characters → &ldquo;Link with

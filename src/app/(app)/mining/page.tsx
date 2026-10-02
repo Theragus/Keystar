@@ -59,7 +59,9 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
           description={
             scope.corp
               ? "Ore, ice, gas and moon mining by home-corporation characters and at corporation refineries."
-              : "Mining of your own characters. Ask a director for corporation-wide access."
+              : user.can(MINING_PERMISSIONS.viewCorp)
+                ? "Mining of your own characters. Corporation-wide views appear once an admin sets the home corporation."
+                : "Mining of your own characters. Ask a director for corporation-wide access."
           }
           actions={
             <>
