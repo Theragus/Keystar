@@ -1,3 +1,4 @@
+import { killboardModule } from "@/modules/killboard/module";
 import { miningModule } from "@/modules/mining/module";
 import type { PermissionDef } from "@/core/rbac/permissions";
 import { coreModule } from "./core-module";
@@ -8,7 +9,7 @@ import type { KeystarModule, NavSection, ScopeRequirement } from "./types";
  * src/modules/<name>/module.ts and list it here; register its jobs in
  * src/modules/jobs.ts. See docs/modules.md.
  */
-export const MODULES: KeystarModule[] = [coreModule, miningModule];
+export const MODULES: KeystarModule[] = [coreModule, miningModule, killboardModule];
 
 export function allPermissions(): PermissionDef[] {
   return MODULES.flatMap((m) => m.permissions);

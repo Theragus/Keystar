@@ -124,6 +124,8 @@ Edit `.env` (`nano .env`) and set at least:
 | `EVE_CLIENT_ID` / `EVE_CLIENT_SECRET` | from step 5                                                        |
 | `ESI_CONTACT`                     | your email or EVE character name (sent to CCP in the User-Agent)       |
 | `ADMIN_CHARACTER_IDS`             | optional: your character ID(s). If empty, the **first** pilot to sign in becomes admin |
+| `ANTHROPIC_API_KEY`               | optional: a [Claude API key](https://console.anthropic.com) so Claude writes the killboard's weekly situation report (≈ one call a day, one to two US cents each with the default model). Without it the report is written from a template |
+| `KILLBOARD_REPORT_MODEL`          | optional: Claude model for the report, default `claude-sonnet-5-5` (`claude-haiku-4-5-20251001` is about half the cost) |
 
 ## 7. Start it
 
@@ -149,6 +151,11 @@ The first build takes a few minutes. Then open `https://keystar.example.com`.
 
 The worker picks up new tokens within a minute. ESI keeps 30 days of mining history; Keystar keeps everything from
 the moment it starts syncing.
+
+The **killboard** needs no extra setup: the worker imports the home corporation's last 90 days of kills and losses
+from zKillboard (public data, no ESI scopes) and then checks hourly. The first weekly situation report is written
+once a full week has been imported, shortly after 02:00 EVE time. The server needs outbound HTTPS to
+`esi.evetech.net`, `login.eveonline.com`, `zkillboard.com` and, with `ANTHROPIC_API_KEY`, `api.anthropic.com`.
 
 ## Operating Keystar
 
@@ -222,3 +229,5 @@ signing in without EVE SSO. `demo-seed` refuses to run if real users exist.
 | Observer job: "No linked character with Accountant…"  | Link a character with corporation access that holds the Accountant or Director role in game.      |
 | A character shows "Token revoked"                     | The pilot revoked access or changed their password — they click **Re-authorise** on My Characters. |
 | App container restarts with "Invalid Keystar configuration" | A required `.env` value is missing or malformed; the log lists which.                       |
+| Killboard sync: "zKillboard responded 403"           | zKillboard blocks requests without a proper User-Agent or from IPs that send too many requests. Set `ESI_CONTACT` (it is part of the User-Agent) and make sure nothing else on the server hammers zKillboard. |
+| Situation report says "Claude failed: …"             | Check `ANTHROPIC_API_KEY` and `KILLBOARD_REPORT_MODEL`; the template report is used meanwhile. Directors can **Rewrite report** on the killboard once fixed. |

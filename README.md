@@ -12,11 +12,14 @@
 ---
 
 Keystar signs pilots in with **EVE SSO**, collects their **ESI tokens** with exactly the scopes its modules need,
-syncs data in the background and turns it into dashboards. The first module is **mining**: personal and
-moon-refinery ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export and an
-ore field estimator for survey scans.
+syncs data in the background and turns it into dashboards. Modules so far: **mining** (personal and moon-refinery
+ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export and an ore field
+estimator for survey scans) and a **killboard** with the corporation's PvP performance from zKillboard and a weekly
+situation report.
 
 ![Mining overview](docs/screenshots/mining.png)
+
+![Killboard](docs/screenshots/killboard.png)
 
 <table>
   <tr>
@@ -48,6 +51,9 @@ ore field estimator for survey scans.
   - Full ledger with pagination and CSV export
   - **Ore field estimator**: paste a survey scanner result (German or English client) and get the field's value by
     ore and grade, with distance filter and time-to-clear
+- **Killboard** for the home corporation from zKillboard (no extra scopes): kills, losses, ISK efficiency with
+  week-over-week changes, a weekly **situation report** written by Claude (optional API key) or from a template, top
+  systems, recent activity, most effective / used / lost ships and pilot efficiency.
 - **Administration**: users & roles, member audit (in-game roster vs registered), sync status with manual triggers,
   settings, audit log, and a short first-start setup walkthrough.
 - **Background worker** respecting ESI's 2025+ rules: `X-Compatibility-Date`, ETag/Expires caching, pagination,

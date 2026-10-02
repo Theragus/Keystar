@@ -36,7 +36,7 @@ describe.skipIf(!enabled)("integration", async () => {
   beforeEach(async () => {
     await db().execute(sql`TRUNCATE users, characters, esi_tokens, sessions, eve_types, eve_groups, eve_systems,
       eve_entities, type_values, type_value_history, mining_character_ledger, mining_observer_ledger, mining_observers,
-      sync_jobs, app_settings RESTART IDENTITY CASCADE`);
+      sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
     userA = a.id;
@@ -244,6 +244,167 @@ describe.skipIf(!enabled)("integration", async () => {
       revoked.mockRestore();
       [row] = await db().select().from(schema.esiTokens);
       expect(row.status).toBe("invalid");
+    });
+  });
+
+  describe("killboard", () => {
+    const kb = () => import("@/modules/killboard/queries");
+    const HOME = 100;
+    const at = (iso: string) => `${iso}Z`;
+    // A kill, a solo kill (previous week), a loss, an awox (loss only), someone else's fight and an old kill.
+    const fixture = [
+      { killmail_id: 1, killmail_time: at("2026-09-28T20:00:00"), solar_system_id: 30000180,
+        victim: { character_id: 9, corporation_id: 555, ship_type_id: 622, damage_taken: 900 },
+        attackers: [
+          { character_id: 1, corporation_id: HOME, ship_type_id: 17843, damage_done: 600, final_blow: true },
+          { character_id: 2, corporation_id: HOME, ship_type_id: 17843, damage_done: 300, final_blow: false },
+        ],
+        zkb: { hash: "h1", totalValue: 100e6, solo: false } },
+      { killmail_id: 2, killmail_time: at("2026-09-20T20:00:00"), solar_system_id: 30000180,
+        victim: { character_id: 9, corporation_id: 555, ship_type_id: 587, damage_taken: 300 },
+        attackers: [{ character_id: 1, corporation_id: HOME, ship_type_id: 11186, damage_done: 300, final_blow: true }],
+        zkb: { hash: "h2", totalValue: 10e6, solo: true } },
+      { killmail_id: 3, killmail_time: at("2026-09-29T10:00:00"), solar_system_id: 30000181,
+        victim: { character_id: 2, corporation_id: HOME, ship_type_id: 17843, damage_taken: 5000 },
+        attackers: [{ character_id: 9, corporation_id: 555, ship_type_id: 622, damage_done: 5000, final_blow: true }],
+        zkb: { hash: "h3", totalValue: 50e6 } },
+      { killmail_id: 4, killmail_time: at("2026-09-29T11:00:00"), solar_system_id: 30000181,
+        victim: { character_id: 1, corporation_id: HOME, ship_type_id: 670, damage_taken: 100 },
+        attackers: [{ character_id: 2, corporation_id: HOME, ship_type_id: 17843, damage_done: 100, final_blow: true }],
+        zkb: { hash: "h4", totalValue: 10_000, awox: true } },
+      { killmail_id: 5, killmail_time: at("2026-09-29T12:00:00"), solar_system_id: 30000180,
+        victim: { character_id: 7, corporation_id: 777, ship_type_id: 622, damage_taken: 100 },
+        attackers: [{ character_id: 8, corporation_id: 888, ship_type_id: 622, damage_done: 100, final_blow: true }],
+        zkb: { hash: "h5", totalValue: 1e9 } },
+      { killmail_id: 6, killmail_time: at("2026-06-01T12:00:00"), solar_system_id: 30000180,
+        victim: { character_id: 9, corporation_id: 555, ship_type_id: 622, damage_taken: 100 },
+        attackers: [{ character_id: 1, corporation_id: HOME, ship_type_id: 622, damage_done: 100, final_blow: true }],
+        zkb: { hash: "h6", totalValue: 5e9 } },
+    ];
+    const windows = {
+      period: { from: "2026-07-05", to: "2026-10-02" },
+      week: { from: "2026-09-25", to: "2026-10-01" },
+      prevWeek: { from: "2026-09-18", to: "2026-09-24" },
+    };
+
+    beforeEach(async () => {
+      const { storeKillmails } = await import("@/modules/killboard/sync");
+      await db().insert(schema.eveEntities).values([
+        { id: 1, name: "Alpha", category: "character" },
+        { id: 2, name: "Bravo", category: "character" },
+      ]);
+      await db().insert(schema.eveSystems).values({ systemId: 30000181, name: "Tama", securityStatus: 0.28 });
+      expect(await storeKillmails(db(), fixture as never)).toBe(6);
+    });
+
+    it("stores killmails idempotently and refreshes zKillboard values", async () => {
+      const { storeKillmails } = await import("@/modules/killboard/sync");
+      expect(await storeKillmails(db(), fixture as never)).toBe(0);
+      const revalued = { ...fixture[0], zkb: { ...fixture[0].zkb, totalValue: 120e6 } };
+      expect(await storeKillmails(db(), [revalued] as never)).toBe(0);
+      // A change in any refreshed field alone is persisted too.
+      const refitted = { ...revalued, zkb: { ...revalued.zkb, fittedValue: 7e6, labels: ["pvp", "loc:lowsec"] } };
+      expect(await storeKillmails(db(), [refitted] as never)).toBe(0);
+      const rows = await db().execute<{ v: number; f: number; l: string[]; n: number }>(
+        sql`SELECT k.total_value::float8 AS v, k.fitted_value::float8 AS f, k.labels AS l,
+                   (SELECT COUNT(*) FROM killmail_attackers)::int AS n
+            FROM killmails k WHERE k.killmail_id = 1`,
+      );
+      expect(rows[0]).toEqual({ v: 120e6, f: 7e6, l: ["pvp", "loc:lowsec"], n: 7 });
+    });
+
+    it("reports the sync time only for the corporation that was synced", async () => {
+      const q2 = await kb();
+      const syncedAt = "2026-10-02T02:00:00.000Z";
+      await db().insert(schema.syncJobs).values({
+        jobKey: "killboard.zkill-sync",
+        ownerType: "global",
+        ownerId: 0,
+        meta: { corporationId: 999, lastSyncAt: syncedAt },
+      });
+      // The home corporation changed to 100, but the last sync was for 999.
+      expect((await q2.getKillboardStatus(HOME)).lastSyncAt).toBeNull();
+      await db().execute(sql`UPDATE sync_jobs SET meta = ${JSON.stringify({ corporationId: HOME, lastSyncAt: syncedAt })}::jsonb`);
+      expect((await q2.getKillboardStatus(HOME)).lastSyncAt?.toISOString()).toBe(syncedAt);
+    });
+
+    it("counts kills and losses like zKillboard (awox is a loss only)", async () => {
+      const q2 = await kb();
+      expect(await q2.getTotals(HOME, windows.period)).toEqual({
+        kills: 2,
+        losses: 2,
+        iskDestroyed: 110e6,
+        iskLost: 50e6 + 10_000,
+        soloKills: 1,
+      });
+      expect(await q2.getTotals(HOME, windows.week)).toMatchObject({ kills: 1, losses: 2 });
+      expect(await q2.getTotals(HOME, windows.prevWeek)).toMatchObject({ kills: 1, losses: 0 });
+
+      const killSystems = await q2.getTopSystems(HOME, windows, "kills");
+      expect(killSystems).toEqual([
+        { systemId: 30000180, name: "Osmon", security: 0.68, count: 2, value: 110e6, week: 1, prevWeek: 1 },
+      ]);
+      const lossSystems = await q2.getTopSystems(HOME, windows, "losses");
+      expect(lossSystems.map((r) => [r.name, r.count, r.week, r.prevWeek])).toEqual([["Tama", 2, 2, 0]]);
+
+      const recent = await q2.getRecentActivity(HOME, windows.period);
+      expect(recent.map((r) => [r.killmailId, r.kind])).toEqual([
+        [4, "loss"],
+        [3, "loss"],
+        [1, "kill"],
+        [2, "kill"],
+      ]);
+    });
+
+    it("aggregates ships and pilots with week-over-week deltas", async () => {
+      const q2 = await kb();
+      const ships = await q2.getShips(HOME, windows);
+      expect(ships.map((s) => [s.typeId, s.kills, s.destroyed, s.losses, s.lost, s.killsDelta, s.lossesDelta])).toEqual([
+        [17843, 1, 100e6, 1, 50e6, 1, 1],
+        [11186, 1, 10e6, 0, 0, -1, 0],
+        [670, 0, 0, 1, 10_000, 0, 1],
+      ]);
+      const pilots = await q2.getPilots(HOME, windows);
+      expect(pilots).toEqual([
+        { characterId: 1, name: "Alpha", kills: 2, losses: 1, finalBlows: 2, solo: 1, destroyed: 110e6, lost: 10_000, killsDelta: 0, lossesDelta: 1 },
+        { characterId: 2, name: "Bravo", kills: 1, losses: 1, finalBlows: 0, solo: 0, destroyed: 100e6, lost: 50e6, killsDelta: 1, lossesDelta: 1 },
+      ]);
+      const notable = await q2.getNotable(HOME, windows.week, "kills");
+      expect(notable).toMatchObject({ killmailId: 1, finalBlowName: "Alpha", value: 100e6 });
+    });
+
+    it("syncs only killmails inside the plan's window", async () => {
+      const { syncCorporationKillmails } = await import("@/modules/killboard/sync");
+      await db().execute(sql`TRUNCATE killmails, killmail_attackers`);
+      const resolved: number[] = [];
+      const zkill = {
+        async *corporationKillmails() {
+          yield fixture.slice(0, 3) as never;
+          yield fixture.slice(2, 4) as never; // overlap is de-duplicated
+        },
+      };
+      const out = await syncCorporationKillmails(
+        db(),
+        HOME,
+        { mode: "backfill", windows: [{ year: 2026, month: 9 }], since: new Date("2026-09-21T00:00:00Z") },
+        { zkill, resolve: async (_corp, entries) => void resolved.push(...entries.map((e) => e.killmail_id)) },
+      );
+      expect(out).toEqual({ mode: "backfill", fetched: 3, inserted: 3 });
+      expect(resolved.sort()).toEqual([1, 3, 4]);
+    });
+
+    it("writes one situation report per week window", async () => {
+      const { generateSituationReport, getLatestReport } = await import("@/modules/killboard/report/generate");
+      const now = new Date("2026-10-02T03:00:00Z");
+      const first = await generateSituationReport(db(), HOME, now);
+      expect(first).toMatchObject({ created: true, source: "template", week: windows.week });
+      expect((await generateSituationReport(db(), HOME, now)).created).toBe(false);
+      expect((await generateSituationReport(db(), HOME, now, { force: true })).created).toBe(true);
+      const latest = await getLatestReport(HOME);
+      expect(latest?.periodTo).toBe("2026-10-01");
+      expect(latest?.facts.week).toMatchObject({ kills: 1, losses: 2 });
+      expect(latest?.facts.topPilots.map((p) => p.name)).toEqual(["Alpha", "Bravo"]);
+      expect(latest?.report.paragraphs.length).toBeGreaterThan(0);
     });
   });
 

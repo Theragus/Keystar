@@ -4,9 +4,10 @@ import { env } from "@/core/env";
 import * as core from "./schema/core";
 import * as eve from "./schema/eve";
 import * as sync from "./schema/sync";
+import * as killboard from "@/modules/killboard/schema";
 import * as mining from "@/modules/mining/schema";
 
-export const schema = { ...core, ...eve, ...sync, ...mining };
+export const schema = { ...core, ...eve, ...sync, ...mining, ...killboard };
 
 export type Db = PostgresJsDatabase<typeof schema>;
 
@@ -48,3 +49,4 @@ export * from "./schema/core";
 export * from "./schema/eve";
 export * from "./schema/sync";
 export * from "@/modules/mining/schema";
+export * from "@/modules/killboard/schema";
