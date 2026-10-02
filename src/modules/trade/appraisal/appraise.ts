@@ -1,0 +1,139 @@
+import { randomBytes } from "node:crypto";
+import { and, inArray, sql } from "drizzle-orm";
+import { appraisals, eveTypes, getDb, typeValues } from "@/core/db";
+import { getEsi } from "@/core/esi";
+import { syncPrices } from "@/core/eve/prices";
+import { ensureTypes } from "@/core/eve/resolver";
+import { assignTypes, candidateNames, parseAppraisalInput } from "./parse";
+import { totalsOf, type AppraisalItem, type AppraisalTotals, type UnparsedLine } from "./types";
+
+/** Distinct types per appraisal (each unknown type costs ESI requests). */
+export const MAX_TYPES = 500;
+export const MAX_INPUT_CHARS = 200_000;
+/** Prices older than this are refreshed before appraising. */
+const PRICE_MAX_AGE_MS = 2 * 3600 * 1000;
+
+/** Lower-cased item name → type id: local static data first, then ESI /universe/ids. */
+export async function resolveTypeNames(names: string[]): Promise<Map<string, number>> {
+  const db = getDb();
+  const byLower = new Map<string, number>();
+  const lower = [...new Set(names.map((n) => n.toLowerCase()))];
+  const findLocal = async (wanted: string[]) => {
+    for (let i = 0; i < wanted.length; i += 1000) {
+      const rows = await db
+        .select({ typeId: eveTypes.typeId, name: eveTypes.name })
+        .from(eveTypes)
+        .where(inArray(sql`lower(${eveTypes.name})`, wanted.slice(i, i + 1000)));
+      for (const r of rows) byLower.set(r.name.toLowerCase(), r.typeId);
+    }
+  };
+  await findLocal(lower);
+
+  const unknown = names.filter((n) => !byLower.has(n.toLowerCase()));
+  const found: number[] = [];
+  for (let i = 0; i < unknown.length; i += 500) {
+    const res = await getEsi()
+      .post<{ inventory_types?: { id: number; name: string }[] }>("/universe/ids", unknown.slice(i, i + 500))
+      .catch(() => null);
+    for (const t of res?.data.inventory_types ?? []) {
+      byLower.set(t.name.toLowerCase(), t.id);
+      found.push(t.id);
+    }
+  }
+  if (found.length) await ensureTypes(found);
+  return byLower;
+}
+
+/** Current Jita 4-4 buy/sell per type, pricing unknown or stale types live first. */
+export async function jitaPrices(typeIds: number[]): Promise<Map<number, { buy: number | null; sell: number | null }>> {
+  const db = getDb();
+  const load = () =>
+    db
+      .select()
+      .from(typeValues)
+      .where(and(inArray(typeValues.typeId, typeIds), inArray(typeValues.source, ["jita_buy", "jita_sell"])));
+  let rows = typeIds.length ? await load() : [];
+  const fresh = new Set(
+    rows.filter((r) => Date.now() - r.updatedAt.getTime() < PRICE_MAX_AGE_MS).map((r) => r.typeId),
+  );
+  const stale = typeIds.filter((id) => !fresh.has(id));
+  if (stale.length) {
+    await syncPrices(db, getEsi(), stale).catch(() => undefined);
+    rows = await load();
+  }
+  const out = new Map<number, { buy: number | null; sell: number | null }>();
+  for (const id of typeIds) out.set(id, { buy: null, sell: null });
+  for (const r of rows) {
+    // Only direct market prices: fallbacks such as ESI averages would mislabel the Jita columns.
+    if (r.basis !== "direct" && r.basis !== "compressed") continue;
+    const p = out.get(r.typeId)!;
+    if (r.source === "jita_buy") p.buy = r.unitPrice;
+    else p.sell = r.unitPrice;
+  }
+  return out;
+}
+
+export interface AppraisalResult {
+  items: AppraisalItem[];
+  totals: AppraisalTotals;
+  unparsed: UnparsedLine[];
+}
+
+export async function appraise(input: string): Promise<AppraisalResult> {
+  const lines = parseAppraisalInput(input.slice(0, MAX_INPUT_CHARS));
+  const typeIdsByName = await resolveTypeNames(candidateNames(lines));
+  const { items: resolved, unparsed } = assignTypes(lines, (name) => typeIdsByName.get(name));
+  const kept = resolved.slice(0, MAX_TYPES);
+  const typeIds = kept.map((i) => i.typeId);
+
+  const [types, prices] = await Promise.all([
+    typeIds.length
+      ? getDb()
+          .select({ typeId: eveTypes.typeId, name: eveTypes.name, volume: eveTypes.volume, packaged: eveTypes.packagedVolume })
+          .from(eveTypes)
+          .where(inArray(eveTypes.typeId, typeIds))
+      : Promise.resolve([]),
+    jitaPrices(typeIds),
+  ]);
+  const meta = new Map(types.map((t) => [t.typeId, t]));
+  const items: AppraisalItem[] = kept.map((i) => {
+    const t = meta.get(i.typeId);
+    const p = prices.get(i.typeId) ?? { buy: null, sell: null };
+    return {
+      typeId: i.typeId,
+      name: t?.name ?? `Type ${i.typeId}`,
+      quantity: i.quantity,
+      buy: p.buy,
+      sell: p.sell,
+      volume: t?.packaged ?? t?.volume ?? 0,
+    };
+  });
+  items.sort((a, b) => (b.sell ?? b.buy ?? 0) * b.quantity - (a.sell ?? a.buy ?? 0) * a.quantity || a.name.localeCompare(b.name));
+  return { items, totals: totalsOf(items), unparsed };
+}
+
+const ALPHABET = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/** Short, unguessable id for share links. */
+export function appraisalId(length = 10): string {
+  const bytes = randomBytes(length);
+  return Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join("");
+}
+
+export async function saveAppraisal(
+  result: AppraisalResult,
+  meta: { input: string; pricePercent: number; userId: string; userName: string | null },
+): Promise<string> {
+  const id = appraisalId();
+  await getDb().insert(appraisals).values({
+    id,
+    createdBy: meta.userId,
+    createdByName: meta.userName,
+    pricePercent: meta.pricePercent,
+    items: result.items,
+    totals: result.totals,
+    unparsed: result.unparsed,
+    input: meta.input.slice(0, MAX_INPUT_CHARS),
+  });
+  return id;
+}

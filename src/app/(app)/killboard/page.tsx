@@ -12,14 +12,15 @@ import { getSettings } from "@/core/settings";
 import { DATE_PRESETS, isoDate } from "@/lib/dates";
 import { compact, integer, percent, relativeTime } from "@/lib/format";
 import { KILL_COLOR, LOSS_COLOR } from "@/modules/killboard/colors";
-import { WeekDelta } from "@/modules/killboard/components/deltas";
+import { WeekDelta } from "@/components/ui/deltas";
 import { IskDonut } from "@/modules/killboard/components/isk-donut";
 import { KillboardPeriodPicker } from "@/modules/killboard/components/period-picker";
 import { RecentActivity } from "@/modules/killboard/components/recent-activity";
 import { RewriteReportButton } from "@/modules/killboard/components/rewrite-button";
 import { SituationReportPanel } from "@/modules/killboard/components/situation-report";
-import { SortableTable, type Column, type EntityRow } from "@/modules/killboard/components/sortable-table";
+import { SortableTable, type Column, type EntityRow } from "@/components/ui/sortable-table";
 import { SystemBars } from "@/modules/killboard/components/system-bars";
+import { Awards, MvpCard, RunnersUp } from "@/modules/killboard/components/top-pilots";
 import { killboardWindows, parseKillboardFilters, rangeLabel } from "@/modules/killboard/filters";
 import { zkillCharacter, zkillCorporation, zkillShip } from "@/modules/killboard/links";
 import { KILLBOARD_PERMISSIONS } from "@/modules/killboard/module";
@@ -97,7 +98,7 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
     getTotals(corpId, w.prevWeek),
     getTopSystems(corpId, w, "kills"),
     getTopSystems(corpId, w, "losses"),
-    getRecentActivity(corpId, w.period),
+    getRecentActivity(corpId, w.period, 10),
     getShips(corpId, w),
     getPilots(corpId, w),
     getLatestReport(corpId),
@@ -107,6 +108,7 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
   const canManage = user.can(KILLBOARD_PERMISSIONS.manage);
   const corpName = corp ? `${corp.name} [${corp.ticker}]` : `Corporation ${corpId}`;
   const weekLabel = rangeLabel(w.week);
+  const periodLabel = rangeLabel(w.period);
   const eff = efficiency(totals.iskDestroyed, totals.iskLost);
   const weekEff = efficiency(week.iskDestroyed, week.iskLost);
   const prevEff = efficiency(prevWeek.iskDestroyed, prevWeek.iskLost);
@@ -236,6 +238,25 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
             />
           </div>
 
+          {pilots.some((p) => p.kills > 0) && (
+            <Panel title="Top pilots" subtitle={`Most kills · ${periodLabel}`}>
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+                <MvpCard pilot={pilots[0]} period={periodLabel} />
+                <RunnersUp pilots={pilots.slice(1, 5).filter((p) => p.kills > 0)} />
+              </div>
+              <div className="mt-5">
+                <Awards pilots={pilots} />
+              </div>
+            </Panel>
+          )}
+
+          <Panel
+            title="Pilot efficiency"
+            subtitle={`${pilotRows.length} pilots flew for ${corp?.ticker ? `[${corp.ticker}]` : "the corporation"} in this period`}
+          >
+            <SortableTable entityLabel="Pilot" columns={PILOT_COLUMNS} rows={pilotRows} defaultSort="kills" initialRows={10} />
+          </Panel>
+
           <SituationReportPanel
             stored={report}
             canManage={canManage}
@@ -279,13 +300,18 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
             </Panel>
           </div>
 
-          <Panel title="Recent activity" subtitle="Latest kills and losses in the period · opens on zKillboard">
-            <RecentActivity rows={recent} />
-          </Panel>
-
-          <Panel title="Most effective ships" subtitle="By net ISK: value destroyed while flying the hull minus value lost in it">
-            <SortableTable entityLabel="Ship" columns={EFFECTIVE_COLUMNS} rows={ships.map(shipRow)} defaultSort="net" />
-          </Panel>
+          <div className="grid items-start gap-4 xl:grid-cols-12">
+            <Panel title="Recent activity" subtitle="10 latest kills and losses · opens on zKillboard" className="xl:col-span-5">
+              <RecentActivity rows={recent} />
+            </Panel>
+            <Panel
+              title="Most effective ships"
+              subtitle="By net ISK: value destroyed while flying the hull minus value lost in it"
+              className="xl:col-span-7"
+            >
+              <SortableTable entityLabel="Ship" columns={EFFECTIVE_COLUMNS} rows={ships.map(shipRow)} defaultSort="net" initialRows={10} />
+            </Panel>
+          </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
             <Panel title="Most used ships" subtitle="Hulls flown on kills">
@@ -305,10 +331,6 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
               />
             </Panel>
           </div>
-
-          <Panel title="Pilot efficiency" subtitle={`${pilotRows.length} pilots flew for ${corp?.ticker ? `[${corp.ticker}]` : "the corporation"} in this period`}>
-            <SortableTable entityLabel="Pilot" columns={PILOT_COLUMNS} rows={pilotRows} defaultSort="kills" initialRows={15} />
-          </Panel>
         </PendingFrame>
 
         <p className="text-xs text-ink-3">

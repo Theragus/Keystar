@@ -131,6 +131,8 @@ export async function saveSettings(formData: FormData) {
   await setSetting("permissions.overrides", overrides, actor.id);
   if (homeCorporationId && homeCorporationId !== before["corp.homeCorporationId"]) {
     await refreshCorporations([homeCorporationId]);
+    // Import the new home corporation's killboard now instead of at the next hourly run.
+    await triggerJobs({ jobKey: "killboard.zkill-sync" });
   }
 
   await audit({

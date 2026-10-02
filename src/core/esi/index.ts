@@ -2,11 +2,12 @@ import { eq } from "drizzle-orm";
 import { esiCache, getDb } from "@/core/db";
 import { env } from "@/core/env";
 import { EsiClient, type EsiCacheStore } from "./client";
+import { KEYSTAR_VERSION } from "@/core/version";
 import { getAccessToken } from "./tokens";
 
 export * from "./client";
 
-export const KEYSTAR_VERSION = process.env.npm_package_version ?? "0.1.0";
+export { KEYSTAR_VERSION } from "@/core/version";
 
 const dbCache: EsiCacheStore = {
   async get(key) {

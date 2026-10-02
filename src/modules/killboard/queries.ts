@@ -350,3 +350,40 @@ export async function getKillboardStatus(corp: number): Promise<KillboardStatus>
     lastError: str(job?.last_error),
   };
 }
+
+export interface DailyActivity {
+  date: string;
+  kills: number;
+  losses: number;
+  destroyed: number;
+  lost: number;
+}
+
+/** Kills and losses per EVE day, with empty days filled in. */
+export async function getDailyActivity(corp: number, r: DateRange): Promise<DailyActivity[]> {
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    WITH ev AS (
+      SELECT 'kill'::text AS kind, k.killmail_time, k.total_value FROM (${killsIn(corp, r)}) k
+      UNION ALL
+      SELECT 'loss'::text AS kind, k.killmail_time, k.total_value FROM (${lossesIn(corp, r)}) k
+    )
+    SELECT to_char(killmail_time AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day,
+           COUNT(*) FILTER (WHERE kind = 'kill')::int AS kills,
+           COUNT(*) FILTER (WHERE kind = 'loss')::int AS losses,
+           COALESCE(SUM(total_value) FILTER (WHERE kind = 'kill'), 0)::float8 AS destroyed,
+           COALESCE(SUM(total_value) FILTER (WHERE kind = 'loss'), 0)::float8 AS lost
+    FROM ev GROUP BY 1`);
+  const byDay = new Map(rows.map((row) => [String(row.day), row]));
+  const out: DailyActivity[] = [];
+  for (let d = r.from; d <= r.to; d = addDays(d, 1)) {
+    const row = byDay.get(d);
+    out.push({
+      date: d,
+      kills: num(row?.kills),
+      losses: num(row?.losses),
+      destroyed: num(row?.destroyed),
+      lost: num(row?.lost),
+    });
+  }
+  return out;
+}

@@ -19,4 +19,5 @@ Self-hosted EVE Online corporation dashboard. Next.js 16 app + a separate Node w
 - Schema changes: edit the Drizzle schema, then `pnpm db:generate --name <change>`; never hand-edit generated migrations.
 - Chart colours are validated for colour-vision safety (`src/modules/mining/class-colors.ts`); don't add hues ad hoc.
 - Checks before committing: `pnpm lint && pnpm typecheck && pnpm test` (set `TEST_DATABASE_URL` to a throwaway database to include integration tests).
+- Releases: bump `version` in package.json and add a CHANGELOG.md section in the PR; merging to main publishes the image and GitHub release (`docs/releasing.md`).
 - Demo data: `KEYSTAR_DEMO_MODE=true pnpm demo:seed`, then sign in via the demo buttons on /login.

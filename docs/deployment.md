@@ -124,18 +124,21 @@ Edit `.env` (`nano .env`) and set at least:
 | `EVE_CLIENT_ID` / `EVE_CLIENT_SECRET` | from step 5                                                        |
 | `ESI_CONTACT`                     | your email or EVE character name (sent to CCP in the User-Agent)       |
 | `ADMIN_CHARACTER_IDS`             | optional: your character ID(s). If empty, the **first** pilot to sign in becomes admin |
+| `KEYSTAR_VERSION`                 | release to run, e.g. `0.1.1`, or `latest` (default) — see [releases](https://github.com/theragus/keystar/releases) |
 | `ANTHROPIC_API_KEY`               | optional: a [Claude API key](https://console.anthropic.com) so Claude writes the killboard's weekly situation report (≈ one call a day, one to two US cents each with the default model). Without it the report is written from a template |
 | `KILLBOARD_REPORT_MODEL`          | optional: Claude model for the report, default `claude-sonnet-5-5` (`claude-haiku-4-5-20251001` is about half the cost) |
 
 ## 7. Start it
 
 ```bash
-docker compose up -d --build
+docker compose pull          # the released image from ghcr.io (KEYSTAR_VERSION in .env)
+docker compose up -d
 docker compose ps            # all services should become "healthy"/"running"
 docker compose logs -f app   # Ctrl+C to stop following
 ```
 
-The first build takes a few minutes. Then open `https://keystar.example.com`.
+Then open `https://keystar.example.com`. To build from the checkout instead of using a release, run
+`docker compose up -d --build` (the first build takes a few minutes and up to 2 GB of RAM).
 
 ## 8. First sign-in and setup walkthrough
 
@@ -161,13 +164,43 @@ once a full week has been imported, shortly after 02:00 EVE time. The server nee
 
 ### Updating
 
+Releases are listed on the [releases page](https://github.com/theragus/keystar/releases) with their changes
+(also in `CHANGELOG.md`). With `KEYSTAR_VERSION=latest` every pull takes the newest release; pin a version such as
+`0.1.1` to update deliberately.
+
 ```bash
 cd /opt/keystar
-git pull
-docker compose up -d --build
+git pull                  # compose file, Caddyfile and docs of the new version
+docker compose pull       # no build on the server
+docker compose up -d
 ```
 
-Database migrations run automatically when the `app` container starts.
+Database migrations run automatically when the `app` container starts. Building from source instead:
+`git pull && docker compose up -d --build`. The running version is shown in the sidebar and at `/api/health`.
+
+### Behind an existing reverse proxy
+
+If the server already runs Caddy, nginx or Traefik on ports 80/443, don't start Keystar's bundled Caddy. Create
+`docker-compose.override.yml` next to `docker-compose.yml` (Compose picks it up automatically and `git pull` leaves
+it alone):
+
+```yaml
+services:
+  caddy:
+    profiles: ["disabled"]          # never started
+  app:
+    ports: ["127.0.0.1:3000:3000"]  # reachable from the host only
+```
+
+Point your proxy at it, for example in the host's Caddyfile:
+
+```caddyfile
+keystar.example.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+`KEYSTAR_DOMAIN` is then unused; `APP_URL` must still be the public `https://` address.
 
 ### Backups
 

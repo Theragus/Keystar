@@ -5,12 +5,16 @@ import {
   BookOpen,
   Boxes,
   Building2,
+  Coins,
+  Crosshair,
   Gem,
   KeyRound,
   Link2,
   Pickaxe,
   Radar,
   Server,
+  Swords,
+  Target,
   Users,
   Wallet,
 } from "lucide-react";
@@ -27,12 +31,20 @@ import { esiTokens, getDb, workerHeartbeats } from "@/core/db";
 import { getCorporation } from "@/core/corp";
 import { characterScopes } from "@/core/modules/registry";
 import { getSettings } from "@/core/settings";
-import { compact, delta, formatMetric, isRecent } from "@/lib/format";
+import { addDays } from "@/lib/dates";
+import { compact, delta, integer, isRecent, percent } from "@/lib/format";
+import { WeekDelta } from "@/components/ui/deltas";
+import { KillsChart } from "@/modules/killboard/components/kills-chart";
+import { RecentActivity } from "@/modules/killboard/components/recent-activity";
+import { MvpCard, RunnersUp } from "@/modules/killboard/components/top-pilots";
+import { killboardWindows } from "@/modules/killboard/filters";
+import { KILLBOARD_PERMISSIONS } from "@/modules/killboard/module";
+import { efficiency, getDailyActivity, getPilots, getRecentActivity, getTotals } from "@/modules/killboard/queries";
 import { toChartClasses } from "@/modules/mining/class-colors";
 import { DailyChart } from "@/modules/mining/components/daily-chart";
 import { DATE_PRESETS, isoDate, parseMiningFilters } from "@/modules/mining/filters";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
-import { getDailySeries, getMemberBreakdown, getMiningSummary, miningScope } from "@/modules/mining/queries";
+import { getDailySeries, getMiningSummary, miningScope } from "@/modules/mining/queries";
 
 export const metadata = { title: "Dashboard" };
 
@@ -55,11 +67,21 @@ export default async function OverviewPage() {
   const homeCorpId = settings["corp.homeCorporationId"];
   const scope = miningScope(user, homeCorpId);
   const corpScope = scope.corp;
-  const [own, corp, daily, top, tokens, syncStats, pendingUsers, homeCorp, corpStats, workers] = await Promise.all([
-    canMining ? getMiningSummary(filters, { ...scope, corp: false }, valuation) : null,
+  // The dashboard leads with combat: the killboard's last 30 days.
+  const combat = homeCorpId !== null && user.can(KILLBOARD_PERMISSIONS.view);
+  const windows = killboardWindows(range, today);
+  const prior = { from: addDays(range.from, -30), to: addDays(range.from, -1) };
+  const [killsNow, killsBefore, activity, pilots, recent] = await Promise.all([
+    combat ? getTotals(homeCorpId!, range) : null,
+    combat ? getTotals(homeCorpId!, prior) : null,
+    combat ? getDailyActivity(homeCorpId!, range) : [],
+    combat ? getPilots(homeCorpId!, windows) : [],
+    combat ? getRecentActivity(homeCorpId!, range, 6) : [],
+  ]);
+  const [own, corp, daily, tokens, syncStats, pendingUsers, homeCorp, corpStats, workers] = await Promise.all([
+    canMining && !combat ? getMiningSummary(filters, { ...scope, corp: false }, valuation) : null,
     corpScope ? getMiningSummary(filters, scope, valuation) : null,
-    canMining ? getDailySeries(filters, scope, valuation) : [],
-    corpScope ? getMemberBreakdown(filters, scope, valuation) : [],
+    canMining && !combat ? getDailySeries(filters, scope, valuation) : [],
     user.characterIds.length
       ? getDb().select().from(esiTokens).where(inArray(esiTokens.characterId, user.characterIds))
       : Promise.resolve([]),
@@ -73,14 +95,18 @@ export default async function OverviewPage() {
       ? getDb().execute<{ n: number }>(sql`SELECT COUNT(*)::int AS n FROM users WHERE role = 'guest' AND NOT is_disabled`)
       : null,
     getCorporation(homeCorpId),
-    getDb().execute<{ registered: number; roster: number; refineries: number }>(sql`
+    getDb().execute<{ registered: number; roster: number }>(sql`
       SELECT (SELECT COUNT(*)::int FROM characters WHERE corporation_id = ${homeCorpId ?? 0}) AS registered,
-             (SELECT COUNT(*)::int FROM corporation_members WHERE corporation_id = ${homeCorpId ?? 0}) AS roster,
-             (SELECT COUNT(*)::int FROM mining_observers WHERE corporation_id = ${homeCorpId ?? 0}) AS refineries`),
+             (SELECT COUNT(*)::int FROM corporation_members WHERE corporation_id = ${homeCorpId ?? 0}) AS roster`),
     getDb().select().from(workerHeartbeats),
   ]);
   const workerOnline = workers.some((w) => isRecent(w.lastBeatAt, 2 * 60_000));
-  const stats = corpStats[0] ?? { registered: 0, roster: 0, refineries: 0 };
+  const stats = corpStats[0] ?? { registered: 0, roster: 0 };
+  const members = stats.roster || homeCorp?.memberCount || 0;
+  const activePilots = pilots.length;
+  const ranked = pilots.filter((p) => p.kills > 0);
+  const eff = killsNow ? efficiency(killsNow.iskDestroyed, killsNow.iskLost) : null;
+  const effBefore = killsBefore ? efficiency(killsBefore.iskDestroyed, killsBefore.iskLost) : null;
 
   const required = characterScopes();
   const healthy = user.characters.filter((c) => {
@@ -102,7 +128,7 @@ export default async function OverviewPage() {
               {homeCorp ? `${homeCorp.name}` : "Not configured"}
             </InfoItem>
             <InfoItem icon={Users} label="Registered characters">
-              {stats.roster ? `${stats.registered} of ${stats.roster} in roster` : `${stats.registered} registered`}
+              {members ? `${stats.registered} of ${members} members` : `${stats.registered} registered`}
             </InfoItem>
             <InfoItem icon={KeyRound} label="Your ESI access">
               {healthy} of {user.characters.length} characters complete
@@ -122,7 +148,10 @@ export default async function OverviewPage() {
                 <CorpLogo id={homeCorp.corporationId} size={44} className="rounded-lg ring-1 ring-white/10" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{homeCorp.name}</div>
-                  <div className="text-xs text-ink-3">{homeCorp.memberCount ?? "?"} pilots in game</div>
+                  <div className="text-xs text-ink-3">
+                    {combat ? `${activePilots} active ${activePilots === 1 ? "pilot" : "pilots"} · 30 days` : "Home corporation"}
+                    {members ? <span className="text-ink-3/70"> · {members} members</span> : null}
+                  </div>
                 </div>
                 <span className="rounded border border-white/10 px-1.5 py-px font-mono text-[0.62rem] text-ink-2">
                   {homeCorp.ticker}
@@ -130,16 +159,16 @@ export default async function OverviewPage() {
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/[0.08] pt-3 text-xs">
                 <div>
-                  <div className="eve-label text-[0.58rem] text-ink-3">Mined 30d</div>
-                  <div className="mt-0.5 font-medium tabular-nums">{corp ? compact(corp.current.value) : "—"}</div>
+                  <div className="eve-label text-[0.58rem] text-ink-3">Kills 30d</div>
+                  <div className="mt-0.5 font-medium tabular-nums">{killsNow ? integer(killsNow.kills) : "—"}</div>
                 </div>
                 <div>
-                  <div className="eve-label text-[0.58rem] text-ink-3">Miners</div>
-                  <div className="mt-0.5 font-medium tabular-nums">{corp ? corp.current.miners : "—"}</div>
+                  <div className="eve-label text-[0.58rem] text-ink-3">Losses 30d</div>
+                  <div className="mt-0.5 font-medium tabular-nums">{killsNow ? integer(killsNow.losses) : "—"}</div>
                 </div>
                 <div>
-                  <div className="eve-label text-[0.58rem] text-ink-3">Refineries</div>
-                  <div className="mt-0.5 font-medium tabular-nums">{stats.refineries}</div>
+                  <div className="eve-label text-[0.58rem] text-ink-3">Efficiency</div>
+                  <div className="mt-0.5 font-medium tabular-nums">{eff === null ? "—" : percent(eff, 1)}</div>
                 </div>
               </div>
             </div>
@@ -150,7 +179,38 @@ export default async function OverviewPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {corp && (
+        {killsNow && killsBefore && (
+          <>
+            <StatTile
+              icon={Swords}
+              label="Kills · 30 days"
+              value={integer(killsNow.kills)}
+              delta={<WeekDelta change={killsNow.kills - killsBefore.kills} suffix="vs prior 30d" />}
+              hint={`${integer(killsNow.losses)} losses`}
+            />
+            <StatTile
+              icon={Coins}
+              label="ISK destroyed · 30 days"
+              value={compact(killsNow.iskDestroyed)}
+              unit="ISK"
+              delta={<Delta value={delta(killsNow.iskDestroyed, killsBefore.iskDestroyed)} period="prior 30d" />}
+            />
+            <StatTile
+              icon={Target}
+              label="ISK efficiency · 30 days"
+              value={eff === null ? "—" : percent(eff, 1)}
+              delta={
+                <WeekDelta
+                  change={eff !== null && effBefore !== null ? (eff - effBefore) * 100 : null}
+                  format={(n) => `${n.toFixed(1)} pts`}
+                  suffix="vs prior 30d"
+                />
+              }
+              hint={`${compact(killsNow.iskLost)} ISK lost`}
+            />
+          </>
+        )}
+        {corp ? (
           <StatTile
             icon={Gem}
             label="Corporation mining · 30 days"
@@ -158,8 +218,7 @@ export default async function OverviewPage() {
             unit="ISK"
             delta={<Delta value={delta(corp.current.value, corp.previous.value)} period="prior 30d" />}
           />
-        )}
-        {own && (
+        ) : own ? (
           <StatTile
             icon={Pickaxe}
             label="Your mining · 30 days"
@@ -167,20 +226,22 @@ export default async function OverviewPage() {
             unit="ISK"
             delta={<Delta value={delta(own.current.value, own.previous.value)} period="prior 30d" />}
           />
+        ) : null}
+        {!combat && (
+          <StatTile
+            icon={Users}
+            label="Your characters"
+            value={String(user.characters.length)}
+            delta={
+              healthy === user.characters.length ? (
+                <StatusBadge status="ok" label="ESI complete" />
+              ) : (
+                <StatusBadge status="warning" label={`${user.characters.length - healthy} need attention`} />
+              )
+            }
+          />
         )}
-        <StatTile
-          icon={Users}
-          label="Your characters"
-          value={String(user.characters.length)}
-          delta={
-            healthy === user.characters.length ? (
-              <StatusBadge status="ok" label="ESI complete" />
-            ) : (
-              <StatusBadge status="warning" label={`${user.characters.length - healthy} need attention`} />
-            )
-          }
-        />
-        {syncStats && (
+        {!combat && syncStats && (
           <StatTile
             icon={Activity}
             label="Background sync"
@@ -194,13 +255,30 @@ export default async function OverviewPage() {
             }
           />
         )}
-        {!syncStats && pendingUsers && (
+        {!combat && !syncStats && pendingUsers && (
           <StatTile label="Awaiting approval" value={String(pendingUsers[0]?.n ?? 0)} />
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-12">
-        {canMining ? (
+      <div className="grid items-start gap-4 xl:grid-cols-12">
+        {combat ? (
+          <div className="space-y-4 xl:col-span-8">
+            <Panel
+              title="Kills over time · last 30 days"
+              subtitle="Kills and losses per day"
+              actions={
+                <ButtonLink href="/killboard" size="sm">
+                  <Swords className="size-4" aria-hidden /> Killboard
+                </ButtonLink>
+              }
+            >
+              <KillsChart rows={activity} />
+            </Panel>
+            <Panel title="Latest kills and losses" subtitle="Opens on zKillboard">
+              <RecentActivity rows={recent} />
+            </Panel>
+          </div>
+        ) : canMining ? (
           <Panel
             className="xl:col-span-8"
             title={corpScope ? "Corporation mining · last 30 days" : "Your mining · last 30 days"}
@@ -225,20 +303,32 @@ export default async function OverviewPage() {
         )}
 
         <div className="space-y-4 xl:col-span-4">
-          {corpScope && top.length > 0 && (
-            <Panel title="Top miners · 30 days">
-              <ol className="space-y-2">
-                {top.slice(0, 5).map((m, i) => (
-                  <li key={m.key} className="flex items-center gap-3 text-sm">
-                    <span className="w-4 text-right text-xs text-ink-3">{i + 1}</span>
-                    <Portrait id={m.portraitId} size={28} />
-                    <span className="min-w-0 flex-1 truncate">{m.name}</span>
-                    <span className="font-semibold tabular-nums">{formatMetric("value", m.value)}</span>
-                  </li>
-                ))}
-              </ol>
+          {ranked.length > 0 && (
+            <Panel
+              title="MVP · last 30 days"
+              actions={
+                <Link href="/killboard" className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                  All pilots <ArrowRight className="size-3" aria-hidden />
+                </Link>
+              }
+            >
+              <MvpCard pilot={ranked[0]} period="30 days" size="md" />
+              {ranked.length > 1 && (
+                <div className="mt-3">
+                  <RunnersUp pilots={ranked.slice(1, 5)} />
+                </div>
+              )}
             </Panel>
           )}
+          {combat && syncStats?.[0]?.failing ? (
+            <Glass className="flex items-center gap-3 px-5 py-3.5 text-sm">
+              <Crosshair className="size-4 text-critical-text" aria-hidden />
+              <span className="flex-1">{syncStats[0].failing} sync jobs failing</span>
+              <Link href="/admin/sync" className="text-xs text-accent hover:underline">
+                Sync status
+              </Link>
+            </Glass>
+          ) : null}
           <Panel
             title="Your characters"
             actions={

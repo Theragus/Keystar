@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/core/db";
+import { KEYSTAR_VERSION } from "@/core/version";
 
 export const dynamic = "force-dynamic";
 
@@ -8,8 +9,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     await getDb().execute(sql`SELECT 1`);
-    return NextResponse.json({ status: "ok" });
+    return NextResponse.json({ status: "ok", version: KEYSTAR_VERSION });
   } catch {
-    return NextResponse.json({ status: "error", database: "unreachable" }, { status: 503 });
+    return NextResponse.json({ status: "error", database: "unreachable", version: KEYSTAR_VERSION }, { status: 503 });
   }
 }

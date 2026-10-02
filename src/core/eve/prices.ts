@@ -120,7 +120,7 @@ export async function syncPrices(db: Db, esi: EsiClient, interestTypeIds: number
   }
 
   // Jita 4-4 best buy/sell from The Forge regional orders (market-order group: 12k tokens / 15 min).
-  await mapLimit(allIds, 4, async (typeId) => {
+  await mapLimit(allIds, 8, async (typeId) => {
     const orders = await esi.getAllPages<MarketOrder>(`/markets/${THE_FORGE_REGION_ID}/orders`, {
       query: { order_type: "all", type_id: typeId },
     });

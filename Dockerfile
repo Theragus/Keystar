@@ -17,6 +17,12 @@ COPY . .
 RUN pnpm build
 
 FROM node:22-alpine AS runner
+# Links the published image (ghcr.io/theragus/keystar) to the repository, so the
+# package inherits its permissions. The release workflow adds version labels.
+LABEL org.opencontainers.image.source="https://github.com/theragus/keystar" \
+      org.opencontainers.image.title="Keystar" \
+      org.opencontainers.image.description="Self-hosted EVE Online corporation dashboard" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later"
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN addgroup -S keystar && adduser -S keystar -G keystar

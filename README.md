@@ -14,8 +14,8 @@
 Keystar signs pilots in with **EVE SSO**, collects their **ESI tokens** with exactly the scopes its modules need,
 syncs data in the background and turns it into dashboards. Modules so far: **mining** (personal and moon-refinery
 ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export and an ore field
-estimator for survey scans) and a **killboard** with the corporation's PvP performance from zKillboard and a weekly
-situation report.
+estimator for survey scans) a **killboard** with the corporation's PvP performance from zKillboard and a weekly
+situation report, and an **appraisal** tool for Jita prices.
 
 ![Mining overview](docs/screenshots/mining.png)
 
@@ -24,11 +24,11 @@ situation report.
 <table>
   <tr>
     <td><img src="docs/screenshots/overview.png" alt="Dashboard" /></td>
-    <td><img src="docs/screenshots/estimator.png" alt="Ore field estimator" /></td>
+    <td><img src="docs/screenshots/appraisal.png" alt="Appraisal" /></td>
   </tr>
   <tr>
+    <td><img src="docs/screenshots/estimator.png" alt="Ore field estimator" /></td>
     <td><img src="docs/screenshots/users.png" alt="Users and roles" /></td>
-    <td><img src="docs/screenshots/login.png" alt="Sign in" /></td>
   </tr>
 </table>
 
@@ -54,6 +54,8 @@ situation report.
 - **Killboard** for the home corporation from zKillboard (no extra scopes): kills, losses, ISK efficiency with
   week-over-week changes, a weekly **situation report** written by Claude (optional API key) or from a template, top
   systems, recent activity, most effective / used / lost ships and pilot efficiency.
+- **Appraisal** (Trade): paste cargo, inventory, contracts, EFT fittings, d-scans, killmails or item lists and get
+  Jita 4-4 buy / sell / split values, volume and a percentage price (e.g. for buyback), saved as a shareable link.
 - **Administration**: users & roles, member audit (in-game roster vs registered), sync status with manual triggers,
   settings, audit log, and a short first-start setup walkthrough.
 - **Background worker** respecting ESI's 2025+ rules: `X-Compatibility-Date`, ETag/Expires caching, pagination,
@@ -70,10 +72,14 @@ worker and Caddy with automatic HTTPS):
 ```bash
 git clone https://github.com/theragus/keystar.git && cd keystar
 cp .env.example .env    # set domain, secrets and your EVE application credentials
-docker compose up -d --build
+docker compose pull     # released image from ghcr.io/theragus/keystar
+docker compose up -d
 ```
 
 **→ Full step-by-step guide for Ubuntu 24.04 / 26.04: [docs/deployment.md](docs/deployment.md)**
+
+Releases and their changes: [releases](https://github.com/theragus/keystar/releases) · [CHANGELOG.md](CHANGELOG.md) ·
+how releases are cut: [docs/releasing.md](docs/releasing.md).
 
 ## Develop
 
