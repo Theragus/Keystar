@@ -69,7 +69,8 @@ export async function storeKillmails(db: Db, entries: ZkillKillmail[]): Promise<
           labels: sql`excluded.labels`,
           updatedAt: new Date(),
         },
-        setWhere: sql`${killmails.totalValue} IS DISTINCT FROM excluded.total_value OR ${killmails.points} IS DISTINCT FROM excluded.points`,
+        setWhere: sql`(${killmails.totalValue}, ${killmails.fittedValue}, ${killmails.destroyedValue}, ${killmails.droppedValue}, ${killmails.points}, ${killmails.labels})
+          IS DISTINCT FROM (excluded.total_value, excluded.fitted_value, excluded.destroyed_value, excluded.dropped_value, excluded.points, excluded.labels)`,
       })
       .returning({ inserted: sql<boolean>`xmax = 0` });
     inserted += result.filter((r) => r.inserted).length;

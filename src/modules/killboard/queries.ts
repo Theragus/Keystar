@@ -326,6 +326,7 @@ export interface KillboardStatus {
   /** Oldest stored killmail for the corporation. */
   since: string | null;
   killmails: number;
+  /** Start of the last successful sync of *this* corporation (null after a home corporation change). */
   lastSyncAt: Date | null;
   lastError: string | null;
 }
@@ -337,13 +338,15 @@ export async function getKillboardStatus(corp: number): Promise<KillboardStatus>
       SELECT MIN(k.killmail_time) AS since, COUNT(*)::int AS n FROM killmails k
       WHERE k.victim_corporation_id = ${corp}
          OR EXISTS (SELECT 1 FROM killmail_attackers a WHERE a.killmail_id = k.killmail_id AND a.corporation_id = ${corp})`),
+    // The sync job is global; its metadata records which corporation it last synced and when that run started.
     db.execute<Record<string, unknown>>(sql`
-      SELECT last_success_at, last_error FROM sync_jobs WHERE job_key = 'killboard.zkill-sync' ORDER BY id LIMIT 1`),
+      SELECT CASE WHEN meta->>'corporationId' = ${String(corp)} THEN meta->>'lastSyncAt' END AS last_sync, last_error
+      FROM sync_jobs WHERE job_key = 'killboard.zkill-sync' ORDER BY id LIMIT 1`),
   ]);
   return {
     since: data?.since ? new Date(String(data.since)).toISOString() : null,
     killmails: num(data?.n),
-    lastSyncAt: job?.last_success_at ? new Date(String(job.last_success_at)) : null,
+    lastSyncAt: job?.last_sync ? new Date(String(job.last_sync)) : null,
     lastError: str(job?.last_error),
   };
 }

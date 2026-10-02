@@ -302,10 +302,30 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await storeKillmails(db(), fixture as never)).toBe(0);
       const revalued = { ...fixture[0], zkb: { ...fixture[0].zkb, totalValue: 120e6 } };
       expect(await storeKillmails(db(), [revalued] as never)).toBe(0);
-      const rows = await db().execute<{ v: number; n: number }>(
-        sql`SELECT (SELECT total_value FROM killmails WHERE killmail_id = 1)::float8 AS v, (SELECT COUNT(*) FROM killmail_attackers)::int AS n`,
+      // A change in any refreshed field alone is persisted too.
+      const refitted = { ...revalued, zkb: { ...revalued.zkb, fittedValue: 7e6, labels: ["pvp", "loc:lowsec"] } };
+      expect(await storeKillmails(db(), [refitted] as never)).toBe(0);
+      const rows = await db().execute<{ v: number; f: number; l: string[]; n: number }>(
+        sql`SELECT k.total_value::float8 AS v, k.fitted_value::float8 AS f, k.labels AS l,
+                   (SELECT COUNT(*) FROM killmail_attackers)::int AS n
+            FROM killmails k WHERE k.killmail_id = 1`,
       );
-      expect(rows[0]).toEqual({ v: 120e6, n: 7 });
+      expect(rows[0]).toEqual({ v: 120e6, f: 7e6, l: ["pvp", "loc:lowsec"], n: 7 });
+    });
+
+    it("reports the sync time only for the corporation that was synced", async () => {
+      const q2 = await kb();
+      const syncedAt = "2026-10-02T02:00:00.000Z";
+      await db().insert(schema.syncJobs).values({
+        jobKey: "killboard.zkill-sync",
+        ownerType: "global",
+        ownerId: 0,
+        meta: { corporationId: 999, lastSyncAt: syncedAt },
+      });
+      // The home corporation changed to 100, but the last sync was for 999.
+      expect((await q2.getKillboardStatus(HOME)).lastSyncAt).toBeNull();
+      await db().execute(sql`UPDATE sync_jobs SET meta = ${JSON.stringify({ corporationId: HOME, lastSyncAt: syncedAt })}::jsonb`);
+      expect((await q2.getKillboardStatus(HOME)).lastSyncAt?.toISOString()).toBe(syncedAt);
     });
 
     it("counts kills and losses like zKillboard (awox is a loss only)", async () => {
