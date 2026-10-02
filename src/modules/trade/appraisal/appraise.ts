@@ -1,9 +1,9 @@
-import { randomBytes } from "node:crypto";
 import { and, inArray, sql } from "drizzle-orm";
 import { appraisals, eveTypes, getDb, typeValues } from "@/core/db";
 import { getEsi } from "@/core/esi";
 import { syncPrices } from "@/core/eve/prices";
 import { ensureTypes } from "@/core/eve/resolver";
+import { shareId } from "@/lib/share-id";
 import { assignTypes, candidateNames, parseAppraisalInput } from "./parse";
 import { totalsOf, type AppraisalItem, type AppraisalTotals, type UnparsedLine } from "./types";
 
@@ -132,12 +132,9 @@ export async function appraise(input: string): Promise<AppraisalResult> {
   return { items, totals: totalsOf(items), unparsed };
 }
 
-const ALPHABET = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
 /** Short, unguessable id for share links. */
 export function appraisalId(length = 10): string {
-  const bytes = randomBytes(length);
-  return Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join("");
+  return shareId(length);
 }
 
 export async function saveAppraisal(
