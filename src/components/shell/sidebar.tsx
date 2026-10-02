@@ -1,7 +1,9 @@
 import { LogOut } from "lucide-react";
 import Link from "next/link";
 import type { CurrentUser } from "@/core/auth/dal";
+import { env } from "@/core/env";
 import { navSections } from "@/core/modules/registry";
+import { KEYSTAR_VERSION } from "@/core/version";
 import { Portrait } from "@/components/ui/eve-image";
 import { RoleBadge } from "@/components/ui/badge";
 import { KeystarMark } from "./logo";
@@ -43,6 +45,15 @@ export function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: s
           </div>
         ))}
       </nav>
+      <a
+        href={`${env().SOURCE_URL}/releases`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="px-5 pb-2 font-mono text-[0.65rem] text-ink-3 hover:text-ink-2"
+        title="Release notes"
+      >
+        Keystar v{KEYSTAR_VERSION}
+      </a>
       <div className="border-t border-white/[0.07] p-3">
         <div className="flex items-center gap-2.5">
           {user.main ? (

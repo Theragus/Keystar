@@ -2,7 +2,7 @@ import { SecurityStatus } from "@/components/ui/security";
 import { compact } from "@/lib/format";
 import { zkillSystem } from "../links";
 import type { SystemRow } from "../queries";
-import { DeltaChip } from "./deltas";
+import { DeltaChip } from "@/components/ui/deltas";
 
 /** Ranked systems as horizontal bars; each row links to the system on zKillboard. */
 export function SystemBars({

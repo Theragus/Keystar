@@ -70,6 +70,19 @@ body {
   background: rgba(92, 200, 255, 0.35);
 }
 
+/* Native <select> popups: Chromium on Windows (Edge, Chrome) paints the option
+   list with the select's translucent glass background over white, which leaves
+   light text on a light list. Options need their own opaque colours. */
+select option,
+select optgroup {
+  background-color: var(--chart-surface);
+  color: var(--color-ink);
+}
+
+select option:disabled {
+  color: var(--color-ink-3);
+}
+
 /* ---------------------------------------------------------------- Backdrop */
 
 .space-backdrop {

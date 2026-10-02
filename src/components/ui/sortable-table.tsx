@@ -3,15 +3,15 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Portrait, TypeIcon } from "@/components/ui/eve-image";
-import { compact, integer, percent } from "@/lib/format";
+import { compact, integer, percent, unitPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { DeltaChip } from "./deltas";
 
 /**
- * Client-side sortable table for the killboard. Columns are described as data
+ * Client-side sortable table. Columns are described as data
  * (not render functions) so server components can pass them in.
  */
-export type CellFormat = "int" | "isk" | "signedIsk" | "pct" | "delta" | "deltaInverse" | "ratio";
+export type CellFormat = "int" | "isk" | "unitIsk" | "signedIsk" | "pct" | "delta" | "deltaInverse" | "ratio" | "m3";
 
 export interface Column {
   key: string;
@@ -39,6 +39,8 @@ function Cell({ row, col }: { row: EntityRow; col: Column }) {
       return <>{integer(v)}</>;
     case "isk":
       return <span className="text-ink-2">{v ? compact(v) : "0"}</span>;
+    case "unitIsk":
+      return <span className="text-ink-2">{unitPrice(v).replace(" ISK", "")}</span>;
     case "signedIsk":
       return (
         <span className={cn("font-semibold", v > 0 ? "text-good-text" : v < 0 ? "text-critical-text" : "text-ink-2")}>
@@ -48,6 +50,8 @@ function Cell({ row, col }: { row: EntityRow; col: Column }) {
       );
     case "pct":
       return <>{percent(v, 1)}</>;
+    case "m3":
+      return <span className="text-ink-2">{compact(v)} m³</span>;
     case "delta":
       return <DeltaChip value={v} />;
     case "deltaInverse":

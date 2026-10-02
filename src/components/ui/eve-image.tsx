@@ -15,7 +15,8 @@ export function Portrait({
   className?: string;
   alt?: string;
 }) {
-  const src = characterPortrait(id, size > 64 ? 128 : 64);
+  // Sharp on high-DPI screens: request about twice the displayed size.
+  const src = characterPortrait(id, size > 96 ? 256 : size > 32 ? 128 : 64);
   return (
     <img
       src={src}

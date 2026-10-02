@@ -1,13 +1,17 @@
 # Keystar on a single Linux host (VPS): Postgres + web app + sync worker + Caddy (automatic HTTPS).
 #   cp .env.example .env   # fill in the values
-#   docker compose up -d --build
+#   docker compose pull && docker compose up -d    # released image from ghcr.io
+#   docker compose up -d --build                   # or build from this checkout
 name: keystar
 
 x-database-url: &database-url postgres://keystar:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/keystar
 
 x-keystar: &keystar
+  # Released images: pin KEYSTAR_VERSION in .env (e.g. 0.1.1), or "latest".
+  image: ghcr.io/theragus/keystar:${KEYSTAR_VERSION:-latest}
+  # `docker compose up --build` builds this checkout instead.
   build: .
-  image: keystar:latest
+  pull_policy: missing
   restart: unless-stopped
   env_file: .env
   logging:

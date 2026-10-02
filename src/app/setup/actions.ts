@@ -5,6 +5,7 @@ import { audit } from "@/core/audit";
 import { assertPermission } from "@/core/auth/dal";
 import { refreshCorporations } from "@/core/eve/resolver";
 import { setSetting, type Settings } from "@/core/settings";
+import { triggerJobs } from "@/core/sync/scheduler";
 
 export async function saveSetupCorporation(formData: FormData) {
   const actor = await assertPermission("app.settings.manage");
@@ -17,6 +18,8 @@ export async function saveSetupCorporation(formData: FormData) {
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Choose a corporation or enter a numeric corporation ID");
   await refreshCorporations([id]);
   await setSetting("corp.homeCorporationId", id, actor.id);
+  // The killboard sync is a global job that may have run (and skipped) before setup: run it now.
+  await triggerJobs({ jobKey: "killboard.zkill-sync" });
   await audit({
     actorUserId: actor.id,
     actorName: actor.main?.name,

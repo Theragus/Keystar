@@ -36,7 +36,8 @@ describe.skipIf(!enabled)("integration", async () => {
   beforeEach(async () => {
     await db().execute(sql`TRUNCATE users, characters, esi_tokens, sessions, eve_types, eve_groups, eve_systems,
       eve_entities, type_values, type_value_history, mining_character_ledger, mining_observer_ledger, mining_observers,
-      sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports RESTART IDENTITY CASCADE`);
+      sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, esi_cache
+      RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
     userA = a.id;
@@ -405,6 +406,49 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(latest?.facts.week).toMatchObject({ kills: 1, losses: 2 });
       expect(latest?.facts.topPilots.map((p) => p.name)).toEqual(["Alpha", "Bravo"]);
       expect(latest?.report.paragraphs.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("appraisal", () => {
+    it("appraises a paste end to end and saves a shareable snapshot", async () => {
+      const { appraise, saveAppraisal } = await import("@/modules/trade/appraisal/appraise");
+      await db().insert(schema.eveGroups).values({ groupId: 25, name: "Frigate", categoryId: 6 });
+      await db().insert(schema.eveTypes).values([
+        { typeId: 34, name: "Tritanium", groupId: 18, volume: 0.01, packagedVolume: 0.01, portionSize: 1 },
+        { typeId: 587, name: "Rifter", groupId: 25, volume: 27289, packagedVolume: 2500, portionSize: 1 },
+      ]);
+      await db().insert(schema.typeValues).values([
+        { typeId: 34, source: "jita_buy", unitPrice: 4, basis: "direct" },
+        { typeId: 34, source: "jita_sell", unitPrice: 5, basis: "direct" },
+        // An ESI-average fallback is not a Jita price.
+        { typeId: 587, source: "jita_buy", unitPrice: 400_000, basis: "esi_average" },
+      ]);
+      // No network: unknown names resolve to nothing, live pricing finds no orders.
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.includes("/universe/ids")) return new Response("{}", { status: 200 });
+        return new Response("[]", { status: 200, headers: { "x-pages": "1" } });
+      });
+      try {
+        const result = await appraise("Tritanium x 1,000\ntritanium\t500\n[Rifter, test]\nNot an item");
+        expect(result.items).toEqual([
+          { typeId: 34, name: "Tritanium", quantity: 1500, buy: 4, sell: 5, volume: 0.01 },
+          { typeId: 587, name: "Rifter", quantity: 1, buy: null, sell: null, volume: 2500 },
+        ]);
+        expect(result.totals).toMatchObject({ buy: 6000, sell: 7500, split: 6750, volume: 2515, types: 2, unpriced: 1 });
+        expect(result.unparsed).toEqual([{ line: 4, raw: "Not an item" }]);
+        // Rifter only had a recent buy-side value, so it was priced again; Tritanium was fresh on both sides.
+        const orderCalls = fetchSpy.mock.calls.map(([u]) => String(u instanceof Request ? u.url : u)).filter((u) => u.includes("/orders"));
+        expect(orderCalls.some((u) => u.includes("type_id=587"))).toBe(true);
+        expect(orderCalls.some((u) => u.includes("type_id=34"))).toBe(false);
+
+        const id = await saveAppraisal(result, { input: "x", pricePercent: 90, userId: userA, userName: "Alpha" });
+        const [row] = await db().select().from(schema.appraisals);
+        expect(row).toMatchObject({ id, pricePercent: 90, createdBy: userA, createdByName: "Alpha" });
+        expect((row.items as unknown[]).length).toBe(2);
+      } finally {
+        fetchSpy.mockRestore();
+      }
     });
   });
 

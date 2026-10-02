@@ -21,7 +21,8 @@ Keystar is one TypeScript codebase that runs as two processes against one Postgr
 ```
 
 - The **app** never calls authenticated ESI routes on page loads; pages read from Postgres. It only talks to EVE
-  during sign-in and for small public lookups (e.g. the ore field estimator pricing a new ore type).
+  during sign-in and for public lookups a user asks for (the ore field estimator and the appraisal resolving and
+  pricing item types they haven't seen before).
 - The **worker** owns all background ESI traffic and token refreshes, and also pulls public killmails from
   zKillboard and (optionally) asks the Claude API to write the killboard's weekly situation report.
 
@@ -46,6 +47,7 @@ src/
   modules/
     mining/            the mining module: schema, jobs, queries, filters, UI components, estimator
     killboard/         zKillboard client and sync, combat aggregates, situation report (Claude or template), UI
+    trade/             appraisal: paste parser, name resolution, Jita pricing, saved shareable snapshots
     jobs.ts            registry of background jobs (worker only)
   worker/index.ts      worker entry point
   scripts/             migrate, demo-seed
@@ -172,3 +174,14 @@ ESI keeps 30 days of ledger history; Keystar keeps everything it has synced.
 - Every server action re-checks permissions; members' queries are scoped to their own character IDs in SQL.
 - CSV export neutralises spreadsheet formulas; security headers are set in `next.config.ts` and Caddy.
 - Administrative actions are written to the audit log.
+
+## Appraisal
+
+- `src/modules/trade/appraisal/parse.ts` turns a paste into candidate (name, quantity) pairs per line: tab
+  separated inventory/contract/survey copies (English or German numbers), d-scan, EFT, killmail lines and free text
+  ("x 10", "10x", "10 Name", "Name 10"). Ambiguous lines yield several candidates in order of preference.
+- Names resolve against `eve_types`, then ESI `POST /universe/ids` (case-insensitive exact matches); new types are
+  stored through the resolver. Prices are the Jita 4-4 `type_values`; types without a value, or older than two
+  hours, are priced live with the same code as the hourly price job, which then keeps them fresh.
+- An appraisal is a snapshot (items, unit prices, totals, unrecognised lines, input) in `appraisals`, opened by an
+  unguessable id. "Appraise again" creates a new snapshot at current prices.

@@ -43,6 +43,13 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - 💡 Doctrine tags for hulls and per-doctrine performance
 - 💡 Track additional corporations or the alliance alongside the home corporation
 
+## Trade
+
+- ✅ **Appraisal**: paste cargo, contracts, fits, d-scans or lists; Jita 4-4 buy/sell/split, volume, percentage
+  price, shareable links, "appraise again" at current prices
+- 💡 More markets (Amarr, Dodixie, Rens, Hek) and a market selector
+- 💡 Corp buyback: a configured percentage per item group, contract instructions for members
+
 ## Planned modules
 
 ### 📝 Threat intelligence (own branch, major feature)
