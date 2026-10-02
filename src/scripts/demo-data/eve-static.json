@@ -1,0 +1,1165 @@
+{
+ "groups": [
+  {
+   "groupId": 450,
+   "name": "Arkonor",
+   "categoryId": 25
+  },
+  {
+   "groupId": 451,
+   "name": "Bistot",
+   "categoryId": 25
+  },
+  {
+   "groupId": 452,
+   "name": "Crokite",
+   "categoryId": 25
+  },
+  {
+   "groupId": 453,
+   "name": "Dark Ochre",
+   "categoryId": 25
+  },
+  {
+   "groupId": 454,
+   "name": "Hedbergite",
+   "categoryId": 25
+  },
+  {
+   "groupId": 455,
+   "name": "Hemorphite",
+   "categoryId": 25
+  },
+  {
+   "groupId": 456,
+   "name": "Jaspet",
+   "categoryId": 25
+  },
+  {
+   "groupId": 457,
+   "name": "Kernite",
+   "categoryId": 25
+  },
+  {
+   "groupId": 458,
+   "name": "Plagioclase",
+   "categoryId": 25
+  },
+  {
+   "groupId": 459,
+   "name": "Pyroxeres",
+   "categoryId": 25
+  },
+  {
+   "groupId": 460,
+   "name": "Scordite",
+   "categoryId": 25
+  },
+  {
+   "groupId": 461,
+   "name": "Spodumain",
+   "categoryId": 25
+  },
+  {
+   "groupId": 462,
+   "name": "Veldspar",
+   "categoryId": 25
+  },
+  {
+   "groupId": 465,
+   "name": "Ice",
+   "categoryId": 25
+  },
+  {
+   "groupId": 467,
+   "name": "Gneiss",
+   "categoryId": 25
+  },
+  {
+   "groupId": 468,
+   "name": "Mercoxit",
+   "categoryId": 25
+  },
+  {
+   "groupId": 469,
+   "name": "Omber",
+   "categoryId": 25
+  },
+  {
+   "groupId": 711,
+   "name": "Harvestable Cloud",
+   "categoryId": 2
+  },
+  {
+   "groupId": 1884,
+   "name": "Ubiquitous Moon Asteroids",
+   "categoryId": 25
+  },
+  {
+   "groupId": 1920,
+   "name": "Common Moon Asteroids",
+   "categoryId": 25
+  },
+  {
+   "groupId": 1921,
+   "name": "Uncommon Moon Asteroids",
+   "categoryId": 25
+  },
+  {
+   "groupId": 1922,
+   "name": "Rare Moon Asteroids",
+   "categoryId": 25
+  },
+  {
+   "groupId": 1923,
+   "name": "Exceptional Moon Asteroids",
+   "categoryId": 25
+  }
+ ],
+ "types": [
+  {
+   "typeId": 1230,
+   "name": "Veldspar",
+   "groupId": 462,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 518,
+   "compressedTypeId": 62516,
+   "price": 9.95
+  },
+  {
+   "typeId": 62516,
+   "name": "Compressed Veldspar",
+   "groupId": 462,
+   "volume": 0.001,
+   "portionSize": 100,
+   "marketGroupId": 518,
+   "compressedTypeId": null,
+   "price": 10.94
+  },
+  {
+   "typeId": 17470,
+   "name": "Veldspar II-Grade",
+   "groupId": 462,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 518,
+   "compressedTypeId": 62517,
+   "price": 10.18
+  },
+  {
+   "typeId": 62517,
+   "name": "Compressed Veldspar II-Grade",
+   "groupId": 462,
+   "volume": 0.001,
+   "portionSize": 100,
+   "marketGroupId": 518,
+   "compressedTypeId": null,
+   "price": 11.42
+  },
+  {
+   "typeId": 1228,
+   "name": "Scordite",
+   "groupId": 460,
+   "volume": 0.15,
+   "portionSize": 100,
+   "marketGroupId": 519,
+   "compressedTypeId": 62520,
+   "price": 17.04
+  },
+  {
+   "typeId": 62520,
+   "name": "Compressed Scordite",
+   "groupId": 460,
+   "volume": 0.0015,
+   "portionSize": 100,
+   "marketGroupId": 519,
+   "compressedTypeId": null,
+   "price": 20.28
+  },
+  {
+   "typeId": 17463,
+   "name": "Scordite II-Grade",
+   "groupId": 460,
+   "volume": 0.15,
+   "portionSize": 100,
+   "marketGroupId": 519,
+   "compressedTypeId": 62521,
+   "price": 17.99
+  },
+  {
+   "typeId": 62521,
+   "name": "Compressed Scordite II-Grade",
+   "groupId": 460,
+   "volume": 0.0015,
+   "portionSize": 100,
+   "marketGroupId": 519,
+   "compressedTypeId": null,
+   "price": 20.83
+  },
+  {
+   "typeId": 1224,
+   "name": "Pyroxeres",
+   "groupId": 459,
+   "volume": 0.3,
+   "portionSize": 100,
+   "marketGroupId": 515,
+   "compressedTypeId": 62524,
+   "price": 22.66
+  },
+  {
+   "typeId": 62524,
+   "name": "Compressed Pyroxeres",
+   "groupId": 459,
+   "volume": 0.003,
+   "portionSize": 100,
+   "marketGroupId": 515,
+   "compressedTypeId": null,
+   "price": 26.46
+  },
+  {
+   "typeId": 18,
+   "name": "Plagioclase",
+   "groupId": 458,
+   "volume": 0.35,
+   "portionSize": 100,
+   "marketGroupId": 516,
+   "compressedTypeId": 62528,
+   "price": 27.77
+  },
+  {
+   "typeId": 62528,
+   "name": "Compressed Plagioclase",
+   "groupId": 458,
+   "volume": 0.0035,
+   "portionSize": 100,
+   "marketGroupId": 516,
+   "compressedTypeId": null,
+   "price": 32.51
+  },
+  {
+   "typeId": 1227,
+   "name": "Omber",
+   "groupId": 469,
+   "volume": 0.6,
+   "portionSize": 100,
+   "marketGroupId": 526,
+   "compressedTypeId": 62532,
+   "price": 104.01
+  },
+  {
+   "typeId": 62532,
+   "name": "Compressed Omber",
+   "groupId": 469,
+   "volume": 0.006,
+   "portionSize": 100,
+   "marketGroupId": 526,
+   "compressedTypeId": null,
+   "price": 105.74
+  },
+  {
+   "typeId": 20,
+   "name": "Kernite",
+   "groupId": 457,
+   "volume": 1.2,
+   "portionSize": 100,
+   "marketGroupId": 523,
+   "compressedTypeId": 62536,
+   "price": 512.95
+  },
+  {
+   "typeId": 62536,
+   "name": "Compressed Kernite",
+   "groupId": 457,
+   "volume": 0.012,
+   "portionSize": 100,
+   "marketGroupId": 523,
+   "compressedTypeId": null,
+   "price": 180.67
+  },
+  {
+   "typeId": 1226,
+   "name": "Jaspet",
+   "groupId": 456,
+   "volume": 2.0,
+   "portionSize": 100,
+   "marketGroupId": 529,
+   "compressedTypeId": 62540,
+   "price": 250.34
+  },
+  {
+   "typeId": 62540,
+   "name": "Compressed Jaspet",
+   "groupId": 456,
+   "volume": 0.02,
+   "portionSize": 100,
+   "marketGroupId": 529,
+   "compressedTypeId": null,
+   "price": 354.59
+  },
+  {
+   "typeId": 1231,
+   "name": "Hemorphite",
+   "groupId": 455,
+   "volume": 3.0,
+   "portionSize": 100,
+   "marketGroupId": 528,
+   "compressedTypeId": 62544,
+   "price": 1001.27
+  },
+  {
+   "typeId": 62544,
+   "name": "Compressed Hemorphite",
+   "groupId": 455,
+   "volume": 0.03,
+   "portionSize": 100,
+   "marketGroupId": 528,
+   "compressedTypeId": null,
+   "price": 855.18
+  },
+  {
+   "typeId": 21,
+   "name": "Hedbergite",
+   "groupId": 454,
+   "volume": 3.0,
+   "portionSize": 100,
+   "marketGroupId": 527,
+   "compressedTypeId": 62548,
+   "price": 563.58
+  },
+  {
+   "typeId": 62548,
+   "name": "Compressed Hedbergite",
+   "groupId": 454,
+   "volume": 0.03,
+   "portionSize": 100,
+   "marketGroupId": 527,
+   "compressedTypeId": null,
+   "price": 796.85
+  },
+  {
+   "typeId": 1232,
+   "name": "Dark Ochre",
+   "groupId": 453,
+   "volume": 8.0,
+   "portionSize": 100,
+   "marketGroupId": 522,
+   "compressedTypeId": 62556,
+   "price": 3974.42
+  },
+  {
+   "typeId": 62556,
+   "name": "Compressed Dark Ochre",
+   "groupId": 453,
+   "volume": 0.08,
+   "portionSize": 100,
+   "marketGroupId": 522,
+   "compressedTypeId": null,
+   "price": 3964.91
+  },
+  {
+   "typeId": 1229,
+   "name": "Gneiss",
+   "groupId": 467,
+   "volume": 5.0,
+   "portionSize": 100,
+   "marketGroupId": 525,
+   "compressedTypeId": 62552,
+   "price": 1739.25
+  },
+  {
+   "typeId": 62552,
+   "name": "Compressed Gneiss",
+   "groupId": 467,
+   "volume": 0.05,
+   "portionSize": 100,
+   "marketGroupId": 525,
+   "compressedTypeId": null,
+   "price": 2140.24
+  },
+  {
+   "typeId": 19,
+   "name": "Spodumain",
+   "groupId": 461,
+   "volume": 16.0,
+   "portionSize": 100,
+   "marketGroupId": 517,
+   "compressedTypeId": 62572,
+   "price": 8808.46
+  },
+  {
+   "typeId": 62572,
+   "name": "Compressed Spodumain",
+   "groupId": 461,
+   "volume": 0.16,
+   "portionSize": 100,
+   "marketGroupId": 517,
+   "compressedTypeId": null,
+   "price": 16346.42
+  },
+  {
+   "typeId": 1225,
+   "name": "Crokite",
+   "groupId": 452,
+   "volume": 16.0,
+   "portionSize": 100,
+   "marketGroupId": 521,
+   "compressedTypeId": 62560,
+   "price": 4742.26
+  },
+  {
+   "typeId": 62560,
+   "name": "Compressed Crokite",
+   "groupId": 452,
+   "volume": 0.16,
+   "portionSize": 100,
+   "marketGroupId": 521,
+   "compressedTypeId": null,
+   "price": 5372.66
+  },
+  {
+   "typeId": 1223,
+   "name": "Bistot",
+   "groupId": 451,
+   "volume": 16.0,
+   "portionSize": 100,
+   "marketGroupId": 514,
+   "compressedTypeId": 62564,
+   "price": 2347.44
+  },
+  {
+   "typeId": 62564,
+   "name": "Compressed Bistot",
+   "groupId": 451,
+   "volume": 0.16,
+   "portionSize": 100,
+   "marketGroupId": 514,
+   "compressedTypeId": null,
+   "price": 3586.96
+  },
+  {
+   "typeId": 22,
+   "name": "Arkonor",
+   "groupId": 450,
+   "volume": 16.0,
+   "portionSize": 100,
+   "marketGroupId": 512,
+   "compressedTypeId": 62568,
+   "price": 3044.88
+  },
+  {
+   "typeId": 62568,
+   "name": "Compressed Arkonor",
+   "groupId": 450,
+   "volume": 0.16,
+   "portionSize": 100,
+   "marketGroupId": 512,
+   "compressedTypeId": null,
+   "price": 4152.74
+  },
+  {
+   "typeId": 11396,
+   "name": "Mercoxit",
+   "groupId": 468,
+   "volume": 40.0,
+   "portionSize": 100,
+   "marketGroupId": 530,
+   "compressedTypeId": 62586,
+   "price": 14617.33
+  },
+  {
+   "typeId": 62586,
+   "name": "Compressed Mercoxit",
+   "groupId": 468,
+   "volume": 0.4,
+   "portionSize": 100,
+   "marketGroupId": 530,
+   "compressedTypeId": null,
+   "price": 20057.79
+  },
+  {
+   "typeId": 45490,
+   "name": "Zeolites",
+   "groupId": 1884,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2396,
+   "compressedTypeId": 62463,
+   "price": 544.59
+  },
+  {
+   "typeId": 62463,
+   "name": "Compressed Zeolites",
+   "groupId": 1884,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2396,
+   "compressedTypeId": null,
+   "price": 1336.16
+  },
+  {
+   "typeId": 45491,
+   "name": "Sylvite",
+   "groupId": 1884,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2396,
+   "compressedTypeId": 62460,
+   "price": 305.35
+  },
+  {
+   "typeId": 62460,
+   "name": "Compressed Sylvite",
+   "groupId": 1884,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2396,
+   "compressedTypeId": null,
+   "price": 786.04
+  },
+  {
+   "typeId": 45492,
+   "name": "Bitumens",
+   "groupId": 1884,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2396,
+   "compressedTypeId": 62454,
+   "price": 614.26
+  },
+  {
+   "typeId": 62454,
+   "name": "Compressed Bitumens",
+   "groupId": 1884,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2396,
+   "compressedTypeId": null,
+   "price": 1088.76
+  },
+  {
+   "typeId": 45493,
+   "name": "Coesite",
+   "groupId": 1884,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2396,
+   "compressedTypeId": 62457,
+   "price": 254.61
+  },
+  {
+   "typeId": 62457,
+   "name": "Compressed Coesite",
+   "groupId": 1884,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2396,
+   "compressedTypeId": null,
+   "price": 612.98
+  },
+  {
+   "typeId": 45494,
+   "name": "Cobaltite",
+   "groupId": 1920,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2397,
+   "compressedTypeId": 62474,
+   "price": 2033.26
+  },
+  {
+   "typeId": 62474,
+   "name": "Compressed Cobaltite",
+   "groupId": 1920,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2397,
+   "compressedTypeId": null,
+   "price": 523.22
+  },
+  {
+   "typeId": 45495,
+   "name": "Euxenite",
+   "groupId": 1920,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2397,
+   "compressedTypeId": 62471,
+   "price": 26.76
+  },
+  {
+   "typeId": 62471,
+   "name": "Compressed Euxenite",
+   "groupId": 1920,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2397,
+   "compressedTypeId": null,
+   "price": 1876.59
+  },
+  {
+   "typeId": 45496,
+   "name": "Titanite",
+   "groupId": 1920,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2397,
+   "compressedTypeId": 62477,
+   "price": 166.66
+  },
+  {
+   "typeId": 62477,
+   "name": "Compressed Titanite",
+   "groupId": 1920,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2397,
+   "compressedTypeId": null,
+   "price": 1598.46
+  },
+  {
+   "typeId": 45497,
+   "name": "Scheelite",
+   "groupId": 1920,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2397,
+   "compressedTypeId": 62468,
+   "price": 204.95
+  },
+  {
+   "typeId": 62468,
+   "name": "Compressed Scheelite",
+   "groupId": 1920,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2397,
+   "compressedTypeId": null,
+   "price": 1444.55
+  },
+  {
+   "typeId": 45498,
+   "name": "Otavite",
+   "groupId": 1921,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2398,
+   "compressedTypeId": 62483,
+   "price": 349.21
+  },
+  {
+   "typeId": 62483,
+   "name": "Compressed Otavite",
+   "groupId": 1921,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2398,
+   "compressedTypeId": null,
+   "price": 1813.77
+  },
+  {
+   "typeId": 45499,
+   "name": "Sperrylite",
+   "groupId": 1921,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2398,
+   "compressedTypeId": 62486,
+   "price": 1945.96
+  },
+  {
+   "typeId": 62486,
+   "name": "Compressed Sperrylite",
+   "groupId": 1921,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2398,
+   "compressedTypeId": null,
+   "price": 3528.8
+  },
+  {
+   "typeId": 45500,
+   "name": "Vanadinite",
+   "groupId": 1921,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2398,
+   "compressedTypeId": 62489,
+   "price": 1025.59
+  },
+  {
+   "typeId": 62489,
+   "name": "Compressed Vanadinite",
+   "groupId": 1921,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2398,
+   "compressedTypeId": null,
+   "price": 814.91
+  },
+  {
+   "typeId": 45501,
+   "name": "Chromite",
+   "groupId": 1921,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2398,
+   "compressedTypeId": 62480,
+   "price": 3546.57
+  },
+  {
+   "typeId": 62480,
+   "name": "Compressed Chromite",
+   "groupId": 1921,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2398,
+   "compressedTypeId": null,
+   "price": 1947.15
+  },
+  {
+   "typeId": 45502,
+   "name": "Carnotite",
+   "groupId": 1922,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2400,
+   "compressedTypeId": 62492,
+   "price": 667.02
+  },
+  {
+   "typeId": 62492,
+   "name": "Compressed Carnotite",
+   "groupId": 1922,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2400,
+   "compressedTypeId": null,
+   "price": 9555.01
+  },
+  {
+   "typeId": 45503,
+   "name": "Zircon",
+   "groupId": 1922,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2400,
+   "compressedTypeId": 62501,
+   "price": 270.03
+  },
+  {
+   "typeId": 62501,
+   "name": "Compressed Zircon",
+   "groupId": 1922,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2400,
+   "compressedTypeId": null,
+   "price": 3426.59
+  },
+  {
+   "typeId": 45504,
+   "name": "Pollucite",
+   "groupId": 1922,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2400,
+   "compressedTypeId": 62498,
+   "price": 989.74
+  },
+  {
+   "typeId": 62498,
+   "name": "Compressed Pollucite",
+   "groupId": 1922,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2400,
+   "compressedTypeId": null,
+   "price": 2447.15
+  },
+  {
+   "typeId": 45506,
+   "name": "Cinnabar",
+   "groupId": 1922,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2400,
+   "compressedTypeId": 62495,
+   "price": 364.2
+  },
+  {
+   "typeId": 62495,
+   "name": "Compressed Cinnabar",
+   "groupId": 1922,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2400,
+   "compressedTypeId": null,
+   "price": 823.21
+  },
+  {
+   "typeId": 45510,
+   "name": "Xenotime",
+   "groupId": 1923,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2401,
+   "compressedTypeId": 62510,
+   "price": 645.52
+  },
+  {
+   "typeId": 62510,
+   "name": "Compressed Xenotime",
+   "groupId": 1923,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2401,
+   "compressedTypeId": null,
+   "price": 9545.06
+  },
+  {
+   "typeId": 45511,
+   "name": "Monazite",
+   "groupId": 1923,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2401,
+   "compressedTypeId": 62507,
+   "price": 2511.2
+  },
+  {
+   "typeId": 62507,
+   "name": "Compressed Monazite",
+   "groupId": 1923,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2401,
+   "compressedTypeId": null,
+   "price": 10482.96
+  },
+  {
+   "typeId": 45512,
+   "name": "Loparite",
+   "groupId": 1923,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2401,
+   "compressedTypeId": 62504,
+   "price": 3420.1
+  },
+  {
+   "typeId": 62504,
+   "name": "Compressed Loparite",
+   "groupId": 1923,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2401,
+   "compressedTypeId": null,
+   "price": 8896.49
+  },
+  {
+   "typeId": 45513,
+   "name": "Ytterbite",
+   "groupId": 1923,
+   "volume": 10.0,
+   "portionSize": 100,
+   "marketGroupId": 2401,
+   "compressedTypeId": 62513,
+   "price": 7026.1
+  },
+  {
+   "typeId": 62513,
+   "name": "Compressed Ytterbite",
+   "groupId": 1923,
+   "volume": 0.1,
+   "portionSize": 100,
+   "marketGroupId": 2401,
+   "compressedTypeId": null,
+   "price": 8689.77
+  },
+  {
+   "typeId": 16262,
+   "name": "Clear Icicle",
+   "groupId": 465,
+   "volume": 1000.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": 28434,
+   "price": 206759.78
+  },
+  {
+   "typeId": 28434,
+   "name": "Compressed Clear Icicle",
+   "groupId": 465,
+   "volume": 100.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": null,
+   "price": 224440.9
+  },
+  {
+   "typeId": 16263,
+   "name": "Glacial Mass",
+   "groupId": 465,
+   "volume": 1000.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": 28438,
+   "price": 140888.32
+  },
+  {
+   "typeId": 28438,
+   "name": "Compressed Glacial Mass",
+   "groupId": 465,
+   "volume": 100.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": null,
+   "price": 167458.7
+  },
+  {
+   "typeId": 16264,
+   "name": "Blue Ice",
+   "groupId": 465,
+   "volume": 1000.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": 28433,
+   "price": 172891.51
+  },
+  {
+   "typeId": 28433,
+   "name": "Compressed Blue Ice",
+   "groupId": 465,
+   "volume": 100.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": null,
+   "price": 189302.66
+  },
+  {
+   "typeId": 16265,
+   "name": "White Glaze",
+   "groupId": 465,
+   "volume": 1000.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": 28444,
+   "price": 181157.22
+  },
+  {
+   "typeId": 28444,
+   "name": "Compressed White Glaze",
+   "groupId": 465,
+   "volume": 100.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": null,
+   "price": 193071.91
+  },
+  {
+   "typeId": 16267,
+   "name": "Dark Glitter",
+   "groupId": 465,
+   "volume": 1000.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": 28435,
+   "price": 265622.86
+  },
+  {
+   "typeId": 28435,
+   "name": "Compressed Dark Glitter",
+   "groupId": 465,
+   "volume": 100.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": null,
+   "price": 377846.36
+  },
+  {
+   "typeId": 16266,
+   "name": "Glare Crust",
+   "groupId": 465,
+   "volume": 1000.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": 28439,
+   "price": 198558.82
+  },
+  {
+   "typeId": 28439,
+   "name": "Compressed Glare Crust",
+   "groupId": 465,
+   "volume": 100.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": null,
+   "price": 248254.16
+  },
+  {
+   "typeId": 16268,
+   "name": "Gelidus",
+   "groupId": 465,
+   "volume": 1000.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": 28437,
+   "price": 266768.97
+  },
+  {
+   "typeId": 28437,
+   "name": "Compressed Gelidus",
+   "groupId": 465,
+   "volume": 100.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": null,
+   "price": 422422.88
+  },
+  {
+   "typeId": 16269,
+   "name": "Krystallos",
+   "groupId": 465,
+   "volume": 1000.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": 28440,
+   "price": 604107.98
+  },
+  {
+   "typeId": 28440,
+   "name": "Compressed Krystallos",
+   "groupId": 465,
+   "volume": 100.0,
+   "portionSize": 1,
+   "marketGroupId": 1855,
+   "compressedTypeId": null,
+   "price": 663995.35
+  },
+  {
+   "typeId": 30370,
+   "name": "Fullerite-C50",
+   "groupId": 711,
+   "volume": 1.0,
+   "portionSize": 1,
+   "marketGroupId": 1859,
+   "compressedTypeId": null,
+   "price": 4519.83
+  },
+  {
+   "typeId": 30371,
+   "name": "Fullerite-C60",
+   "groupId": 711,
+   "volume": 1.0,
+   "portionSize": 1,
+   "marketGroupId": 1859,
+   "compressedTypeId": null,
+   "price": 4329.81
+  },
+  {
+   "typeId": 30377,
+   "name": "Fullerite-C320",
+   "groupId": 711,
+   "volume": 5.0,
+   "portionSize": 1,
+   "marketGroupId": 1859,
+   "compressedTypeId": null,
+   "price": 33407.82
+  },
+  {
+   "typeId": 28697,
+   "name": "Golden Mykoserocin",
+   "groupId": 711,
+   "volume": 10.0,
+   "portionSize": 1,
+   "marketGroupId": 983,
+   "compressedTypeId": null,
+   "price": 96671.64
+  },
+  {
+   "typeId": 28701,
+   "name": "Viridian Mykoserocin",
+   "groupId": 711,
+   "volume": 10.0,
+   "portionSize": 1,
+   "marketGroupId": 983,
+   "compressedTypeId": null,
+   "price": 93387.23
+  }
+ ],
+ "systems": [
+  {
+   "systemId": 30000180,
+   "name": "Osmon",
+   "securityStatus": 0.6803,
+   "constellationId": 20000026
+  },
+  {
+   "systemId": 30000127,
+   "name": "Sirseshin",
+   "securityStatus": 0.748,
+   "constellationId": 20000018
+  },
+  {
+   "systemId": 30000132,
+   "name": "Ansila",
+   "securityStatus": 0.912,
+   "constellationId": 20000019
+  },
+  {
+   "systemId": 30001448,
+   "name": "Hakonen",
+   "securityStatus": 0.2964,
+   "constellationId": 20000212
+  },
+  {
+   "systemId": 30002813,
+   "name": "Tama",
+   "securityStatus": 0.2826,
+   "constellationId": 20000412
+  },
+  {
+   "systemId": 30002537,
+   "name": "Amamake",
+   "securityStatus": 0.4388,
+   "constellationId": 20000372
+  },
+  {
+   "systemId": 30002053,
+   "name": "Hek",
+   "securityStatus": 0.8,
+   "constellationId": 20000302
+  },
+  {
+   "systemId": 30002510,
+   "name": "Rens",
+   "securityStatus": 0.8946,
+   "constellationId": 20000367
+  },
+  {
+   "systemId": 30000163,
+   "name": "Akora",
+   "securityStatus": 0.3246,
+   "constellationId": 20000023
+  },
+  {
+   "systemId": 30001363,
+   "name": "Sobaseki",
+   "securityStatus": 0.841,
+   "constellationId": 20000199
+  },
+  {
+   "systemId": 30005328,
+   "name": "Reblier",
+   "securityStatus": 0.398,
+   "constellationId": 20000779
+  },
+  {
+   "systemId": 30004991,
+   "name": "Vitrauze",
+   "securityStatus": 0.2997,
+   "constellationId": 20000730
+  }
+ ]
+}

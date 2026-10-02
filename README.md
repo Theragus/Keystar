@@ -1,2 +1,114 @@
-# Keystar
-An EVE Online ESI Dashboard for Corporation
+<p align="center">
+  <img src="public/keystar-mark.svg" width="72" alt="" />
+</p>
+
+<h1 align="center">Keystar</h1>
+
+<p align="center">
+  A self-hosted EVE Online corporation dashboard built on ESI — inspired by SeAT and Pathfinder,
+  designed for small and alt corporations.
+</p>
+
+---
+
+Keystar signs pilots in with **EVE SSO**, collects their **ESI tokens** with exactly the scopes its modules need,
+syncs data in the background and turns it into dashboards. The first module is **mining**: personal and
+moon-refinery ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export and an
+ore field estimator for survey scans.
+
+![Mining overview](docs/screenshots/mining.png)
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/overview.png" alt="Dashboard" /></td>
+    <td><img src="docs/screenshots/estimator.png" alt="Ore field estimator" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/users.png" alt="Users and roles" /></td>
+    <td><img src="docs/screenshots/login.png" alt="Sign in" /></td>
+  </tr>
+</table>
+
+<sub>Screenshots use the built-in demo data (`pnpm demo:seed`).</sub>
+
+## Features
+
+- **EVE SSO login** (OAuth 2.0 + PKCE, JWT validated against CCP's keys), multiple characters per account,
+  automatic handling of character transfers.
+- **ESI token management** — encrypted refresh tokens (AES-256-GCM), per-character scope status, re-authorisation,
+  token revocation on removal, and a shareable `/join` link that explains every requested scope to members.
+- **Roles inside Keystar**: Admin › Director › Contributor › Viewer › Member › Guest. Directors approve guests and
+  manage roles below their own; admins can tune the minimum role of every permission.
+- **Mining**
+  - Personal ledgers *and* corporation moon-observer ledgers, de-duplicated in a combined view
+  - Filters for date range, members, ore class, ore type, system and data source — all in the URL
+  - Daily stacked chart (ISK / m³ / units), resource mix with moon rarity, top miners (grouped by main or per
+    character), ore and system breakdowns, data-coverage panel
+  - Valuation by Jita 4-4 buy / sell / split or ESI average, at current or historical prices
+  - Full ledger with pagination and CSV export
+  - **Ore field estimator**: paste a survey scanner result (German or English client) and get the field's value by
+    ore and grade, with distance filter and time-to-clear
+- **Administration**: users & roles, member audit (in-game roster vs registered), sync status with manual triggers,
+  settings, audit log, and a short first-start setup walkthrough.
+- **Background worker** respecting ESI's 2025+ rules: `X-Compatibility-Date`, ETag/Expires caching, pagination,
+  error-limit and per-group rate-limit back-off.
+- **Design**: dark, EVE-flavoured "liquid glass" UI with Supabase-style docked navigation, made for large screens.
+
+See [ROADMAP.md](ROADMAP.md) for what's next (threat intelligence, live fleet, skills, assets, wallets, mining P&L).
+
+## Deploy
+
+Keystar runs anywhere Docker runs. The supported path is a small Linux VPS with Docker Compose (Postgres, app,
+worker and Caddy with automatic HTTPS):
+
+```bash
+git clone https://github.com/theragus/keystar.git && cd keystar
+cp .env.example .env    # set domain, secrets and your EVE application credentials
+docker compose up -d --build
+```
+
+**→ Full step-by-step guide for Ubuntu 24.04 / 26.04: [docs/deployment.md](docs/deployment.md)**
+
+## Develop
+
+Requirements: Node.js 22+, pnpm 10, PostgreSQL 16+.
+
+```bash
+pnpm install
+cp .env.example .env          # set DATABASE_URL, APP_SECRET, APP_URL=http://localhost:3000
+pnpm db:migrate
+pnpm dev                      # web app on http://localhost:3000
+pnpm dev:worker               # background sync worker (second terminal)
+```
+
+Try it without EVE credentials using demo data (fake corporation, every role, ~120 days of mining):
+
+```bash
+KEYSTAR_DEMO_MODE=true pnpm demo:seed
+KEYSTAR_DEMO_MODE=true pnpm dev
+```
+
+| Command              | Purpose                                                        |
+| -------------------- | -------------------------------------------------------------- |
+| `pnpm test`          | Unit tests (+ integration tests when `TEST_DATABASE_URL` is set) |
+| `pnpm lint`          | ESLint                                                         |
+| `pnpm typecheck`     | TypeScript                                                     |
+| `pnpm db:generate`   | Create a migration after changing a Drizzle schema             |
+| `pnpm build`         | Production build (Next.js standalone + bundled worker)         |
+
+## Documentation
+
+- [docs/deployment.md](docs/deployment.md) — VPS setup, backups, updates, troubleshooting
+- [docs/architecture.md](docs/architecture.md) — how the pieces fit together
+- [docs/modules.md](docs/modules.md) — adding a feature module (skills, assets, …)
+- [ROADMAP.md](ROADMAP.md) — planned features
+
+## Tech stack
+
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · PostgreSQL + Drizzle ORM · jose · Recharts ·
+Vitest · Docker Compose + Caddy.
+
+---
+
+EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide. Keystar is a
+fan-made tool and is not affiliated with or endorsed by CCP hf.

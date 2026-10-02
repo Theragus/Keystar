@@ -1,0 +1,224 @@
+# Deploying Keystar on a Ubuntu VPS
+
+This guide sets up Keystar on a fresh **Ubuntu 24.04 LTS or 26.04 LTS** server
+with Docker Compose. You end up with four containers:
+
+| Service  | What it does                                                         | Exposed               |
+| -------- | -------------------------------------------------------------------- | --------------------- |
+| `caddy`  | Reverse proxy, automatic Let's Encrypt HTTPS                          | ports 80 and 443      |
+| `app`    | Keystar web app (Next.js); applies database migrations on start      | internal only         |
+| `worker` | Background ESI sync (mining ledgers, prices, roster, …)              | internal only         |
+| `db`     | PostgreSQL 17                                                        | internal only         |
+
+Expect about 20 minutes. You should be comfortable with SSH and a terminal.
+
+## 1. What you need
+
+- A VPS with **Ubuntu 24.04 or 26.04**, 2 vCPU, **2 GB RAM minimum (4 GB recommended** — building the image is the
+  heaviest part), 20 GB disk.
+- A **domain or subdomain** you control, e.g. `keystar.example.com`.
+- An EVE Online account to register a developer application.
+
+## 2. Prepare the server
+
+Log in as a sudo-capable user (not root) and update the system:
+
+```bash
+sudo apt update && sudo apt full-upgrade -y
+sudo apt install -y git curl ca-certificates openssl
+```
+
+Firewall — allow SSH and web traffic only:
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 443/udp   # HTTP/3
+sudo ufw enable
+```
+
+> Docker-published ports bypass ufw rules. Keystar only publishes Caddy's ports 80/443; Postgres and the app are not
+> published, so nothing else is reachable from the internet. Keep it that way if you edit `docker-compose.yml`.
+
+## 3. Install Docker Engine and Compose
+
+These are Docker's official instructions for Ubuntu (both 24.04 "Noble" and 26.04 "Resolute" are supported):
+
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# Run docker without sudo (log out and back in afterwards)
+sudo usermod -aG docker "$USER"
+```
+
+Check: `docker compose version`.
+
+## 4. Point your domain at the server
+
+Create an **A record** (and **AAAA** if the server has IPv6) for `keystar.example.com` pointing at the server's public
+IP. Caddy can only obtain a certificate once DNS resolves to the server — check with
+`dig +short keystar.example.com`.
+
+## 5. Register an EVE application
+
+1. Open <https://developers.eveonline.com/applications> and create a new application.
+2. Connection type: **Authentication & API Access**.
+3. Callback URL: `https://keystar.example.com/auth/callback` (your domain, exactly this path).
+4. Select these scopes:
+
+   ```
+   esi-characters.read_corporation_roles.v1
+   esi-corporations.read_corporation_membership.v1
+   esi-corporations.read_structures.v1
+   esi-industry.read_character_mining.v1
+   esi-industry.read_corporation_mining.v1
+   ```
+
+   Keystar only ever asks members for the scopes its enabled modules need; corporation scopes are requested only when
+   a director links a character with "corporation access". (The login page also shows this exact list while SSO is
+   not configured yet.)
+5. Save and keep the **Client ID** and **Secret Key** for the next step.
+
+When future modules (skills, assets, wallets, fleets) are added, add their scopes to the application as well.
+
+## 6. Get Keystar and configure it
+
+```bash
+sudo mkdir -p /opt/keystar && sudo chown "$USER": /opt/keystar
+git clone https://github.com/theragus/keystar.git /opt/keystar
+cd /opt/keystar
+cp .env.example .env
+chmod 600 .env
+```
+
+Generate the two secrets:
+
+```bash
+echo "APP_SECRET=$(openssl rand -base64 48 | tr -d '\n')"
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+```
+
+Edit `.env` (`nano .env`) and set at least:
+
+| Variable                          | Value                                                                  |
+| --------------------------------- | ---------------------------------------------------------------------- |
+| `KEYSTAR_DOMAIN`                  | `keystar.example.com`                                                   |
+| `APP_URL`                         | `https://keystar.example.com`                                           |
+| `APP_SECRET`                      | generated above — **back it up; never change it** once characters are linked |
+| `POSTGRES_PASSWORD`               | generated above                                                        |
+| `EVE_CLIENT_ID` / `EVE_CLIENT_SECRET` | from step 5                                                        |
+| `ESI_CONTACT`                     | your email or EVE character name (sent to CCP in the User-Agent)       |
+| `ADMIN_CHARACTER_IDS`             | optional: your character ID(s). If empty, the **first** pilot to sign in becomes admin |
+
+## 7. Start it
+
+```bash
+docker compose up -d --build
+docker compose ps            # all services should become "healthy"/"running"
+docker compose logs -f app   # Ctrl+C to stop following
+```
+
+The first build takes a few minutes. Then open `https://keystar.example.com`.
+
+## 8. First sign-in and setup walkthrough
+
+1. Click **Log in with EVE Online** and sign in with your main. If `ADMIN_CHARACTER_IDS` is empty, sign in right away —
+   the first account becomes admin.
+2. Keystar walks you through four short steps:
+   1. **Home corporation** — pre-selected from your character; confirm or enter another corporation ID.
+   2. **Who gets in** — auto-approve corp (and optionally alliance) members, and pick the ore price source.
+   3. **Corporation data** — link a character that has the in-game **Accountant** (or Director) role with corporation
+      access, so Keystar can read refinery observers and the roster. Skippable.
+   4. **Invite** — copy the `/join` link for your members.
+3. Link your alts under **My Characters → Link a character**.
+
+The worker picks up new tokens within a minute. ESI keeps 30 days of mining history; Keystar keeps everything from
+the moment it starts syncing.
+
+## Operating Keystar
+
+### Updating
+
+```bash
+cd /opt/keystar
+git pull
+docker compose up -d --build
+```
+
+Database migrations run automatically when the `app` container starts.
+
+### Backups
+
+Everything lives in Postgres. A nightly dump with 14 days of retention:
+
+```bash
+sudo mkdir -p /var/backups/keystar
+sudo tee /etc/cron.daily/keystar-backup >/dev/null <<'EOF'
+#!/bin/sh
+cd /opt/keystar || exit 1
+docker compose exec -T db pg_dump -U keystar -Fc keystar > /var/backups/keystar/keystar-$(date +%F).dump
+find /var/backups/keystar -name 'keystar-*.dump' -mtime +14 -delete
+EOF
+sudo chmod +x /etc/cron.daily/keystar-backup
+```
+
+Also keep a copy of `.env` (above all `APP_SECRET`) somewhere safe — without it, stored ESI tokens cannot be decrypted
+and every member has to re-authorise.
+
+Restore into a fresh install:
+
+```bash
+docker compose up -d db
+docker compose exec -T db pg_restore -U keystar -d keystar --clean --if-exists < keystar-YYYY-MM-DD.dump
+docker compose up -d
+```
+
+### Useful commands
+
+```bash
+docker compose logs -f worker         # watch ESI syncs
+docker compose restart worker         # restart syncing
+docker compose exec db psql -U keystar keystar   # database shell
+```
+
+Sync health is also visible in the app under **Administration → Sync Status**.
+
+### Trying the demo data
+
+To explore Keystar without real data, use a **separate, non-public** instance:
+
+```bash
+# in .env: KEYSTAR_DEMO_MODE=true
+docker compose up -d --build
+docker compose exec app keystar demo-seed
+```
+
+The login page then offers one-click sign-in for every role. Never enable demo mode on your real instance — it allows
+signing in without EVE SSO. `demo-seed` refuses to run if real users exist.
+
+## Troubleshooting
+
+| Symptom                                               | Fix                                                                                               |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| EVE login shows "Invalid callback URL"                | The callback in the EVE application must match `APP_URL` + `/auth/callback` exactly (https, no trailing slash). |
+| Browser shows a certificate error                     | DNS isn't pointing at the server yet, or ports 80/443 are blocked. `docker compose logs caddy`.   |
+| "Sign-in attempt expired"                             | The SSO round-trip took longer than 10 minutes, or cookies are blocked. Try again.                |
+| Sync Status says "No heartbeat"                       | `docker compose ps worker` / `docker compose logs worker`.                                        |
+| Observer job: "No linked character with Accountant…"  | Link a character with corporation access that holds the Accountant or Director role in game.      |
+| A character shows "Token revoked"                     | The pilot revoked access or changed their password — they click **Re-authorise** on My Characters. |
+| App container restarts with "Invalid Keystar configuration" | A required `.env` value is missing or malformed; the log lists which.                       |
