@@ -27,7 +27,13 @@ export interface ParsedLine {
   candidates: Candidate[];
 }
 
+/** Most item lines one appraisal accepts; larger pastes are rejected, never truncated. */
 export const MAX_LINES = 2000;
+
+/** Non-empty lines in a paste, to check against MAX_LINES before appraising. */
+export function countItemLines(text: string): number {
+  return text.split(/\r\n?|\n/).filter((l) => l.trim()).length;
+}
 
 /** Parses "1,000", "1.000" (German), "1 000", "1'000", "12" → integer; null if not a quantity. */
 export function parseQuantity(input: string): number | null {
@@ -106,7 +112,7 @@ function tabbed(cols: string[]): Candidate[] {
 }
 
 export function parseAppraisalInput(text: string): ParsedLine[] {
-  const lines = text.replace(/\r\n?/g, "\n").split("\n").slice(0, MAX_LINES);
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const out: ParsedLine[] = [];
   lines.forEach((raw, i) => {
     const line = raw.replace(/ /g, " ").trimEnd();

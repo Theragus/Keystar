@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignTypes, candidateNames, parseAppraisalInput, parseQuantity } from "@/modules/trade/appraisal/parse";
+import { assignTypes, candidateNames, countItemLines, MAX_LINES, parseAppraisalInput, parseQuantity } from "@/modules/trade/appraisal/parse";
 import { appraisalId } from "@/modules/trade/appraisal/appraise";
 import { splitPrice, totalsOf } from "@/modules/trade/appraisal/types";
 
@@ -91,6 +91,12 @@ Nanite Repair Paste x100`);
     expect(items).toEqual([{ typeId: 34, quantity: 150 }]);
     expect(unparsed.map((u) => u.line)).toEqual([3, 6]);
     expect(candidateNames(lines)).toContain("Tritanium");
+  });
+
+  it("never drops lines silently; the line limit is checked up front", () => {
+    const big = Array.from({ length: MAX_LINES + 5 }, (_, i) => `Item ${i}`).join("\n");
+    expect(parseAppraisalInput(big)).toHaveLength(MAX_LINES + 5);
+    expect(countItemLines(`${big}\n\n   \r\n`)).toBe(MAX_LINES + 5);
   });
 
   it("strips the market's owned marker and blueprint copy suffix", () => {

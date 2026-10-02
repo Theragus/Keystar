@@ -9,6 +9,14 @@ import { totalsOf, type AppraisalItem, type AppraisalTotals, type UnparsedLine }
 
 /** Distinct types per appraisal (each unknown type costs ESI requests). */
 export const MAX_TYPES = 500;
+
+/** A paste the appraisal refuses rather than truncating; the message is shown to the user. */
+export class AppraisalLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AppraisalLimitError";
+  }
+}
 export const MAX_INPUT_CHARS = 200_000;
 /** Prices older than this are refreshed before appraising. */
 const PRICE_MAX_AGE_MS = 2 * 3600 * 1000;
@@ -53,10 +61,17 @@ export async function jitaPrices(typeIds: number[]): Promise<Map<number, { buy: 
       .from(typeValues)
       .where(and(inArray(typeValues.typeId, typeIds), inArray(typeValues.source, ["jita_buy", "jita_sell"])));
   let rows = typeIds.length ? await load() : [];
-  const fresh = new Set(
-    rows.filter((r) => Date.now() - r.updatedAt.getTime() < PRICE_MAX_AGE_MS).map((r) => r.typeId),
-  );
-  const stale = typeIds.filter((id) => !fresh.has(id));
+  // A type is fresh only when both sides were valued recently. A recent row with a
+  // fallback basis (e.g. the ESI average) counts: it records that Jita had no
+  // orders an hour ago, and pricing again would find the same.
+  const recent = (side: "jita_buy" | "jita_sell") =>
+    new Set(
+      rows
+        .filter((r) => r.source === side && Date.now() - r.updatedAt.getTime() < PRICE_MAX_AGE_MS)
+        .map((r) => r.typeId),
+    );
+  const [buyFresh, sellFresh] = [recent("jita_buy"), recent("jita_sell")];
+  const stale = typeIds.filter((id) => !buyFresh.has(id) || !sellFresh.has(id));
   if (stale.length) {
     await syncPrices(db, getEsi(), stale).catch(() => undefined);
     rows = await load();
@@ -83,7 +98,12 @@ export async function appraise(input: string): Promise<AppraisalResult> {
   const lines = parseAppraisalInput(input.slice(0, MAX_INPUT_CHARS));
   const typeIdsByName = await resolveTypeNames(candidateNames(lines));
   const { items: resolved, unparsed } = assignTypes(lines, (name) => typeIdsByName.get(name));
-  const kept = resolved.slice(0, MAX_TYPES);
+  if (resolved.length > MAX_TYPES) {
+    throw new AppraisalLimitError(
+      `That paste contains ${resolved.length.toLocaleString("en-US")} different items; appraise at most ${MAX_TYPES} at a time.`,
+    );
+  }
+  const kept = resolved;
   const typeIds = kept.map((i) => i.typeId);
 
   const [types, prices] = await Promise.all([

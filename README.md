@@ -14,7 +14,7 @@
 Keystar signs pilots in with **EVE SSO**, collects their **ESI tokens** with exactly the scopes its modules need,
 syncs data in the background and turns it into dashboards. Modules so far: **mining** (personal and moon-refinery
 ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export and an ore field
-estimator for survey scans) a **killboard** with the corporation's PvP performance from zKillboard and a weekly
+estimator for survey scans), a **killboard** with the corporation's PvP performance from zKillboard and a weekly
 situation report, and an **appraisal** tool for Jita prices.
 
 ![Mining overview](docs/screenshots/mining.png)

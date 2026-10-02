@@ -437,6 +437,10 @@ describe.skipIf(!enabled)("integration", async () => {
         ]);
         expect(result.totals).toMatchObject({ buy: 6000, sell: 7500, split: 6750, volume: 2515, types: 2, unpriced: 1 });
         expect(result.unparsed).toEqual([{ line: 4, raw: "Not an item" }]);
+        // Rifter only had a recent buy-side value, so it was priced again; Tritanium was fresh on both sides.
+        const orderCalls = fetchSpy.mock.calls.map(([u]) => String(u instanceof Request ? u.url : u)).filter((u) => u.includes("/orders"));
+        expect(orderCalls.some((u) => u.includes("type_id=587"))).toBe(true);
+        expect(orderCalls.some((u) => u.includes("type_id=34"))).toBe(false);
 
         const id = await saveAppraisal(result, { input: "x", pricePercent: 90, userId: userA, userName: "Alpha" });
         const [row] = await db().select().from(schema.appraisals);
