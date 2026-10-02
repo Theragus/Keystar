@@ -48,6 +48,10 @@ export const common = {
     selected: (count: number) => `${n(count)} selected`,
     apply: (count: number) => (count ? `Apply (${n(count)})` : "Apply"),
   },
+  delta: {
+    vs: (period: string) => `vs ${period}`,
+    noData: (period: string) => `No data for ${period}`,
+  },
   table: {
     empty: "Nothing in this period.",
     showFewer: "Show fewer",

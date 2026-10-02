@@ -12,4 +12,10 @@ export const eve: typeof en = {
     gas: { label: "Gas", short: "Gas" },
     other: { label: "Sonstiges", short: "Sonst." },
   },
+  valuationSources: {
+    jita_buy: "Jita 4-4 · höchstes Kaufgebot",
+    jita_sell: "Jita 4-4 · niedrigstes Verkaufsangebot",
+    jita_split: "Jita 4-4 · Kauf/Verkauf-Split",
+    esi_average: "ESI-Durchschnittspreis",
+  },
 };

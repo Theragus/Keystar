@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { ValuationSource } from "@/core/db/schema/eve";
 import { FORMATTERS } from "@/lib/format";
 
 const n = FORMATTERS.en.integer;
@@ -33,12 +32,6 @@ export const setup = {
     autoApproveAlliance: "Also auto-approve alliance members",
     autoApproveAllianceHint: "Useful when mains live in another alliance corporation.",
     valuation: "Price ore at",
-    valuationSources: {
-      jita_buy: "Jita 4-4 · highest buy",
-      jita_sell: "Jita 4-4 · lowest sell",
-      jita_split: "Jita 4-4 · buy/sell split",
-      esi_average: "ESI average price",
-    } satisfies Record<ValuationSource, string>,
   },
   corporationData: {
     title: "Corporation data",

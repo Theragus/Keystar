@@ -35,12 +35,6 @@ export const setup: typeof en = {
     autoApproveAlliance: "Auch Allianzmitglieder automatisch freischalten",
     autoApproveAllianceHint: "Praktisch, wenn Hauptcharaktere in einer anderen Corporation der Allianz sind.",
     valuation: "Erz bewerten nach",
-    valuationSources: {
-      jita_buy: "Jita 4-4 · höchstes Kaufgebot",
-      jita_sell: "Jita 4-4 · niedrigstes Verkaufsangebot",
-      jita_split: "Jita 4-4 · Kauf/Verkauf-Split",
-      esi_average: "ESI-Durchschnittspreis",
-    },
   },
   corporationData: {
     title: "Corporation-Daten",

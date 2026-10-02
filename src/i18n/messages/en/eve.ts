@@ -1,3 +1,4 @@
+import type { ValuationSource } from "@/core/db/schema/eve";
 import type { OreClass } from "@/core/eve/ore";
 
 /** EVE vocabulary shared by several modules. Item, system and pilot names stay as ESI returns them. */
@@ -13,4 +14,11 @@ export const eve = {
     gas: { label: "Gas", short: "Gas" },
     other: { label: "Other", short: "Other" },
   } satisfies Record<OreClass, { label: string; short: string }>,
+  /** Price used to value ore (settings, setup, mining pages). */
+  valuationSources: {
+    jita_buy: "Jita 4-4 · highest buy",
+    jita_sell: "Jita 4-4 · lowest sell",
+    jita_split: "Jita 4-4 · buy/sell split",
+    esi_average: "ESI average price",
+  } satisfies Record<ValuationSource, string>,
 };

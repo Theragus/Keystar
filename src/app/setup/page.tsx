@@ -138,7 +138,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
                   >
                     {VALUATION_SOURCES.map((s) => (
                       <option key={s.value} value={s.value}>
-                        {m.access.valuationSources[s.value]}
+                        {t.eve.valuationSources[s.value]}
                       </option>
                     ))}
                   </select>

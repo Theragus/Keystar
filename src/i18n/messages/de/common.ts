@@ -46,6 +46,10 @@ export const common: typeof en = {
     selected: (count: number) => `${n(count)} ausgewählt`,
     apply: (count: number) => (count ? `Übernehmen (${n(count)})` : "Übernehmen"),
   },
+  delta: {
+    vs: (period: string) => `ggü. ${period}`,
+    noData: (period: string) => `Keine Daten für ${period}`,
+  },
   table: {
     empty: "Nichts in diesem Zeitraum.",
     showFewer: "Weniger anzeigen",
