@@ -19,6 +19,17 @@ export interface ZkillAttacker {
   security_status?: number;
 }
 
+/** A fitted, cargo or nested item on the victim's ship (ESI killmail format). */
+export interface ZkillItem {
+  item_type_id: number;
+  /** Inventory flag: slot (11–34 low/mid/high, 92–99 rigs, 125–132 subsystems), cargo, drone bay, … */
+  flag: number;
+  quantity_destroyed?: number;
+  quantity_dropped?: number;
+  singleton?: number;
+  items?: ZkillItem[];
+}
+
 export interface ZkillKillmail {
   killmail_id: number;
   killmail_time: string;
@@ -30,6 +41,7 @@ export interface ZkillKillmail {
     faction_id?: number;
     ship_type_id: number;
     damage_taken: number;
+    items?: ZkillItem[];
   };
   attackers: ZkillAttacker[];
   zkb: {
@@ -44,6 +56,8 @@ export interface ZkillKillmail {
     solo?: boolean;
     awox?: boolean;
     labels?: string[];
+    attackerCount?: number;
+    href?: string;
   };
 }
 
@@ -102,6 +116,27 @@ export class ZkillClient {
     return this.get(`/api/corporationID/${corporationId}/${windowPath(window)}page/${page}/`);
   }
 
+  /**
+   * One page (up to 200, newest first) of a character's killmails: kills and
+   * losses, or only one side.
+   */
+  characterPage(characterId: number, page: number, opts: { side?: "kills" | "losses" } = {}): Promise<ZkillKillmail[]> {
+    const side = opts.side ? `${opts.side}/` : "";
+    return this.get(`/api/characterID/${characterId}/${side}page/${page}/`);
+  }
+
+  /**
+   * zKillboard's statistics for a character (raw JSON; the shape is only loosely
+   * documented, so callers parse it leniently). zKillboard answers ids it has
+   * never seen with `{"error": "Invalid type or id"}`, which means no history.
+   */
+  async characterStats(characterId: number): Promise<{ kind: "ok"; stats: Record<string, unknown> } | { kind: "none" }> {
+    const body = await this.getJson(`/api/stats/characterID/${characterId}/`);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return { kind: "none" };
+    if (typeof (body as { error?: unknown }).error === "string") return { kind: "none" };
+    return { kind: "ok", stats: body as Record<string, unknown> };
+  }
+
   /** Every killmail involving a corporation in the window, page by page (newest first). */
   async *corporationKillmails(corporationId: number, window: ZkillWindow): AsyncGenerator<ZkillKillmail[]> {
     const maxPages = this.opts.maxPages ?? 100;
@@ -120,13 +155,29 @@ export class ZkillClient {
     if (wait > 0) await this.sleep(wait);
   }
 
+  /** Killmail listing: an array of killmails (malformed entries are dropped). */
   async get(path: string): Promise<ZkillKillmail[]> {
+    const { body, status } = await this.request(path);
+    if (!Array.isArray(body)) {
+      const message = (body as { error?: string } | null)?.error ?? "unexpected response";
+      throw new ZkillError(`zKillboard: ${message}`, status);
+    }
+    return body.filter(isKillmail);
+  }
+
+  /** Any other JSON endpoint (statistics, …), same spacing and retries as listings. */
+  async getJson(path: string): Promise<unknown> {
+    return (await this.request(path)).body;
+  }
+
+  private async request(path: string): Promise<{ body: unknown; status: number }> {
     const attempts = this.opts.maxAttempts ?? 4;
     let lastError: ZkillError | null = null;
     for (let attempt = 1; attempt <= attempts; attempt++) {
       await this.throttle();
       let res: Response;
       try {
+        // Statistics URLs redirect (302) to their default sort; fetch follows that.
         res = await this.fetchImpl(`${this.baseUrl}${path}`, {
           headers: { "User-Agent": this.opts.userAgent, "Accept-Encoding": "gzip", Accept: "application/json" },
         });
@@ -145,12 +196,7 @@ export class ZkillClient {
         // 403 usually means a missing/blocked User-Agent or too many requests from this IP.
         throw new ZkillError(`zKillboard responded ${res.status} for ${path}`, res.status);
       }
-      const body: unknown = await res.json();
-      if (!Array.isArray(body)) {
-        const message = (body as { error?: string } | null)?.error ?? "unexpected response";
-        throw new ZkillError(`zKillboard: ${message}`, res.status);
-      }
-      return body.filter(isKillmail);
+      return { body: await res.json(), status: res.status };
     }
     throw lastError ?? new ZkillError("zKillboard request failed", null);
   }

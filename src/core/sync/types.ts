@@ -40,6 +40,11 @@ export interface JobDefinition {
   requiredScopes?: string[];
   /** Corporation jobs: prefer tokens of characters with any of these in-game roles. */
   preferredCorpRoles?: string[];
+  /**
+   * Corporation jobs whose ESI endpoint needs no in-game role (e.g. contacts):
+   * any member with the scopes may serve it; role holders are still tried first.
+   */
+  anyCorpMember?: boolean;
   intervalSeconds: number;
   run(ctx: JobContext): Promise<JobResult | void>;
 }

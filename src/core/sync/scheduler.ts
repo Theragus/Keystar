@@ -122,8 +122,9 @@ export async function claimDueJobs(
 }
 
 /** Characters whose tokens may serve a corporation job, best candidates first. */
-async function corporationCandidates(db: Db, corporationId: number, job: JobDefinition): Promise<number[]> {
+export async function corporationCandidates(db: Db, corporationId: number, job: JobDefinition): Promise<number[]> {
   const roles = [...(job.preferredCorpRoles ?? []), "Director"];
+  const roleFilter = job.anyCorpMember ? sql`` : sql`AND (r.roles IS NULL OR r.roles && ${pgTextArray(roles)})`;
   const rows = await db.execute<{ id: string }>(sql`
     SELECT c.character_id AS id
     FROM characters c
@@ -132,8 +133,9 @@ async function corporationCandidates(db: Db, corporationId: number, job: JobDefi
     WHERE c.corporation_id = ${corporationId}
       AND t.status = 'active'
       AND t.scopes @> ${pgTextArray(job.requiredScopes ?? [])}
-      AND (r.roles IS NULL OR r.roles && ${pgTextArray(roles)})
-    ORDER BY (r.roles IS NOT NULL) DESC, t.last_refreshed_at DESC NULLS LAST`);
+      ${roleFilter}
+    ORDER BY COALESCE(r.roles && ${pgTextArray(roles)}, false) DESC, (r.roles IS NOT NULL) DESC,
+      t.last_refreshed_at DESC NULLS LAST`);
   return rows.map((r) => Number(r.id));
 }
 
@@ -200,10 +202,10 @@ export async function executeJob(
         }
       }
       if (!succeeded) {
-        const roles = job.preferredCorpRoles?.join("/") ?? "the required";
-        throw new NoEligibleCharacterError(
-          `No linked character with ${roles} role could access this data${lastError ? ` (${errorMessage(lastError)})` : ""}`,
-        );
+        const who = job.anyCorpMember
+          ? "No linked member with the required scopes"
+          : `No linked character with ${job.preferredCorpRoles?.join("/") ?? "the required"} role`;
+        throw new NoEligibleCharacterError(`${who} could access this data${lastError ? ` (${errorMessage(lastError)})` : ""}`);
       }
     } else {
       result = await runWith(null);
@@ -211,6 +213,8 @@ export async function executeJob(
 
     const minNext = Date.now() + job.intervalSeconds * 1000;
     const next = Math.max(minNext, result?.nextRunAt?.getTime() ?? 0);
+    // A trigger that arrived while the job ran (next_run_at moved past the claim) wins over the computed slot.
+    const nextRunAt = sql`CASE WHEN ${syncJobs.nextRunAt} > ${syncJobs.lastRunAt} THEN ${syncJobs.nextRunAt} ELSE ${new Date(next).toISOString()}::timestamptz END`;
     await db
       .update(syncJobs)
       .set({
@@ -220,7 +224,7 @@ export async function executeJob(
         lastSummary: result?.summary ?? null,
         lastDurationMs: Date.now() - started,
         consecutiveFailures: 0,
-        nextRunAt: new Date(next),
+        nextRunAt,
         lockedUntil: null,
         lockedBy: null,
         meta: { ...meta, ...(result?.meta ?? {}), ...(usedCharacter ? { characterId: usedCharacter } : {}) },
@@ -269,7 +273,7 @@ export async function triggerJobs(filter: { id?: number; ownerType?: SyncOwnerTy
   if (filter.jobKey) conditions.push(eq(syncJobs.jobKey, filter.jobKey));
   return getDb()
     .update(syncJobs)
-    .set({ nextRunAt: new Date(), updatedAt: new Date() })
+    .set({ nextRunAt: sql`now()`, updatedAt: new Date() })
     .where(and(...conditions))
     .returning({ id: syncJobs.id, jobKey: syncJobs.jobKey, ownerType: syncJobs.ownerType, ownerId: syncJobs.ownerId });
 }

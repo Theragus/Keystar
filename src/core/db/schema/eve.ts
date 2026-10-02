@@ -67,6 +67,14 @@ export const eveSystems = pgTable("eve_systems", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Constellations with their region (region names live in eve_entities). */
+export const eveConstellations = pgTable("eve_constellations", {
+  constellationId: bigint("constellation_id", { mode: "number" }).primaryKey(),
+  name: text("name").notNull(),
+  regionId: bigint("region_id", { mode: "number" }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type PriceSource = "esi_average" | "esi_adjusted" | "jita_buy" | "jita_sell";
 
 /** Raw market prices as reported by a source. */
