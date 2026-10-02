@@ -143,7 +143,7 @@ export default async function OverviewPage() {
         </div>
         <Glass className="dot-grid relative grid min-h-[300px] place-items-center overflow-hidden xl:col-span-6">
           {homeCorp ? (
-            <div className="glass-chip w-[min(360px,90%)] rounded-xl p-4">
+            <div className="glass-chip w-[min(400px,90%)] rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <CorpLogo id={homeCorp.corporationId} size={44} className="rounded-lg ring-1 ring-white/10" />
                 <div className="min-w-0 flex-1">
@@ -153,21 +153,21 @@ export default async function OverviewPage() {
                     {members ? <span className="text-ink-3/70"> · {members} members</span> : null}
                   </div>
                 </div>
-                <span className="rounded border border-white/10 px-1.5 py-px font-mono text-[0.62rem] text-ink-2">
+                <span className="rounded border border-white/10 px-1.5 py-px font-mono text-3xs text-ink-2">
                   {homeCorp.ticker}
                 </span>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/[0.08] pt-3 text-xs">
                 <div>
-                  <div className="eve-label text-[0.58rem] text-ink-3">Kills 30d</div>
+                  <div className="eve-label text-2xs text-ink-3">Kills 30d</div>
                   <div className="mt-0.5 font-medium tabular-nums">{killsNow ? integer(killsNow.kills) : "—"}</div>
                 </div>
                 <div>
-                  <div className="eve-label text-[0.58rem] text-ink-3">Losses 30d</div>
+                  <div className="eve-label text-2xs text-ink-3">Losses 30d</div>
                   <div className="mt-0.5 font-medium tabular-nums">{killsNow ? integer(killsNow.losses) : "—"}</div>
                 </div>
                 <div>
-                  <div className="eve-label text-[0.58rem] text-ink-3">Efficiency</div>
+                  <div className="eve-label text-2xs text-ink-3">Efficiency</div>
                   <div className="mt-0.5 font-medium tabular-nums">{eff === null ? "—" : percent(eff, 1)}</div>
                 </div>
               </div>
@@ -361,7 +361,7 @@ export default async function OverviewPage() {
       </div>
 
       <div>
-        <div className="eve-label mb-3 text-[0.7rem] text-ink-3">On the roadmap</div>
+        <div className="eve-label mb-3 text-xs text-ink-3">On the roadmap</div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {ROADMAP.map((r) => (
             <Glass key={r.title} className="flex items-start gap-3 px-5 py-4 opacity-80">

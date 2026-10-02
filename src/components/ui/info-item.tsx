@@ -9,7 +9,7 @@ export function InfoItem({ icon: Icon, label, children }: { icon: LucideIcon; la
         <Icon className="size-[18px] text-ink-2" aria-hidden />
       </span>
       <div className="min-w-0">
-        <div className="eve-label text-[0.62rem] text-ink-3">{label}</div>
+        <div className="eve-label text-2xs text-ink-3">{label}</div>
         <div className="mt-1 truncate text-[0.95rem] text-ink">{children}</div>
       </div>
     </div>

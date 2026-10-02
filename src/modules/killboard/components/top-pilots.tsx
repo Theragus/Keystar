@@ -22,7 +22,7 @@ function PilotLink({ pilot, className, children }: { pilot: PilotRow; className?
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "good" | "bad" }) {
   return (
     <div>
-      <div className="eve-label text-[0.6rem] whitespace-nowrap text-ink-3">{label}</div>
+      <div className="eve-label text-2xs whitespace-nowrap text-ink-3">{label}</div>
       <div
         className={cn(
           "mt-0.5 text-base font-semibold tabular-nums",
@@ -45,14 +45,14 @@ export function MvpCard({ pilot, period, size = "lg" }: { pilot: PilotRow; perio
   const portrait = (
     <div className="relative shrink-0">
       <Portrait id={pilot.characterId} size={size === "lg" ? 128 : 88} className="ring-2 ring-gold/70" alt={name(pilot)} />
-      <span className="absolute -bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-gold px-2 py-0.5 text-[0.62rem] font-bold tracking-wider text-space-950 shadow">
+      <span className="absolute -bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-gold px-2 py-0.5 text-3xs font-bold tracking-wider text-space-950 shadow">
         <Crown className="size-3" aria-hidden /> MVP
       </span>
     </div>
   );
   const title = (
     <div className="min-w-0">
-      <div className="eve-label text-[0.62rem] text-gold">Most kills · {period}</div>
+      <div className="eve-label text-2xs text-gold">Most kills · {period}</div>
       <PilotLink pilot={pilot} className="mt-1 block truncate text-2xl font-semibold tracking-tight text-ink">
         {name(pilot)}
       </PilotLink>
@@ -112,7 +112,7 @@ export function RunnersUp({ pilots, start = 2 }: { pilots: PilotRow[]; start?: n
           </div>
           <div className="text-right">
             <div className="text-sm font-semibold tabular-nums">{integer(p.kills)}</div>
-            <div className="text-[0.65rem] text-ink-3">kills</div>
+            <div className="text-2xs text-ink-3">kills</div>
           </div>
         </li>
       ))}
@@ -154,7 +154,7 @@ export function Awards({ pilots }: { pilots: PilotRow[] }) {
         <div key={a.title} className="glass-inset flex items-center gap-3 rounded-lg px-3 py-2.5">
           <Portrait id={a.pilot.characterId} size={40} />
           <div className="min-w-0 flex-1">
-            <div className="eve-label flex items-center gap-1 text-[0.58rem] text-ink-3">
+            <div className="eve-label flex items-center gap-1 text-2xs text-ink-3">
               <a.icon className="size-3" aria-hidden /> {a.title}
             </div>
             <PilotLink pilot={a.pilot} className="block truncate text-sm font-medium text-ink">

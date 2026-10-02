@@ -52,7 +52,7 @@ export default async function AuditPage() {
                   <td className="text-ink-2">{e.targetType ? `${e.targetType} ${e.targetId ?? ""}` : "—"}</td>
                   <td className="max-w-[420px]">
                     {e.details ? (
-                      <code className="line-clamp-2 text-[0.7rem] break-all text-ink-3">{JSON.stringify(e.details)}</code>
+                      <code className="line-clamp-2 text-2xs break-all text-ink-3">{JSON.stringify(e.details)}</code>
                     ) : (
                       <span className="text-ink-3">—</span>
                     )}

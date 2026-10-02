@@ -23,7 +23,7 @@ export function EveClock() {
       title="EVE time (UTC)"
     >
       <Clock3 className="size-3.5 text-accent" aria-hidden />
-      <span className="eve-label text-[0.6rem] text-ink-3">EVE</span>
+      <span className="eve-label text-2xs text-ink-3">EVE</span>
       <span className="font-mono font-medium tabular-nums text-ink">{time}</span>
     </div>
   );

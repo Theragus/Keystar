@@ -62,7 +62,7 @@ export default async function UsersPage() {
               <RoleBadge role={r} />
               <span className="text-lg font-semibold tabular-nums">{users.filter((u) => u.role === r).length}</span>
             </div>
-            <p className="mt-2 text-[0.72rem] leading-snug text-ink-3">{ROLE_META[r].description}</p>
+            <p className="mt-2 text-2xs leading-snug text-ink-3">{ROLE_META[r].description}</p>
           </Glass>
         ))}
       </div>
@@ -117,7 +117,7 @@ export default async function UsersPage() {
                           <div className="font-medium">
                             {u.main_name ?? "Unknown"} {u.id === actor.id && <span className="text-xs text-ink-3">(you)</span>}
                           </div>
-                          <div className="text-[0.7rem] text-ink-3">{u.corp_ticker ? `[${u.corp_ticker}]` : "—"}</div>
+                          <div className="text-2xs text-ink-3">{u.corp_ticker ? `[${u.corp_ticker}]` : "—"}</div>
                         </div>
                       </div>
                     </td>

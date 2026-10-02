@@ -42,7 +42,7 @@ function NumberField({
 }) {
   return (
     <label className="block min-w-0 flex-1">
-      <span className="eve-label text-[0.6rem] text-ink-3">{label}</span>
+      <span className="eve-label text-2xs text-ink-3">{label}</span>
       <span className="glass-inset mt-1.5 flex h-9 items-center rounded-lg pr-3">
         <input
           inputMode="decimal"
@@ -159,7 +159,7 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
           onChange={(e) => setText(e.target.value)}
           spellCheck={false}
           placeholder={"Scordite III-Grade\t8.904\t1.335 m3\t168.000,00 ISK\t25 km\n…"}
-          className="glass-inset h-[360px] w-full resize-y rounded-lg p-3 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink outline-none placeholder:text-ink-3"
+          className="glass-inset h-[360px] w-full resize-y rounded-lg p-3 font-mono text-2xs leading-relaxed whitespace-pre text-ink outline-none placeholder:text-ink-3"
           aria-label="Survey scanner result"
         />
         {parsed.skipped.length > 0 && (
@@ -179,12 +179,12 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
       <div className="min-w-0 space-y-4 xl:col-span-8">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Glass className="px-5 py-4">
-            <div className="eve-label text-[0.6rem] text-ink-3">Keystar value</div>
+            <div className="eve-label text-2xs text-ink-3">Keystar value</div>
             <div className="mt-2 text-2xl font-semibold">
               {compact(totals.keystar)}
               <span className="ml-1 text-sm text-ink-2">ISK</span>
             </div>
-            <div className="mt-1 truncate text-[0.7rem] text-ink-3" title={valuationLabel}>
+            <div className="mt-1 truncate text-2xs text-ink-3" title={valuationLabel}>
               {pricing ? (
                 <span className="inline-flex items-center gap-1">
                   <Loader2 className="size-3 animate-spin" aria-hidden /> pricing…
@@ -197,31 +197,31 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
             </div>
           </Glass>
           <Glass className="px-5 py-4">
-            <div className="eve-label text-[0.6rem] text-ink-3">Scanner estimate</div>
+            <div className="eve-label text-2xs text-ink-3">Scanner estimate</div>
             <div className="mt-2 text-2xl font-semibold">
               {compact(totals.scanner)}
               <span className="ml-1 text-sm text-ink-2">ISK</span>
             </div>
-            <div className="mt-1 text-[0.7rem] text-ink-3">EVE average price</div>
+            <div className="mt-1 text-2xs text-ink-3">EVE average price</div>
           </Glass>
           <Glass className="px-5 py-4">
-            <div className="eve-label text-[0.6rem] text-ink-3">Volume</div>
+            <div className="eve-label text-2xs text-ink-3">Volume</div>
             <div className="mt-2 text-2xl font-semibold">
               {compact(totals.volume)}
               <span className="ml-1 text-sm text-ink-2">m³</span>
             </div>
-            <div className="mt-1 text-[0.7rem] text-ink-3">
+            <div className="mt-1 text-2xs text-ink-3">
               {totals.volume ? `${unitPrice((totals.keystar || totals.scanner) / totals.volume)} per m³` : "—"}
             </div>
           </Glass>
           <Glass className="px-5 py-4">
-            <div className="eve-label text-[0.6rem] text-ink-3">{hoursToClear !== null ? "Time to clear" : "Asteroids"}</div>
+            <div className="eve-label text-2xs text-ink-3">{hoursToClear !== null ? "Time to clear" : "Asteroids"}</div>
             <div className="mt-2 text-2xl font-semibold">
               {hoursToClear !== null
                 ? `${Math.floor(hoursToClear)}h ${Math.round((hoursToClear % 1) * 60)}m`
                 : integer(totals.rocks)}
             </div>
-            <div className="mt-1 text-[0.7rem] text-ink-3">
+            <div className="mt-1 text-2xs text-ink-3">
               {hoursToClear !== null ? `${integer(totals.rocks)} asteroids` : `${summary.length} ore types`}
             </div>
           </Glass>
@@ -292,11 +292,11 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
                               <tr key={g.name} className="text-ink-2">
                                 <td>
                                   <div className="flex items-center gap-2 pl-9 whitespace-nowrap" title={g.name}>
-                                    <span className="rounded border border-white/10 px-1.5 py-px font-mono text-[0.62rem] text-ink-2">
+                                    <span className="rounded border border-white/10 px-1.5 py-px font-mono text-3xs text-ink-2">
                                       {g.grade}
                                     </span>
                                     {g.minDistanceKm !== null && (
-                                      <span className="text-[0.7rem] text-ink-3">closest {g.minDistanceKm} km</span>
+                                      <span className="text-2xs text-ink-3">closest {g.minDistanceKm} km</span>
                                     )}
                                   </div>
                                 </td>
@@ -334,7 +334,7 @@ function ShareBar({ value, subtle }: { value: number; subtle?: boolean }) {
           style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%` }}
         />
       </div>
-      <span className="w-10 text-right text-[0.68rem] text-ink-3 tabular-nums">{percent(value, 0)}</span>
+      <span className="w-10 text-right text-2xs text-ink-3 tabular-nums">{percent(value, 0)}</span>
     </div>
   );
 }

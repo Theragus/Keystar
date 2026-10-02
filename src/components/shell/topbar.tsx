@@ -25,7 +25,7 @@ export function TopBar({
           <span className="flex min-w-0 items-center gap-2">
             <CorpLogo id={homeCorp.corporationId} size={20} className="rounded" />
             <span className="truncate font-medium text-ink">{homeCorp.name}</span>
-            <span className="rounded border border-white/10 px-1.5 py-px font-mono text-[0.62rem] text-ink-2">
+            <span className="rounded border border-white/10 px-1.5 py-px font-mono text-3xs text-ink-2">
               {homeCorp.ticker}
             </span>
             <ChevronsUpDown className="size-3.5 text-ink-3" aria-hidden />
@@ -36,7 +36,7 @@ export function TopBar({
         <span className="text-ink-3">/</span>
         <CurrentPageCrumb items={crumbs} />
         {demo && (
-          <span className="ml-1 rounded border border-gold/40 bg-gold/10 px-1.5 py-px font-mono text-[0.62rem] tracking-wider text-gold uppercase">
+          <span className="ml-1 rounded border border-gold/40 bg-gold/10 px-1.5 py-px font-mono text-3xs tracking-wider text-gold uppercase">
             Demo
           </span>
         )}

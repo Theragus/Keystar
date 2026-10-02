@@ -42,7 +42,7 @@ export function RecentActivity({ rows }: { rows: ActivityRow[] }) {
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold text-ink tabular-nums">{compact(r.value)}</div>
-                <div className="text-[0.68rem] whitespace-nowrap text-ink-3 tabular-nums">{dateTime(r.time).replace(" ET", "")}</div>
+                <div className="text-2xs whitespace-nowrap text-ink-3 tabular-nums">{dateTime(r.time).replace(" ET", "")}</div>
               </div>
             </a>
           </li>

@@ -84,7 +84,7 @@ export default async function AppraisalResultPage({ params }: PageProps<"/trade/
 
       {pct !== 100 && (
         <Glass className="flex flex-wrap items-baseline gap-x-6 gap-y-2 px-5 py-4">
-          <div className="eve-label text-[0.66rem] text-gold">{pct}% of Jita</div>
+          <div className="eve-label text-2xs text-gold">{pct}% of Jita</div>
           <div className="text-sm text-ink-2">
             Buy <span className="ml-1 font-semibold text-ink tabular-nums">{full((totals.buy * pct) / 100)}</span>
           </div>

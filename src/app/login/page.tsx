@@ -111,7 +111,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           </Glass>
         )}
 
-        <p className="mt-6 text-center text-[0.7rem] leading-relaxed text-ink-3">
+        <p className="mt-6 text-center text-2xs leading-relaxed text-ink-3">
           EVE Online and the EVE logo are the registered trademarks of CCP hf. Keystar is a fan-made tool not affiliated
           with CCP.
           <br />

@@ -78,7 +78,7 @@ export function DateRangePicker({
           );
         })}
         <div className="mt-1 border-t border-white/8 px-2 pt-3 pb-1">
-          <div className="eve-label mb-2 text-[0.62rem] text-ink-3">Custom range (EVE time)</div>
+          <div className="eve-label mb-2 text-2xs text-ink-3">Custom range (EVE time)</div>
           <div className="flex items-center gap-2">
             <input
               type="date"
