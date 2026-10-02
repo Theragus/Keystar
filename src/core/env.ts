@@ -41,6 +41,11 @@ const schema = z.object({
         .map((s) => Number(s.trim()))
         .filter((n) => Number.isSafeInteger(n) && n > 0),
     ),
+  /**
+   * Where this instance's source code lives. AGPL-3.0 §13 requires offering the
+   * (modified) source to users of a network service — point this at your fork.
+   */
+  SOURCE_URL: z.string().url().default("https://github.com/theragus/keystar"),
   /** Enables the demo login (no EVE SSO needed). Never enable on a public instance. */
   KEYSTAR_DEMO_MODE: booleanish.default(false),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(32).default(4),

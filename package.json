@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Keystar \u2014 a self-hosted EVE Online corporation dashboard built on ESI",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "next dev",
     "dev:worker": "tsx watch src/worker/index.ts",

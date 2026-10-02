@@ -114,6 +114,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <p className="mt-6 text-center text-[0.7rem] leading-relaxed text-ink-3">
           EVE Online and the EVE logo are the registered trademarks of CCP hf. Keystar is a fan-made tool not affiliated
           with CCP.
+          <br />
+          Keystar is free software under the AGPL-3.0 ·{" "}
+          <a href={env().SOURCE_URL} className="underline decoration-white/20 underline-offset-2 hover:text-ink">
+            Source code
+          </a>
         </p>
       </div>
     </main>

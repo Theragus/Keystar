@@ -108,6 +108,12 @@ KEYSTAR_DEMO_MODE=true pnpm dev
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · PostgreSQL + Drizzle ORM · jose · Recharts ·
 Vitest · Docker Compose + Caddy.
 
+## License
+
+Keystar is free software, licensed under the [GNU Affero General Public License v3.0 or later](LICENSE). You may use,
+modify and share it; if you run a modified version as a service for other people, you must offer them its source code
+(set `SOURCE_URL` to your fork — the login page links to it).
+
 ---
 
 EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide. Keystar is a
