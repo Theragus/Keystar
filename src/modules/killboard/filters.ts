@@ -1,3 +1,4 @@
+import type { Locale } from "@/i18n/config";
 import { addDays, daysBetween, isoDate, isValidIsoDate } from "@/lib/dates";
 
 /**
@@ -67,10 +68,15 @@ export function spanOf(...ranges: DateRange[]): DateRange {
   };
 }
 
-/** "Sep 25 – Oct 1" in EVE time. */
-export function rangeLabel(r: DateRange): string {
+const RANGE_LOCALE: Record<Locale, string> = { en: "en-US", de: "de-DE" };
+
+/**
+ * "Sep 25 – Oct 1" / "25. Sept. – 1. Okt." in EVE time. English unless a
+ * locale is given: the stored situation report uses it and stays English.
+ */
+export function rangeLabel(r: DateRange, locale: Locale = "en"): string {
   const fmt = (d: string) =>
-    new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", { day: "numeric", month: "short", timeZone: "UTC" });
+    new Date(`${d}T00:00:00Z`).toLocaleDateString(RANGE_LOCALE[locale], { day: "numeric", month: "short", timeZone: "UTC" });
   return r.from === r.to ? fmt(r.from) : `${fmt(r.from)} – ${fmt(r.to)}`;
 }
 
