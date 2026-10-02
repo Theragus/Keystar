@@ -31,6 +31,18 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - 💡 Mining tax / buyback calculations per member
 - 💡 Moon extraction timers (`/corporation/{id}/mining/extractions`, Station_Manager)
 
+## Combat
+
+- ✅ **Killboard** for the home corporation, built from zKillboard (no ESI scopes needed) — brought over from the
+  Lucky.Punch performance dashboard:
+  - Kills, losses, ISK destroyed / lost, ISK efficiency with week-over-week changes, for any date range
+  - Weekly **situation report**, written by Claude (optional API key) or from a template
+  - Top systems by kills and losses, ISK breakdown, recent activity with zKillboard links
+  - Most effective / most used / most lost ships and pilot efficiency (final blows, solo, net ISK), all sortable
+- 💡 Post the weekly situation report to Discord
+- 💡 Doctrine tags for hulls and per-doctrine performance
+- 💡 Track additional corporations or the alliance alongside the home corporation
+
 ## Planned modules
 
 ### 📝 Threat intelligence (own branch, major feature)
@@ -49,7 +61,8 @@ experienced PvP pilots, so this should dig much deeper into zKillboard:
   - known associates / fleet-mates (who they fly with), corporation/alliance history (ESI)
 - Group view: aggregate threat for a list, likely fleet composition, shared associates.
 - Show the evidence (recent notable kills with links), not just the score, so a veteran can sanity-check it.
-- Requires no ESI scopes (public data); needs a zKillboard client with respect for its API rules.
+- Requires no ESI scopes (public data). Reuse the killboard's zKillboard client and killmail tables
+  (`src/modules/killboard/zkill.ts`, `killmails`, `killmail_attackers`).
 
 ### 📝 Live fleet tool (own branch)
 

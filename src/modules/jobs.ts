@@ -7,6 +7,7 @@ import {
   serverStatusJob,
 } from "@/core/sync/core-jobs";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
+import { killboardJobs } from "./killboard/jobs";
 import { miningJobs, miningPriceInterest } from "./mining/jobs";
 
 /**
@@ -23,6 +24,7 @@ export const JOBS: JobDefinition[] = [
   marketPricesJob(PRICE_INTEREST),
   housekeepingJob,
   ...miningJobs,
+  ...killboardJobs,
 ];
 
 export const JOB_LABELS: Record<string, string> = Object.fromEntries(JOBS.map((j) => [j.key, j.label]));

@@ -15,6 +15,7 @@ Self-hosted EVE Online corporation dashboard. Next.js 16 app + a separate Node w
 - Architecture: `docs/architecture.md`. Adding features: `docs/modules.md` (modules declare scopes, permissions, jobs, nav).
 - Auth/permissions go through `src/core/auth/dal.ts` (`requirePermission` in pages, `assertPermission` in server actions).
 - All ESI traffic goes through `src/core/esi/client.ts` (compatibility date, caching, rate limits). Background ESI calls belong in jobs (`src/modules/jobs.ts`), not in pages.
+- zKillboard traffic goes through `src/modules/killboard/zkill.ts` (User-Agent, request spacing); reuse it rather than calling zKillboard directly.
 - Schema changes: edit the Drizzle schema, then `pnpm db:generate --name <change>`; never hand-edit generated migrations.
 - Chart colours are validated for colour-vision safety (`src/modules/mining/class-colors.ts`); don't add hues ad hoc.
 - Checks before committing: `pnpm lint && pnpm typecheck && pnpm test` (set `TEST_DATABASE_URL` to a throwaway database to include integration tests).

@@ -22,7 +22,8 @@ Keystar is one TypeScript codebase that runs as two processes against one Postgr
 
 - The **app** never calls authenticated ESI routes on page loads; pages read from Postgres. It only talks to EVE
   during sign-in and for small public lookups (e.g. the ore field estimator pricing a new ore type).
-- The **worker** owns all background ESI traffic and token refreshes.
+- The **worker** owns all background ESI traffic and token refreshes, and also pulls public killmails from
+  zKillboard and (optionally) asks the Claude API to write the killboard's weekly situation report.
 
 ## Source layout
 
@@ -44,6 +45,7 @@ src/
     settings.ts        typed app settings (stored as JSON rows)
   modules/
     mining/            the mining module: schema, jobs, queries, filters, UI components, estimator
+    killboard/         zKillboard client and sync, combat aggregates, situation report (Claude or template), UI
     jobs.ts            registry of background jobs (worker only)
   worker/index.ts      worker entry point
   scripts/             migrate, demo-seed
@@ -124,6 +126,8 @@ Current jobs:
 | `mining.character-ledger`        | 15 min   | Personal mining ledgers                                    |
 | `mining.corporation-observers`   | 1 h      | Moon-refinery observer ledgers (Accountant)                |
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
+| `killboard.zkill-sync`           | 1 h      | Home corporation kills/losses from zKillboard (no token)   |
+| `killboard.situation-report`     | 1 h      | Writes the weekly situation report once a week has closed  |
 
 ## Mining data model
 
@@ -138,6 +142,27 @@ Current jobs:
   market falls back to its compressed variant (by portion size), then the ESI average and adjusted prices.
 
 ESI keeps 30 days of ledger history; Keystar keeps everything it has synced.
+
+## Killboard
+
+- `src/modules/killboard/zkill.ts` is the only code that talks to zKillboard: a descriptive User-Agent (with
+  `ESI_CONTACT`), gzip, requests spaced ≥ 1.1 s apart, retries on 429/5xx. zKillboard caches API responses for an
+  hour, so the sync runs hourly.
+- The first sync imports 90 days month by month (`/corporationID/{id}/year/{y}/month/{m}/`); afterwards an hourly
+  7-day sweep (`/pastSeconds/604800/`) also catches killmails zKillboard receives late. A gap longer than six days,
+  or a new home corporation, triggers another backfill.
+- `killmails` stores the victim and zKillboard's values (total/fitted/destroyed/dropped, points, solo, npc, awox,
+  labels); `killmail_attackers` stores every attacker. Corporation ids are the ones recorded at the time of the kill.
+- A **kill** is a killmail with a home-corporation attacker and a victim from another corporation; a **loss** is a
+  killmail whose victim flew for the home corporation (an awox counts as a loss only). ISK counts in full for every
+  pilot and hull involved, as on zKillboard. Week-over-week figures compare the last 7 complete EVE days with the 7
+  days before.
+- **Situation report**: once a 7-day window has closed (plus a 2-hour grace period for late killmails),
+  `killboard.situation-report` gathers the week's facts (totals, leaders, movers, hot systems, biggest kill and
+  loss), and Claude writes the report via structured outputs (JSON validated with zod) when `ANTHROPIC_API_KEY` is
+  set; otherwise, or if the call fails, a deterministic template writes it. Reports use a tiny inline markup
+  (`**bold**`, `{+good}`, `{-bad}`, `{@Pilot}`) rendered as React text — model output is never rendered as HTML.
+  Reports are stored with the facts they were written from (`killboard_reports`).
 
 ## Security notes
 

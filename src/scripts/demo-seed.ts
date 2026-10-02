@@ -36,8 +36,10 @@ import { classifyOre, type OreClass } from "@/core/eve/ore";
 import { characterScopes, corporationScopes } from "@/core/modules/registry";
 import type { Role } from "@/core/rbac/roles";
 import { setSetting } from "@/core/settings";
+import { generateSituationReport } from "@/modules/killboard/report/generate";
 import { runMigrations } from "@/scripts/migrate";
 import staticData from "./demo-data/eve-static.json";
+import { seedKillboard } from "./demo-data/killboard";
 
 const DEMO_CHARACTER_BASE = 2_120_000_000;
 const HOME_CORP = { corporationId: 98_765_432, name: "Keystar Industries", ticker: "KSTR" };
@@ -189,7 +191,7 @@ async function main() {
   await db.execute(sql`TRUNCATE users, characters, esi_tokens, sessions, audit_log, app_settings, character_corp_roles,
     corporation_members, eve_entities, eve_corporations, eve_groups, eve_types, eve_systems, market_prices, type_values,
     type_value_history, esi_cache, sync_jobs, worker_heartbeats, mining_character_ledger, mining_observers,
-    mining_observer_ledger RESTART IDENTITY CASCADE`);
+    mining_observer_ledger, killmails, killmail_attackers, killboard_reports RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
   await db.insert(eveGroups).values(staticData.groups);
@@ -446,6 +448,29 @@ async function main() {
   );
   await db.insert(workerHeartbeats).values({ workerId: "demo-worker", version: "demo", info: { demo: true } });
 
+  // --- Killboard ----------------------------------------------------------
+  const combatWeights: Record<string, number> = {
+    "Selene Okaru": 9,
+    "Vasko Drift": 8,
+    "Tovan Rhask": 6,
+    "Aria Vexmoor": 5,
+    "Zahra Imren": 4,
+    "Jorek Taln": 3,
+    "Rhea Solenne": 2,
+    "Tamsin Rook": 2,
+    "Brann Holloway": 1,
+  };
+  const combatPilots = [...allChars, ...unregistered]
+    .filter((c) => combatWeights[c.name])
+    .map((c) => ({ characterId: c.characterId, weight: combatWeights[c.name] }));
+  const killboard = await seedKillboard(db, {
+    corporationId: HOME_CORP.corporationId,
+    pilots: combatPilots,
+    systems: staticData.systems,
+    rand,
+    now: new Date(),
+  });
+
   await setSetting("corp.homeCorporationId", HOME_CORP.corporationId);
   await setSetting("demo.users", demoUserIds);
   await setSetting("setup.completedAt", new Date().toISOString());
@@ -461,8 +486,12 @@ async function main() {
     { actorUserId: demoUserIds.director, actorName: "Tovan Rhask", action: "user.role.changed", targetType: "user", targetId: demoUserIds.viewer, details: { from: "member", to: "viewer" } },
   ]);
 
+  // Needs the home corporation setting, so it runs last.
+  const report = await generateSituationReport(db, HOME_CORP.corporationId, new Date(), { force: true });
+
   console.log(
-    `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows.`,
+    `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
+      `${killboard.killmails} killmails and a ${report.source} situation report.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");
   await closeDb();

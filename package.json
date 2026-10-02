@@ -2,7 +2,7 @@
   "name": "keystar",
   "version": "0.1.0",
   "private": true,
-  "description": "Keystar \u2014 a self-hosted EVE Online corporation dashboard built on ESI",
+  "description": "Keystar — a self-hosted EVE Online corporation dashboard built on ESI",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "next dev",
@@ -22,6 +22,7 @@
   },
   "packageManager": "pnpm@10.28.0",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource/rajdhani": "^5.3.0",
