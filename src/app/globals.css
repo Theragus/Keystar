@@ -1,0 +1,259 @@
+@import "tailwindcss";
+
+/*
+ * Keystar design system — EVE Online inspired deep-space backdrop with
+ * Apple "Liquid Glass" style translucent surfaces. Dark only by design.
+ */
+
+@theme {
+  --font-sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Rajdhani", "Inter Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* Neutral near-black base (Supabase-like), with a faint cool tint for EVE. */
+  --color-space-950: #0b0c0e;
+  --color-space-900: #101114;
+  --color-space-800: #15171b;
+  --color-space-700: #1d2026;
+
+  --color-ink: #ededee;
+  --color-ink-2: #a3a8b2;
+  --color-ink-3: #6f7581;
+
+  /* Interactive accent: EVE Photon UI cyan */
+  --color-accent: #5cc8ff;
+  --color-accent-strong: #2fb3f5;
+  /* Brand highlight: the Keystar gold */
+  --color-gold: #f2b950;
+
+  /* Status (reserved meaning, always with icon + label) */
+  --color-good: #0ca30c;
+  --color-good-text: #3ccf3c;
+  --color-warning: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+  --color-critical-text: #f07a7a;
+
+  /* Data series (validated: dark surface #14161a, adjacent CVD ΔE ≥ 8.4) */
+  --color-series-moon: #3987e5;
+  --color-series-ore: #d95926;
+  --color-series-ice: #199e70;
+  --color-series-gas: #c98500;
+  --color-series-other: #5d6878;
+
+  --radius-glass: 12px;
+}
+
+:root {
+  color-scheme: dark;
+  --chart-surface: #14161a;
+  --hairline: rgba(255, 255, 255, 0.075);
+  --hairline-strong: rgba(255, 255, 255, 0.13);
+  --grid: #23262c;
+  --axis: #34383f;
+}
+
+/* Only <html> gets a background: a body background would paint over the
+   negative z-index space backdrop. */
+html {
+  background: var(--color-space-950);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(92, 200, 255, 0.35);
+}
+
+/* ---------------------------------------------------------------- Backdrop */
+
+.space-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 700px at 100% -10%, rgba(39, 94, 170, 0.22), transparent 60%),
+    radial-gradient(900px 700px at -10% 110%, rgba(176, 102, 34, 0.12), transparent 60%),
+    linear-gradient(180deg, #0d0e11 0%, #0b0c0e 100%);
+}
+
+/* Drifting nebula clouds — gives the glass something to refract. */
+.space-backdrop::before,
+.space-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 30% at 30% 30%, rgba(47, 179, 245, 0.07), transparent 70%),
+    radial-gradient(35% 25% at 70% 70%, rgba(242, 185, 80, 0.05), transparent 70%),
+    radial-gradient(30% 40% at 85% 15%, rgba(120, 80, 220, 0.08), transparent 70%);
+  filter: blur(40px);
+  animation: nebula-drift 90s ease-in-out infinite alternate;
+}
+
+.space-backdrop::after {
+  background:
+    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.8), transparent 50%),
+    radial-gradient(1px 1px at 120px 80px, rgba(255, 255, 255, 0.6), transparent 50%),
+    radial-gradient(1.5px 1.5px at 200px 160px, rgba(200, 225, 255, 0.9), transparent 50%),
+    radial-gradient(1px 1px at 260px 40px, rgba(255, 255, 255, 0.5), transparent 50%),
+    radial-gradient(1px 1px at 330px 220px, rgba(255, 240, 210, 0.7), transparent 50%),
+    radial-gradient(1px 1px at 60px 260px, rgba(255, 255, 255, 0.55), transparent 50%);
+  background-size: 360px 300px;
+  filter: none;
+  opacity: 0.28;
+  inset: 0;
+  animation: none;
+}
+
+@keyframes nebula-drift {
+  from {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .space-backdrop::before {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------- Liquid glass */
+
+@utility glass {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--radius-glass);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.015) 100%), rgba(21, 23, 27, 0.72);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 12px 32px -18px rgba(0, 0, 0, 0.7);
+
+  /* Hairline border with a soft specular highlight along the top-left. */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.2) 0%,
+      rgba(255, 255, 255, 0.08) 18%,
+      rgba(255, 255, 255, 0.07) 60%,
+      rgba(140, 200, 255, 0.12) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+/* A smaller, brighter glass for floating controls (pills, popovers, buttons). */
+@utility glass-chip {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03)), rgba(28, 31, 36, 0.7);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 12px -6px rgba(0, 0, 0, 0.6);
+}
+
+@utility glass-inset {
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* Monospace micro-label (STATUS, COMPUTE …) used for section and field labels. */
+@utility eve-label {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Dotted grid texture for hero/feature surfaces. */
+@utility dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ Tables */
+
+.ks-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+.ks-table th {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.66rem;
+  color: var(--color-ink-3);
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+.ks-table td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  vertical-align: middle;
+}
+.ks-table tbody tr {
+  transition: background-color 120ms ease;
+}
+.ks-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+.ks-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Scrollbars that fit the theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* Keyboard focus that is always visible on glass. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Recharts: keep the chart chrome recessive. */
+.recharts-cartesian-grid line {
+  stroke: var(--grid);
+}
+.recharts-text {
+  fill: var(--color-ink-3);
+}

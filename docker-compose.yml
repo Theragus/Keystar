@@ -1,0 +1,73 @@
+# Keystar on a single Linux host (VPS): Postgres + web app + sync worker + Caddy (automatic HTTPS).
+#   cp .env.example .env   # fill in the values
+#   docker compose up -d --build
+name: keystar
+
+x-database-url: &database-url postgres://keystar:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/keystar
+
+x-keystar: &keystar
+  build: .
+  image: keystar:latest
+  restart: unless-stopped
+  env_file: .env
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keystar
+      POSTGRES_USER: keystar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keystar -d keystar"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    <<: *keystar
+    command: ["web"]
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+    # Only Caddy talks to the app. Uncomment to expose it directly (e.g. behind your own proxy).
+    # ports: ["127.0.0.1:3000:3000"]
+
+  worker:
+    <<: *keystar
+    command: ["worker"]
+    environment:
+      DATABASE_URL: *database-url
+      KEYSTAR_ROLE: worker
+    depends_on:
+      app:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      KEYSTAR_DOMAIN: ${KEYSTAR_DOMAIN:?set KEYSTAR_DOMAIN in .env}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

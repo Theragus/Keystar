@@ -1,0 +1,9 @@
+# Caddy obtains and renews a Let's Encrypt certificate for KEYSTAR_DOMAIN automatically.
+{$KEYSTAR_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy app:3000
+}
