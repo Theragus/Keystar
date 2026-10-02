@@ -3,10 +3,13 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Panel } from "@/components/ui/glass";
 import { requirePermission } from "@/core/auth/dal";
 import { isRecent, relativeTime } from "@/lib/format";
+import { HostilesFeed } from "@/modules/intel/components/hostiles-feed";
 import { ScanForm } from "@/modules/intel/components/scan-form";
+import { FEED_DAYS } from "@/modules/intel/constants";
 import { INTEL_PERMISSIONS } from "@/modules/intel/module";
 import { lookupDisplayNames } from "@/modules/intel/names";
-import { getRecentScans } from "@/modules/intel/scans";
+import { getRecentScans, recentSightings } from "@/modules/intel/scans";
+import { isFriendly, isHostile, loadStandings, standingOf } from "@/modules/intel/standings";
 import { createScan } from "./actions";
 
 export const metadata = { title: "Threat Intel" };
@@ -16,8 +19,12 @@ const SYSTEM_MEMORY_MS = 2 * 60 * 60_000;
 
 export default async function IntelPage() {
   const user = await requirePermission(INTEL_PERMISSIONS.use);
-  const recent = await getRecentScans(user.id);
-  const names = await lookupDisplayNames({ systemIds: recent.map((s) => s.systemId) });
+  const [recent, sightings, standings] = await Promise.all([getRecentScans(user.id), recentSightings(FEED_DAYS), loadStandings()]);
+  // The feed: non-friendly pilots worth a look (moderate threat or worse, hostile standing, or fought us).
+  const candidates = sightings.map((s) => ({ ...s, standing: standingOf(s, standings) })).filter((s) => !isFriendly(s.standing));
+  const relevant = candidates.filter((s) => (s.score ?? 0) >= 25 || isHostile(s.standing) || s.fought);
+  const feed = relevant.slice(0, 30);
+  const names = await lookupDisplayNames({ systemIds: [...recent.map((s) => s.systemId), ...feed.map((s) => s.systemId)] });
   const latest = recent[0];
   const defaultSystem =
     latest?.systemId && isRecent(latest.createdAt, SYSTEM_MEMORY_MS) ? (names.systems.get(latest.systemId)?.name ?? "") : "";
@@ -59,6 +66,9 @@ export default async function IntelPage() {
           )}
         </Panel>
       </div>
+      <Panel title="Recently seen hostiles" subtitle={`Pilots in anyone's scans over the last ${FEED_DAYS} days, newest first. Friendlies are left out.`}>
+        <HostilesFeed sightings={feed} names={names} hidden={candidates.length - feed.length} />
+      </Panel>
     </div>
   );
 }

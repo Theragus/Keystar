@@ -82,7 +82,9 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
 4. Select these scopes:
 
    ```
+   esi-alliances.read_contacts.v1
    esi-characters.read_corporation_roles.v1
+   esi-corporations.read_contacts.v1
    esi-corporations.read_corporation_membership.v1
    esi-corporations.read_structures.v1
    esi-industry.read_character_mining.v1

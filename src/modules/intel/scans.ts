@@ -283,3 +283,52 @@ export async function scanProgress(scan: ScanRow, db: Db = getDb()): Promise<Sca
     pending: { stats: by.get(1) ?? 0, newest: by.get(2) ?? 0, deeper: (by.get(3) ?? 0) + (by.get(4) ?? 0) },
   };
 }
+
+export interface Sighting {
+  characterId: number;
+  name: string;
+  corporationId: number | null;
+  allianceId: number | null;
+  factionId: number | null;
+  score: number | null;
+  tier: string | null;
+  scanId: string;
+  seenAt: Date;
+  systemId: number | null;
+  seenBy: string | null;
+  times: number;
+  fought: boolean;
+}
+
+/** Each pilot's latest sighting in anyone's scan over the last `days`, newest first. */
+export async function recentSightings(days: number, limit = 400, db: Db = getDb()): Promise<Sighting[]> {
+  const rows = await db.execute<Record<string, unknown>>(sql`
+    SELECT * FROM (
+      SELECT DISTINCT ON (sp.character_id)
+        sp.character_id, sp.name, sp.corporation_id, sp.alliance_id, sp.faction_id, sp.score, sp.tier,
+        (sp.history->>'killsOnUs')::int > 0 OR (sp.history->>'lossesToUs')::int > 0 AS fought,
+        s.id AS scan_id, s.created_at, s.system_id, s.created_by_name,
+        count(*) OVER (PARTITION BY sp.character_id) AS times
+      FROM intel_scan_pilots sp JOIN intel_scans s ON s.id = sp.scan_id
+      WHERE s.created_at > now() - make_interval(days => ${days})
+      ORDER BY sp.character_id, s.created_at DESC
+    ) latest
+    ORDER BY created_at DESC
+    LIMIT ${limit}`);
+  const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return rows.map((r) => ({
+    characterId: Number(r.character_id),
+    name: String(r.name),
+    corporationId: n(r.corporation_id),
+    allianceId: n(r.alliance_id),
+    factionId: n(r.faction_id),
+    score: n(r.score),
+    tier: r.tier === null ? null : String(r.tier),
+    scanId: String(r.scan_id),
+    seenAt: new Date(String(r.created_at)),
+    systemId: n(r.system_id),
+    seenBy: r.created_by_name === null ? null : String(r.created_by_name),
+    times: Number(r.times),
+    fought: r.fought === true,
+  }));
+}

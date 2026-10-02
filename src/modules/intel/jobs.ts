@@ -8,6 +8,7 @@ import {
   RESCORE_WINDOW_MS,
   SCAN_RETENTION_DAYS,
 } from "./constants";
+import { allianceContactsJob, corporationContactsJob } from "./contacts";
 import { SCAN_WORKER_JOB } from "./scans";
 import { demoSource, zkillSource } from "./source";
 import { runScanWorker } from "./worker";
@@ -71,4 +72,4 @@ export const intelHousekeepingJob: JobDefinition = {
   },
 };
 
-export const intelJobs: JobDefinition[] = [scanWorkerJob, intelHousekeepingJob];
+export const intelJobs: JobDefinition[] = [scanWorkerJob, intelHousekeepingJob, corporationContactsJob, allianceContactsJob];

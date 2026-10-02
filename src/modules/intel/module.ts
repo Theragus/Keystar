@@ -11,7 +11,18 @@ export const intelModule: KeystarModule = {
   id: "intel",
   name: "Threat intel",
   description: "Threat assessment for pasted pilot lists from zKillboard, the corporation's own fights and its standings.",
-  scopes: [],
+  scopes: [
+    {
+      scope: "esi-corporations.read_contacts.v1",
+      level: "corporation",
+      reason: "Reads the corporation's contacts so threat scans show blues and reds.",
+    },
+    {
+      scope: "esi-alliances.read_contacts.v1",
+      level: "corporation",
+      reason: "Reads the alliance's contacts so threat scans show blues and reds.",
+    },
+  ],
   permissions: [
     {
       key: INTEL_PERMISSIONS.use,

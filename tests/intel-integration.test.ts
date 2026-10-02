@@ -20,6 +20,9 @@ describe.skipIf(!enabled)("intel integration", async () => {
   const { EsiClient } = await import("@/core/esi/client");
   const { createLogger } = await import("@/core/logger");
   const activeStats = (await import("./fixtures/zkill-stats-active.json")).default;
+  const { allianceContactsJob, corporationContactsJob } = await import("@/modules/intel/contacts");
+  const { recentSightings } = await import("@/modules/intel/scans");
+  const { loadStandings, standingOf } = await import("@/modules/intel/standings");
 
   const db = () => getDb();
   const HOME = 100;
@@ -302,6 +305,78 @@ describe.skipIf(!enabled)("intel integration", async () => {
       expect(out.remaining).toBe(0);
       const queue = await db().select().from(schema.intelQueue);
       expect(queue.every((q) => q.attempts === 1 && q.notBefore.getTime() > Date.now() && q.lastError?.includes("502"))).toBe(true);
+    });
+  });
+
+  describe("contacts and the hostiles feed", () => {
+    const contactsEsi = (lists: Record<string, unknown[]>) =>
+      new EsiClient({
+        baseUrl: "https://esi.invalid",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async (input: string | URL | Request) => {
+          const path = new URL(String(input instanceof Request ? input.url : input)).pathname;
+          if (path === "/universe/names") return new Response("[]", { status: 200 });
+          if (path.startsWith("/corporations/") && !path.endsWith("/contacts")) {
+            return new Response(JSON.stringify({ name: "Home", ticker: "HOME", alliance_id: 200 }), { status: 200 });
+          }
+          return new Response(JSON.stringify(lists[path] ?? []), { status: 200, headers: { "x-pages": "1" } });
+        }) as typeof fetch,
+      });
+    const jobCtx = (esiClient: InstanceType<typeof EsiClient>) => ({
+      jobId: 1,
+      ownerType: "corporation" as const,
+      ownerId: HOME,
+      characterId: 1,
+      esi: esiClient,
+      db: db(),
+      log: createLogger("test"),
+      meta: {},
+    });
+
+    it("replaces the corporation's and alliance's contact lists", async () => {
+      handler = fakeEsi; // resolver lookups go through the shared client
+      const lists = {
+        [`/corporations/${HOME}/contacts`]: [
+          { contact_id: 300, contact_type: "corporation", standing: -10 },
+          { contact_id: 12, contact_type: "character", standing: 5 },
+        ],
+        "/alliances/200/contacts": [{ contact_id: 400, contact_type: "alliance", standing: -5 }],
+      };
+      await db().insert(schema.intelContacts).values({ ownerType: "alliance", ownerId: 999, contactId: 1, contactType: "alliance", standing: 10 });
+      await corporationContactsJob.run(jobCtx(contactsEsi(lists)));
+      await allianceContactsJob.run(jobCtx(contactsEsi(lists)));
+      const rows = await db().select().from(schema.intelContacts);
+      expect(rows.map((r) => [r.ownerType, r.ownerId, r.contactId, r.standing]).sort()).toEqual([
+        ["alliance", 200, 400, -5],
+        ["corporation", HOME, 12, 5],
+        ["corporation", HOME, 300, -10],
+      ]);
+      const standings = await loadStandings();
+      expect(standingOf({ characterId: 12, corporationId: 300, allianceId: null, factionId: null }, standings).cls).toBe("blue");
+      expect(standingOf({ characterId: 5, corporationId: 301, allianceId: 400, factionId: null }, standings).cls).toBe("red");
+
+      // A second sync with fewer contacts drops the removed ones.
+      await corporationContactsJob.run(jobCtx(contactsEsi({ [`/corporations/${HOME}/contacts`]: [] })));
+      expect((await db().select().from(schema.intelContacts)).filter((r) => r.ownerType === "corporation")).toEqual([]);
+    });
+
+    it("lists each pilot's latest sighting with how often they were seen", async () => {
+      const spy = esi(fakeEsi);
+      try {
+        const first = await startScan({ text: "Pilot Nine\nRed Twelve", userId, userName: "Scout", aiAllowed: false }, { now: new Date(Date.now() - 3600_000) });
+        const second = await startScan({ text: "Pilot Nine", userId, userName: "Scout", aiAllowed: false });
+        if (!first.ok || !second.ok) throw new Error("scan failed");
+        const feed = await recentSightings(7);
+        expect(feed.map((s) => [s.characterId, s.scanId, s.times])).toEqual([
+          [9, second.id, 2],
+          [12, first.id, 1],
+        ]);
+        expect(feed[0]).toMatchObject({ seenBy: "Scout", fought: true });
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 });
