@@ -159,7 +159,7 @@ export default async function SettingsPage() {
             <tbody>
               {groups.flatMap((g) => [
                 <tr key={`g-${g}`}>
-                  <td colSpan={3} className="eve-label pt-4 text-[0.7rem] text-accent">
+                  <td colSpan={3} className="eve-label pt-4 text-xs text-accent">
                     {g}
                   </td>
                 </tr>,
@@ -169,7 +169,7 @@ export default async function SettingsPage() {
                     <tr key={p.key}>
                       <td>
                         <div className="font-medium">{p.label}</div>
-                        <code className="text-[0.68rem] text-ink-3">{p.key}</code>
+                        <code className="text-2xs text-ink-3">{p.key}</code>
                       </td>
                       <td className="text-ink-2">{p.description}</td>
                       <td>

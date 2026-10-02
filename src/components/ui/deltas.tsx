@@ -44,7 +44,7 @@ export function DeltaChip({ value, upIsGood = true }: { value: number; upIsGood?
   return (
     <span
       className={cn(
-        "inline-flex min-w-8 justify-center rounded-full px-1.5 py-0.5 text-[0.7rem] font-semibold tabular-nums ring-1 ring-inset",
+        "inline-flex min-w-8 justify-center rounded-full px-1.5 py-0.5 text-2xs font-semibold tabular-nums ring-1 ring-inset",
         good ? "bg-good/15 text-good-text ring-good/30" : "bg-critical/15 text-critical-text ring-critical/30",
       )}
     >

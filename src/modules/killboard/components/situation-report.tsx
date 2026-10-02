@@ -68,7 +68,7 @@ export function SituationReportPanel({
     <Glass as="details" open className="group">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
         <Radio className="size-4 text-accent" aria-hidden />
-        <span className="eve-label text-[0.7rem] text-accent">Situation report</span>
+        <span className="eve-label text-xs text-accent">Situation report</span>
         {window && <span className="text-xs text-ink-3">{window}</span>}
         {stored && (
           <Badge tone={READINESS_TONE[stored.report.readiness.level]} className="ml-1">
@@ -87,7 +87,7 @@ export function SituationReportPanel({
               </p>
             ))}
             <p className="text-sm leading-relaxed text-ink-2">
-              <span className="eve-label mr-2 text-[0.64rem] text-ink-3">Readiness</span>
+              <span className="eve-label mr-2 text-2xs text-ink-3">Readiness</span>
               <Rich text={stored.report.readiness.assessment} />
             </p>
           </article>

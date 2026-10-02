@@ -138,11 +138,11 @@ export default async function SyncPage() {
                 <tr key={r.id} className={r.enabled ? undefined : "opacity-45"}>
                   <td>
                     <div className="font-medium">{JOB_LABELS[r.job_key] ?? r.job_key}</div>
-                    <code className="text-[0.68rem] text-ink-3">{r.job_key}</code>
+                    <code className="text-2xs text-ink-3">{r.job_key}</code>
                   </td>
                   <td>
                     <div>{r.owner_name ?? r.owner_id}</div>
-                    <div className="text-[0.7rem] text-ink-3 capitalize">{r.owner_type}</div>
+                    <div className="text-2xs text-ink-3 capitalize">{r.owner_type}</div>
                   </td>
                   <td>
                     {!r.enabled ? (
@@ -162,7 +162,7 @@ export default async function SyncPage() {
                     ) : (
                       <span className="text-xs text-ink-2">{r.last_summary ?? "—"}</span>
                     )}
-                    {r.last_duration_ms !== null && <div className="text-[0.68rem] text-ink-3">{r.last_duration_ms} ms</div>}
+                    {r.last_duration_ms !== null && <div className="text-2xs text-ink-3">{r.last_duration_ms} ms</div>}
                   </td>
                   <td className="whitespace-nowrap text-ink-2">{relativeTime(r.last_success_at)}</td>
                   <td className="whitespace-nowrap text-ink-2">{r.enabled ? relativeTime(r.next_run_at) : "—"}</td>

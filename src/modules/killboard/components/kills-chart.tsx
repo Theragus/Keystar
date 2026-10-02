@@ -48,7 +48,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: { paylo
   const row = payload[0].payload;
   return (
     <div className="glass min-w-[190px] rounded-2xl bg-space-800/85 px-4 py-3 text-xs">
-      <div className="eve-label mb-2 text-[0.66rem] text-ink-3">{shortDate(row.date)}</div>
+      <div className="eve-label mb-2 text-2xs text-ink-3">{shortDate(row.date)}</div>
       {[
         { label: "Kills", color: KILL_COLOR, n: row.kills, isk: row.destroyed },
         { label: "Losses", color: LOSS_COLOR, n: row.losses, isk: row.lost },
@@ -109,7 +109,7 @@ export function KillsChart({ rows }: { rows: DailyActivity[] }) {
                 tickLine={false}
                 axisLine={false}
                 minTickGap={28}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 12 }}
                 dy={6}
               />
               <YAxis
@@ -119,7 +119,7 @@ export function KillsChart({ rows }: { rows: DailyActivity[] }) {
                 tickLine={false}
                 axisLine={false}
                 width={36}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 12 }}
               />
               <ReferenceLine y={0} stroke="var(--axis)" />
               <Tooltip cursor={{ fill: "rgba(255,255,255,0.045)" }} content={<ChartTooltip />} isAnimationActive={false} />

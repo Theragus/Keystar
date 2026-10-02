@@ -18,7 +18,7 @@ export function Badge({ tone = "neutral", className, children }: { tone?: Tone; 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-medium whitespace-nowrap ring-1 ring-inset",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium whitespace-nowrap ring-1 ring-inset",
         tones[tone],
         className,
       )}
@@ -39,7 +39,7 @@ const roleTone: Record<Role, Tone> = {
 
 export function RoleBadge({ role }: { role: Role }) {
   return (
-    <Badge tone={roleTone[role]} className="rounded px-1.5 font-mono text-[0.6rem] tracking-wider uppercase">
+    <Badge tone={roleTone[role]} className="rounded px-1.5 font-mono text-3xs tracking-wider uppercase">
       {ROLE_META[role].label}
     </Badge>
   );

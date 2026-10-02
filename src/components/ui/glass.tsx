@@ -37,7 +37,7 @@ export function Panel({
       {(title || actions) && (
         <header className="flex items-start justify-between gap-4 px-5 pt-4 pb-3">
           <div className="min-w-0">
-            {title && <h2 className="eve-label text-[0.7rem] text-ink-2">{title}</h2>}
+            {title && <h2 className="eve-label text-xs text-ink-2">{title}</h2>}
             {subtitle && <p className="mt-0.5 text-xs text-ink-3">{subtitle}</p>}
           </div>
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

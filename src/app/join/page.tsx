@@ -25,7 +25,7 @@ export default async function JoinPage() {
         <div className="flex items-center gap-3">
           <KeystarMark className="size-11" />
           <div>
-            <div className="eve-label text-[0.7rem] text-accent">Keystar registration</div>
+            <div className="eve-label text-xs text-accent">Keystar registration</div>
             <h1 className="font-display text-2xl font-bold tracking-wide">
               {corp ? `Join ${corp.name} on Keystar` : "Register your characters"}
             </h1>
@@ -42,7 +42,7 @@ export default async function JoinPage() {
               <Check className="mt-0.5 size-4 shrink-0 text-good-text" aria-hidden />
               <div>
                 <div className="text-sm text-ink">{s.reason}</div>
-                <code className="mt-0.5 block text-[0.7rem] text-ink-3">{s.scope}</code>
+                <code className="mt-0.5 block text-2xs text-ink-3">{s.scope}</code>
               </div>
             </li>
           ))}

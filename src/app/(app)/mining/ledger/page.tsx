@@ -98,7 +98,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
                           <div className="min-w-0 leading-tight">
                             <div className="truncate font-medium">{r.characterName}</div>
                             {r.ownerName && r.ownerName !== r.characterName && (
-                              <div className="truncate text-[0.7rem] text-ink-3">{r.ownerName}</div>
+                              <div className="truncate text-2xs text-ink-3">{r.ownerName}</div>
                             )}
                           </div>
                         </div>
@@ -108,7 +108,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
                           <TypeIcon id={r.typeId} size={24} />
                           <div className="leading-tight">
                             <div className="font-medium">{r.typeName}</div>
-                            <div className="flex items-center gap-1 text-[0.7rem] text-ink-3">
+                            <div className="flex items-center gap-1 text-2xs text-ink-3">
                               <span className="size-1.5 rounded-full" style={{ background: oreClassColor(r.oreClass) }} aria-hidden />
                               {ORE_CLASS_META[r.oreClass].short}
                             </div>
@@ -120,7 +120,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
                           <SecurityStatus value={r.security} />
                           <div className="leading-tight">
                             <div>{r.systemName ?? "Unknown"}</div>
-                            {r.observerName && <div className="text-[0.7rem] text-ink-3">{r.observerName}</div>}
+                            {r.observerName && <div className="text-2xs text-ink-3">{r.observerName}</div>}
                           </div>
                         </div>
                       </td>

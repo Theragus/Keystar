@@ -130,7 +130,7 @@ export default async function CharactersPage() {
 
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl glass-inset px-4 py-3">
-                    <div className="eve-label mb-2 text-[0.62rem] text-ink-3">Scopes</div>
+                    <div className="eve-label mb-2 text-2xs text-ink-3">Scopes</div>
                     <ul className="space-y-1 text-xs">
                       {memberScopes.map((s) => (
                         <li key={s} className="flex items-center justify-between gap-2" title={reasons.get(s)}>
@@ -144,7 +144,7 @@ export default async function CharactersPage() {
                     </ul>
                   </div>
                   <div className="rounded-2xl glass-inset px-4 py-3">
-                    <div className="eve-label mb-2 text-[0.62rem] text-ink-3">Background sync</div>
+                    <div className="eve-label mb-2 text-2xs text-ink-3">Background sync</div>
                     {charJobs.length === 0 ? (
                       <p className="text-xs text-ink-3">No sync jobs yet — they appear within a minute of granting scopes.</p>
                     ) : (
@@ -161,7 +161,7 @@ export default async function CharactersPage() {
                       </ul>
                     )}
                     {token?.lastRefreshedAt && (
-                      <p className="mt-2 text-[0.7rem] text-ink-3">Token refreshed {relativeTime(token.lastRefreshedAt)}</p>
+                      <p className="mt-2 text-2xs text-ink-3">Token refreshed {relativeTime(token.lastRefreshedAt)}</p>
                     )}
                   </div>
                 </div>
@@ -181,7 +181,7 @@ export default async function CharactersPage() {
                 {corpOnly.map((s) => (
                   <li key={s} className="rounded-xl glass-inset px-3 py-2 text-xs">
                     <div className="text-ink">{reasons.get(s)}</div>
-                    <code className="text-[0.68rem] text-ink-3">{s}</code>
+                    <code className="text-2xs text-ink-3">{s}</code>
                   </li>
                 ))}
               </ul>

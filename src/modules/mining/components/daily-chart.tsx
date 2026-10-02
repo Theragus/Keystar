@@ -57,7 +57,7 @@ function ChartTooltip({
   const rows = CHART_CLASSES.filter((c) => Number(row[c.id]) > 0);
   return (
     <div className="glass min-w-[200px] rounded-2xl bg-space-800/85 px-4 py-3 text-xs">
-      <div className="eve-label mb-2 text-[0.66rem] text-ink-3">{shortDate(String(row.date))}</div>
+      <div className="eve-label mb-2 text-2xs text-ink-3">{shortDate(String(row.date))}</div>
       {rows.length === 0 && <div className="text-ink-3">No mining</div>}
       {rows.map((c) => (
         <div key={c.id} className="flex items-center gap-2 py-0.5">
@@ -119,7 +119,7 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
                 tickLine={false}
                 axisLine={{ stroke: "var(--axis)" }}
                 minTickGap={28}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 12 }}
                 dy={6}
               />
               <YAxis
@@ -127,7 +127,7 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
                 tickLine={false}
                 axisLine={false}
                 width={52}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 12 }}
               />
               <Tooltip
                 cursor={{ fill: "rgba(255,255,255,0.045)" }}

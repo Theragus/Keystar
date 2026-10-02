@@ -31,7 +31,7 @@ export function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: s
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Main">
         {sections.map((section) => (
           <div key={section.id}>
-            <div className="eve-label px-2.5 pb-1.5 text-[0.62rem] text-ink-3">{section.label}</div>
+            <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3">{section.label}</div>
             <ul className="space-y-0.5">
               {section.items.map((item) => (
                 <li key={item.href}>
@@ -49,7 +49,7 @@ export function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: s
         href={`${env().SOURCE_URL}/releases`}
         target="_blank"
         rel="noopener noreferrer"
-        className="px-5 pb-2 font-mono text-[0.65rem] text-ink-3 hover:text-ink-2"
+        className="px-5 pb-2 font-mono text-3xs text-ink-3 hover:text-ink-2"
         title="Release notes"
       >
         Keystar v{KEYSTAR_VERSION}
@@ -65,7 +65,7 @@ export function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: s
             <div className="truncate text-[0.82rem] font-medium">{user.main?.name ?? "Unknown pilot"}</div>
             <div className="mt-0.5 flex items-center gap-1.5">
               <RoleBadge role={user.role} />
-              {corpTicker && <span className="font-mono text-[0.65rem] text-ink-3">[{corpTicker}]</span>}
+              {corpTicker && <span className="font-mono text-3xs text-ink-3">[{corpTicker}]</span>}
             </div>
           </div>
           <form action="/auth/logout" method="post">

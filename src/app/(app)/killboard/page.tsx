@@ -364,7 +364,7 @@ function Figure({
 }) {
   return (
     <div className="2xl:flex 2xl:items-baseline 2xl:justify-between 2xl:gap-3">
-      <dt className="eve-label flex items-center gap-1.5 text-[0.62rem] whitespace-nowrap text-ink-3">
+      <dt className="eve-label flex items-center gap-1.5 text-2xs whitespace-nowrap text-ink-3">
         {swatch && <span className="inline-block size-2 rounded-sm" style={{ background: swatch }} aria-hidden />}
         {label}
       </dt>

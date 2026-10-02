@@ -63,7 +63,7 @@ export function MemberLeaderboard({
               </div>
               <div className="mt-1.5 flex items-center gap-3">
                 <CompositionBar values={r.byClass} max={max} />
-                <span className="w-12 shrink-0 text-right text-[0.7rem] text-ink-3 tabular-nums">
+                <span className="w-12 shrink-0 text-right text-2xs text-ink-3 tabular-nums">
                   {total ? percent(metricValue / total, 1) : "—"}
                 </span>
               </div>
@@ -119,7 +119,7 @@ export function ClassComposition({ byClass, metric }: { byClass: ClassValues; me
       </ul>
       {moonTotal > 0 && (
         <div>
-          <div className="eve-label mb-2 text-[0.66rem] text-ink-3">Moon ore by rarity</div>
+          <div className="eve-label mb-2 text-2xs text-ink-3">Moon ore by rarity</div>
           <div className="flex h-2.5 gap-[2px] overflow-hidden rounded-full">
             {MOON_RARITY.filter((m) => (byClass[m.id] ?? 0) > 0).map((m) => (
               <div
@@ -174,7 +174,7 @@ export function OreTable({ rows, filters, metric }: { rows: TypeRow[]; filters: 
                   <TypeIcon id={r.typeId} size={26} />
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{r.name}</span>
-                    <span className="flex items-center gap-1.5 text-[0.7rem] text-ink-3">
+                    <span className="flex items-center gap-1.5 text-2xs text-ink-3">
                       <span className="size-1.5 rounded-full" style={{ background: oreClassColor(r.oreClass) }} aria-hidden />
                       {ORE_CLASS_META[r.oreClass].short}
                       {r.groupName && ` · ${r.groupName}`}

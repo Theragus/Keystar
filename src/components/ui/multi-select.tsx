@@ -110,7 +110,7 @@ export function MultiSelect({
             className="h-8 w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-3"
           />
         </div>
-        <div className="mt-2 flex items-center justify-between px-1 text-[0.7rem]">
+        <div className="mt-2 flex items-center justify-between px-1 text-2xs">
           <button type="button" className="text-ink-3 hover:text-ink" onClick={() => setDraft(new Set(filtered.map((o) => o.value)))}>
             Select {query ? "matches" : "all"}
           </button>
@@ -122,7 +122,7 @@ export function MultiSelect({
           {groups.length === 0 && <div className="px-2 py-6 text-center text-xs text-ink-3">No matches</div>}
           {groups.map(([group, items]) => (
             <div key={group} className="py-1">
-              {group && <div className="eve-label px-2 pt-2 pb-1 text-[0.62rem] text-ink-3">{group}</div>}
+              {group && <div className="eve-label px-2 pt-2 pb-1 text-2xs text-ink-3">{group}</div>}
               {items.map((o) => {
                 const checked = draft.has(o.value);
                 return (
@@ -144,7 +144,7 @@ export function MultiSelect({
                     </span>
                     {o.leading}
                     <span className="min-w-0 flex-1 truncate text-ink">{o.label}</span>
-                    {o.hint && <span className="shrink-0 text-[0.7rem] text-ink-3">{o.hint}</span>}
+                    {o.hint && <span className="shrink-0 text-2xs text-ink-3">{o.hint}</span>}
                   </button>
                 );
               })}

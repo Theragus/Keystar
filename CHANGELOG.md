@@ -3,6 +3,16 @@
 All notable changes to Keystar. Versions follow [Semantic Versioning](https://semver.org/); while Keystar is below
 1.0, new features bump the patch version. Releasing is described in [docs/releasing.md](docs/releasing.md).
 
+## [0.1.2] - 2026-10-02
+
+### Changed
+
+- Larger small text across the app for readability at 100% zoom on large monitors: section titles (e.g. "Top
+  pilots") go from 11px to 13px, field labels and table headers from 9–11px to 12px, badges and chips to 11px, and
+  subtitles and hints from 12px to 13px. The sizes are now a shared scale (`text-3xs`, `text-2xs`, `text-xs`)
+  defined in `globals.css` instead of one-off values.
+- KPI tiles keep their values aligned across a row when a hint wraps onto a second line.
+
 ## [0.1.1] - 2026-10-02
 
 ### Added

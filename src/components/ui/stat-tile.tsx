@@ -71,14 +71,14 @@ export function StatTile({
   className?: string;
 }) {
   return (
-    <Glass className={cn("flex flex-col justify-between gap-3 px-5 py-4", className)}>
+    <Glass className={cn("flex flex-col gap-3 px-5 py-4", className)}>
       <div className="flex items-center gap-2.5">
         {Icon && (
           <span className="grid size-7 shrink-0 place-items-center rounded-md border border-white/[0.08] bg-white/[0.03]">
             <Icon className="size-3.5 text-ink-2" aria-hidden />
           </span>
         )}
-        <div className="eve-label text-[0.64rem] text-ink-3">{label}</div>
+        <div className="eve-label text-2xs text-ink-3">{label}</div>
       </div>
       <div className="flex items-end justify-between gap-3">
         <div
@@ -92,7 +92,8 @@ export function StatTile({
         </div>
         {trend && <Sparkline values={trend} className="mb-1 hidden xl:block" />}
       </div>
-      <div className="flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1">
+      {/* Pinned to the bottom so values stay aligned across a row when a hint wraps. */}
+      <div className="mt-auto flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1">
         {delta}
         {hint && <span className="text-xs text-ink-3">{hint}</span>}
       </div>

@@ -50,7 +50,7 @@ export function IskDonut({ destroyed, lost }: { destroyed: number; lost: number 
       <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
         <div>
           <div className="text-2xl font-semibold tabular-nums">{total > 0 ? percent(destroyed / total, 1) : "—"}</div>
-          <div className="eve-label text-[0.6rem] text-ink-3">ISK efficiency</div>
+          <div className="eve-label text-2xs text-ink-3">ISK efficiency</div>
         </div>
       </div>
     </div>
