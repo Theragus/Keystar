@@ -1,21 +1,11 @@
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { randomToken, sha256Hex } from "@/core/crypto";
 import { getDb, sessions } from "@/core/db";
-import { env } from "@/core/env";
+import { SESSION_DAYS } from "./cookie";
 
-export const SESSION_COOKIE = "ks_session";
-const SESSION_DAYS = 30;
+export { SESSION_COOKIE, sessionCookieOptions } from "./cookie";
+
 const DAY = 24 * 60 * 60 * 1000;
-
-export function sessionCookieOptions(maxAgeSeconds = SESSION_DAYS * 24 * 60 * 60) {
-  return {
-    httpOnly: true,
-    secure: env().APP_URL.startsWith("https://"),
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: maxAgeSeconds,
-  };
-}
 
 /** Creates a session row and returns the raw cookie token (only its hash is stored). */
 export async function createSession(userId: string, meta: { ip?: string | null; userAgent?: string | null } = {}) {
@@ -32,7 +22,11 @@ export async function createSession(userId: string, meta: { ip?: string | null; 
   return token;
 }
 
-/** Returns the session for a cookie token, sliding its expiry. */
+/**
+ * Returns the session for a cookie token. Expiry slides with activity: at most
+ * every 5 minutes it is pushed to 30 days from now, matching the cookie that
+ * src/proxy.ts renews on each navigation.
+ */
 export async function validateSessionToken(token: string) {
   const db = getDb();
   const id = sha256Hex(token);
@@ -44,15 +38,10 @@ export async function validateSessionToken(token: string) {
   if (!session) return null;
 
   const now = Date.now();
-  const needsSlide = session.expiresAt.getTime() - now < (SESSION_DAYS / 2) * DAY;
-  const needsTouch = now - session.lastSeenAt.getTime() > 5 * 60 * 1000;
-  if (needsSlide || needsTouch) {
+  if (now - session.lastSeenAt.getTime() > 5 * 60 * 1000) {
     await db
       .update(sessions)
-      .set({
-        lastSeenAt: new Date(),
-        ...(needsSlide ? { expiresAt: new Date(now + SESSION_DAYS * DAY) } : {}),
-      })
+      .set({ lastSeenAt: new Date(now), expiresAt: new Date(now + SESSION_DAYS * DAY) })
       .where(eq(sessions.id, id));
   }
   return session;

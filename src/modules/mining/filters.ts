@@ -35,6 +35,13 @@ export const MINING_METRICS: { value: MiningMetric; label: string }[] = [
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** A real calendar date in YYYY-MM-DD form (rejects 2026-02-30, 2026-99-99, …). */
+export function isValidIsoDate(value: string | undefined): value is string {
+  if (!value || !DATE_RE.test(value)) return false;
+  const t = Date.parse(`${value}T00:00:00Z`);
+  return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === value;
+}
+
 export function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -93,8 +100,8 @@ function idList(v: string | string[] | undefined): number[] {
 export function parseMiningFilters(params: RawParams, today: string = isoDate(new Date())): MiningFilters {
   let from = first(params.from);
   let to = first(params.to);
-  if (!from || !DATE_RE.test(from)) from = addDays(today, -29);
-  if (!to || !DATE_RE.test(to)) to = today;
+  if (!isValidIsoDate(from)) from = addDays(today, -29);
+  if (!isValidIsoDate(to)) to = today;
   if (from > to) [from, to] = [to, from];
   // Keep queries bounded: at most ~3 years per view.
   if (daysBetween(from, to) > 1100) from = addDays(to, -1099);
@@ -103,7 +110,7 @@ export function parseMiningFilters(params: RawParams, today: string = isoDate(ne
   const metric = first(params.metric);
   const groupBy = first(params.by);
   const classes = (first(params.classes) ?? "").split(",").filter(isOreClass);
-  const page = Math.max(1, Math.min(10_000, Number(first(params.page)) || 1));
+  const page = Math.max(1, Math.min(10_000, Math.floor(Number(first(params.page))) || 1));
 
   return {
     from,

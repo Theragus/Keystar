@@ -39,7 +39,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
     getTypeBreakdown(filters, scope, valuation),
     getSystemBreakdown(filters, scope, valuation),
     getFilterOptions(scope),
-    getCoverage(scope, ctx.homeCorporationId),
+    getCoverage(scope),
   ]);
 
   const { current, previous } = summary;
@@ -58,7 +58,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
           title="Mining Overview"
           description={
             scope.corp
-              ? "Ore, ice, gas and moon mining across every registered member and corporation refinery."
+              ? "Ore, ice, gas and moon mining by home-corporation characters and at corporation refineries."
               : "Mining of your own characters. Ask a director for corporation-wide access."
           }
           actions={

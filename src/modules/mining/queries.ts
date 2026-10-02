@@ -11,10 +11,37 @@ import { addDays, daysBetween, type MiningFilters } from "./filters";
  */
 
 export interface MiningScope {
-  /** May see every character's mining (mining.view.corp). */
+  /**
+   * May see corporation-wide mining (mining.view.corp): characters currently
+   * in the home corporation plus refineries owned by it.
+   */
   corp: boolean;
-  /** The viewer's own characters (always visible). */
+  /** The viewer's own characters (always visible, whatever their corporation). */
   ownCharacterIds: number[];
+  /** Corporation whose data corporation-wide views are limited to. */
+  homeCorporationId: number | null;
+}
+
+export function miningScope(
+  user: { can: (permission: string) => boolean; characterIds: number[] },
+  homeCorporationId: number | null,
+): MiningScope {
+  return { corp: user.can("mining.view.corp"), ownCharacterIds: user.characterIds, homeCorporationId };
+}
+
+/**
+ * Corporation-wide views must not show data from other corporations (guests,
+ * a previous home corporation's refineries, characters that left).
+ */
+function homeCorpConds(scope: MiningScope) {
+  const home = scope.corp ? scope.homeCorporationId : null;
+  return {
+    personal: (col: string) =>
+      home
+        ? sql`AND EXISTS (SELECT 1 FROM characters hc WHERE hc.character_id = ${sql.raw(col)} AND hc.corporation_id = ${home})`
+        : sql``,
+    observer: (col: string) => (home ? sql`AND ${sql.raw(col)} = ${home}` : sql``),
+  };
 }
 
 export interface Valuation {
@@ -43,12 +70,14 @@ function ledgerCte(f: MiningFilters, scope: MiningScope, val: Valuation, range?:
       : chars.length
         ? sql`AND ${sql.raw(col)} IN (${list(chars)})`
         : sql``;
+  const homeCorp = homeCorpConds(scope);
 
   const personal = sql`
     SELECT 'personal'::text AS source, l.character_id, l.date, l.solar_system_id, l.type_id,
            l.quantity::float8 AS quantity, NULL::bigint AS observer_id
     FROM mining_character_ledger l
-    WHERE l.date BETWEEN ${from}::date AND ${to}::date ${charCond("l.character_id")}`;
+    WHERE l.date BETWEEN ${from}::date AND ${to}::date ${charCond("l.character_id")}
+      ${homeCorp.personal("l.character_id")}`;
 
   // In the combined view, observer rows already present in a member's personal
   // ledger (same character, day and ore) would be counted twice.
@@ -62,7 +91,8 @@ function ledgerCte(f: MiningFilters, scope: MiningScope, val: Valuation, range?:
            o.quantity::float8 AS quantity, o.observer_id
     FROM mining_observer_ledger o
     LEFT JOIN mining_observers obs ON obs.observer_id = o.observer_id
-    WHERE o.date BETWEEN ${from}::date AND ${to}::date ${charCond("o.character_id")} ${dedupe}`;
+    WHERE o.date BETWEEN ${from}::date AND ${to}::date ${charCond("o.character_id")} ${dedupe}
+      ${homeCorp.observer("o.corporation_id")}`;
 
   const union =
     f.source === "personal" ? personal : f.source === "observer" ? observer : sql`${personal} UNION ALL ${observer}`;
@@ -348,9 +378,10 @@ export async function getLedgerRows(
   f: MiningFilters,
   scope: MiningScope,
   val: Valuation,
-  opts: { limit: number; offset: number },
+  opts: { limit: number; offset: number; count?: boolean },
 ): Promise<{ rows: LedgerRow[]; total: number }> {
   const db = getDb();
+  const withCount = opts.count ?? true;
   const [rows, count] = await Promise.all([
     db.execute<Record<string, unknown>>(sql`
       WITH ${ledgerCte(f, scope, val)}
@@ -368,9 +399,14 @@ export async function getLedgerRows(
       LEFT JOIN eve_entities e ON e.id = l.character_id
       LEFT JOIN eve_systems s ON s.system_id = l.solar_system_id
       LEFT JOIN mining_observers obs ON obs.observer_id = l.observer_id
-      ORDER BY l.date DESC, value DESC, l.character_id
+      -- Fully deterministic order (a row's identity is source + observer + character + day + system + ore)
+      -- so OFFSET paging (UI pages, streamed CSV export) never skips or repeats rows.
+      ORDER BY l.date DESC, value DESC, l.character_id, l.type_id, l.solar_system_id NULLS LAST, l.source,
+               l.observer_id NULLS FIRST
       LIMIT ${opts.limit} OFFSET ${opts.offset}`),
-    db.execute<{ total: number }>(sql`WITH ${ledgerCte(f, scope, val)} SELECT COUNT(*)::int AS total FROM ledger`),
+    withCount
+      ? db.execute<{ total: number }>(sql`WITH ${ledgerCte(f, scope, val)} SELECT COUNT(*)::int AS total FROM ledger`)
+      : Promise.resolve([] as { total: number }[]),
   ]);
   return {
     total: num(count[0]?.total),
@@ -405,31 +441,37 @@ export interface FilterOptions {
 export async function getFilterOptions(scope: MiningScope): Promise<FilterOptions> {
   const db = getDb();
   const own = scope.ownCharacterIds;
+  const homeCorp = homeCorpConds(scope);
   const charScope = (col: string) =>
     scope.corp ? sql`` : own.length ? sql`WHERE ${sql.raw(col)} IN (${list(own)})` : sql`WHERE false`;
+  // Qualify the column: inside homeCorp's EXISTS subquery a bare name would bind to the inner table.
+  const personalScope = (col: string) =>
+    sql`${charScope(col)} ${scope.corp ? sql`WHERE true ${homeCorp.personal(`mining_character_ledger.${col}`)}` : sql``}`;
+  const observerScope = (col: string) =>
+    sql`${charScope(col)} ${scope.corp ? sql`WHERE true ${homeCorp.observer("corporation_id")}` : sql``}`;
 
   const [chars, types, systems] = await Promise.all([
     db.execute<Record<string, unknown>>(sql`
       SELECT x.character_id::float8 AS id, COALESCE(c.name, e.name, 'Character ' || x.character_id) AS name,
              (c.character_id IS NOT NULL) AS registered
-      FROM (SELECT DISTINCT character_id FROM mining_character_ledger ${charScope("character_id")}
-            UNION SELECT DISTINCT character_id FROM mining_observer_ledger ${charScope("character_id")}) x
+      FROM (SELECT DISTINCT character_id FROM mining_character_ledger ${personalScope("character_id")}
+            UNION SELECT DISTINCT character_id FROM mining_observer_ledger ${observerScope("character_id")}) x
       LEFT JOIN characters c ON c.character_id = x.character_id
       LEFT JOIN eve_entities e ON e.id = x.character_id
       ORDER BY 2`),
     db.execute<Record<string, unknown>>(sql`
       SELECT x.type_id::int AS id, COALESCE(t.name, 'Type ' || x.type_id) AS name, ${ORE_CLASS_SQL} AS ore_class,
              g.name AS group_name
-      FROM (SELECT DISTINCT type_id FROM mining_character_ledger ${charScope("character_id")}
-            UNION SELECT DISTINCT type_id FROM mining_observer_ledger ${charScope("character_id")}) x
+      FROM (SELECT DISTINCT type_id FROM mining_character_ledger ${personalScope("character_id")}
+            UNION SELECT DISTINCT type_id FROM mining_observer_ledger ${observerScope("character_id")}) x
       LEFT JOIN eve_types t ON t.type_id = x.type_id
       LEFT JOIN eve_groups g ON g.group_id = t.group_id
       ORDER BY 2`),
     db.execute<Record<string, unknown>>(sql`
       SELECT x.id::float8 AS id, COALESCE(s.name, 'System ' || x.id) AS name, s.security_status::float8 AS security
-      FROM (SELECT DISTINCT solar_system_id AS id FROM mining_character_ledger ${charScope("character_id")}
+      FROM (SELECT DISTINCT solar_system_id AS id FROM mining_character_ledger ${personalScope("character_id")}
             UNION SELECT DISTINCT solar_system_id FROM mining_observers WHERE solar_system_id IS NOT NULL ${
-              scope.corp ? sql`` : sql`AND false`
+              scope.corp ? homeCorp.observer("corporation_id") : sql`AND false`
             }) x
       LEFT JOIN eve_systems s ON s.system_id = x.id
       ORDER BY 2`),
@@ -465,7 +507,7 @@ export interface ObserverSummary {
 /** Per-refinery totals for the date range (corporation scope only). */
 export async function getObserverSummaries(f: MiningFilters, val: Valuation, homeCorporationId: number | null) {
   const obsFilters: MiningFilters = { ...f, source: "observer" };
-  const scope: MiningScope = { corp: true, ownCharacterIds: [] };
+  const scope: MiningScope = { corp: true, ownCharacterIds: [], homeCorporationId };
   const db = getDb();
   const [observers, perMiner] = await Promise.all([
     db.execute<Record<string, unknown>>(sql`
@@ -486,6 +528,7 @@ export async function getObserverSummaries(f: MiningFilters, val: Valuation, hom
       LEFT JOIN ledger l ON l.observer_id = o.observer_id
       LEFT JOIN eve_systems s ON s.system_id = o.solar_system_id
       LEFT JOIN cls ON cls.observer_id = o.observer_id
+      WHERE true ${homeCorpConds(scope).observer("o.corporation_id")}
       GROUP BY o.observer_id, o.name, s.name, s.security_status, o.last_updated
       ORDER BY value DESC`),
     db.execute<Record<string, unknown>>(sql`
@@ -545,9 +588,16 @@ export interface Coverage {
 }
 
 /** How complete and fresh the mining data is, so numbers can be trusted. */
-export async function getCoverage(scope: MiningScope, homeCorporationId: number | null): Promise<Coverage> {
+export async function getCoverage(scope: MiningScope): Promise<Coverage> {
   const own = scope.ownCharacterIds;
-  const charFilter = scope.corp ? sql`` : own.length ? sql`AND c.character_id IN (${list(own)})` : sql`AND false`;
+  const homeCorporationId = scope.homeCorporationId;
+  const charFilter = scope.corp
+    ? homeCorporationId
+      ? sql`AND c.corporation_id = ${homeCorporationId}`
+      : sql``
+    : own.length
+      ? sql`AND c.character_id IN (${list(own)})`
+      : sql`AND false`;
   const jobFilter = scope.corp ? sql`` : own.length ? sql`AND owner_id IN (${list(own)})` : sql`AND false`;
   const db = getDb();
   const [tokens, jobs, observers, roster] = await Promise.all([

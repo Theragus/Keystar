@@ -12,6 +12,9 @@ import type { TokenResponse, VerifiedCharacter } from "./sso";
 
 export type SsoIntent = "login" | "join" | "link" | "link-corp";
 
+/** Advisory lock id that serialises provisioning (first-admin bootstrap, linking). */
+const PROVISION_LOCK = 727_275;
+
 export class ProvisionError extends Error {
   constructor(message: string) {
     super(message);
@@ -52,6 +55,9 @@ export async function provisionFromSso(params: {
 
   const db = getDb();
   const result = await db.transaction(async (tx) => {
+    // Serialise sign-ins so two simultaneous first logins can't both become admin;
+    // the admin count below is read after the lock, so it sees the other commit.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROVISION_LOCK})`);
     const [existing] = await tx.select().from(characters).where(eq(characters.characterId, verified.characterId));
 
     if (existing && existing.ownerHash !== verified.ownerHash) {

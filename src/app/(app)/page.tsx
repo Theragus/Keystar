@@ -32,7 +32,7 @@ import { toChartClasses } from "@/modules/mining/class-colors";
 import { DailyChart } from "@/modules/mining/components/daily-chart";
 import { DATE_PRESETS, isoDate, parseMiningFilters } from "@/modules/mining/filters";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
-import { getDailySeries, getMemberBreakdown, getMiningSummary } from "@/modules/mining/queries";
+import { getDailySeries, getMemberBreakdown, getMiningSummary, miningScope } from "@/modules/mining/queries";
 
 export const metadata = { title: "Dashboard" };
 
@@ -54,11 +54,12 @@ export default async function OverviewPage() {
   const valuation = { source: settings["mining.valuationSource"], mode: settings["mining.valuationMode"] };
 
   const homeCorpId = settings["corp.homeCorporationId"];
+  const scope = miningScope(user, homeCorpId);
   const [own, corp, daily, top, tokens, syncStats, pendingUsers, homeCorp, corpStats, workers] = await Promise.all([
-    canMining ? getMiningSummary(filters, { corp: false, ownCharacterIds: user.characterIds }, valuation) : null,
-    corpScope ? getMiningSummary(filters, { corp: true, ownCharacterIds: [] }, valuation) : null,
-    canMining ? getDailySeries(filters, { corp: corpScope, ownCharacterIds: user.characterIds }, valuation) : [],
-    corpScope ? getMemberBreakdown(filters, { corp: true, ownCharacterIds: [] }, valuation) : [],
+    canMining ? getMiningSummary(filters, { ...scope, corp: false }, valuation) : null,
+    corpScope ? getMiningSummary(filters, scope, valuation) : null,
+    canMining ? getDailySeries(filters, scope, valuation) : [],
+    corpScope ? getMemberBreakdown(filters, scope, valuation) : [],
     user.characterIds.length
       ? getDb().select().from(esiTokens).where(inArray(esiTokens.characterId, user.characterIds))
       : Promise.resolve([]),

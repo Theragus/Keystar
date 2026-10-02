@@ -4,7 +4,7 @@ import { getSettings } from "@/core/settings";
 import type { RangePreset } from "@/components/ui/date-range";
 import { DATE_PRESETS, isoDate, parseMiningFilters, type MiningFilters } from "./filters";
 import { MINING_PERMISSIONS } from "./module";
-import type { MiningScope, Valuation } from "./queries";
+import { miningScope, type MiningScope, type Valuation } from "./queries";
 
 export interface MiningPageContext {
   user: CurrentUser;
@@ -32,7 +32,7 @@ export async function miningPageContext(
   return {
     user,
     filters: parseMiningFilters(searchParams, today),
-    scope: { corp: user.can(MINING_PERMISSIONS.viewCorp), ownCharacterIds: user.characterIds },
+    scope: miningScope(user, settings["corp.homeCorporationId"]),
     valuation,
     valuationLabel: `${sourceLabel} · ${valuation.mode === "historical" ? "price on the day mined" : "current prices"}`,
     presets: DATE_PRESETS.map((p) => ({ id: p.id, label: p.label, ...p.range(today) })),

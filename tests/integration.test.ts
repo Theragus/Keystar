@@ -4,7 +4,7 @@
  *   TEST_DATABASE_URL=postgres://keystar:keystar@localhost:5432/keystar_test pnpm test
  */
 import { sql } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const enabled = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -19,7 +19,8 @@ describe.skipIf(!enabled)("integration", async () => {
   const db = () => getDb();
   const filters = (extra: Record<string, string> = {}) =>
     parseMiningFilters({ from: "2026-09-01", to: "2026-09-30", ...extra }, "2026-10-02");
-  const corp = { corp: true, ownCharacterIds: [] as number[] };
+  const corp = { corp: true, ownCharacterIds: [] as number[], homeCorporationId: 100 };
+  const own = (ids: number[]) => ({ corp: false, ownCharacterIds: ids, homeCorporationId: 100 });
   const val = { source: "jita_buy" as const, mode: "current" as const };
   let userA = "";
   let userB = "";
@@ -96,13 +97,32 @@ describe.skipIf(!enabled)("integration", async () => {
     });
 
     it("restricts members to their own characters", async () => {
-      const own = await q.getMiningSummary(filters(), { corp: false, ownCharacterIds: [2, 3] }, val);
-      expect(own.current.value).toBe(100 * 600 + 500 * 10);
+      const mine = await q.getMiningSummary(filters(), own([2, 3]), val);
+      expect(mine.current.value).toBe(100 * 600 + 500 * 10);
       // Asking for someone else's character as a member yields nothing.
-      const other = await q.getMiningSummary(filters({ chars: "1" }), { corp: false, ownCharacterIds: [2, 3] }, val);
+      const other = await q.getMiningSummary(filters({ chars: "1" }), own([2, 3]), val);
       expect(other.current.quantity).toBe(0);
-      const none = await q.getMiningSummary(filters(), { corp: false, ownCharacterIds: [] }, val);
+      const none = await q.getMiningSummary(filters(), own([]), val);
       expect(none.current.quantity).toBe(0);
+    });
+
+    it("limits corporation views to the home corporation", async () => {
+      // A guest from another corporation and a refinery of a previous home corporation.
+      await db().insert(schema.characters).values({ characterId: 4, userId: userA, name: "Alpha Elsewhere", corporationId: 200, ownerHash: "h4" });
+      await db().insert(schema.miningCharacterLedger).values({ characterId: 4, date: "2026-09-12", solarSystemId: 30000180, typeId: 1230, quantity: 7000 });
+      await db().insert(schema.miningObservers).values({ observerId: 88, corporationId: 200, observerType: "structure", name: "Old Athanor" });
+      await db().insert(schema.miningObserverLedger).values({ observerId: 88, corporationId: 200, characterId: 9, recordedCorporationId: 555, date: "2026-09-12", typeId: 45490, quantity: 999 });
+
+      const corpView = await q.getMiningSummary(filters(), corp, val);
+      expect(corpView.current.value).toBe(105_000); // unchanged by the foreign rows
+      const observers = await q.getObserverSummaries(filters(), val, 100);
+      expect(observers.map((o) => o.name)).toEqual(["Osmon Athanor"]);
+      const options = await q.getFilterOptions(corp);
+      expect(options.characters.map((c) => c.id)).not.toContain(4);
+
+      // The owner still sees their own character, whatever its corporation.
+      const mine = await q.getMiningSummary(filters({ source: "personal" }), own([1, 4]), val);
+      expect(mine.current.value).toBe(1000 * 10 + 7000 * 10);
     });
 
     it("filters by ore class and system", async () => {
@@ -135,9 +155,51 @@ describe.skipIf(!enabled)("integration", async () => {
       const page = await q.getLedgerRows(filters(), corp, val, { limit: 2, offset: 0 });
       expect(page.total).toBe(4);
       expect(page.rows).toHaveLength(2);
+      // Paging one row at a time (as the streamed CSV export does) returns every row exactly once.
+      const keys: string[] = [];
+      for (let offset = 0; offset < 10; offset++) {
+        const { rows } = await q.getLedgerRows(filters(), corp, val, { limit: 1, offset, count: false });
+        if (!rows.length) break;
+        keys.push(`${rows[0].source}:${rows[0].characterId}:${rows[0].date}:${rows[0].typeId}`);
+      }
+      expect(keys).toHaveLength(4);
+      expect(new Set(keys).size).toBe(4);
       const observers = await q.getObserverSummaries(filters(), val, 100);
       expect(observers[0].name).toBe("Osmon Athanor");
       expect(observers[0].foreignMiners).toBe(1);
+    });
+  });
+
+  describe("sessions and tokens", () => {
+    it("slides the session expiry with activity", async () => {
+      const { createSession, validateSessionToken } = await import("@/core/auth/session");
+      const token = await createSession(userA);
+      await db().execute(sql`UPDATE sessions SET last_seen_at = now() - interval '10 minutes', expires_at = now() + interval '1 day'`);
+      expect(await validateSessionToken(token)).not.toBeNull();
+      const [row] = await db().select().from(schema.sessions);
+      expect(row.expiresAt.getTime()).toBeGreaterThan(Date.now() + 29 * 24 * 3600 * 1000);
+    });
+
+    it("only invalidates a token on invalid_grant", async () => {
+      const { encryptToken } = await import("@/core/crypto");
+      const { getAccessToken } = await import("@/core/esi/tokens");
+      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: encryptToken("refresh"), scopes: [] });
+      const respond = (error: string) =>
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(
+          new Response(JSON.stringify({ error, error_description: error }), { status: error === "invalid_grant" ? 400 : 401 }),
+        );
+
+      const misconfigured = respond("invalid_client");
+      await expect(getAccessToken(1)).rejects.toThrow();
+      misconfigured.mockRestore();
+      let [row] = await db().select().from(schema.esiTokens);
+      expect(row.status).toBe("active");
+
+      const revoked = respond("invalid_grant");
+      await expect(getAccessToken(1)).rejects.toThrow();
+      revoked.mockRestore();
+      [row] = await db().select().from(schema.esiTokens);
+      expect(row.status).toBe("invalid");
     });
   });
 

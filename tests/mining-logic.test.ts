@@ -3,7 +3,7 @@ import { bestJitaPrices, JITA_44_STATION_ID, resolveUnitValue } from "@/core/eve
 import { classifyOre, oreClassSqlCase } from "@/core/eve/ore";
 import { compact } from "@/lib/format";
 import { chartClassOf, toChartClasses } from "@/modules/mining/class-colors";
-import { DATE_PRESETS, daysBetween, miningQueryString, parseMiningFilters } from "@/modules/mining/filters";
+import { DATE_PRESETS, daysBetween, isValidIsoDate, miningQueryString, parseMiningFilters } from "@/modules/mining/filters";
 
 describe("mining filters", () => {
   const today = "2026-10-02";
@@ -25,6 +25,15 @@ describe("mining filters", () => {
     expect(f.classes).toEqual(["moon_r4"]);
     expect(f.source).toBe("observer");
     expect(f.page).toBe(1);
+  });
+
+  it("rejects impossible dates and fractional pages", () => {
+    const f = parseMiningFilters({ from: "2026-02-30", to: "2026-99-99", page: "2.5" }, today);
+    expect(f.from).toBe("2026-09-03");
+    expect(f.to).toBe(today);
+    expect(f.page).toBe(2);
+    expect(isValidIsoDate("2024-02-29")).toBe(true);
+    expect(isValidIsoDate("2026-02-29")).toBe(false);
   });
 
   it("round-trips through the query string", () => {

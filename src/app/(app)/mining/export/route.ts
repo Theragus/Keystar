@@ -4,19 +4,66 @@ import { getCurrentUser } from "@/core/auth/dal";
 import { getSettings } from "@/core/settings";
 import { parseMiningFilters } from "@/modules/mining/filters";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
-import { getLedgerRows } from "@/modules/mining/queries";
+import { getLedgerRows, miningScope, type LedgerRow } from "@/modules/mining/queries";
 
-const MAX_ROWS = 200_000;
+/** Rows fetched per database round-trip while streaming. */
+const PAGE_SIZE = 5_000;
+
+const HEADER = [
+  "date",
+  "source",
+  "character_id",
+  "character",
+  "main",
+  "type_id",
+  "ore",
+  "class",
+  "system_id",
+  "system",
+  "security",
+  "refinery",
+  "quantity",
+  "volume_m3",
+  "unit_price_isk",
+  "value_isk",
+];
 
 function csvCell(value: string | number | null): string {
   if (value === null) return "";
   const s = String(value);
   // Quote, and neutralise spreadsheet formula injection from names.
   const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
-  return /[",\n]/.test(safe) || safe !== s ? `"${safe.replace(/"/g, '""')}"` : safe;
+  return /[",\r\n]/.test(safe) || safe !== s ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
-/** CSV download of the ledger with the same filters and data scope as the UI. */
+function csvLine(r: LedgerRow): string {
+  return [
+    r.date,
+    r.source,
+    r.characterId,
+    r.characterName,
+    r.ownerName,
+    r.typeId,
+    r.typeName,
+    r.oreClass,
+    r.systemId,
+    r.systemName,
+    r.security === null ? null : r.security.toFixed(2),
+    r.observerName,
+    r.quantity,
+    r.volume.toFixed(2),
+    r.unitPrice.toFixed(2),
+    r.value.toFixed(2),
+  ]
+    .map(csvCell)
+    .join(",");
+}
+
+/**
+ * CSV download of the complete ledger with the same filters and data scope as
+ * the UI. Rows are streamed page by page, so large exports are never truncated
+ * and never held in memory at once.
+ */
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -26,66 +73,39 @@ export async function GET(request: NextRequest) {
 
   const filters = parseMiningFilters(Object.fromEntries(request.nextUrl.searchParams));
   const settings = await getSettings();
-  const scope = { corp: user.can(MINING_PERMISSIONS.viewCorp), ownCharacterIds: user.characterIds };
-  const { rows } = await getLedgerRows(
-    filters,
-    scope,
-    { source: settings["mining.valuationSource"], mode: settings["mining.valuationMode"] },
-    { limit: MAX_ROWS, offset: 0 },
-  );
+  const scope = miningScope(user, settings["corp.homeCorporationId"]);
+  const valuation = { source: settings["mining.valuationSource"], mode: settings["mining.valuationMode"] };
 
-  const header = [
-    "date",
-    "source",
-    "character_id",
-    "character",
-    "main",
-    "type_id",
-    "ore",
-    "class",
-    "system_id",
-    "system",
-    "security",
-    "refinery",
-    "quantity",
-    "volume_m3",
-    "unit_price_isk",
-    "value_isk",
-  ];
-  const lines = [header.join(",")];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.date,
-        r.source,
-        r.characterId,
-        r.characterName,
-        r.ownerName,
-        r.typeId,
-        r.typeName,
-        r.oreClass,
-        r.systemId,
-        r.systemName,
-        r.security === null ? null : r.security.toFixed(2),
-        r.observerName,
-        r.quantity,
-        r.volume.toFixed(2),
-        r.unitPrice.toFixed(2),
-        r.value.toFixed(2),
-      ]
-        .map(csvCell)
-        .join(","),
-    );
-  }
-
+  // One count up front for the audit log; the stream itself pages until empty.
+  const { total } = await getLedgerRows(filters, scope, valuation, { limit: 0, offset: 0 });
   await audit({
     actorUserId: user.id,
     actorName: user.main?.name,
     action: "mining.export",
-    details: { from: filters.from, to: filters.to, rows: rows.length },
+    details: { from: filters.from, to: filters.to, rows: total },
   });
 
-  return new NextResponse(lines.join("\n"), {
+  const encoder = new TextEncoder();
+  let offset = 0;
+  let headerSent = false;
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        if (!headerSent) {
+          headerSent = true;
+          controller.enqueue(encoder.encode(HEADER.join(",") + "\n"));
+        }
+        const { rows } = await getLedgerRows(filters, scope, valuation, { limit: PAGE_SIZE, offset, count: false });
+        if (rows.length) controller.enqueue(encoder.encode(rows.map(csvLine).join("\n") + "\n"));
+        offset += rows.length;
+        if (rows.length < PAGE_SIZE) controller.close();
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+  });
+
+  return new NextResponse(stream, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="keystar-mining-${filters.from}_${filters.to}.csv"`,

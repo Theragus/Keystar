@@ -30,7 +30,7 @@ export function getAccessToken(characterId: number, opts: { forceRefresh?: boole
 
 async function loadOrRefresh(characterId: number, forceRefresh: boolean): Promise<string> {
   const db = getDb();
-  return db.transaction(async (tx) => {
+  const outcome = await db.transaction(async (tx): Promise<{ token: string } | { revoked: string }> => {
     const rows = await tx
       .select()
       .from(esiTokens)
@@ -42,7 +42,7 @@ async function loadOrRefresh(characterId: number, forceRefresh: boolean): Promis
 
     const stillValid =
       row.accessTokenEnc && row.accessTokenExpiresAt && row.accessTokenExpiresAt.getTime() - Date.now() > 60_000;
-    if (stillValid && !forceRefresh) return decryptToken(row.accessTokenEnc!);
+    if (stillValid && !forceRefresh) return { token: decryptToken(row.accessTokenEnc!) };
 
     try {
       const res = await refreshAccessToken(decryptToken(row.refreshTokenEnc));
@@ -60,19 +60,23 @@ async function loadOrRefresh(characterId: number, forceRefresh: boolean): Promis
           updatedAt: new Date(),
         })
         .where(eq(esiTokens.characterId, characterId));
-      return res.access_token;
+      return { token: res.access_token };
     } catch (err) {
-      // invalid_grant = revoked by the player or CCP; anything else may be transient.
-      if (err instanceof SsoError && (err.code === "invalid_grant" || err.status === 400 || err.status === 401)) {
+      // Only invalid_grant means this token is dead (revoked by the player or CCP).
+      // Others, e.g. invalid_client from a misconfigured secret, must not wipe every token.
+      if (err instanceof SsoError && err.code === "invalid_grant") {
         await tx
           .update(esiTokens)
           .set({ status: "invalid", lastError: err.message, accessTokenEnc: null, updatedAt: sql`now()` })
           .where(eq(esiTokens.characterId, characterId));
-        throw new TokenInvalidError(characterId, err.message);
+        // Return instead of throwing: throwing here would roll back the update above.
+        return { revoked: err.message };
       }
       throw err;
     }
   });
+  if ("revoked" in outcome) throw new TokenInvalidError(characterId, outcome.revoked);
+  return outcome.token;
 }
 
 export function hasScopes(granted: readonly string[], required: readonly string[]): boolean {

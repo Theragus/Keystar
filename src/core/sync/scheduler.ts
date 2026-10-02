@@ -9,6 +9,7 @@ import type { JobDefinition, JobResult } from "./types";
 
 const log = createLogger("scheduler");
 const LOCK_MINUTES = 15;
+const LEASE_RENEW_MS = 5 * 60 * 1000;
 
 type SyncJobRow = typeof syncJobs.$inferSelect;
 
@@ -163,6 +164,14 @@ export async function executeJob(
       meta,
     });
 
+  // Keep the lease alive while the job runs so a slow job is never claimed twice.
+  const renewal = setInterval(() => {
+    db.update(syncJobs)
+      .set({ lockedUntil: sql`now() + make_interval(mins => ${LOCK_MINUTES})` })
+      .where(and(eq(syncJobs.id, row.id), eq(syncJobs.lockedBy, row.lockedBy ?? "")))
+      .catch((err) => jobLog.warn("Could not renew job lease", { error: errorMessage(err) }));
+  }, LEASE_RENEW_MS);
+
   try {
     let result: JobResult | void;
     let usedCharacter: number | null = null;
@@ -246,6 +255,8 @@ export async function executeJob(
         updatedAt: new Date(),
       })
       .where(eq(syncJobs.id, row.id));
+  } finally {
+    clearInterval(renewal);
   }
 }
 

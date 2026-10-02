@@ -54,7 +54,8 @@ export async function GET(request: NextRequest) {
     return res;
   } catch (err) {
     if (err instanceof ProvisionError) return fail("provision", err.message);
+    // Details stay in the server log; the unauthenticated login page only gets a generic error.
     log.error("SSO callback failed", { error: errorMessage(err) });
-    return fail("sso_failed", errorMessage(err));
+    return fail("sso_failed");
   }
 }
