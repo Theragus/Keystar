@@ -275,5 +275,15 @@ export const mining: typeof en = {
     grades: (count: number) => plural(count, "Stufe", "Stufen"),
     baseGrade: "Basis",
     closest: (km: string) => `nächster in ${km} km`,
+    columns: {
+      ore: "Erz",
+      rocks: "Asteroiden",
+      units: "Einheiten",
+      volume: "Volumen",
+      unitPrice: "Stückpreis",
+      scanner: "Scanner",
+      keystar: "Keystar",
+      share: "Anteil",
+    },
   },
 };

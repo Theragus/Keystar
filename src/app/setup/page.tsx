@@ -136,9 +136,9 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
                     defaultValue={settings["mining.valuationSource"]}
                     className="glass-inset mt-2 h-9 w-full rounded-lg px-3 text-sm text-ink [color-scheme:dark]"
                   >
-                    {VALUATION_SOURCES.map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {t.eve.valuationSources[s.value]}
+                    {VALUATION_SOURCES.map((source) => (
+                      <option key={source} value={source}>
+                        {t.eve.valuationSources[source]}
                       </option>
                     ))}
                   </select>

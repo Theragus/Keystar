@@ -127,9 +127,9 @@ export default async function SettingsPage() {
             <label className="block text-sm">
               <span className="text-ink-2">{ts.valuation.source}</span>
               <select name="valuationSource" defaultValue={settings["mining.valuationSource"]} className={`${selectClass} mt-1.5 w-full`}>
-                {VALUATION_SOURCES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {t.eve.valuationSources[s.value]}
+                {VALUATION_SOURCES.map((source) => (
+                  <option key={source} value={source}>
+                    {t.eve.valuationSources[source]}
                   </option>
                 ))}
               </select>

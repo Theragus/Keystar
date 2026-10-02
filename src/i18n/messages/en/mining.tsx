@@ -275,5 +275,15 @@ export const mining = {
     grades: (count: number) => plural(count, "grade", "grades"),
     baseGrade: "Base",
     closest: (km: string) => `closest ${km} km`,
+    columns: {
+      ore: "Ore",
+      rocks: "Rocks",
+      units: "Units",
+      volume: "Volume",
+      unitPrice: "Unit price",
+      scanner: "Scanner",
+      keystar: "Keystar",
+      share: "Share",
+    },
   },
 };
