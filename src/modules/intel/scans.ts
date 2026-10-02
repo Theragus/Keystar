@@ -203,8 +203,9 @@ export async function getScan(id: string, db: Db = getDb()): Promise<ScanRow | n
 
 const allianceNames = alias(eveEntities, "alliance_names");
 
-/** Pilots of a scan with their cached profile and corporation/alliance names, best score first. */
-export async function getScanPilots(scanId: string, db: Db = getDb()) {
+/** Pilots of a scan (or one of them) with their cached profile and corporation/alliance names, best score first. */
+export async function getScanPilots(scanId: string, opts: { characterId?: number; db?: Db } = {}) {
+  const db = opts.db ?? getDb();
   return db
     .select({
       characterId: intelScanPilots.characterId,
@@ -228,12 +229,18 @@ export async function getScanPilots(scanId: string, db: Db = getDb()) {
       profile: intelPilots.profile,
       birthday: intelPilots.birthday,
       securityStatus: intelPilots.securityStatus,
+      corpHistory: intelPilots.corpHistory,
+      stats: intelPilots.stats,
     })
     .from(intelScanPilots)
     .leftJoin(intelPilots, eq(intelPilots.characterId, intelScanPilots.characterId))
     .leftJoin(eveCorporations, eq(eveCorporations.corporationId, intelScanPilots.corporationId))
     .leftJoin(allianceNames, eq(allianceNames.id, intelScanPilots.allianceId))
-    .where(eq(intelScanPilots.scanId, scanId))
+    .where(
+      opts.characterId === undefined
+        ? eq(intelScanPilots.scanId, scanId)
+        : and(eq(intelScanPilots.scanId, scanId), eq(intelScanPilots.characterId, opts.characterId)),
+    )
     .orderBy(sql`${intelScanPilots.score} DESC NULLS LAST`, asc(intelScanPilots.position));
 }
 
@@ -254,4 +261,25 @@ export async function getRecentScans(userId: string, limit = 10, db: Db = getDb(
     .where(eq(intelScans.createdBy, userId))
     .orderBy(desc(intelScans.createdAt))
     .limit(limit);
+}
+
+export interface ScanProgress {
+  status: ScanRow["status"];
+  version: string;
+  /** Profiled pilots still waiting for statistics, their newest killmails, or older pages. */
+  pending: { stats: number; newest: number; deeper: number };
+}
+
+export async function scanProgress(scan: ScanRow, db: Db = getDb()): Promise<ScanProgress> {
+  const rows = await db.execute<{ stage: number; n: number }>(sql`
+    SELECT q.stage, count(*)::int AS n FROM intel_queue q
+    JOIN intel_scan_pilots sp ON sp.character_id = q.character_id
+    WHERE sp.scan_id = ${scan.id} AND sp.profiled
+    GROUP BY q.stage`);
+  const by = new Map(rows.map((r) => [Number(r.stage), Number(r.n)]));
+  return {
+    status: scan.status,
+    version: scan.updatedAt.toISOString(),
+    pending: { stats: by.get(1) ?? 0, newest: by.get(2) ?? 0, deeper: (by.get(3) ?? 0) + (by.get(4) ?? 0) },
+  };
 }

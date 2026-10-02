@@ -1,11 +1,14 @@
 import { ChevronRight, ExternalLink, Swords } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Portrait, TypeIcon } from "@/components/ui/eve-image";
 import { compact, relativeTime } from "@/lib/format";
 import { zkillCharacter } from "@/modules/killboard/links";
 import type { DisplayNames } from "../names";
 import type { ScanPilot } from "../scans";
-import type { PilotHistory, Standing } from "../types";
+import type { PilotHistory, PilotProfile, PilotScore, Standing } from "../types";
+import { LastSeen, LatestKills } from "./latest-kills";
+import { DimensionBreakdown, ScoreBadge, TagList } from "./score";
 import { StandingBadge } from "./standing-badge";
 
 export function HistoryChip({ history }: { history: PilotHistory | null }) {
@@ -31,22 +34,25 @@ function ProfileStatus({ pilot }: { pilot: ScanPilot }) {
   return null;
 }
 
-/** One scanned pilot: identity and standing in the row, the evidence when expanded. */
+/** One scanned pilot: identity, score, tags and latest kills in the row; the evidence when expanded. */
 export function PilotRow({
   pilot,
   standing,
   names,
-  scoreSlot,
-  details,
+  pilotNames,
+  scanId,
 }: {
   pilot: ScanPilot;
   standing: Standing;
   names: DisplayNames;
-  scoreSlot?: React.ReactNode;
-  details?: React.ReactNode;
+  pilotNames: Map<number, string>;
+  scanId: string;
 }) {
   const ticker = pilot.corporationTicker ? `[${pilot.corporationTicker}]` : null;
   const history = pilot.history;
+  const score = (pilot.scoreDetail as PilotScore | null) ?? null;
+  const profile = (pilot.profile as PilotProfile | null) ?? null;
+  const flyingWith = (profile?.associates ?? []).filter((a) => pilotNames.has(a.characterId) && a.characterId !== pilot.characterId);
   return (
     <details className="group glass-inset rounded-lg">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
@@ -57,18 +63,45 @@ export function PilotRow({
             <span className="truncate text-sm font-medium text-ink">{pilot.name}</span>
             <StandingBadge standing={standing} />
             <HistoryChip history={history} />
+            {score && <TagList tags={score.tags} />}
           </div>
           <div className="mt-0.5 truncate text-xs text-ink-3">
             {ticker && <span className="text-ink-2">{ticker} </span>}
             {pilot.corporationName ?? (pilot.corporationId ? `Corporation ${pilot.corporationId}` : "Unknown corporation")}
             {pilot.allianceId && <> · {pilot.allianceName ?? `Alliance ${pilot.allianceId}`}</>}
           </div>
+          {profile && (
+            <div className="mt-1">
+              <LastSeen profile={profile} names={names} />
+            </div>
+          )}
+          {profile && profile.recent.latest.length > 0 && (
+            <div className="mt-1.5 hidden md:block">
+              <LatestKills events={profile.recent.latest} names={names} limit={4} />
+            </div>
+          )}
         </div>
         <ProfileStatus pilot={pilot} />
-        {scoreSlot}
+        <ScoreBadge score={score} />
       </summary>
       <div className="space-y-4 border-t border-white/6 px-4 py-3">
-        {details}
+        {profile && profile.recent.latest.length > 0 && (
+          <div>
+            <h4 className="eve-label mb-1.5 text-[0.62rem] text-ink-3">Latest kills and losses</h4>
+            <LatestKills events={profile.recent.latest} names={names} limit={10} />
+          </div>
+        )}
+        {score && score.dimensions.length > 0 && (
+          <div>
+            <h4 className="eve-label mb-1.5 text-[0.62rem] text-ink-3">Why this score</h4>
+            <DimensionBreakdown dimensions={score.dimensions} recencyGate={score.recencyGate} />
+          </div>
+        )}
+        {flyingWith.length > 0 && (
+          <p className="text-xs text-ink-2">
+            Flies with {flyingWith.slice(0, 6).map((a) => `${pilotNames.get(a.characterId)} (${a.sharedKills})`).join(", ")} from this list.
+          </p>
+        )}
         {history && history.killsOnUs + history.lossesToUs > 0 && (
           <div>
             <h4 className="eve-label mb-1.5 text-[0.62rem] text-ink-3">Against us</h4>
@@ -89,14 +122,14 @@ export function PilotRow({
             )}
           </div>
         )}
-        <a
-          href={zkillCharacter(pilot.characterId)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
-        >
-          zKillboard <ExternalLink className="size-3" aria-hidden />
-        </a>
+        <div className="flex gap-4 text-xs">
+          <Link href={`/intel/${scanId}/pilot/${pilot.characterId}`} className="text-accent hover:underline">
+            Full profile
+          </Link>
+          <a href={zkillCharacter(pilot.characterId)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-ink-2 hover:text-accent">
+            zKillboard <ExternalLink className="size-3" aria-hidden />
+          </a>
+        </div>
       </div>
     </details>
   );

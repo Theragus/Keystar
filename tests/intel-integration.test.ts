@@ -15,6 +15,11 @@ describe.skipIf(!enabled)("intel integration", async () => {
   const { startScan, getScanPilots, profileRemaining } = await import("@/modules/intel/scans");
   const { encountersWithUs, engagementsWithUs } = await import("@/modules/intel/history");
   const { enqueuePilots } = await import("@/modules/intel/queue");
+  const { runScanWorker } = await import("@/modules/intel/worker");
+  const { ZkillError } = await import("@/modules/killboard/zkill");
+  const { EsiClient } = await import("@/core/esi/client");
+  const { createLogger } = await import("@/core/logger");
+  const activeStats = (await import("./fixtures/zkill-stats-active.json")).default;
 
   const db = () => getDb();
   const HOME = 100;
@@ -48,14 +53,21 @@ describe.skipIf(!enabled)("intel integration", async () => {
       zkb: { hash: "h4", totalValue: 1e9 } },
   ];
 
-  const esi = (handler: (path: string, body: unknown) => unknown) =>
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      const url = new URL(String(input instanceof Request ? input.url : input));
-      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
-      const result = handler(url.pathname, body);
-      if (result === undefined) return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
-      return new Response(JSON.stringify(result), { status: 200, headers: { "content-type": "application/json" } });
-    });
+  // One fetch mock for the whole file: the shared ESI client keeps the fetch it was created with,
+  // so per-test spies would let later tests reach the real ESI.
+  let handler: (path: string, body: unknown) => unknown = () => undefined;
+  const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = new URL(String(input instanceof Request ? input.url : input));
+    const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    const result = handler(url.pathname, body);
+    if (result === undefined) return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    return new Response(JSON.stringify(result), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  const esi = (next: (path: string, body: unknown) => unknown) => {
+    handler = next;
+    fetchSpy.mockClear();
+    return { mock: fetchSpy.mock, mockRestore: () => void (handler = () => undefined) };
+  };
 
   const characters: Record<string, { id: number; corporation_id: number; alliance_id?: number }> = {
     "pilot nine": { id: 9, corporation_id: 555 },
@@ -88,6 +100,7 @@ describe.skipIf(!enabled)("intel integration", async () => {
   });
 
   afterAll(async () => {
+    fetchSpy.mockRestore();
     await closeDb();
   });
 
@@ -190,5 +203,105 @@ describe.skipIf(!enabled)("intel integration", async () => {
     await enqueuePilots([{ characterId: 9, priority: 40 }, { characterId: 9, priority: 1 }]);
     const [row] = await db().select().from(schema.intelQueue);
     expect(row).toMatchObject({ characterId: 9, stage: 2, priority: 40 });
+  });
+
+  describe("worker", () => {
+    const esiClient = new EsiClient({ baseUrl: "https://esi.invalid", userAgent: "t", compatibilityDate: "2026-08-18" });
+    const log = createLogger("test");
+    // The queue stamps rows with the database clock, so the worker tests run on real time.
+    const wnow = new Date();
+    const workerNow = () => new Date();
+    // Pilot 9's newest killmails: kills last week in an Interceptor, one loss with a cyno fitted.
+    const pageFor = (characterId: number) =>
+      characterId !== 9
+        ? []
+        : [0.5, 1, 2, 3, 4, 5].map((days, i) => ({
+            killmail_id: 7000 + i,
+            killmail_time: new Date(wnow.getTime() - days * 86_400_000).toISOString(),
+            solar_system_id: 30000180,
+            victim:
+              i === 5
+                ? { character_id: 9, corporation_id: 555, ship_type_id: 11184, damage_taken: 1, items: [{ item_type_id: 28646, flag: 27, quantity_destroyed: 1 }] }
+                : { character_id: 500 + i, corporation_id: 700, ship_type_id: 587, damage_taken: 1 },
+            attackers:
+              i === 5
+                ? [{ character_id: 600, corporation_id: 701, ship_type_id: 587, damage_done: 1, final_blow: true }]
+                : [
+                    { character_id: 9, corporation_id: 555, ship_type_id: 11184, damage_done: 1, final_blow: i % 2 === 0 },
+                    { character_id: 10, corporation_id: 555, ship_type_id: 22456, damage_done: 1, final_blow: false },
+                  ],
+            zkb: { hash: `x${i}`, totalValue: 200e6, solo: false, npc: false, awox: false, labels: [] },
+          }));
+    const source = {
+      stats: vi.fn(async (id: number) => (id === 9 ? ({ kind: "ok", stats: activeStats } as const) : ({ kind: "none" } as const))),
+      page: vi.fn(async (id: number) => pageFor(id)),
+    };
+
+    async function scan() {
+      const spy = esi(fakeEsi);
+      try {
+        const res = await startScan({ text: "Pilot Nine\nPilot Ten\nRed Twelve", userId, userName: null, aiAllowed: false }, { now: wnow });
+        if (!res.ok) throw new Error(res.error);
+        return res.id;
+      } finally {
+        spy.mockRestore();
+      }
+    }
+
+    beforeEach(() => {
+      source.stats.mockClear();
+      source.page.mockClear();
+    });
+
+    it("reads statistics, then newest killmails, scores pilots and marks the scan ready", async () => {
+      await db().insert(schema.eveTypes).values([
+        { typeId: 11184, name: "Crusader", groupId: 831 },
+        { typeId: 28646, name: "Covert Cynosural Field Generator I", groupId: 658 },
+      ]);
+      const id = await scan();
+      const out = await runScanWorker({ db: db(), esi: esiClient, log }, { source, offline: true, now: workerNow, budgetMs: 30_000 });
+      expect(out.remaining).toBe(0);
+      expect(out.readyScans).toEqual([id]);
+      expect(await db().select().from(schema.intelQueue)).toEqual([]);
+      // Statistics for everyone before any killmail page.
+      const order = [...source.stats.mock.invocationCallOrder, ...source.page.mock.invocationCallOrder].sort((a, b) => a - b);
+      expect(Math.max(...source.stats.mock.invocationCallOrder)).toBeLessThan(Math.min(...source.page.mock.invocationCallOrder));
+      expect(order.length).toBe(source.stats.mock.calls.length + source.page.mock.calls.length);
+
+      const pilots = new Map((await getScanPilots(id)).map((p) => [p.characterId, p]));
+      const nine = pilots.get(9)!;
+      expect(nine.deepStatus).toBe("complete");
+      expect(nine.score).toBeGreaterThan(0);
+      expect(nine.scoreDetail?.quick).toBe(false);
+      expect(nine.scoreDetail?.tags.map((t) => t.key)).toContain("cyno");
+      expect(nine.profile?.recent.latest[0].killmailId).toBe(7000);
+      // Pilot 10 shares kills with 9 in the digest; zKillboard has no statistics for 10.
+      expect(nine.profile?.associates.find((a) => a.characterId === 10)?.source).toBe("digest");
+      expect(pilots.get(10)).toMatchObject({ statsStatus: "none", score: null, tier: "unknown" });
+
+      const [row] = await db().select().from(schema.intelScans);
+      expect(row.status).toBe("ready");
+
+      // A rescan within the hour reuses everything: no zKillboard calls.
+      source.stats.mockClear();
+      source.page.mockClear();
+      const again = await scan();
+      await runScanWorker({ db: db(), esi: esiClient, log }, { source, offline: true, now: workerNow, budgetMs: 30_000 });
+      expect(source.stats).not.toHaveBeenCalled();
+      expect(source.page).not.toHaveBeenCalled();
+      expect((await getScanPilots(again)).find((p) => p.characterId === 9)?.score).toBe(nine.score);
+    });
+
+    it("stops on a blocked user agent and retries other failures later", async () => {
+      await scan();
+      const blocked = { ...source, stats: vi.fn(async () => Promise.reject(new ZkillError("zKillboard responded 403", 403))) };
+      await expect(runScanWorker({ db: db(), esi: esiClient, log }, { source: blocked, offline: true, now: workerNow })).rejects.toThrow("403");
+
+      const flaky = { ...source, stats: vi.fn(async () => Promise.reject(new ZkillError("zKillboard responded 502", 502))) };
+      const out = await runScanWorker({ db: db(), esi: esiClient, log }, { source: flaky, offline: true, now: workerNow });
+      expect(out.remaining).toBe(0);
+      const queue = await db().select().from(schema.intelQueue);
+      expect(queue.every((q) => q.attempts === 1 && q.notBefore.getTime() > Date.now() && q.lastError?.includes("502"))).toBe(true);
+    });
   });
 });
