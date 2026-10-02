@@ -251,6 +251,7 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
           )}
 
           <Panel
+            id="pilot-efficiency"
             title="Pilot efficiency"
             subtitle={`${pilotRows.length} pilots flew for ${corp?.ticker ? `[${corp.ticker}]` : "the corporation"} in this period`}
           >
@@ -277,7 +278,7 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
             <Panel title="Top systems by losses" subtitle={`7d: ${week.losses} losses (${signed(week.losses - prevWeek.losses)} vs prev 7d)`}>
               <SystemBars rows={lossSystems} color={LOSS_COLOR} unit="losses" upIsGood={false} />
             </Panel>
-            <Panel title="ISK breakdown">
+            <Panel id="isk" title="ISK breakdown">
               <div className="grid items-center gap-5 sm:grid-cols-[13rem_1fr] xl:grid-cols-1 2xl:grid-cols-[11rem_1fr]">
                 <IskDonut destroyed={totals.iskDestroyed} lost={totals.iskLost} />
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm 2xl:grid-cols-1 2xl:gap-y-2">

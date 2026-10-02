@@ -1,4 +1,5 @@
-import { ChevronsUpDown, Radio } from "lucide-react";
+import { Radio } from "lucide-react";
+import Link from "next/link";
 import { CorpLogo } from "@/components/ui/eve-image";
 import { isRecent } from "@/lib/format";
 import type { Settings } from "@/core/settings";
@@ -22,14 +23,14 @@ export function TopBar({
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-white/[0.07] bg-space-950/70 px-6 backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-2.5 text-[0.84rem]">
         {homeCorp ? (
-          <span className="flex min-w-0 items-center gap-2">
+          // Breadcrumb root: back to the dashboard.
+          <Link href="/" className="group flex min-w-0 items-center gap-2 rounded-md">
             <CorpLogo id={homeCorp.corporationId} size={20} className="rounded" />
-            <span className="truncate font-medium text-ink">{homeCorp.name}</span>
+            <span className="truncate font-medium text-ink transition-colors group-hover:text-accent">{homeCorp.name}</span>
             <span className="rounded border border-white/10 px-1.5 py-px font-mono text-3xs text-ink-2">
               {homeCorp.ticker}
             </span>
-            <ChevronsUpDown className="size-3.5 text-ink-3" aria-hidden />
-          </span>
+          </Link>
         ) : (
           <span className="text-ink-3">No home corporation</span>
         )}

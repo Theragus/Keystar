@@ -144,6 +144,7 @@ export default async function SettingsPage() {
       </div>
 
       <Panel
+        id="permissions"
         title="Permissions"
         subtitle="Minimum Keystar role per permission. Roles are hierarchical: higher roles include everything below."
       >
