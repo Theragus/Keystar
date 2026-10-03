@@ -109,14 +109,14 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
           )}
         </div>
         </div>
-        <div className="glass-inset relative rounded-lg p-3">
+        <div className="glass-inset relative flex flex-col rounded-lg p-3">
           <IntelLoadingOverlay />
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{e.engagementWithUs}</h3>
           {!view.home ? <p className="text-xs text-ink-3">{t.intel.scan.noHome}</p> : !view.engagements.length ? <p className="text-xs text-ink-3">{t.intel.scan.noFights}</p> : <>
-            <EngagementPager pages={view.engagements.map(fight => ({ id: fight.key, label: `${view.names.systems.get(fight.systemId)?.name ?? e.unknown} · ${f.relativeTime(fight.start)}`, content: <div className="border-t border-surface-contrast/6 pt-2 text-xs">
+            <EngagementPager pages={view.engagements.map(fight => ({ id: fight.key, label: `${view.names.systems.get(fight.systemId)?.name ?? e.unknown} · ${f.relativeTime(fight.start)}`, content: <div className="flex h-full flex-col border-t border-surface-contrast/6 pt-2 text-xs">
                 <a href={zkillRelated(fight.systemId, fight.start)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">{view.names.systems.get(fight.systemId)?.name ?? e.unknown} · {f.relativeTime(fight.start)}</a>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  {[{ key: "ours" as const, label: e.ourTeam, losses: fight.ourLosses, isk: fight.iskLost }, { key: "theirs" as const, label: e.theirTeam, losses: fight.ourKills, isk: fight.iskKilled }].map(team => <div key={team.key} className="min-w-0">
+                <div className="mt-2 grid flex-1 grid-cols-2 gap-2">
+                  {[{ key: "ours" as const, label: e.ourTeam, losses: fight.ourLosses, isk: fight.iskLost }, { key: "theirs" as const, label: e.theirTeam, losses: fight.ourKills, isk: fight.iskKilled }].map(team => <div key={team.key} className="flex min-w-0 flex-col">
                     <h4 className="font-semibold text-ink">{team.label}</h4>
                     <p className="mt-1 text-ink-3">{t.intel.engagements.lost(team.losses, f.compact(team.isk))} ISK</p>
                     <EngagementShips legendLabel={e.allianceLegend} unknown={e.unknown} ships={(fight.battle?.[team.key] ?? []).map(ship => ({

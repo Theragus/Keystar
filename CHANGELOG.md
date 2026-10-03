@@ -25,7 +25,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - Widen the Local Situation engagement report and compact ship rows to ship and pilot names inline; remove hull counts and loss labels while retaining red loss backgrounds.
 
-- Add bottom page indicators to the Local Situation engagement report to slide between recorded fights, newest first.
+- Add bottom page indicators to the Local Situation engagement report to slide between recorded fights, newest first. Engagement legends, paging and notes stay at the bottom of the card.
 
 - Engagement ship rows support alliance/corporation highlighting and per-side legends, initially selecting the affiliation with the most recorded pilots on each side.
 
