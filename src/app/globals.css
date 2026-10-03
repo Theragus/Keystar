@@ -380,6 +380,15 @@ select option:disabled {
   box-shadow: var(--inset-shadow);
 }
 
+/* A text field whose input sits inside a styled box (icon, suffix): the box
+   draws the focus ring, so the bare input inside it sets outline-none. */
+@utility field-focus {
+  &:has(:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
 /* A glass surface that is a link: brighter on hover, accent rim when it is the
    current selection. :hover / [aria-current] outrank .glass, so order is irrelevant. */
 @utility glass-link {
@@ -520,10 +529,13 @@ select option:disabled {
   scrollbar-color: var(--scrollbar) transparent;
 }
 
-/* Keyboard focus that is always visible on glass. */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+/* Keyboard focus that is always visible on glass. In the base layer so a
+   utility (outline-none on an input inside a field-focus wrapper) can turn it off. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 }
 
 /* Recharts: keep the chart chrome recessive. */

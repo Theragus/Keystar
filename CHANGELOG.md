@@ -58,6 +58,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   offers only ore classes that appear in the ledgers you can see, instead of every class.
 - Extend the sidebar surface to the bottom of long pages while keeping navigation and footer controls in the viewport.
 - Preserve the original dark-mode table separators and scrollbar colours when adding light mode.
+- Search boxes with an icon (filter pickers, page searches, mail search, field estimator inputs) draw the focus
+  ring around the whole rounded box instead of a square outline around the text area inside it.
 - After a role change on Users & Roles, the dropdown no longer jumps back to the old role. After saving
   Settings, the valuation and permission dropdowns no longer show the old values.
 
