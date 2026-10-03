@@ -4,6 +4,7 @@ import { CorpLogo } from "@/components/ui/eve-image";
 import { isRecent } from "@/lib/format";
 import { getI18n } from "@/i18n/server";
 import type { Settings } from "@/core/settings";
+import { LiveKills } from "@/modules/killboard/components/live-kills";
 import { EveClock } from "./eve-clock";
 import { CurrentPageCrumb } from "./nav-link";
 import { SidebarToggle } from "./sidebar-state";
@@ -14,11 +15,14 @@ export async function TopBar({
   serverStatus,
   demo,
   crumbs,
+  liveKills,
 }: {
   homeCorp: { corporationId: number; name: string; ticker: string; memberCount: number | null } | null;
   serverStatus: Settings["eve.serverStatus"];
   demo: boolean;
   crumbs: { href: string; label: string; exact?: boolean }[];
+  /** Show live kill/loss notifications (killboard access and a home corporation). */
+  liveKills: boolean;
 }) {
   const { t } = await getI18n();
   const fresh = serverStatus && isRecent(serverStatus.checkedAt, 15 * 60_000);
@@ -47,6 +51,7 @@ export async function TopBar({
         )}
       </div>
       <div className="flex items-center gap-2">
+        {liveKills && <LiveKills />}
         <div className="flex h-8 items-center gap-2 rounded-md border border-surface-contrast/[0.08] bg-surface-contrast/[0.03] px-3 text-xs">
           <Radio className={fresh ? "size-3.5 text-good-text" : "size-3.5 text-ink-3"} aria-hidden />
           <span className="text-ink-3">Tranquility</span>

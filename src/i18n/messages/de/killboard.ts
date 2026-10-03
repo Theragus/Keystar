@@ -18,6 +18,7 @@ export const killboard: typeof en = {
     },
     jobs: {
       zkillSync: "Killboard (zKillboard)",
+      liveFeed: "Killboard-Live-Feed (zKillboard)",
       situationReport: "Killboard-Lagebericht",
     },
   },
@@ -124,6 +125,25 @@ export const killboard: typeof en = {
     empty: "Keine Kills oder Verluste in diesem Zeitraum.",
     kind: { kill: "Kill", loss: "Verlust" },
     solo: "solo",
+  },
+  live: {
+    api: { unauthorized: "Nicht angemeldet", forbidden: "Kein Zugriff" },
+    region: "Live-Kill-Benachrichtigungen",
+    kind: { kill: "Kill", loss: "Verlust" },
+    finalBlow: "Final Blow",
+    topDamage: "Höchster Schaden",
+    killedBy: "Getötet von",
+    others: (n: number) => `+${n} weitere`,
+    npc: "NPC",
+    noPilot: "Kein Pilot",
+    open: "Diese Killmail auf zKillboard öffnen",
+    dismiss: "Schließen",
+    toggle: {
+      on: "Kill-Alarme an",
+      off: "Kill-Alarme aus",
+      enable: "Benachrichtigen, wenn ein Corp-Mitglied einen Kill oder Verlust hat",
+      disable: "Keine Kill- und Verlust-Benachrichtigungen mehr anzeigen",
+    },
   },
   ships: {
     entity: "Schiff",
