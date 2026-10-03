@@ -48,7 +48,7 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
     >
       {/* Preserve heading space so collapsed icons keep their vertical positions. */}
       <div className="sticky top-0 flex h-dvh flex-col ">
-        <div className="flex h-14 shrink-0 items-center border-b border-surface-contrast/[0.07] px-4 group-data-[sidebar=collapsed]/shell:justify-center group-data-[sidebar=collapsed]/shell:px-0">
+        <div className="flex h-14 shrink-0 items-center border-b border-surface-contrast/[0.07] px-4">
           <SidebarToggle />
         </div>
         <nav
