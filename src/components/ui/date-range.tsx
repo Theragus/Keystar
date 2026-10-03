@@ -86,7 +86,7 @@ export function DateRangePicker({
               value={customFrom}
               max={customTo}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="glass-inset h-8 min-w-0 flex-1 rounded-lg px-2 text-xs text-ink [color-scheme:dark]"
+              className="glass-inset h-8 min-w-0 flex-1 rounded-lg px-2 text-xs text-ink"
               aria-label={t.common.dateRange.from}
             />
             <span className="text-ink-3">–</span>
@@ -95,7 +95,7 @@ export function DateRangePicker({
               value={customTo}
               min={customFrom}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="glass-inset h-8 min-w-0 flex-1 rounded-lg px-2 text-xs text-ink [color-scheme:dark]"
+              className="glass-inset h-8 min-w-0 flex-1 rounded-lg px-2 text-xs text-ink"
               aria-label={t.common.dateRange.to}
             />
           </div>

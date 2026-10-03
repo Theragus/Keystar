@@ -50,7 +50,7 @@ export function AutoSubmitSelect({
       aria-label={label}
       disabled={pending}
       onChange={(e) => e.currentTarget.form?.requestSubmit()}
-      className={cn("glass-inset h-8 rounded-lg px-2.5 text-xs text-ink [color-scheme:dark] disabled:opacity-60", className)}
+      className={cn("glass-inset h-8 rounded-lg px-2.5 text-xs text-ink disabled:opacity-60", className)}
     >
       {children}
     </select>
