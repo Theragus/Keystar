@@ -42,7 +42,7 @@ export const shell: typeof en = {
     desktop: {
       label: "Desktop-Benachrichtigungen",
       hint: "Alarme als System-Benachrichtigung zeigen, solange Keystar im Hintergrund ist",
-      blocked: "Für diese Seite in den Browser-Einstellungen blockiert",
+      blocked: "Vom Browser, den System-Einstellungen oder einer Erweiterung blockiert",
       unsupported: "In diesem Browser hier nicht verfügbar (HTTPS nötig)",
     },
   },
