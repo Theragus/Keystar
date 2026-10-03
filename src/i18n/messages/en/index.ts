@@ -12,6 +12,7 @@ import { mining } from "./mining";
 import { pnl } from "./pnl";
 import { setup } from "./setup";
 import { shell } from "./shell";
+import { social } from "./social";
 import { trade } from "./trade";
 import { wallet } from "./wallet";
 
@@ -36,6 +37,7 @@ export const en = {
   intel,
   trade,
   wallet,
+  social,
 };
 
 export type Messages = typeof en;

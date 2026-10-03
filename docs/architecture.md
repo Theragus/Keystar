@@ -52,7 +52,9 @@ src/
     intel/             threat intel: paste parser, scans, zKillboard worker, scoring, standings, history with us,
                        d-scan matching, briefings and dossiers (Claude or template), UI
     trade/             appraisal: paste parser, name resolution, Jita pricing, saved shareable snapshots
-    wallet/            opt-in character wallet transactions (raw data used by the mining P&L)
+    wallet/            opt-in character wallet transactions (raw data used by the mining P&L); corp/: corporation
+                       wallet archive (balances, journal, transactions), classification, finances pages' queries
+    social/            opt-in EVE mail (read-only): mail sync, EVE HTML parser, link resolution, mail UI
     jobs.ts            registry of background jobs (worker only)
   worker/index.ts      worker entry point
   scripts/             migrate, demo-seed
@@ -173,6 +175,47 @@ Current jobs:
 | `intel.corporation-contacts`     | 15 min   | Home corporation contacts (standings), any member's token  |
 | `intel.alliance-contacts`        | 15 min   | Home alliance contacts (standings), any member's token     |
 | `wallet.character-transactions`  | 1 h      | Market transactions of characters that opted in to wallets |
+| `wallet.corporation-wallets`     | 1 h      | Corporation balances, journal and transactions, all divisions (Accountant / Junior Accountant) |
+| `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
+| `social.character-mail`          | 5 min    | EVE mail, labels and mailing lists of characters that opted in to mail |
+
+## EVE mail
+
+Social → EVE Mail lets pilots read their characters' mail in Keystar. It is **read-only**: Keystar never
+sends, deletes, labels or marks mail as read in game, so it only needs `esi-mail.read_mail.v1`, which is opt-in per
+character (enabled from the mail page). The page only ever shows the signed-in account's own mail
+(`social.mail`, default member). No role, including admin, can read another account's mail.
+
+- **Sync** (`social.character-mail`, every 5 minutes): mail labels (with ESI's unread counts and fixed colours) and
+  mailing lists are replaced each run. Headers are read newest first, paging back with `last_mail_id` until stored
+  mail is reached; the first import stops after 20 pages (about 1,000 mails). The first page is always read, so
+  read state and labels of recent mail stay current. Mail inside the id range ESI just listed in full that is no
+  longer listed was deleted in game, and is deleted here too. Bodies are downloaded at up to 60 per run, newest
+  first. Mail ESI returns 404 for is dropped. A body already stored for another of the account's mailboxes is
+  copied instead of fetched again, for example a corporation mail to three alts. All mail routes share ESI's
+  `char-social` rate-limit group (600 tokens per 15 minutes per character), so this stays well within budget. The
+  job summary carries counts only, never subjects.
+- **Storage**: `mail_messages` has one row per mailbox (`character_id`, `mail_id`) with the owning account
+  (`user_id`). `mail_labels` and `mail_lists` store labels and mailing lists the same way. Mailing-list names come
+  only from `mail_lists`, because `/universe/names` can't resolve them. As with the wallet, mail never follows a
+  sold character: it is deleted with the account, when the character is removed, when it is transferred, and on
+  request once mail access is turned off. Mail bypasses the ESI response cache.
+- **Folders**: Inbox, Sent, Corporation and Alliance are the built-in labels 1, 2, 4 and 8. Sent means sent by the
+  mailbox's character. Mailing lists come from the recipients, and custom labels are merged by name across
+  characters. A mail in several of the account's mailboxes is listed once, with the characters that received it.
+- **Rendering**: bodies are EVE HTML, not HTML (`<font size= color=>`, `<color=0xAARRGGBB>`, `<url=…>`, unquoted
+  attributes, tags that are never closed). `src/modules/social/eve-html.ts` follows
+  [CCP's reference](https://developers.eveonline.com/docs/guides/eve-html/): it tokenises, re-nests (an unclosed
+  tag owns the rest, stray closes are dropped, the outer tag wins when tags cross), decodes only the four EVE
+  entities, and validates colours (alpha first; text that would vanish on a dark surface keeps the normal colour)
+  and font sizes (scaled to EVE's 12 px, clamped). The result is a typed tree rendered as React elements, never
+  injected HTML.
+- **Links**: `src/modules/social/links.ts` classifies links. `showinfo:` links are resolved with CCP's
+  group/category table (the job stores the linked types and names). Characters, corporations, alliances,
+  factions, systems, constellations and regions open zKillboard; item types open everef.net; `killReport:` opens
+  the kill on zKillboard. `fitting:` shows the hull with a copy button for the DNA. `http(s)` opens in a new tab.
+  Client-only schemes (`joinChannel:`, `contract:` …) become labelled chips. Anything else, such as
+  `javascript:` or `data:`, is never a link.
 
 ## Mining data model
 
@@ -218,6 +261,34 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   wall-clock across characters, and per character and activity. ISK/h values the measured growth itself, so it only
   covers mining since the feature was deployed. Expenses are split across activities by active hours when measured
   activity covers ≥ 90% of income, otherwise by m³.
+
+## Corporation wallets
+
+Finances → Corporation wallet and Wallet journal show the home corporation's wallet divisions (`wallet.corp.view`,
+default Director). ESI returns only about 30 days per division — the journal at most 10 pages of 1,000 entries
+(CCP won't change this, esi/esi-issues#1172) — so `wallet.corporation-wallets` builds a long-term archive:
+
+- Every hour it reads the balances (`corp_wallet_divisions`, plus the day's closing balance in
+  `corp_wallet_balance_history`), then per division the journal (`page`/`X-Pages`, newest first) and market
+  transactions (`from_id`). Paging stops at the first page that reaches stored ids, so a normal run makes two
+  requests per division; all routes share the `corp-wallet` rate-limit group (300 tokens per 15 minutes). Responses
+  bypass the ESI response cache: the archive is the copy that matters.
+- `corp_wallet_journal` and `corp_wallet_transactions` are insert-only and never deleted. They are keyed by
+  corporation and division with no foreign keys to characters, so the history survives members leaving and tokens
+  being revoked. `ref_type` is stored as text: CCP adds values without a new compatibility date.
+- `corp_wallet_sync_state` records per division and stream where the archive starts and its **gaps**: when an import
+  no longer reaches stored data (no Accountant token for over a month, or more than 10,000 entries since the last
+  run), the uncovered stretch is stored and shown on both pages instead of being silently lost.
+- **Income and expenses** are positive and negative journal amounts, except **transfers between the corporation's own
+  divisions** (`corporation_account_withdrawal` from the corporation to itself), which appear in both divisions'
+  journals and are reported separately. Ref types are grouped into categories in
+  `src/modules/wallet/corp/classify.ts` (with an SQL twin; a test checks the map against the ESI enum).
+- Division names come from `/corporations/{id}/divisions` (Director only, renamed divisions only); others use the
+  default names from the dictionaries.
+
+The archive is meant to grow into spending and income breakdowns (by category, counterparty and item via the
+transactions), trends from the balance history and office rent tracking (`office_rental_fee` by `context_id`)
+without schema changes.
 
 ## Killboard
 

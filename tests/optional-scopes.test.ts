@@ -9,6 +9,7 @@ import {
   reauthorizeHref,
   scopesForIntent,
 } from "@/core/modules/registry";
+import { MAIL_SCOPE } from "@/modules/social/module";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
 
 const MINING = "esi-industry.read_character_mining.v1";
@@ -20,11 +21,13 @@ function params(href: string) {
 
 describe("optional scopes", () => {
   it("keeps opt-in scopes out of the member and corporation sets", () => {
-    expect(optionalScopes()).toEqual([WALLET_SCOPE]);
+    expect(optionalScopes()).toEqual([MAIL_SCOPE, WALLET_SCOPE]);
     expect(characterScopes()).toContain(MINING);
-    expect(characterScopes()).not.toContain(WALLET_SCOPE);
-    expect(corporationScopes()).not.toContain(WALLET_SCOPE);
-    expect(memberScopeRequirements().some((s) => s.scope === WALLET_SCOPE)).toBe(false);
+    for (const scope of [WALLET_SCOPE, MAIL_SCOPE]) {
+      expect(characterScopes()).not.toContain(scope);
+      expect(corporationScopes()).not.toContain(scope);
+      expect(memberScopeRequirements().some((s) => s.scope === scope)).toBe(false);
+    }
   });
 
   it("lists every scope for the EVE developer application", () => {
@@ -59,6 +62,14 @@ describe("optional scopes", () => {
     expect(stop.get("drop")).toBe(WALLET_SCOPE);
     expect(params(reauthorizeHref([MINING], { remove: [WALLET_SCOPE] })).get("drop")).toBeNull();
     expect(params(reauthorizeHref([MINING], { add: ["bogus"] })).get("with")).toBeNull();
+  });
+
+  it("keeps one opt-in scope while turning another on or off", () => {
+    const mailOn = params(reauthorizeHref([MINING, WALLET_SCOPE], { add: [MAIL_SCOPE], returnTo: "/mail" }));
+    expect(mailOn.get("with")).toBe(`${MAIL_SCOPE},${WALLET_SCOPE}`);
+    const mailOff = params(reauthorizeHref([MINING, WALLET_SCOPE, MAIL_SCOPE], { remove: [MAIL_SCOPE] }));
+    expect(mailOff.get("with")).toBe(WALLET_SCOPE);
+    expect(mailOff.get("drop")).toBe(MAIL_SCOPE);
   });
 
   it("parses with=/drop= lists down to known opt-in scopes", () => {

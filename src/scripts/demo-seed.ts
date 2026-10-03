@@ -41,10 +41,12 @@ import { mulberry32 } from "@/lib/random";
 import { generateSituationReport } from "@/modules/killboard/report/generate";
 import { runMigrations } from "@/scripts/migrate";
 import staticData from "./demo-data/eve-static.json";
+import { seedCorpWallet } from "./demo-data/corp-wallet";
 import { seedFleets } from "./demo-data/fleet";
 import { seedIntel } from "./demo-data/intel";
 import { seedKillboard } from "./demo-data/killboard";
 import { seedMiningPnl } from "./demo-data/pnl";
+import { seedMail } from "./demo-data/social";
 
 const DEMO_CHARACTER_BASE = 2_120_000_000;
 const HOME_CORP = { corporationId: 98_765_432, name: "Keystar Industries", ticker: "KSTR" };
@@ -190,7 +192,9 @@ async function main() {
     mining_observer_ledger, killmails, killmail_attackers, killboard_reports, fleets, fleet_members, fleet_trackers,
     eve_constellations, intel_scans, intel_scan_pilots, intel_pilots, intel_pilot_killmails, intel_queue, intel_contacts,
     intel_ai_notes, wallet_transactions, mining_activity, mining_activity_coverage, mining_pnl_settings,
-    mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries RESTART IDENTITY CASCADE`);
+    mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions,
+    corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages,
+    mail_labels, mail_lists RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
   await db.insert(eveGroups).values(staticData.groups);
@@ -423,6 +427,14 @@ async function main() {
     now: new Date(),
   });
 
+  // --- Corporation wallets ---------------------------------------------------
+  const corpWallet = await seedCorpWallet(db, {
+    corporationId: HOME_CORP.corporationId,
+    members: allChars.filter((c) => (c.corp ?? HOME_CORP) === HOME_CORP).map((c) => c.characterId),
+    rand,
+    now: new Date(),
+  });
+
   // --- Sync status, settings, audit --------------------------------------
   const now = Date.now();
   const jobRows: (typeof syncJobs.$inferInsert)[] = [
@@ -491,6 +503,16 @@ async function main() {
     now: new Date(),
   });
 
+  // --- EVE mail of the admin account (opt-in on two characters) -----------
+  const memberChar = allChars.find((c) => c.name === "Ishani Calder")!;
+  const mails = await seedMail(db, {
+    userId: demoUserIds.admin,
+    characters: pnlChars.map((c) => ({ characterId: c.characterId, name: c.name })),
+    otherUserId: memberChar.userId,
+    otherCharacterId: memberChar.characterId,
+    now: new Date(),
+  });
+
   await setSetting("corp.homeCorporationId", HOME_CORP.corporationId);
   await setSetting("demo.users", demoUserIds);
   await setSetting("setup.completedAt", new Date().toISOString());
@@ -513,7 +535,7 @@ async function main() {
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
       `${killboard.killmails} killmails, ${fleetCount} fleets, ${pnl.transactions} wallet transactions, ${pnl.windows} ` +
-      `activity windows, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
+      `activity windows, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");
   await closeDb();

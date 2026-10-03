@@ -1,4 +1,4 @@
-import { characterPortrait, corporationLogo, typeIcon } from "@/core/eve/images";
+import { allianceLogo, characterPortrait, corporationLogo, typeIcon } from "@/core/eve/images";
 import { cn } from "@/lib/utils";
 
 /* Plain <img>: images.evetech.net is already a sized CDN, no optimiser needed. */
@@ -34,6 +34,20 @@ export function CorpLogo({ id, size = 32, className }: { id: number; size?: numb
   return (
     <img
       src={corporationLogo(id, 64)}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      className={cn("shrink-0 rounded-md bg-space-700", className)}
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
+export function AllianceLogo({ id, size = 32, className }: { id: number; size?: number; className?: string }) {
+  return (
+    <img
+      src={allianceLogo(id, 64)}
       alt=""
       width={size}
       height={size}

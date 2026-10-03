@@ -57,6 +57,7 @@ export const characters = {
     removal: "Removing a character deletes its token and revokes it with CCP. Mining history stays with the corp.",
     wallet:
       "Wallet access is optional and per character (Mining P&L → Settings). Imported wallet transactions are only ever shown to you, and are deleted when you remove the character.",
+    mail: "Mail access is optional and per character (EVE Mail). Imported mail is only ever shown to you, and is deleted when you remove the character.",
     revoke: "You can revoke access any time under Third-Party Applications on the EVE Online website.",
   },
 };
