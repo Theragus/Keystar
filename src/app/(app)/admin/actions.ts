@@ -1,40 +1,29 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { audit } from "@/core/audit";
 import { assertPermission } from "@/core/auth/dal";
+import { changeUserAccess } from "@/core/auth/manage-users";
 import { deleteUserSessions } from "@/core/auth/session";
-import { getDb, users } from "@/core/db";
 import { refreshCorporations } from "@/core/eve/resolver";
 import { allPermissions } from "@/core/modules/registry";
-import { assignableRoles, canManageRole, isRole, type Role } from "@/core/rbac/roles";
+import { isRole, type Role } from "@/core/rbac/roles";
 import { getSettings, setSetting, type Settings } from "@/core/settings";
 import { triggerJobs } from "@/core/sync/scheduler";
-
-async function loadTarget(userId: string) {
-  const [target] = await getDb().select().from(users).where(eq(users.id, userId));
-  if (!target) throw new Error("User not found");
-  return target;
-}
 
 export async function updateUserRole(userId: string, formData: FormData) {
   const actor = await assertPermission("users.manage");
   const role = formData.get("role");
   if (!isRole(role)) throw new Error("Unknown role");
   if (actor.id === userId) throw new Error("You can't change your own role");
-  const target = await loadTarget(userId);
-  if (!canManageRole(actor.role, target.role)) throw new Error("You can only manage users below your own role");
-  if (!assignableRoles(actor.role).includes(role)) throw new Error("You can't assign that role");
-
-  await getDb().update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, userId));
+  const { from } = await changeUserAccess(actor.id, userId, { role });
   await audit({
     actorUserId: actor.id,
     actorName: actor.main?.name,
     action: "user.role.changed",
     targetType: "user",
     targetId: userId,
-    details: { from: target.role, to: role },
+    details: { from, to: role },
   });
   revalidatePath("/admin/users");
 }
@@ -42,11 +31,8 @@ export async function updateUserRole(userId: string, formData: FormData) {
 export async function approveUser(userId: string) {
   const actor = await assertPermission("users.manage");
   if (actor.id === userId) throw new Error("You can't approve yourself");
-  const target = await loadTarget(userId);
-  if (target.role !== "guest") return;
-  if (!canManageRole(actor.role, target.role)) throw new Error("You can only manage users below your own role");
-  if (!assignableRoles(actor.role).includes("member")) throw new Error("You can't assign that role");
-  await getDb().update(users).set({ role: "member", updatedAt: new Date() }).where(eq(users.id, userId));
+  const { changed } = await changeUserAccess(actor.id, userId, { role: "member" }, { onlyFromRole: "guest" });
+  if (!changed) return;
   await audit({
     actorUserId: actor.id,
     actorName: actor.main?.name,
@@ -60,9 +46,7 @@ export async function approveUser(userId: string) {
 export async function setUserDisabled(userId: string, disabled: boolean) {
   const actor = await assertPermission("users.manage");
   if (actor.id === userId) throw new Error("You can't disable yourself");
-  const target = await loadTarget(userId);
-  if (!canManageRole(actor.role, target.role)) throw new Error("You can only manage users below your own role");
-  await getDb().update(users).set({ isDisabled: disabled, updatedAt: new Date() }).where(eq(users.id, userId));
+  await changeUserAccess(actor.id, userId, { isDisabled: disabled });
   if (disabled) await deleteUserSessions(userId);
   await audit({
     actorUserId: actor.id,

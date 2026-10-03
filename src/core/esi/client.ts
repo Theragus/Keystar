@@ -123,7 +123,8 @@ export class EsiClient {
   private readonly patternGroup = new Map<string, string>();
 
   constructor(private readonly opts: EsiClientOptions) {
-    this.fetchImpl = opts.fetchImpl ?? fetch;
+    // Look the global up per call, so a stubbed fetch applies to an already-created shared client.
+    this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
     this.sleep = opts.sleep ?? defaultSleep;
     this.now = opts.now ?? Date.now;
   }
