@@ -16,7 +16,8 @@ syncs data in the background and turns it into dashboards. Modules so far: **min
 ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export, an ore field estimator
 for survey scans and a personal **mining P&L** with opt-in wallet import), a **killboard** with the corporation's PvP
 performance from zKillboard and a weekly situation report, **live fleet** tracking, **threat intel** for pasted
-local, fleets and d-scans, and an **appraisal** tool for Jita prices.
+local, fleets and d-scans, an **appraisal** tool for Jita prices and **corporation wallets** with income, expenses and a
+long-term journal archive.
 
 ![Mining overview](docs/screenshots/mining.png)
 
@@ -75,6 +76,9 @@ local, fleets and d-scans, and an **appraisal** tool for Jita prices.
   "recently seen hostiles" list.
 - **Appraisal** (Trade): paste cargo, inventory, contracts, EFT fittings, d-scans, killmails or item lists and get
   Jita 4-4 buy / sell / split values, volume and a percentage price (e.g. for buyback), saved as a shareable link.
+- **Corporation wallets** (Finances): balances, income, expenses and net for every wallet division per day / week /
+  month, transfers between divisions kept apart, and a filterable wallet journal. The worker archives journal entries,
+  market transactions and daily balances for good, beyond the ~30 days ESI keeps, and flags any gaps.
 - **Administration**: users & roles, member audit (in-game roster vs registered), sync status with manual triggers,
   settings, audit log, and a short first-start setup walkthrough.
 - **Background worker** respecting ESI's 2025+ rules: `X-Compatibility-Date`, ETag/Expires caching, pagination,
@@ -83,7 +87,7 @@ local, fleets and d-scans, and an **appraisal** tool for Jita prices.
   sidebar footer; numbers and dates use the language's conventions (e.g. "9,87 Mio. ISK").
 - **Design**: dark, EVE-flavoured UI.
 
-See [ROADMAP.md](ROADMAP.md) for what's next (skills, assets, wallets).
+See [ROADMAP.md](ROADMAP.md) for what's next (skills, assets, wallet breakdowns).
 
 ## Deploy
 

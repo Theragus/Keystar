@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { characters } from "@/core/db/schema/core";
 import { ensureTypes } from "@/core/eve/resolver";
 import type { JobDefinition } from "@/core/sync/types";
+import { corporationDivisionsJob, corporationWalletsJob } from "./corp/sync";
 import { WALLET_SCOPE } from "./module";
 import { walletTransactions } from "./schema";
 import { fetchNewTransactions } from "./transactions";
@@ -86,4 +87,4 @@ export const walletTransactionsJob: JobDefinition = {
   },
 };
 
-export const walletJobs: JobDefinition[] = [walletTransactionsJob];
+export const walletJobs: JobDefinition[] = [walletTransactionsJob, corporationWalletsJob, corporationDivisionsJob];
