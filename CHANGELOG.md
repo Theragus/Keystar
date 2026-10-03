@@ -6,6 +6,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Sidebar label.** The English sidebar entry for the killboard now reads "Combat Report".
+
 ## [0.10.0] - 2026-10-03
 
 ### Added

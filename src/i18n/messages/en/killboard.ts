@@ -11,7 +11,7 @@ type AwardKind = "isk" | "finalBlows" | "solo" | "efficiency";
 export const killboard = {
   module: {
     navSection: "Combat",
-    nav: { killboard: "Killboard" },
+    nav: { killboard: "Combat Report" },
     permissionGroup: "Killboard",
     permissions: {
       view: {
