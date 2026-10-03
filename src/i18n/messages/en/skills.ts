@@ -129,6 +129,7 @@ export const skills = {
     partial: "Partly shared",
     enable: "Share skills",
     stop: "Stop sharing",
+    reauthorize: "Re-authorise",
     demo: "Not available in demo mode",
     lastSync: (when: string) => `Last update ${when}`,
     firstSync: "The first update runs within a few minutes.",

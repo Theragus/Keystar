@@ -129,6 +129,7 @@ export const skills: typeof en = {
     partial: "Teilweise geteilt",
     enable: "Skills teilen",
     stop: "Nicht mehr teilen",
+    reauthorize: "Neu autorisieren",
     demo: "Im Demo-Modus nicht verfügbar",
     lastSync: (when: string) => `Zuletzt aktualisiert ${when}`,
     firstSync: "Die erste Aktualisierung läuft in den nächsten Minuten.",

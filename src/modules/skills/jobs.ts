@@ -182,7 +182,7 @@ export const characterSkillsJob: JobDefinition = {
     await ensureTypes(rows.map((r) => r.skillId));
     const expires = [skills.expiresAt, attributes.expiresAt].filter((d): d is Date => d !== null);
     return {
-      summary: `${rows.length} trained skills`,
+      summary: `${rows.length} trained skill${rows.length === 1 ? "" : "s"}`,
       nextRunAt: expires.length ? new Date(Math.max(...expires.map((d) => d.getTime()))) : null,
     };
   },

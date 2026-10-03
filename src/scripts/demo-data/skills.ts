@@ -140,7 +140,8 @@ export async function seedSkills(db: Db, opts: { characters: { characterId: numb
         // ESI reports the current skill as started at the last login with the SP it had then.
         startDate: paused ? null : new Date(first ? now - 3 * 3600_000 : start),
         finishDate: paused ? null : new Date(start + minutes * 60_000),
-        trainingStartSp: first ? Math.max(levelStartSp, Math.round(trainingStartSp - 3 * 60 * spPerMinute)) : trainingStartSp,
+        // A paused skill stays at the SP it has; a training one is reported as of the last login three hours ago.
+        trainingStartSp: first && !paused ? Math.max(levelStartSp, Math.round(trainingStartSp - 3 * 60 * spPerMinute)) : trainingStartSp,
         levelStartSp,
         levelEndSp,
       };

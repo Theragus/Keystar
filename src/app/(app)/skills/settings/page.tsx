@@ -76,9 +76,9 @@ export default async function SkillsSettingsPage() {
                           {m.stop}
                         </ButtonLink>
                       )}
-                      {!a.granted && (
+                      {(!a.granted || a.tokenStatus === "invalid") && (
                         <ButtonLink href={enable} size="sm" variant="primary">
-                          <GraduationCap className="size-3.5" aria-hidden /> {m.enable}
+                          <GraduationCap className="size-3.5" aria-hidden /> {a.granted ? m.reauthorize : m.enable}
                         </ButtonLink>
                       )}
                     </>

@@ -1662,7 +1662,7 @@ describe.skipIf(!enabled)("integration", async () => {
       await characterSkillsJob.run(ctx(2));
       trained[2] = trained[2].slice(0, 1).map((s) => ({ ...s, trained_skill_level: 4 }));
       await db().execute(sql`DELETE FROM esi_cache`);
-      expect((await characterSkillsJob.run(ctx(2)))?.summary).toBe("1 trained skills");
+      expect((await characterSkillsJob.run(ctx(2)))?.summary).toBe("1 trained skill");
       const rows = await db().select().from(schema.skillsCharacterSkills);
       expect(rows.map((r) => [r.skillId, r.trainedLevel])).toEqual([[3300, 4]]);
       const [c] = await db().select().from(schema.skillsCharacter);
@@ -1688,6 +1688,13 @@ describe.skipIf(!enabled)("integration", async () => {
 
       // Without a home corporation the corporation view falls back to the viewer's own characters.
       expect(skills.skillsScope(director, null, "corp").corp).toBe(false);
+
+      // Keeping only the queue scope leaves the corporation view; own views drop what the skills scope read.
+      await db().update(schema.esiTokens).set({ scopes: [SKILLQUEUE_SCOPE] }).where(sql`character_id = 2`);
+      expect((await skills.getSkillsOverview(skills.skillsScope(director, 100, "corp"))).characters).toEqual([]);
+      const queueOnly = await skills.getSkillsOverview(skills.skillsScope(user(userB, ["skills.view.own"]), 100, "own"));
+      expect(queueOnly.characters[0]).toMatchObject({ characterId: 2, queueEnabled: true, skillsEnabled: false, totalSp: null, attributes: null });
+      expect(queueOnly.queues.get(2)!.map((e) => e.trainedLevel)).toEqual([null, null]);
 
       // Turning sharing off hides the stored queue at once.
       await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);

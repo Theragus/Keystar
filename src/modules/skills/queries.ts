@@ -39,10 +39,14 @@ function list(values: number[]): SQL {
   );
 }
 
-/** Characters the scope may show: own ones, or home-corporation ones that share their queue. */
+/**
+ * Characters the scope may show: own ones, or home-corporation ones that share their skills. Sharing means both
+ * scopes: a character that dropped one of them is not shown to the corporation, so nothing read with it stays visible.
+ */
 function characterCond(scope: SkillsScope): SQL {
   if (!scope.corp) return sql`c.user_id = ${scope.userId}::uuid`;
-  return sql`c.corporation_id = ${scope.homeCorporationId} AND ${SKILLQUEUE_SCOPE} = ANY(t.scopes) AND t.status = 'active'`;
+  return sql`c.corporation_id = ${scope.homeCorporationId} AND t.scopes @> ARRAY[${SKILLQUEUE_SCOPE}, ${SKILLS_SCOPE}]::text[]
+    AND t.status = 'active'`;
 }
 
 export interface Attributes {
@@ -112,7 +116,9 @@ export async function getSkillsOverview(scope: SkillsScope, characterIds: number
   const characters: SkillCharacter[] = rows.map((r) => {
     const scopes = Array.isArray(r.scopes) ? (r.scopes as string[]) : [];
     const active = r.token_status === "active";
-    const hasAttributes = r.charisma !== null && r.charisma !== undefined;
+    const skillsEnabled = active && scopes.includes(SKILLS_SCOPE);
+    // Totals, attributes and remaps come from the skills scope: shown only while it is granted.
+    const hasAttributes = skillsEnabled && r.charisma !== null && r.charisma !== undefined;
     return {
       characterId: num(r.character_id),
       name: String(r.name),
@@ -120,10 +126,10 @@ export async function getSkillsOverview(scope: SkillsScope, characterIds: number
       ownerName: str(r.owner_name),
       isOwn: r.user_id === scope.userId,
       queueEnabled: active && scopes.includes(SKILLQUEUE_SCOPE),
-      skillsEnabled: active && scopes.includes(SKILLS_SCOPE),
+      skillsEnabled,
       tokenInvalid: r.token_status === "invalid",
-      totalSp: numOrNull(r.total_sp),
-      unallocatedSp: numOrNull(r.unallocated_sp),
+      totalSp: skillsEnabled ? numOrNull(r.total_sp) : null,
+      unallocatedSp: skillsEnabled ? numOrNull(r.unallocated_sp) : null,
       attributes: hasAttributes
         ? {
             charisma: num(r.charisma),
@@ -133,9 +139,9 @@ export async function getSkillsOverview(scope: SkillsScope, characterIds: number
             willpower: num(r.willpower),
           }
         : null,
-      bonusRemaps: numOrNull(r.bonus_remaps),
-      lastRemapDate: toDate(r.last_remap_date),
-      accruedRemapCooldownDate: toDate(r.accrued_remap_cooldown_date),
+      bonusRemaps: skillsEnabled ? numOrNull(r.bonus_remaps) : null,
+      lastRemapDate: skillsEnabled ? toDate(r.last_remap_date) : null,
+      accruedRemapCooldownDate: skillsEnabled ? toDate(r.accrued_remap_cooldown_date) : null,
       queueSyncedAt: toDate(r.queue_synced_at),
       queueError: r.queue_status === "error" ? str(r.queue_error) : null,
     };
@@ -143,6 +149,8 @@ export async function getSkillsOverview(scope: SkillsScope, characterIds: number
 
   // A queue is only shown while it is shared: turning the scope off hides it at once, also from the corporation view.
   const shown = characters.filter((c) => c.queueEnabled).map((c) => c.characterId);
+  // Trained levels likewise only for characters that still grant the skills scope.
+  const withSkills = characters.filter((c) => c.queueEnabled && c.skillsEnabled).map((c) => c.characterId);
   const queues = new Map<number, QueueRow[]>();
   if (shown.length) {
     const queueRows = await db.execute<Record<string, unknown>>(sql`
@@ -153,6 +161,7 @@ export async function getSkillsOverview(scope: SkillsScope, characterIds: number
       LEFT JOIN eve_types ty ON ty.type_id = q.skill_id
       LEFT JOIN eve_groups g ON g.group_id = ty.group_id
       LEFT JOIN skills_character_skills cs ON cs.character_id = q.character_id AND cs.skill_id = q.skill_id
+        AND cs.character_id IN (${withSkills.length ? list(withSkills) : sql`NULL`})
       WHERE q.character_id IN (${list(shown)})
       ORDER BY q.character_id, q.queue_position`);
     for (const r of queueRows) {
