@@ -494,8 +494,12 @@ export async function getFilterOptions(scope: MiningScope): Promise<FilterOption
     db.execute<Record<string, unknown>>(sql`
       SELECT x.id::float8 AS id, COALESCE(s.name, 'System ' || x.id) AS name, s.security_status::float8 AS security
       FROM (SELECT DISTINCT solar_system_id AS id FROM mining_character_ledger ${personalScope("character_id")}
-            UNION SELECT DISTINCT solar_system_id FROM mining_observers WHERE solar_system_id IS NOT NULL ${
-              scope.corp ? homeCorp.observer("corporation_id") : sql`AND false`
+            UNION ${
+              scope.corp
+                ? sql`SELECT DISTINCT solar_system_id FROM mining_observers WHERE solar_system_id IS NOT NULL ${homeCorp.observer("corporation_id")}`
+                : sql`SELECT DISTINCT obs.solar_system_id FROM mining_observer_ledger o
+                      JOIN mining_observers obs ON obs.observer_id = o.observer_id
+                      ${charScope("o.character_id")} AND obs.solar_system_id IS NOT NULL`
             }) x
       LEFT JOIN eve_systems s ON s.system_id = x.id
       ORDER BY 2`),

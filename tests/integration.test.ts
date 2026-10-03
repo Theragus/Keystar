@@ -140,6 +140,14 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(ownView.current.value).toBe(1000 * 10 + 7000 * 10);
       const ownOptions = await q.getFilterOptions(ownScope);
       expect(ownOptions.characters.map((c) => c.id)).toContain(4);
+
+      // Refinery systems are offered in the own view only where the viewer's characters mined.
+      await db().insert(schema.eveSystems).values({ systemId: 30000181, name: "Tama", securityStatus: 0.28 });
+      await db().update(schema.miningObservers).set({ solarSystemId: 30000181 }).where(sql`observer_id = 88`);
+      await db().insert(schema.miningObserverLedger).values({ observerId: 88, corporationId: 200, characterId: 4, recordedCorporationId: 200, date: "2026-09-13", typeId: 45490, quantity: 1 });
+      expect(ownOptions.systems.map((s) => s.id)).not.toContain(30000181);
+      expect((await q.getFilterOptions(ownScope)).systems.map((s) => s.id)).toContain(30000181);
+      expect((await q.getFilterOptions(own([2]))).systems.map((s) => s.id)).not.toContain(30000181);
     });
 
     it("shows no corporation-wide data until a home corporation is set", async () => {

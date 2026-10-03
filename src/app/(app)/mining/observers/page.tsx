@@ -75,7 +75,7 @@ export default async function ObserversPage({ searchParams }: PageProps<"/mining
                       </div>
                     </div>
                     <Link
-                      href={`/mining/ledger?${miningQueryString(filters, { source: "observer", page: 1 })}`}
+                      href={`/mining/ledger?${miningQueryString(filters, { source: "observer", view: "corp", page: 1 })}`}
                       className="shrink-0 text-xs text-accent hover:underline"
                     >
                       {text.ledgerLink}
