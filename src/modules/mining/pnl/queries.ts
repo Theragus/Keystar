@@ -493,8 +493,9 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
       FROM wallet_transactions wt WHERE wt.character_id = c.character_id AND wt.user_id = c.user_id
     ) w ON true
     LEFT JOIN mining_activity_coverage cov ON cov.character_id = c.character_id
+    JOIN users u ON u.id = c.user_id
     WHERE c.user_id = ${userId}::uuid
-    ORDER BY c.name`);
+    ORDER BY c.character_id IS NOT DISTINCT FROM u.main_character_id DESC, c.name`);
   return rows.map((r) => {
     const scopes = Array.isArray(r.scopes) ? (r.scopes as string[]) : [];
     return {

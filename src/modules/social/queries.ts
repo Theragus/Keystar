@@ -44,8 +44,9 @@ export async function getMailboxes(userId: string): Promise<Mailbox[]> {
       SELECT COUNT(*)::int AS n, COUNT(*) FILTER (WHERE NOT m.is_read)::int AS unread
       FROM mail_messages m WHERE m.character_id = c.character_id AND m.user_id = c.user_id
     ) mm ON true
+    JOIN users u ON u.id = c.user_id
     WHERE c.user_id = ${userId}::uuid
-    ORDER BY c.name`);
+    ORDER BY c.character_id IS NOT DISTINCT FROM u.main_character_id DESC, c.name`);
   return rows.map((r) => {
     const scopes = Array.isArray(r.scopes) ? (r.scopes as string[]) : [];
     return {

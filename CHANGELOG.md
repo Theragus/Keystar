@@ -6,6 +6,18 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Main character listed first.** The Characters page, the dashboard's character panel, fleet tracking, the mail
+  character list and the P&L wallet status show your main character at the top, followed by the others
+  alphabetically.
+- **Dates in your language's format.** Dates read "02 Oct 2026" in English and "02.10.2026" in German instead of
+  2026-10-02: in the mining ledger's day headers, the daily mining and kill tables, timestamps (journal, audit log,
+  mail, fleets, reports), and the killboard, wallet archive, mail and pilot history notes. Times are still EVE time
+  (ET).
+
+## [0.9.0] - 2026-10-03
+
 ### Added
 
 - **Mining ledger grouped by day.** Ledger entries sit under a header for each day showing its date, weekday,
