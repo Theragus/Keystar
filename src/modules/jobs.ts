@@ -8,6 +8,7 @@ import {
 } from "@/core/sync/core-jobs";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
 import type { Messages } from "@/i18n/messages";
+import { fleetJobs } from "./fleet/jobs";
 import { killboardJobs } from "./killboard/jobs";
 import { miningJobs, miningPriceInterest } from "./mining/jobs";
 
@@ -26,6 +27,7 @@ export const JOBS: JobDefinition[] = [
   housekeepingJob,
   ...miningJobs,
   ...killboardJobs,
+  ...fleetJobs,
 ];
 
 const JOBS_BY_KEY = new Map(JOBS.map((j) => [j.key, j]));

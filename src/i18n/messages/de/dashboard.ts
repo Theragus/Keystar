@@ -76,7 +76,6 @@ export const dashboard: typeof en = {
       skills: { title: "Skills & Skillpläne", text: "Skillpläne der Corp und wer was fliegen kann." },
       assets: { title: "Assets", text: "Gegenstände bei Mitgliedern und in Corp-Hangars finden." },
       wallets: { title: "Wallets", text: "Corporation-Divisionen und persönliche Wallets." },
-      fleet: { title: "Live-Flotte", text: "Flottenzusammensetzung über geteiltes Flotten-ESI." },
     },
   },
 };
