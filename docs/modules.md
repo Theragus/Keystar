@@ -49,6 +49,11 @@ export const skillsModule: KeystarModule = {
 User-facing text is never written into the manifest directly: `label`, `description`, `group` and `reason` are
 selectors into the dictionaries (see step 5), so the sidebar and settings render in the viewer's language.
 
+A nav section may set `tone` (`"industry"`, `"combat"` or `"trade"`) to colour its page headings, the sidebar marker
+and the header glow; without one it uses the accent. Sections merged by id share the first tone set, so only one
+module needs to declare it. Don't add new tones ad hoc: they are checked for contrast and colour-vision safety in
+`src/app/globals.css`.
+
 Register it in `src/core/modules/registry.ts` (`MODULES`). That alone:
 
 - adds its scopes to the SSO requests (`character` scopes for every member, `corporation` scopes for the "link with

@@ -1,5 +1,6 @@
 import { Hourglass } from "lucide-react";
 import { redirect } from "next/navigation";
+import { SectionScope } from "@/components/shell/section-scope";
 import { Sidebar, visibleNav } from "@/components/shell/sidebar";
 import { TopBar } from "@/components/shell/topbar";
 import { requireUser } from "@/core/auth/dal";
@@ -18,13 +19,13 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const { t } = await getI18n();
   const { sections, hasNested } = visibleNav(user);
   const crumbs = sections.flatMap((s) =>
-    s.items.map((i) => ({ href: i.href, label: i.label(t), exact: hasNested(i.href) })),
+    s.items.map((i) => ({ href: i.href, label: i.label(t), exact: hasNested(i.href), tone: s.tone })),
   );
 
   return (
-    <div className="flex min-h-screen">
+    <SectionScope items={crumbs}>
       <Sidebar user={user} corpTicker={userCorp?.ticker ?? null} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="section-glow flex min-w-0 flex-1 flex-col">
         <TopBar
           homeCorp={homeCorp}
           serverStatus={settings["eve.serverStatus"]}
@@ -44,6 +45,6 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
       </div>
-    </div>
+    </SectionScope>
   );
 }
