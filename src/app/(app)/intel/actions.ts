@@ -9,6 +9,7 @@ import { assertPermission } from "@/core/auth/dal";
 import { getDb, intelScans } from "@/core/db";
 import { SHARE_ID_PATTERN } from "@/lib/share-id";
 import { INTEL_PERMISSIONS } from "@/modules/intel/module";
+import { writeBriefing, writeDossier as writeDossierNote } from "@/modules/intel/ai/generate";
 import { nameScanEntities } from "@/modules/intel/names";
 import { getScan, profileRemaining, startScan, type StartScanInput } from "@/modules/intel/scans";
 
@@ -73,4 +74,20 @@ export async function deleteScan(formData: FormData): Promise<void> {
     details: { pilots: scan.pilotCount, createdBy: scan.createdByName },
   });
   redirect("/intel");
+}
+
+/** Writes the scan's briefing again with the latest data (Claude when configured). */
+export async function rewriteBriefing(formData: FormData): Promise<void> {
+  const user = await assertPermission(INTEL_PERMISSIONS.ai);
+  await writeBriefing(scanIdFrom(formData), { createdBy: user.id, automatic: false });
+  refresh();
+}
+
+/** A dossier on one pilot of the scan. */
+export async function writeDossier(formData: FormData): Promise<void> {
+  const user = await assertPermission(INTEL_PERMISSIONS.ai);
+  const characterId = Number(formData.get("characterId"));
+  if (!Number.isSafeInteger(characterId) || characterId <= 0) throw new Error("Unknown pilot");
+  await writeDossierNote(scanIdFrom(formData), characterId, { createdBy: user.id });
+  refresh();
 }

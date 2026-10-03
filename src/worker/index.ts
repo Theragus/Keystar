@@ -24,6 +24,7 @@ const DEMO_SAFE_JOBS = new Set([
   "killboard.situation-report",
   // Threat intel reads generated demo data instead of zKillboard in demo mode.
   "intel.scan-worker",
+  "intel.briefings",
   "intel.housekeeping",
 ]);
 const ACTIVE_JOBS = env().KEYSTAR_DEMO_MODE ? JOBS.filter((j) => DEMO_SAFE_JOBS.has(j.key)) : JOBS;

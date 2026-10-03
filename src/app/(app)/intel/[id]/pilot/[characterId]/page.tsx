@@ -10,6 +10,10 @@ import { getSettings } from "@/core/settings";
 import { compact, integer, relativeTime, shortDate } from "@/lib/format";
 import { SHARE_ID_PATTERN } from "@/lib/share-id";
 import { zkillCharacter } from "@/modules/killboard/links";
+import { claudeConfigured, latestNote } from "@/modules/intel/ai/generate";
+import type { Dossier } from "@/modules/intel/ai/types";
+import { WriteDossierButton } from "@/modules/intel/components/ai-buttons";
+import { DossierPanel } from "@/modules/intel/components/briefing-panel";
 import { EngagementList } from "@/modules/intel/components/engagements";
 import { ActivityHeatmap } from "@/modules/intel/components/heatmap";
 import { LastSeen, LatestKills } from "@/modules/intel/components/latest-kills";
@@ -23,11 +27,12 @@ import { lookupDisplayNames, scanEntityIds } from "@/modules/intel/names";
 import { getScan, getScanPilots } from "@/modules/intel/scans";
 import { loadStandings, standingOf } from "@/modules/intel/standings";
 import type { PilotProfile, PilotScore } from "@/modules/intel/types";
+import { writeDossier } from "../../../actions";
 
 export const metadata = { title: "Pilot profile" };
 
 export default async function PilotPage({ params }: PageProps<"/intel/[id]/pilot/[characterId]">) {
-  await requirePermission(INTEL_PERMISSIONS.use);
+  const user = await requirePermission(INTEL_PERMISSIONS.use);
   const { id, characterId: raw } = await params;
   const characterId = Number(raw);
   if (!SHARE_ID_PATTERN.test(id) || !Number.isSafeInteger(characterId) || characterId <= 0) notFound();
@@ -36,7 +41,13 @@ export default async function PilotPage({ params }: PageProps<"/intel/[id]/pilot
   const [pilot] = await getScanPilots(id, { characterId });
   if (!pilot) notFound();
 
-  const [standings, settings, scanPilots] = await Promise.all([loadStandings(), getSettings(), getScanPilots(id)]);
+  const [standings, settings, scanPilots, dossier] = await Promise.all([
+    loadStandings(),
+    getSettings(),
+    getScanPilots(id),
+    latestNote<Dossier>({ kind: "dossier", scanId: id, characterId }),
+  ]);
+  const canAi = user.can(INTEL_PERMISSIONS.ai);
   const standing = standingOf(pilot, standings);
   const profile = (pilot.profile as PilotProfile | null) ?? null;
   const score = (pilot.scoreDetail as PilotScore | null) ?? null;
@@ -92,6 +103,14 @@ export default async function PilotPage({ params }: PageProps<"/intel/[id]/pilot
         {score && <TagList tags={score.tags} />}
         {profile && <LastSeen profile={profile} names={names} />}
       </div>
+
+      {profile && (
+        <DossierPanel
+          note={dossier}
+          claudeHint={!canAi ? "Your role cannot ask for dossiers." : claudeConfigured() ? null : "Without ANTHROPIC_API_KEY the dossier comes from a template."}
+          actions={canAi ? <WriteDossierButton scanId={id} characterId={characterId} action={writeDossier} again={!!dossier} /> : undefined}
+        />
+      )}
 
       {!profile && <p className="text-sm text-ink-3">No zKillboard data for this pilot yet{pilot.profiled ? " — it is on its way." : "."}</p>}
 

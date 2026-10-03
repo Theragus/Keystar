@@ -23,6 +23,7 @@ import { isFriendly, loadStandings, standingOf } from "./standings";
 import type { DscanEntry, Engagement, PilotHistory } from "./types";
 
 export const SCAN_WORKER_JOB = "intel.scan-worker";
+export const BRIEFING_JOB = "intel.briefings";
 
 export interface StartScanInput {
   text: string;

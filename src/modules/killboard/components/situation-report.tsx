@@ -3,9 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Glass } from "@/components/ui/glass";
 import { dateTime } from "@/lib/format";
 import { rangeLabel } from "../filters";
-import { parseMarkup, type Segment } from "../report/markup";
 import type { ReadinessLevel, StoredReport } from "../report/types";
 import type { ReactNode } from "react";
+import { RichText as Rich } from "./rich-text";
 
 const READINESS_TONE: Record<ReadinessLevel, "good" | "accent" | "critical" | "neutral"> = {
   surging: "good",
@@ -13,43 +13,6 @@ const READINESS_TONE: Record<ReadinessLevel, "good" | "accent" | "critical" | "n
   strained: "critical",
   quiet: "neutral",
 };
-
-function Rich({ text }: { text: string }) {
-  return (
-    <>
-      {parseMarkup(text).map((s: Segment, i) => {
-        switch (s.kind) {
-          case "bold":
-            return (
-              <strong key={i} className="font-semibold text-ink">
-                {s.text}
-              </strong>
-            );
-          case "good":
-            return (
-              <span key={i} className="font-medium text-good-text">
-                {s.text}
-              </span>
-            );
-          case "bad":
-            return (
-              <span key={i} className="font-medium text-critical-text">
-                {s.text}
-              </span>
-            );
-          case "pilot":
-            return (
-              <span key={i} className="font-medium text-accent">
-                {s.text}
-              </span>
-            );
-          default:
-            return <span key={i}>{s.text}</span>;
-        }
-      })}
-    </>
-  );
-}
 
 /** The weekly briefing, collapsible like the original dashboard (open by default). */
 export function SituationReportPanel({

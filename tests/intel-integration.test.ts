@@ -23,6 +23,9 @@ describe.skipIf(!enabled)("intel integration", async () => {
   const { allianceContactsJob, corporationContactsJob } = await import("@/modules/intel/contacts");
   const { recentSightings } = await import("@/modules/intel/scans");
   const { loadStandings, standingOf } = await import("@/modules/intel/standings");
+  const { writeBriefing, writeDossier, latestNote } = await import("@/modules/intel/ai/generate");
+  const { USER_HOURLY_LIMIT } = await import("@/modules/intel/ai/limits");
+  const { resetEnvCache } = await import("@/core/env");
 
   const db = () => getDb();
   const HOME = 100;
@@ -377,6 +380,91 @@ describe.skipIf(!enabled)("intel integration", async () => {
       } finally {
         spy.mockRestore();
       }
+    });
+  });
+
+  describe("briefings and dossiers", () => {
+    const briefingOut = {
+      content: { headline: "H", threatLevel: "high" as const, recent: "R", paragraphs: ["P"], keyPilots: [], advice: "A" },
+      model: "claude-sonnet-5-5",
+      usage: { inputTokens: 10, outputTokens: 5 },
+    };
+    async function readyScan(aiAllowed: boolean) {
+      const spy = esi(fakeEsi);
+      try {
+        const res = await startScan({ text: "Pilot Nine\nPilot Ten\nRed Twelve", userId, userName: null, aiAllowed });
+        if (!res.ok) throw new Error(res.error);
+        await db().update(schema.intelScans).set({ status: "ready" });
+        return res.id;
+      } finally {
+        spy.mockRestore();
+      }
+    }
+    const withKey = async (fn: () => Promise<void>) => {
+      process.env.ANTHROPIC_API_KEY = "test-key";
+      resetEnvCache();
+      try {
+        await fn();
+      } finally {
+        delete process.env.ANTHROPIC_API_KEY;
+        resetEnvCache();
+      }
+    };
+
+    it("uses the template without a key, Claude with one, and the template again when Claude fails", async () => {
+      const id = await readyScan(true);
+      const briefing = vi.fn(async () => briefingOut);
+      expect(await writeBriefing(id, { createdBy: null, automatic: true }, { briefing })).toMatchObject({ source: "template", error: null });
+      expect(briefing).not.toHaveBeenCalled();
+      const [scan] = await db().select().from(schema.intelScans);
+      expect(scan.briefingStatus).toBe("done");
+
+      await withKey(async () => {
+        expect(await writeBriefing(id, { createdBy: null, automatic: true }, { briefing })).toMatchObject({ source: "claude", model: "claude-sonnet-5-5" });
+        // Unchanged facts: the recent note is reused instead of calling Claude again.
+        await writeBriefing(id, { createdBy: userId, automatic: false }, { briefing });
+        expect(briefing).toHaveBeenCalledTimes(1);
+
+        const failing = vi.fn(async () => Promise.reject(new Error("overloaded")));
+        await db().delete(schema.intelAiNotes);
+        expect(await writeBriefing(id, { createdBy: userId, automatic: false }, { briefing: failing })).toMatchObject({
+          source: "template",
+          error: "overloaded",
+        });
+      });
+      expect((await latestNote({ kind: "briefing", scanId: id }))?.source).toBe("template");
+    });
+
+    it("respects the creator's permission and the hourly budget", async () => {
+      const id = await readyScan(false);
+      const briefing = vi.fn(async () => briefingOut);
+      await withKey(async () => {
+        // Automatic briefing for a creator without intel.ai: template.
+        expect((await writeBriefing(id, { createdBy: null, automatic: true }, { briefing }))?.source).toBe("template");
+        expect(briefing).not.toHaveBeenCalled();
+        // Budget used up: template with the reason.
+        await db().insert(schema.intelAiNotes).values(
+          Array.from({ length: USER_HOURLY_LIMIT }, () => ({ kind: "dossier" as const, factsHash: "x", source: "claude", content: {}, facts: {}, createdBy: userId })),
+        );
+        const out = await writeBriefing(id, { createdBy: userId, automatic: false }, { briefing });
+        expect(out).toMatchObject({ source: "template" });
+        expect(out?.error).toContain("Claude notes this hour");
+        expect(briefing).not.toHaveBeenCalled();
+      });
+    });
+
+    it("writes dossiers for pilots of a scan", async () => {
+      const id = await readyScan(true);
+      const dossier = vi.fn(async () => ({
+        content: { summary: "S", recentActivity: "R", playstyle: "P", watchFor: [], historyWithUs: null, confidence: "low" as const },
+        model: "m",
+        usage: { inputTokens: 1, outputTokens: 1 },
+      }));
+      await withKey(async () => {
+        expect(await writeDossier(id, 9, { createdBy: userId }, { dossier })).toMatchObject({ source: "claude" });
+        expect(await writeDossier(id, 424242, { createdBy: userId }, { dossier })).toBeNull();
+      });
+      expect((await latestNote({ kind: "dossier", scanId: id, characterId: 9 }))?.content).toMatchObject({ summary: "S" });
     });
   });
 });

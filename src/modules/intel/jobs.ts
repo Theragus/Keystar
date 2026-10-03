@@ -1,6 +1,9 @@
-import { sql } from "drizzle-orm";
+import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { intelScans } from "@/core/db";
 import { env } from "@/core/env";
+import { triggerJobs } from "@/core/sync/scheduler";
 import type { JobDefinition } from "@/core/sync/types";
+import { writeBriefing } from "./ai/generate";
 import {
   DIGEST_KEEP_NEWEST,
   DIGEST_RETENTION_DAYS,
@@ -9,7 +12,7 @@ import {
   SCAN_RETENTION_DAYS,
 } from "./constants";
 import { allianceContactsJob, corporationContactsJob } from "./contacts";
-import { SCAN_WORKER_JOB } from "./scans";
+import { BRIEFING_JOB, SCAN_WORKER_JOB } from "./scans";
 import { demoSource, zkillSource } from "./source";
 import { runScanWorker } from "./worker";
 
@@ -26,11 +29,41 @@ export const scanWorkerJob: JobDefinition = {
   async run({ db, esi, log }) {
     const demo = env().KEYSTAR_DEMO_MODE;
     const out = await runScanWorker({ db, esi, log }, { source: demo ? demoSource({ db }) : zkillSource(), offline: demo });
+    if (out.readyScans.length) await triggerJobs({ jobKey: BRIEFING_JOB });
     const idleUntil = out.nextDueAt && out.nextDueAt.getTime() > Date.now() ? out.nextDueAt : new Date(Date.now() + IDLE_POLL_MS);
     return {
       summary: out.processed ? `${out.processed} pilot steps, ${out.remaining} waiting` : "Idle",
       nextRunAt: out.remaining > 0 ? null : idleUntil,
     };
+  },
+};
+
+/** Writes the briefing of scans that just became ready (Claude or the template). */
+export const briefingJob: JobDefinition = {
+  key: BRIEFING_JOB,
+  label: "Threat intel briefings",
+  module: "intel",
+  owner: "global",
+  intervalSeconds: 60,
+  async run({ db }) {
+    const pending = await db
+      .select()
+      .from(intelScans)
+      .where(
+        and(
+          eq(intelScans.status, "ready"),
+          eq(intelScans.briefingStatus, "pending"),
+          gt(intelScans.createdAt, new Date(Date.now() - RESCORE_WINDOW_MS)),
+        ),
+      )
+      .orderBy(asc(intelScans.createdAt))
+      .limit(3);
+    const sources: string[] = [];
+    for (const scan of pending) {
+      const note = await writeBriefing(scan, { createdBy: null, automatic: true });
+      if (note) sources.push(note.source);
+    }
+    return { summary: pending.length ? `Wrote ${pending.length} briefing(s): ${sources.join(", ")}` : "Nothing to brief" };
   },
 };
 
@@ -72,4 +105,4 @@ export const intelHousekeepingJob: JobDefinition = {
   },
 };
 
-export const intelJobs: JobDefinition[] = [scanWorkerJob, intelHousekeepingJob, corporationContactsJob, allianceContactsJob];
+export const intelJobs: JobDefinition[] = [scanWorkerJob, briefingJob, intelHousekeepingJob, corporationContactsJob, allianceContactsJob];

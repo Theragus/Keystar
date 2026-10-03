@@ -7,22 +7,22 @@ import { Panel } from "@/components/ui/glass";
 import { StatTile } from "@/components/ui/stat-tile";
 import { requirePermission } from "@/core/auth/dal";
 import { env } from "@/core/env";
-import { getSettings } from "@/core/settings";
 import { compact, dateTime, relativeTime } from "@/lib/format";
 import { SHARE_ID_PATTERN } from "@/lib/share-id";
+import { claudeConfigured, latestNote } from "@/modules/intel/ai/generate";
+import type { Briefing } from "@/modules/intel/ai/types";
+import { RewriteBriefingButton } from "@/modules/intel/components/ai-buttons";
+import { BriefingPanel } from "@/modules/intel/components/briefing-panel";
 import { EngagementList } from "@/modules/intel/components/engagements";
 import { GroupSummaryPanel } from "@/modules/intel/components/group-summary";
 import { PilotRow } from "@/modules/intel/components/pilot-row";
 import { ScanProgressPoller } from "@/modules/intel/components/scan-progress";
 import { DeleteScanButton, ProfileRemainingButton, RescanButton } from "@/modules/intel/components/scan-buttons";
-import { encountersWithUs, engagementsWithUs, historyTotals } from "@/modules/intel/history";
 import { INTEL_PERMISSIONS } from "@/modules/intel/module";
-import { lookupDisplayNames, scanEntityIds } from "@/modules/intel/names";
-import { getScan, getScanPilots, scanProgress } from "@/modules/intel/scans";
-import { groupSummary } from "@/modules/intel/score/summary";
-import { isFriendly, isHostile, loadStandings, standingOf } from "@/modules/intel/standings";
-import type { PilotProfile, PilotScore } from "@/modules/intel/types";
-import { deleteScan, profileScanPilots, rescan } from "../actions";
+import { getScan, scanProgress } from "@/modules/intel/scans";
+import { isFriendly, isHostile } from "@/modules/intel/standings";
+import { loadScanView } from "@/modules/intel/view";
+import { deleteScan, profileScanPilots, rescan, rewriteBriefing } from "../actions";
 
 export const metadata = { title: "Threat Intel scan" };
 
@@ -33,52 +33,24 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
   const scan = await getScan(id);
   if (!scan) notFound();
 
-  const [pilots, standings, settings, progress] = await Promise.all([getScanPilots(id), loadStandings(), getSettings(), scanProgress(scan)]);
-  const home = settings["corp.homeCorporationId"];
-  const ids = pilots.map((p) => p.characterId);
-  const engagements = home ? await engagementsWithUs(home, await encountersWithUs(home, ids), ids) : [];
-  const entityIds = scanEntityIds(
-    pilots.map((p) => p.history),
-    engagements,
-  );
-  const profiles = pilots.map((p) => (p.profile as PilotProfile | null) ?? null);
-  const names = await lookupDisplayNames({
-    typeIds: [
-      ...entityIds.typeIds,
-      ...profiles.flatMap((pr) => [
-        ...(pr?.hulls.slice(0, 3).map((h) => h.shipTypeId) ?? []),
-        ...(pr?.recent.latest.flatMap((e) => [e.shipTypeId, e.otherShipTypeId]) ?? []),
-      ]),
-    ],
-    systemIds: [scan.systemId, ...engagements.map((e) => e.systemId), ...profiles.flatMap((pr) => pr?.recent.latest.map((e) => e.systemId) ?? [])],
-    entityIds: [...entityIds.entityIds, ...pilots.map((p) => p.allianceId)],
-    corporationIds: [...entityIds.corporationIds, ...pilots.map((p) => p.corporationId)],
-  });
-
-  const rows = pilots.map((p) => ({ pilot: p, standing: standingOf(p, standings) }));
-  const summary = groupSummary(
-    rows.map((r) => ({
-      characterId: r.pilot.characterId,
-      corporationId: r.pilot.corporationId,
-      allianceId: r.pilot.allianceId,
-      standing: r.standing,
-      score: (r.pilot.scoreDetail as PilotScore | null) ?? null,
-      profile: (r.pilot.profile as PilotProfile | null) ?? null,
-    })),
-    scan.createdAt,
-  );
+  const [view, progress, briefing] = await Promise.all([
+    loadScanView(scan),
+    scanProgress(scan),
+    latestNote<Briefing>({ kind: "briefing", scanId: scan.id }),
+  ]);
+  const { home, pilots, rows, engagements, names, summary, totals, pilotNames, system } = view;
   const friendly = rows.filter((r) => isFriendly(r.standing));
   const others = rows.filter((r) => !isFriendly(r.standing));
   const hostiles = rows.filter((r) => isHostile(r.standing)).length;
   const highThreat = summary.tiers.high + summary.tiers.extreme;
-  const totals = historyTotals(
-    pilots.map((p) => p.history),
-    engagements,
-  );
   const unprofiled = pilots.filter((p) => !p.profiled).length;
-  const pilotNames = new Map(pilots.map((p) => [p.characterId, p.name]));
-  const system = scan.systemId ? names.systems.get(scan.systemId) : null;
   const canDelete = scan.createdBy === user.id || user.can(INTEL_PERMISSIONS.manage);
+  const canAi = user.can(INTEL_PERMISSIONS.ai);
+  const claudeHint = claudeConfigured()
+    ? null
+    : user.can(INTEL_PERMISSIONS.manage)
+      ? "Briefings come from a template. Set ANTHROPIC_API_KEY to have Claude write them."
+      : null;
 
   return (
     <div className="space-y-6">
@@ -109,6 +81,17 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
       </div>
 
       <ScanProgressPoller scanId={scan.id} initial={progress} />
+
+      {summary.hostiles > 0 && (
+        <BriefingPanel
+          note={briefing}
+          pending={scan.briefingStatus === "pending"}
+          scanId={scan.id}
+          pilotNames={pilotNames}
+          claudeHint={claudeHint}
+          actions={canAi && scan.status === "ready" ? <RewriteBriefingButton scanId={scan.id} action={rewriteBriefing} /> : undefined}
+        />
+      )}
 
       {summary.hostiles > 0 && (
         <Panel title="The group" subtitle={`${summary.hostiles} non-friendly pilot${summary.hostiles === 1 ? "" : "s"}`}>
