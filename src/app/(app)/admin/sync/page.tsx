@@ -42,6 +42,12 @@ interface JobRow {
 type I18n = Awaited<ReturnType<typeof getI18n>>;
 
 const isFailing = (r: JobRow) => r.enabled && r.last_status === "error";
+/** Most severe status among a character's enabled jobs (skipped counts as pending, as in the table); null when all are disabled. */
+const STATUS_SEVERITY = ["error", "running", "pending", "ok"] as const;
+const worstStatus = (rows: JobRow[]) => {
+  const statuses = new Set(rows.filter((r) => r.enabled).map((r) => (r.last_status === "skipped" ? "pending" : r.last_status)));
+  return STATUS_SEVERITY.find((s) => statuses.has(s)) ?? null;
+};
 const earliestNextRun = (rows: JobRow[]) =>
   rows
     .filter((r) => r.enabled)
@@ -93,7 +99,7 @@ export default async function SyncPage() {
     .map(([id, jobs]) => {
       const name = jobs[0].owner_name ?? id;
       const accountMain = jobs[0].account_main;
-      return { id, name, accountMain, jobs, failing: jobs.filter(isFailing).length };
+      return { id, name, accountMain, jobs, failing: jobs.filter(isFailing).length, status: worstStatus(jobs) };
     })
     .sort(
       (a, b) =>
@@ -202,7 +208,7 @@ export default async function SyncPage() {
               return (
                 <li key={c.id}>
                   <details className="group" open={c.failing > 0}>
-                    <summary className="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 py-2.5 text-sm">
+                    <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1 py-2.5 text-sm [&::-webkit-details-marker]:hidden">
                       <span className="flex min-w-48 flex-1 items-center gap-2.5">
                         <ChevronRight
                           className="size-4 shrink-0 text-ink-3 transition-transform group-open:rotate-90"
@@ -215,10 +221,13 @@ export default async function SyncPage() {
                         )}
                       </span>
                       <span className="text-xs text-ink-3">{ts.sections.jobCount(c.jobs.length)}</span>
-                      {c.failing ? (
-                        <StatusBadge status="error" label={ts.sections.failingCount(c.failing)} />
+                      {c.status === null ? (
+                        <StatusBadge status="pending" label={ts.disabled} />
                       ) : (
-                        <StatusBadge status="ok" />
+                        <StatusBadge
+                          status={c.status}
+                          label={c.status === "error" ? ts.sections.failingCount(c.failing) : undefined}
+                        />
                       )}
                       <span className="text-xs whitespace-nowrap text-ink-2 sm:w-40 sm:text-right">
                         {nextRun ? ts.sections.nextRun(f.relativeTime(nextRun)) : "—"}
