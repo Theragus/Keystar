@@ -116,7 +116,14 @@ describe("hull and module classification", () => {
 });
 
 describe("threat score", () => {
-  it("gives a pilot who was deadly long ago but is quiet now a low score", () => {
+  it("does not label an empty completed killmail sample as low danger", () => {
+    const profile = buildProfile(input({ stats: emptyStats({ kills: 814 }), coveredSince: new Date(0) }));
+    const score = scorePilot(profile, ctx());
+    expect(score.assessment?.sample).toBe(0);
+    expect(score.tier).toBe("unknown");
+  });
+
+  it("marks a statistics-only pilot without sampled killmails unknown", () => {
     const months = Array.from({ length: 12 }, (_, i) => ({
       year: 2023,
       month: i + 1,
@@ -136,7 +143,7 @@ describe("threat score", () => {
     });
     const score = scorePilot(buildProfile(input({ stats })), ctx());
     expect(score.composite).toBeLessThan(25);
-    expect(score.tier).toBe("low");
+    expect(score.tier).toBe("unknown");
     expect(reasonText(MESSAGES.en, score.dimensions.find((d) => d.key === "activity")!.why)).toContain("last active 2023-12");
   });
 

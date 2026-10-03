@@ -346,7 +346,7 @@ export function scorePilot(profile: PilotProfile | null, ctx: ScoreContext): Pil
   return {
     assessment: { capability, relevance: relevance === null ? null : Math.round(relevance), confidence, sample, escalation: tags.filter(t => ["cyno", "capital", "blops"].includes(t.key)).map(t => t.label) },
     composite,
-    tier: tierOf(composite),
+    tier: sample === 0 ? "unknown" : tierOf(composite),
     recencyGate: Math.round(recencyGate * 1000) / 1000,
     dimensions: dims,
     tags,
