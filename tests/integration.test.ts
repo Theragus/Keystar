@@ -495,6 +495,63 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(notable).toMatchObject({ killmailId: 1, finalBlowName: "Alpha", value: 100e6 });
     });
 
+    it("hands out live kills and losses stored after the cursor, with what the notification shows", async () => {
+      const q2 = await kb();
+      const { storeKillmails } = await import("@/modules/killboard/sync");
+      // eve_corporations isn't truncated here (other suites leave rows behind): set the two this test reads.
+      await db().execute(sql`DELETE FROM eve_corporations WHERE corporation_id IN (${HOME}, 555)`);
+      await db().insert(schema.eveCorporations).values({ corporationId: 555, name: "Enemy Corp", ticker: "ENMY" });
+      const cursor = await q2.liveCursorNow();
+      // The fixture above is older than the live window and was stored before the cursor anyway.
+      expect((await q2.getLiveEvents(HOME, cursor)).events).toEqual([]);
+
+      const recent = new Date(Date.now() - 10 * 60_000).toISOString();
+      await storeKillmails(db(), [
+        // Kill: an outsider landed the final blow, Bravo did the most corp damage.
+        { killmail_id: 11, killmail_time: recent, solar_system_id: 30000180,
+          victim: { character_id: 9, corporation_id: 555, ship_type_id: 622, damage_taken: 900 },
+          attackers: [
+            { character_id: 1, corporation_id: HOME, ship_type_id: 11186, damage_done: 100, final_blow: false },
+            { character_id: 2, corporation_id: HOME, ship_type_id: 17843, damage_done: 500, final_blow: false },
+            { character_id: 8, corporation_id: 888, ship_type_id: 622, damage_done: 300, final_blow: true },
+          ],
+          zkb: { hash: "l11", totalValue: 75e6 } },
+        // Loss: Bravo's ship, killed by the outsider.
+        { killmail_id: 12, killmail_time: recent, solar_system_id: 30000181,
+          victim: { character_id: 2, corporation_id: HOME, ship_type_id: 17843, damage_taken: 5000 },
+          attackers: [{ character_id: 9, corporation_id: 555, ship_type_id: 622, damage_done: 5000, final_blow: true }],
+          zkb: { hash: "l12", totalValue: 40e6, solo: true } },
+        // Someone else's fight, and a corp kill too old to announce.
+        { killmail_id: 13, killmail_time: recent, solar_system_id: 30000180,
+          victim: { character_id: 7, corporation_id: 777, ship_type_id: 622, damage_taken: 1 },
+          attackers: [{ character_id: 8, corporation_id: 888, ship_type_id: 622, damage_done: 1, final_blow: true }],
+          zkb: { hash: "l13", totalValue: 1e9 } },
+        { killmail_id: 14, killmail_time: at("2026-09-01T12:00:00"), solar_system_id: 30000180,
+          victim: { character_id: 9, corporation_id: 555, ship_type_id: 622, damage_taken: 1 },
+          attackers: [{ character_id: 1, corporation_id: HOME, ship_type_id: 622, damage_done: 1, final_blow: true }],
+          zkb: { hash: "l14", totalValue: 1e9 } },
+      ] as never);
+
+      const live = await q2.getLiveEvents(HOME, cursor);
+      expect(live.events).toEqual([
+        expect.objectContaining({
+          killmailId: 11, kind: "kill", shipTypeId: 622, victimId: 9, victimName: "Outsider", victimTicker: "ENMY",
+          attacker: { characterId: 2, name: "Bravo", ticker: null, shipTypeId: 17843, shipName: null, finalBlow: false },
+          attackerCount: 3, systemName: "Osmon", security: 0.68, value: 75e6,
+        }),
+        expect.objectContaining({
+          killmailId: 12, kind: "loss", shipTypeId: 17843, victimId: 2, victimName: "Bravo",
+          attacker: { characterId: 9, name: "Outsider", ticker: "ENMY", shipTypeId: 622, shipName: null, finalBlow: true },
+          systemName: "Tama", value: 40e6, solo: true,
+        }),
+      ]);
+      expect(live.cursor > cursor).toBe(true);
+      // Nothing new after the returned cursor; a malformed cursor is rejected by the pattern.
+      expect((await q2.getLiveEvents(HOME, live.cursor)).events).toEqual([]);
+      expect(q2.LIVE_CURSOR_PATTERN.test(live.cursor)).toBe(true);
+      expect(q2.LIVE_CURSOR_PATTERN.test("now(); DROP")).toBe(false);
+    });
+
     it("syncs only killmails inside the plan's window", async () => {
       const { syncCorporationKillmails } = await import("@/modules/killboard/sync");
       await db().execute(sql`TRUNCATE killmails, killmail_attackers`);

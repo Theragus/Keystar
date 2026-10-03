@@ -8,6 +8,12 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- **Live kill notifications.** When a corporation member gets a kill or loses a ship, a notification appears in the
+  top-right corner within seconds of zKillboard posting it. It shows the destroyed ship, your pilot's portrait, the
+  victim, the final blow (or, on kills, your top-damage pilot), the system with its security and region, and the ISK
+  value. It stays for 30 seconds with a countdown bar (paused while you hover it) and opens the killmail on
+  zKillboard when clicked. A bell in the top bar mutes them for your browser. The worker reads zKillboard's R2Z2 live
+  feed every 10 seconds, and those killmails reach the killboard immediately as well.
 - **Light mode.** Switch between light and dark beside the language selector in the sidebar or on sign-in, join,
   and setup pages. The preference is remembered for a year and applied before rendering, with matching glass
   surfaces, readable status colours, controls, tables, chart chrome, and keyboard focus. Charts get their own

@@ -7,7 +7,19 @@ import { parseMarkup, stripMarkup } from "@/modules/killboard/report/markup";
 import { readinessOf, templateReport } from "@/modules/killboard/report/template";
 import type { ReportFacts } from "@/modules/killboard/report/types";
 import { planSync } from "@/modules/killboard/sync";
-import { monthsBetween, toRows, windowPath, ZkillClient, ZkillError, type ZkillKillmail } from "@/modules/killboard/zkill";
+import { readLiveFeed, resumeSequence } from "@/modules/killboard/live";
+import {
+  fromR2z2,
+  involvesCorporation,
+  monthsBetween,
+  R2z2Client,
+  type R2z2Result,
+  toRows,
+  windowPath,
+  ZkillClient,
+  ZkillError,
+  type ZkillKillmail,
+} from "@/modules/killboard/zkill";
 
 const entry = (id: number, overrides: Partial<ZkillKillmail> = {}): ZkillKillmail => ({
   killmail_id: id,
@@ -111,6 +123,127 @@ describe("zKillboard client", () => {
       { year: 2026, month: 1 },
       { year: 2026, month: 2 },
     ]);
+  });
+});
+
+describe("zKillboard live feed (R2Z2)", () => {
+  const file = (km: ZkillKillmail) => {
+    const { zkb, ...esi } = km;
+    return { killmail_id: km.killmail_id, hash: zkb.hash, esi, zkb, uploaded_at: 1, sequence_id: 5 };
+  };
+
+  it("flattens a sequence file to the listing shape and rejects junk", () => {
+    const km = entry(42);
+    expect(fromR2z2(file(km))).toEqual(km);
+    // The hash may only be on the file itself.
+    expect(fromR2z2({ ...file(km), zkb: { ...km.zkb, hash: undefined } })?.zkb.hash).toBe("abc");
+    expect(fromR2z2({ killmail_id: 1, hash: "x" })).toBeNull();
+    expect(fromR2z2({ ...file(km), esi: { ...file(km).esi, attackers: "nope" } })).toBeNull();
+    expect(fromR2z2(null)).toBeNull();
+  });
+
+  it("reads the pointer and sequence files with a User-Agent; 404 means not published yet", async () => {
+    const urls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      urls.push(String(url));
+      expect((init?.headers as Record<string, string>)["User-Agent"]).toBe("ua");
+      if (String(url).endsWith("/sequence.json")) return new Response(JSON.stringify({ sequence: 7 }));
+      if (String(url).endsWith("/7.json")) return new Response(JSON.stringify(file(entry(70))));
+      return new Response("", { status: 404 });
+    });
+    const client = new R2z2Client({ userAgent: "ua", fetch: fetchImpl as typeof fetch, sleep: async () => {} });
+    expect(await client.sequence()).toBe(7);
+    expect(await client.entry(7)).toEqual({ kind: "entry", killmail: entry(70) });
+    expect(await client.entry(8)).toEqual({ kind: "pending" });
+    expect(urls).toEqual([
+      "https://r2z2.zkillboard.com/ephemeral/sequence.json",
+      "https://r2z2.zkillboard.com/ephemeral/7.json",
+      "https://r2z2.zkillboard.com/ephemeral/8.json",
+    ]);
+    const refused = new R2z2Client({ userAgent: "ua", fetch: (async () => new Response("", { status: 403 })) as typeof fetch });
+    await expect(refused.entry(1)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("knows when the corporation is on a killmail", () => {
+    expect(involvesCorporation(entry(1), 100)).toBe(true); // attacker
+    expect(involvesCorporation(entry(1), 555)).toBe(true); // victim
+    expect(involvesCorporation(entry(1), 999)).toBe(false);
+  });
+
+  it("resumes its position only for the same corporation and while the files still exist", () => {
+    const now = new Date("2026-10-03T12:00:00Z");
+    const state = { corporationId: 100, sequence: 500, updatedAt: "2026-10-03T11:59:00Z" };
+    expect(resumeSequence(state, 100, now)).toBe(500);
+    expect(resumeSequence(state, 101, now)).toBeNull();
+    expect(resumeSequence({ ...state, updatedAt: "2026-10-02T12:00:00Z" }, 100, now)).toBeNull();
+    expect(resumeSequence({}, 100, now)).toBeNull();
+  });
+
+  /** A fake feed: sequence numbers mapped to killmails (null = unusable file); `head` is the published pointer. */
+  const feed = (files: Record<number, ZkillKillmail | null>, head: number) => {
+    const read: number[] = [];
+    return {
+      read,
+      r2z2: {
+        sequence: async () => head,
+        entry: async (seq: number): Promise<R2z2Result> => {
+          read.push(seq);
+          return seq in files ? { kind: "entry", killmail: files[seq]! } : { kind: "pending" };
+        },
+      },
+    };
+  };
+  const now = new Date("2026-10-03T12:00:00Z");
+  const fresh = { corporationId: 100, sequence: 10, updatedAt: "2026-10-03T11:59:50Z" };
+
+  it("stores only the corporation's killmails, then stops at the end of the feed", async () => {
+    const other = entry(3, { victim: { corporation_id: 7, ship_type_id: 1, damage_taken: 1 }, attackers: [{ corporation_id: 8, damage_done: 1, final_blow: true }] });
+    const f = feed({ 10: entry(1), 11: other, 12: null, 13: entry(4) }, 13);
+    const stored: number[] = [];
+    const out = await readLiveFeed({} as never, 100, fresh, {
+      r2z2: f.r2z2,
+      store: async (_db, kms) => (stored.push(...kms.map((k) => k.killmail_id)), kms.length),
+      resolve: async () => {},
+      now,
+    });
+    expect(stored).toEqual([1, 4]);
+    expect(out).toMatchObject({ sequence: 14, scanned: 4, stored: 2, caughtUp: true, error: null });
+  });
+
+  it("starts at the published pointer without a usable position, and skips gaps below it", async () => {
+    const f = feed({ 20: entry(1), 22: entry(2) }, 22);
+    const out = await readLiveFeed({} as never, 100, {}, { r2z2: f.r2z2, store: async () => 1, resolve: async () => {}, now });
+    // Pointer 22: read 22, then 23 is pending at the head.
+    expect(f.read).toEqual([22, 23]);
+    expect(out.sequence).toBe(23);
+
+    const g = feed({ 10: entry(1), 12: entry(2) }, 12);
+    const gap = await readLiveFeed({} as never, 100, fresh, { r2z2: g.r2z2, store: async () => 1, resolve: async () => {}, now });
+    expect(g.read).toEqual([10, 11, 12, 13]);
+    expect(gap).toMatchObject({ sequence: 13, scanned: 2, caughtUp: true });
+  });
+
+  it("keeps its progress when zKillboard refuses mid-run, and caps a run", async () => {
+    let calls = 0;
+    const out = await readLiveFeed({} as never, 100, fresh, {
+      r2z2: {
+        sequence: async () => 99,
+        entry: async () => {
+          if (++calls > 2) throw new ZkillError("R2Z2 responded 429", 429);
+          return { kind: "entry", killmail: null };
+        },
+      },
+      now,
+    });
+    expect(out).toMatchObject({ sequence: 12, scanned: 2, caughtUp: false });
+    expect(out.error?.status).toBe(429);
+
+    const capped = await readLiveFeed({} as never, 100, fresh, {
+      r2z2: { sequence: async () => 999, entry: async () => ({ kind: "entry", killmail: null }) },
+      now,
+      maxPerRun: 5,
+    });
+    expect(capped).toMatchObject({ sequence: 15, scanned: 5, caughtUp: false });
   });
 });
 

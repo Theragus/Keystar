@@ -219,6 +219,42 @@ select option:disabled {
   }
 }
 
+/* ---------------------------------------------------------------- Toasts */
+
+/* The bar under a toast runs down over its lifetime; pausing the animation
+   pauses the toast (it closes on animationend), so the two never drift. */
+@keyframes toast-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+}
+
+@utility toast-countdown {
+  transform-origin: left;
+  animation: toast-countdown var(--toast-duration, 30s) linear forwards;
+}
+
+@utility toast-in {
+  animation: toast-in 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The countdown carries information and keeps running; the slide-in goes. */
+  .toast-in {
+    animation: none;
+  }
+}
+
 /* ------------------------------------------------------------- Liquid glass */
 
 @utility glass {
