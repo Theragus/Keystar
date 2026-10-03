@@ -19,6 +19,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Keep sidebar icons and section-heading prefixes fixed while labels expand to the right. Show three-character collapsed headings, remove fade flicker, use a 300 ms width animation, disable collapsed navigation scrolling, and move branding to the top bar with the toggle in the sidebar.
+
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
   dashboard's killboard button now read "Combat Report".
 
