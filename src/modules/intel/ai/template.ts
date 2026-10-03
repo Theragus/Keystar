@@ -1,5 +1,5 @@
-import type { BriefingFacts, DossierFacts } from "./facts";
-import type { Briefing, Dossier, ThreatLevel } from "./types";
+import type { BriefingFacts, DossierFacts, DscanFacts } from "./facts";
+import type { Briefing, Dossier, DscanRead, ThreatLevel } from "./types";
 
 /**
  * Plain briefings written from the same facts when Claude is not configured,
@@ -92,5 +92,29 @@ export function templateDossier(facts: DossierFacts): Dossier {
       ? `On ${p.historyWithUs.onOurLosses} of our losses and died to us ${p.historyWithUs.diedToUs} times; last ${p.historyWithUs.last} ago.`
       : null,
     confidence: p.last30Days && (p.last30Days.kills + p.last30Days.losses) >= 10 ? "high" : k ? "medium" : "low",
+  };
+}
+
+export function templateDscan(facts: DscanFacts): DscanRead {
+  const ships = facts.dscan.reduce((n, r) => n + r.onScan, 0);
+  const classes = new Map<string, number>();
+  for (const r of facts.dscan) classes.set(r.class, (classes.get(r.class) ?? 0) + r.onScan);
+  const comp = [...classes.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `${n} ${c.toLowerCase()}`);
+  const assignments = facts.dscan.flatMap((r) =>
+    r.computedAssignment.map((a) => {
+      const c = r.candidates.find((x) => x.id === a.id);
+      return {
+        typeId: r.typeId,
+        characterId: a.id,
+        confidence: a.confidence,
+        reason: c?.flewThisExactHull ? `Flew this hull${c.lastFlown ? ` ${c.lastFlown} ago` : " before"}` : `Flies ${r.class.toLowerCase()} hulls`,
+      };
+    }),
+  );
+  const unplaced = facts.dscan.filter((r) => r.computedAssignment.length < r.onScan).map((r) => r.ship);
+  return {
+    assessment: `${plural(ships, "ship")} on scan: ${list(comp.slice(0, 5))}. ${assignments.length ? `${plural(assignments.length, "pilot")} from local match a hull they flew recently.` : "No pilot in local has flown these hulls recently."}`,
+    assignments,
+    notes: unplaced.length ? `Nobody in local is known to fly ${list([...new Set(unplaced)].slice(0, 5))}; they may be off the list or in new hulls.` : "",
   };
 }

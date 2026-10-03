@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
-import { CONFIDENCE, THREAT_LEVELS, type Briefing, type Dossier } from "./types";
-import type { BriefingFacts, DossierFacts } from "./facts";
+import { CONFIDENCE, MATCH_CONFIDENCE, THREAT_LEVELS, type Briefing, type Dossier, type DscanRead } from "./types";
+import type { BriefingFacts, DossierFacts, DscanFacts } from "./facts";
 
 /**
  * Claude writes the narrative for threat intel from computed facts, using
@@ -56,6 +56,20 @@ ${RULES}
 - watchFor: up to 4 short, concrete warnings (for example "Covert cyno on recent losses", "Hunts with a Sabre at gates").
 - historyWithUs: one sentence about fights with our corporation, or null if there are none.
 - confidence: "high" with many recent killmails, "medium" with a few or only statistics, "low" with almost nothing recent.`;
+
+export const DSCAN_SYSTEM = `You are the intelligence officer of an EVE Online player corporation. A pilot pasted a directional scan (ships on scan) next to the pilots in local. From the computed facts as JSON, say who is probably flying what.
+
+${RULES}
+- For every hull on the d-scan you may only name pilots from that hull's "candidates" (or no one). Prefer pilots who flew the exact hull recently; a pilot flies at most one hull; never assign more pilots to a hull than are on scan.
+- assignments: one entry per pilot you place, with the hull's typeId, the pilot's id, confidence "likely" (flew this exact hull in the last week), "possible" (flew it before) or "guess" (only the hull class matches), and a short reason under 120 characters. Use characterId null for hulls you cannot place.
+- assessment: two or three sentences on what this d-scan means: the likely composition and roles, how it fits the pilots in local, and the main danger.
+- notes: one sentence on caveats (hulls nobody in local flies, pilots in local not on scan), or an empty string.`;
+
+const DscanSchema = z.object({
+  assessment: z.string(),
+  assignments: z.array(z.object({ typeId: z.number(), characterId: z.number().nullable(), confidence: z.enum(MATCH_CONFIDENCE), reason: z.string() })),
+  notes: z.string(),
+});
 
 const BriefingSchema = z.object({
   headline: z.string(),
@@ -146,4 +160,29 @@ export async function claudeDossier(facts: DossierFacts, opts: ClaudeOptions): P
   const user = `Write the dossier for ${facts.pilot.name}.\n\n<facts>\n${JSON.stringify(facts, null, 1)}\n</facts>`;
   const out = await callStructured(DossierSchema, DOSSIER_SYSTEM, user, { ...opts, effort: "low", maxTokens: 8000, timeoutMs: 45_000 });
   return { content: sanitizeDossier(out.parsed), model: out.model, usage: out.usage };
+}
+
+/** Keeps only assignments the computed candidates allow: per hull at most the count on scan, each pilot once. */
+export function sanitizeDscan(raw: z.infer<typeof DscanSchema>, facts: DscanFacts): DscanRead {
+  if (!raw.assessment.trim()) throw new Error("Claude returned an empty d-scan read");
+  const rows = new Map(facts.dscan.map((r) => [r.typeId, r]));
+  const used = new Map<number, number>();
+  const pilots = new Set<number>();
+  const assignments: DscanRead["assignments"] = [];
+  for (const a of raw.assignments) {
+    const row = rows.get(a.typeId);
+    if (!row) continue;
+    if ((used.get(a.typeId) ?? 0) >= row.onScan) continue;
+    if (a.characterId !== null && (!row.candidates.some((c) => c.id === a.characterId) || pilots.has(a.characterId))) continue;
+    used.set(a.typeId, (used.get(a.typeId) ?? 0) + 1);
+    if (a.characterId !== null) pilots.add(a.characterId);
+    assignments.push({ typeId: a.typeId, characterId: a.characterId, confidence: a.confidence, reason: clip(a.reason, 160) });
+  }
+  return { assessment: clip(raw.assessment, 800), assignments, notes: clip(raw.notes, 300) };
+}
+
+export async function claudeDscan(facts: DscanFacts, opts: ClaudeOptions): Promise<ClaudeResult<DscanRead>> {
+  const user = `Who is flying what on this d-scan?\n\n<facts>\n${JSON.stringify(facts, null, 1)}\n</facts>`;
+  const out = await callStructured(DscanSchema, DSCAN_SYSTEM, user, { ...opts, effort: "low", maxTokens: 8000, timeoutMs: 45_000 });
+  return { content: sanitizeDscan(out.parsed, facts), model: out.model, usage: out.usage };
 }

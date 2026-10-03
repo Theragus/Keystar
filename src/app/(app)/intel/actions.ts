@@ -9,7 +9,8 @@ import { assertPermission } from "@/core/auth/dal";
 import { getDb, intelScans } from "@/core/db";
 import { SHARE_ID_PATTERN } from "@/lib/share-id";
 import { INTEL_PERMISSIONS } from "@/modules/intel/module";
-import { writeBriefing, writeDossier as writeDossierNote } from "@/modules/intel/ai/generate";
+import { writeBriefing, writeDossier as writeDossierNote, writeDscanRead } from "@/modules/intel/ai/generate";
+import { dscanShips, MAX_DSCAN_CHARS } from "@/modules/intel/dscan";
 import { nameScanEntities } from "@/modules/intel/names";
 import { getScan, profileRemaining, startScan, type StartScanInput } from "@/modules/intel/scans";
 
@@ -36,12 +37,42 @@ async function start(input: Omit<StartScanInput, "userId" | "userName" | "aiAllo
   redirect(`/intel/${result.id}`);
 }
 
-/** Scans a pasted pilot list and opens the result. */
+/** Scans a pasted pilot list (and optional d-scan) and opens the result. */
 export async function createScan(_prev: ScanFormState, formData: FormData): Promise<ScanFormState> {
+  await assertPermission(INTEL_PERMISSIONS.use);
+  const dscanText = String(formData.get("dscan") ?? "");
+  let dscan = null;
+  if (dscanText.trim()) {
+    if (dscanText.length > MAX_DSCAN_CHARS) return { error: "That d-scan is too long." };
+    const parsed = await dscanShips(dscanText);
+    if (!parsed.lines) return { error: "The d-scan box does not contain a d-scan (copy it from the directional scanner)." };
+    dscan = parsed.ships;
+  }
   return start({
     text: String(formData.get("pilots") ?? ""),
     systemName: String(formData.get("system") ?? ""),
+    dscan,
   });
+}
+
+/** Adds or replaces the scan's d-scan. */
+export async function setDscan(_prev: ScanFormState, formData: FormData): Promise<ScanFormState> {
+  await assertPermission(INTEL_PERMISSIONS.use);
+  const id = scanIdFrom(formData);
+  const text = String(formData.get("dscan") ?? "");
+  if (text.length > MAX_DSCAN_CHARS) return { error: "That d-scan is too long." };
+  const parsed = await dscanShips(text);
+  if (!parsed.lines) return { error: "Paste a d-scan (copy it from the directional scanner)." };
+  await getDb().update(intelScans).set({ dscan: parsed.ships, updatedAt: new Date() }).where(eq(intelScans.id, id));
+  refresh();
+  return { error: null };
+}
+
+/** Claude's read of who is flying what on the d-scan. */
+export async function readDscan(formData: FormData): Promise<void> {
+  const user = await assertPermission(INTEL_PERMISSIONS.ai);
+  await writeDscanRead(scanIdFrom(formData), { createdBy: user.id });
+  refresh();
 }
 
 /** Scans the same pilots (and system) again with fresh data. */

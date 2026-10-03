@@ -10,7 +10,10 @@ import { env } from "@/core/env";
 import { compact, dateTime, relativeTime } from "@/lib/format";
 import { SHARE_ID_PATTERN } from "@/lib/share-id";
 import { claudeConfigured, latestNote } from "@/modules/intel/ai/generate";
-import type { Briefing } from "@/modules/intel/ai/types";
+import type { Briefing, DscanRead } from "@/modules/intel/ai/types";
+import { DscanForm, ReadDscanButton } from "@/modules/intel/components/dscan-form";
+import { DscanPanel } from "@/modules/intel/components/dscan-panel";
+import { matchDscan } from "@/modules/intel/dscan";
 import { RewriteBriefingButton } from "@/modules/intel/components/ai-buttons";
 import { BriefingPanel } from "@/modules/intel/components/briefing-panel";
 import { EngagementList } from "@/modules/intel/components/engagements";
@@ -22,7 +25,7 @@ import { INTEL_PERMISSIONS } from "@/modules/intel/module";
 import { getScan, scanProgress } from "@/modules/intel/scans";
 import { isFriendly, isHostile } from "@/modules/intel/standings";
 import { loadScanView } from "@/modules/intel/view";
-import { deleteScan, profileScanPilots, rescan, rewriteBriefing } from "../actions";
+import { deleteScan, profileScanPilots, readDscan, rescan, rewriteBriefing, setDscan } from "../actions";
 
 export const metadata = { title: "Threat Intel scan" };
 
@@ -33,10 +36,11 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
   const scan = await getScan(id);
   if (!scan) notFound();
 
-  const [view, progress, briefing] = await Promise.all([
+  const [view, progress, briefing, dscanRead] = await Promise.all([
     loadScanView(scan),
     scanProgress(scan),
     latestNote<Briefing>({ kind: "briefing", scanId: scan.id }),
+    latestNote<DscanRead>({ kind: "dscan", scanId: scan.id }),
   ]);
   const { home, pilots, rows, engagements, names, summary, totals, pilotNames, system } = view;
   const friendly = rows.filter((r) => isFriendly(r.standing));
@@ -44,6 +48,13 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
   const hostiles = rows.filter((r) => isHostile(r.standing)).length;
   const highThreat = summary.tiers.high + summary.tiers.extreme;
   const unprofiled = pilots.filter((p) => !p.profiled).length;
+  const dscanRows = scan.dscan
+    ? matchDscan(
+        scan.dscan,
+        rows.map((r) => ({ characterId: r.pilot.characterId, name: r.pilot.name, standing: r.standing, profile: r.profile })),
+        scan.updatedAt,
+      )
+    : null;
   const canDelete = scan.createdBy === user.id || user.can(INTEL_PERMISSIONS.manage);
   const canAi = user.can(INTEL_PERMISSIONS.ai);
   const claudeHint = claudeConfigured()
@@ -51,6 +62,23 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
     : user.can(INTEL_PERMISSIONS.manage)
       ? "Briefings come from a template. Set ANTHROPIC_API_KEY to have Claude write them."
       : null;
+
+  const dscanPanel = (
+    <DscanPanel
+      rows={dscanRows}
+      read={dscanRead}
+      pilotNames={pilotNames}
+      form={
+        <details open={!dscanRows}>
+          <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">{dscanRows ? "Replace the d-scan" : "Paste a d-scan"}</summary>
+          <div className="mt-2">
+            <DscanForm scanId={scan.id} action={setDscan} replace={!!scan.dscan} />
+          </div>
+        </details>
+      }
+      actions={canAi && dscanRows?.length ? <ReadDscanButton scanId={scan.id} action={readDscan} label={claudeConfigured() ? "Ask Claude" : "Summarize"} /> : undefined}
+    />
+  );
 
   return (
     <div className="space-y-6">
@@ -107,6 +135,8 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
         </p>
       )}
 
+      {dscanRows && dscanPanel}
+
       <Panel
         title="Pilots"
         subtitle={others.length ? undefined : "Everyone here is friendly."}
@@ -130,6 +160,8 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
           </details>
         )}
       </Panel>
+
+      {!dscanRows && summary.hostiles > 0 && dscanPanel}
 
       {home && engagements.length > 0 && (
         <Panel

@@ -28,6 +28,15 @@ export interface Dossier {
   confidence: (typeof CONFIDENCE)[number];
 }
 
+export const MATCH_CONFIDENCE = ["likely", "possible", "guess"] as const;
+
+/** Who is probably flying what on a d-scan. */
+export interface DscanRead {
+  assessment: string;
+  assignments: { typeId: number; characterId: number | null; confidence: (typeof MATCH_CONFIDENCE)[number]; reason: string }[];
+  notes: string;
+}
+
 export interface StoredNote<T> {
   content: T;
   source: "claude" | "template";

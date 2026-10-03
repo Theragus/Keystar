@@ -33,6 +33,18 @@ export function ScanForm({
           className="glass-inset block h-64 w-full resize-y rounded-lg px-4 py-3 font-mono text-xs leading-relaxed text-ink placeholder:text-ink-3"
         />
       </label>
+      <details className="group">
+        <summary className="cursor-pointer text-sm text-ink-2 hover:text-ink">Add a d-scan (optional)</summary>
+        <label className="mt-2 block">
+          <span className="sr-only">D-scan</span>
+          <textarea
+            name="dscan"
+            placeholder="Paste the directional scanner (select all, Ctrl+C). Keystar matches the ships to the pilots above."
+            spellCheck={false}
+            className="glass-inset block h-32 w-full resize-y rounded-lg px-4 py-3 font-mono text-xs leading-relaxed text-ink placeholder:text-ink-3"
+          />
+        </label>
+      </details>
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm text-ink-2">
           Current system

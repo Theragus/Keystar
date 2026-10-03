@@ -64,6 +64,7 @@ export interface DscanEntry {
   typeId: number;
   name: string;
   count: number;
+  groupId?: number | null;
 }
 
 // ---------------------------------------------------------------------------

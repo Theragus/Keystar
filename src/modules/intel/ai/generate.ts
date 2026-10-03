@@ -6,11 +6,21 @@ import { lookupDisplayNames } from "../names";
 import { getScan, type ScanRow } from "../scans";
 import type { AiNoteKind } from "../schema";
 import { loadScanView, type ScanView } from "../view";
-import { claudeBriefing, claudeDossier, type ClaudeOptions, type ClaudeResult } from "./claude";
-import { briefingFacts, dossierFacts, factsHash, type BriefingFacts, type DossierFacts, type FactsPilot } from "./facts";
+import { matchDscan } from "../dscan";
+import { claudeBriefing, claudeDossier, claudeDscan, type ClaudeOptions, type ClaudeResult } from "./claude";
+import {
+  briefingFacts,
+  dossierFacts,
+  dscanFacts,
+  factsHash,
+  type BriefingFacts,
+  type DossierFacts,
+  type DscanFacts,
+  type FactsPilot,
+} from "./facts";
 import { claudeBudget } from "./limits";
-import { templateBriefing, templateDossier } from "./template";
-import type { Briefing, Dossier, StoredNote } from "./types";
+import { templateBriefing, templateDossier, templateDscan } from "./template";
+import type { Briefing, Dossier, DscanRead, StoredNote } from "./types";
 
 /**
  * Decides who writes a note (Claude when configured, allowed and within
@@ -27,6 +37,7 @@ const MIN_PILOTS_FOR_CLAUDE = 3;
 export interface WriteDeps {
   briefing?: (facts: BriefingFacts, opts: ClaudeOptions) => Promise<ClaudeResult<Briefing>>;
   dossier?: (facts: DossierFacts, opts: ClaudeOptions) => Promise<ClaudeResult<Dossier>>;
+  dscan?: (facts: DscanFacts, opts: ClaudeOptions) => Promise<ClaudeResult<DscanRead>>;
   now?: Date;
   db?: Db;
 }
@@ -203,6 +214,43 @@ export async function writeDossier(
     db,
     { kind: "dossier", scanId, characterId, facts, hash, createdBy: opts.createdBy },
     { content: templateDossier(facts), source: "template", model: null, error, usage: null },
+    now,
+  );
+}
+
+/** Claude's (or the template's) read of the scan's d-scan. */
+export async function writeDscanRead(scanId: string, opts: { createdBy: string }, deps: WriteDeps = {}): Promise<StoredNote<DscanRead> | null> {
+  const db = deps.db ?? getDb();
+  const now = deps.now ?? new Date();
+  const scan = await getScan(scanId, db);
+  if (!scan?.dscan?.length) return null;
+  const view = await loadScanView(scan);
+  const pilots = factsPilots(view);
+  const rows = matchDscan(scan.dscan, pilots, now);
+  const facts = dscanFacts(rows, pilots, view.names, now);
+  const hash = factsHash(facts);
+  const { ANTHROPIC_API_KEY: apiKey, INTEL_MODEL: model } = env();
+  let error: string | null = null;
+  if (apiKey) {
+    const existing = await reusable<DscanRead>(db, { kind: "dscan", scanId, characterId: null, hash }, now);
+    if (existing) return existing;
+    const budget = await claudeBudget(opts.createdBy, db, now);
+    if (budget.ok) {
+      try {
+        const out = await (deps.dscan ?? claudeDscan)(facts, { apiKey, model });
+        return await store(db, { kind: "dscan", scanId, characterId: null, facts, hash, createdBy: opts.createdBy }, { content: out.content, source: "claude", model: out.model, error: null, usage: out.usage }, now);
+      } catch (err) {
+        error = errorMessage(err);
+        log.warn("Claude d-scan read failed, using the template", { scanId, error });
+      }
+    } else {
+      error = budget.reason;
+    }
+  }
+  return store(
+    db,
+    { kind: "dscan", scanId, characterId: null, facts, hash, createdBy: opts.createdBy },
+    { content: templateDscan(facts), source: "template", model: null, error, usage: null },
     now,
   );
 }

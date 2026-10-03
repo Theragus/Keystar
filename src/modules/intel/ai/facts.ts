@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { compact } from "@/lib/format";
 import { HULL_CLASS_LABELS, hullClass } from "../hulls";
 import type { DisplayNames } from "../names";
+import type { DscanMatchRow } from "../dscan";
 import type { GroupSummary } from "../score/summary";
 import type { Engagement, PilotHistory, PilotProfile, PilotScore, Standing } from "../types";
 
@@ -30,7 +31,7 @@ const ago = (iso: string | null | undefined, now: Date): string | null => {
   if (!iso) return null;
   const h = (now.getTime() - Date.parse(iso)) / 3_600_000;
   if (h < 1) return "under 1 hour";
-  if (h < 48) return `${Math.round(h)} hours`;
+  if (h < 48) return Math.round(h) === 1 ? "1 hour" : `${Math.round(h)} hours`;
   return `${Math.round(h / 24)} days`;
 };
 const eve = (iso: string) => `${iso.slice(0, 16).replace("T", " ")} EVE`;
@@ -165,3 +166,37 @@ export function factsHash(facts: unknown): string {
   const json = JSON.stringify(facts, (key, value) => (key === "ago" ? undefined : value));
   return createHash("sha256").update(json).digest("hex").slice(0, 32);
 }
+
+/** D-scan hulls with the computed candidates (only they may be named) and a baseline assignment. */
+export function dscanFacts(rows: DscanMatchRow[], pilots: FactsPilot[], names: DisplayNames, now: Date) {
+  const byId = new Map(pilots.map((p) => [p.characterId, p]));
+  const name = (id: number) => byId.get(id)?.name ?? String(id);
+  return {
+    dscan: rows.map((r) => ({
+      typeId: r.typeId,
+      ship: r.name,
+      class: r.classLabel,
+      onScan: r.count,
+      candidates: r.candidates.map((c) => ({
+        id: c.characterId,
+        name: name(c.characterId),
+        flewThisExactHull: c.exact,
+        lastFlown: ago(c.lastAt, now),
+        uses: c.uses,
+        evidence: Math.round(c.evidence * 100) / 100,
+      })),
+      computedAssignment: r.assigned.map((a) => ({ id: a.characterId, name: name(a.characterId), confidence: a.confidence })),
+    })),
+    pilotsInLocal: pilots
+      .filter((p) => p.standing.cls !== "own" && p.standing.cls !== "blue")
+      .slice(0, 40)
+      .map((p) => ({
+        id: p.characterId,
+        name: p.name,
+        lastSeen: p.profile?.recent.lastSeen ? `${typeName(names, p.profile.recent.lastSeen.shipTypeId)} ${ago(p.profile.recent.lastSeen.time, now)} ago` : null,
+        tier: p.score?.tier ?? "unknown",
+      })),
+  };
+}
+
+export type DscanFacts = ReturnType<typeof dscanFacts>;
