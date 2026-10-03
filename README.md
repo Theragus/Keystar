@@ -145,6 +145,14 @@ KEYSTAR_DEMO_MODE=true pnpm dev
 - [docs/modules.md](docs/modules.md) — adding a feature module (skills, assets, …)
 - [docs/releasing.md](docs/releasing.md) — versioning and how releases are cut
 - [ROADMAP.md](ROADMAP.md) — planned features
+- [CONTRIBUTING.md](CONTRIBUTING.md) — issues, ideas and pull requests
+
+## Roadmap and feedback
+
+Found a bug or have an idea? [Open an issue](https://github.com/Theragus/Keystar/issues/new/choose) — a 👍 on an
+existing feature request helps decide what comes next. Accepted work is tracked on the
+[Keystar Roadmap](https://github.com/Theragus/Keystar/projects) project. Security problems are reported
+[privately](SECURITY.md).
 
 ## Tech stack
 

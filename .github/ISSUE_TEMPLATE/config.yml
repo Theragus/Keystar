@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Theragus/Keystar/security/advisories/new
+    about: Report security problems privately, not as a public issue.
+  - name: Deployment guide
+    url: https://github.com/Theragus/Keystar/blob/main/docs/deployment.md
+    about: Server setup, updates, backups and troubleshooting.

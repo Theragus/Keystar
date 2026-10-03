@@ -30,7 +30,7 @@ export async function generateMetadata() {
 }
 
 const PAGE_SIZE = 50;
-const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink [color-scheme:dark]";
+const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink";
 
 const statusTone: Record<ExpenseStatus, "good" | "accent" | "neutral"> = {
   counted: "good",

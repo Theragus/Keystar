@@ -27,7 +27,7 @@ export async function generateMetadata() {
   return { title: t.pnl.metaTitle.settings };
 }
 
-const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink [color-scheme:dark]";
+const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink";
 const RETURN_TO = "/mining/pnl/settings";
 const MINING_SCOPE = "esi-industry.read_character_mining.v1";
 
