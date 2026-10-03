@@ -1,9 +1,12 @@
+"use client";
+
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { compact } from "@/lib/format";
+import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 /** A profit/loss figure: sign, arrow and colour together, never colour alone. */
 export function SignedIsk({ value, unit = false, className }: { value: number; unit?: boolean; className?: string }) {
+  const { f } = useI18n();
   const flat = Math.abs(value) < 0.5;
   const Icon = value > 0 ? ArrowUpRight : ArrowDownRight;
   return (
@@ -16,7 +19,7 @@ export function SignedIsk({ value, unit = false, className }: { value: number; u
     >
       {!flat && <Icon className="size-3.5 shrink-0" aria-hidden />}
       {flat ? "" : value > 0 ? "+" : "−"}
-      {compact(Math.abs(value))}
+      {f.compact(Math.abs(value))}
       {unit && " ISK"}
     </span>
   );

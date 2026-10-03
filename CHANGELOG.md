@@ -1,14 +1,19 @@
 # Changelog
 
 All notable changes to Keystar. Versions follow [Semantic Versioning](https://semver.org/); while Keystar is below
-1.0, new features bump the patch version. Releasing is described in [docs/releasing.md](docs/releasing.md).
+1.0, releases with new features bump the minor version (0.1.5 → 0.2.0) and releases with only fixes bump the patch
+version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/releasing.md).
 
-## [0.1.3] - 2026-10-03
+## [Unreleased]
+
+**Before updating:** add the scope `esi-wallet.read_character_wallet.v1` to your application on
+developers.eveonline.com. Nobody is asked for it unless they enable wallet import in the mining P&L, but without it
+on the application that EVE login fails with `invalid_scope`. Members don't need to re-link.
 
 ### Added
 
-- **Mining P&L** (Industry → Mining P&L): a personal income/expense sheet for pilots mining with alts, visible only
-  to the account itself.
+- **Mining P&L** (Industry → Mining P&L, German "Mining-GuV"): a personal income/expense sheet for pilots mining
+  with alts, visible only to the account itself, in English and German.
   - Income: ore mined by your characters, valued like the mining dashboard, with an optional buyback % and per-ore
     price rules (with date ranges); realised prices from your wallet sells can be applied with one click.
   - Expenses: opt-in wallet import per character. Purchases of mining crystals, Heavy Water, Mining Foreman burst
@@ -20,8 +25,7 @@ All notable changes to Keystar. Versions follow [Semantic Versioning](https://se
 - **Mining activity tracking**: the personal ledger sync now records when each character's ledger grows, which gives
   active hours (wall-clock across alts and per character) from now on.
 - **Optional ESI scopes**: modules can declare scopes that users enable per character instead of every member being
-  asked for them. The first is wallet read access; enable `esi-wallet.read_character_wallet.v1` on your EVE
-  application (see docs/deployment.md).
+  asked for them. The first is wallet read access.
 
 ### Changed
 
@@ -29,11 +33,60 @@ All notable changes to Keystar. Versions follow [Semantic Versioning](https://se
   the member scopes. When another EVE login drops an opt-in scope anyway, My Characters says so and offers to turn
   it back on.
 - The personal mining ledger sync no longer re-applies a snapshot from Keystar's own cache or an older snapshot.
+- Trades between your own characters are left out of the P&L (neither a cost nor a sale).
 
 ### Fixed
 
 - Resolving new item types (appraisal, killboard, wallet) no longer fetches every type of their group from ESI; only
   ore, ice and gas groups are scanned for compressed variants.
+
+## [0.1.5] - 2026-10-03
+
+### Changed
+
+- Cards that looked clickable now are, or are gone. On the dashboard, the KPI tiles open the page behind the
+  number: the killboard tiles open the killboard on the same 30 days (ISK destroyed jumps to the ISK breakdown, ISK
+  efficiency to pilot efficiency), and the mining tile opens Mining. The info row links to the corporation on
+  zKillboard, Member Audit, My Characters and Sync Status. Links only appear for viewers who can open the target
+  page, and a hover state plus an arrow marks them.
+- Users & Roles: the role cards filter the user table (`?role=director`; click again to show everyone). Character
+  names open zKillboard. An ESI health warning links to where it can be fixed: My Characters for your own account,
+  Member Audit for others. Admins get a "Role permissions" shortcut to the permission matrix in Settings. The
+  Actions column is hidden when there is no account you can manage, and otherwise shows "—" with an explanation
+  where nothing can be done.
+- The corporation name in the top bar links back to the dashboard.
+- The new texts (filter line, tooltips, "Role permissions") are available in English and German.
+
+### Removed
+
+- The corporation card on the dashboard, which repeated the kills, losses and efficiency shown in the tiles below
+  it. The corporation logo and ticker moved into the "Home corporation" item, and the active pilot count into the
+  kills tile.
+- The up/down "switcher" icon next to the corporation name in the top bar. Keystar has one home corporation, so
+  there was nothing to switch.
+
+## [0.1.4] - 2026-10-03
+
+### Fixed
+
+- German: changes in killboard tables and the top-systems lists (e.g. "+1.234") now use German digit grouping.
+- The ore field estimator's example placeholder uses the number format of the EVE client in the chosen language.
+
+## [0.1.3] - 2026-10-02
+
+### Added
+
+- **German interface.** Keystar now speaks English and German. The language follows the browser's preferred
+  language on the first visit (anything other than German gets English) and can be changed with the language
+  switch in the sidebar footer, next to your pilot, or at the bottom of the sign-in, registration and setup pages.
+  The choice is remembered in a cookie.
+- Numbers and dates follow the chosen language: in German, "9,87 Mio. ISK", "1.234.567", "12,3 %", "vor 5 Minuten",
+  "02. Okt.". EVE times stay in `YYYY-MM-DD HH:mm ET`.
+
+### Changed
+
+- Module manifests and sync jobs name their texts with dictionary selectors instead of English strings (see
+  docs/modules.md). Item, system and pilot names, CSV exports and stored situation reports remain in English.
 
 ## [0.1.2] - 2026-10-02
 

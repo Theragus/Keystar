@@ -1,9 +1,12 @@
 import type { LucideIcon } from "lucide-react";
+import type { Msg } from "@/i18n/messages";
 import type { PermissionDef } from "@/core/rbac/permissions";
 
 /**
  * The contract every Keystar feature module implements. A module declares
  * what it needs (ESI scopes, permissions) and what it offers (navigation).
+ * User-facing text is a `Msg` that picks from the dictionaries, so every
+ * language can render it: `label: (t) => t.mining.module.nav.ledger`.
  * Background jobs live separately in the module's `jobs.ts` so the web bundle
  * never pulls in worker code — see src/core/sync/types.ts.
  */
@@ -15,7 +18,7 @@ export interface ScopeRequirement {
    * for corporation data; usually needs an in-game corp role as well.
    */
   level: "character" | "corporation";
-  reason: string;
+  reason: Msg;
   /** In-game corporation roles that make this scope useful (any of). */
   corpRoles?: string[];
   /**
@@ -28,7 +31,7 @@ export interface ScopeRequirement {
 
 export interface NavItem {
   href: string;
-  label: string;
+  label: Msg;
   icon: LucideIcon;
   /** Visible if the user has any of these permissions (omit = always visible). */
   anyPermission?: string[];
@@ -36,7 +39,8 @@ export interface NavItem {
 
 export interface NavSection {
   id: string;
-  label: string;
+  /** Sections with the same id are merged; the first module's label wins. */
+  label: Msg;
   order: number;
   items: NavItem[];
 }

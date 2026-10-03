@@ -6,9 +6,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Glass, Panel } from "@/components/ui/glass";
 import { PendingFrame, PendingProvider } from "@/components/ui/pending";
 import { StatTile } from "@/components/ui/stat-tile";
-import { compact, shortDate, unitPrice } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
+import type { Formatter } from "@/lib/format";
 import { CHART_CLASS_COLOR } from "@/modules/mining/class-colors";
-import { EXPENSE_CATEGORY_META } from "@/modules/mining/pnl/categories";
 import { PnlChart } from "@/modules/mining/pnl/components/pnl-chart";
 import { PnlFilterBar } from "@/modules/mining/pnl/components/pnl-filter-bar";
 import { PnlTabs } from "@/modules/mining/pnl/components/pnl-tabs";
@@ -25,19 +25,24 @@ import {
 } from "@/modules/mining/pnl/queries";
 import { buildPnlReport } from "@/modules/mining/pnl/report";
 
-export const metadata = { title: "Mining P&L" };
-
-/** compact() with a typographic minus. */
-function signed(value: number) {
-  return `${value < 0 ? "−" : ""}${compact(Math.abs(value))}`;
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.pnl.metaTitle.overview };
 }
 
-function hours(h: number) {
-  return h >= 10 ? `${Math.round(h)} h` : `${h.toFixed(1)} h`;
+/** f.compact() with a typographic minus. */
+function signed(f: Formatter, value: number) {
+  return `${value < 0 ? "−" : ""}${f.compact(Math.abs(value))}`;
+}
+
+function hoursValue(f: Formatter, h: number) {
+  return h >= 10 ? f.integer(h) : f.number(h, 1);
 }
 
 export default async function MiningPnlPage({ searchParams }: PageProps<"/mining/pnl">) {
   const ctx = await pnlPageContext(await searchParams);
+  const { t, f } = await getI18n();
+  const m = t.pnl.overview;
   const { filters, scope, user } = ctx;
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
 
@@ -55,20 +60,20 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
   const walletOn = wallet.filter((w) => w.granted).length;
   const hasData = income.length > 0 || expenses.length > 0 || manual.length > 0;
   const ratePct = scope.ratePct;
-  const incomeHint = [
-    ratePct !== 100 ? `${ratePct}% of valuation` : null,
-    rules.length ? `${rules.length} price rule${rules.length > 1 ? "s" : ""}` : null,
-  ]
+  const rate = ratePct !== 100 ? f.percent(ratePct / 100, Number.isInteger(ratePct) ? 0 : 1) : null;
+  const hours = (h: number) => t.pnl.hours(hoursValue(f, h));
+  const incomeHint = [rate ? m.tiles.rate(rate) : null, rules.length ? m.tiles.rules(rules.length) : null]
     .filter(Boolean)
     .join(" · ");
+  const margin = totals.income > 0 ? `${totals.net < 0 ? "−" : ""}${f.percent(Math.abs(totals.net / totals.income), 0)}` : null;
 
   return (
     <PendingProvider>
       <div className="space-y-6">
         <PageHeader
-          eyebrow="Industry"
-          title="Mining P&L"
-          description="Income and expenses of your own characters. Only you can see this sheet."
+          eyebrow={t.mining.module.navSection}
+          title={t.pnl.title}
+          description={m.description}
           actions={<PnlTabs current="overview" query={pnlQueryString(filters, { bucket: "day", status: "mining", page: 1 })} />}
         />
 
@@ -78,16 +83,14 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
           <Glass>
             <EmptyState
               icon={Pickaxe}
-              title="Nothing to show for this period"
+              title={m.empty.title}
               action={
                 <ButtonLink href="/mining/pnl/settings" variant="primary">
-                  P&amp;L settings
+                  {m.empty.action}
                 </ButtonLink>
               }
             >
-              Income comes from your characters&apos; mining ledgers (synced every 15 minutes). Expenses come from wallet
-              purchases you include and from manual entries. Wallet import is optional and off until you enable it per
-              character.
+              {m.empty.body}
             </EmptyState>
           </Glass>
         ) : (
@@ -97,26 +100,24 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                 hero
                 icon={Scale}
                 className="col-span-2 lg:col-span-4 xl:col-span-4"
-                label={`Net profit · ${shortDate(filters.from)} – ${shortDate(filters.to)}`}
-                value={signed(totals.net)}
+                label={m.tiles.net(f.shortDate(filters.from), f.shortDate(filters.to))}
+                value={signed(f, totals.net)}
                 unit="ISK"
-                hint={`${compact(totals.income)} income − ${compact(totals.expenses)} expenses${
-                  totals.income > 0 ? ` · ${signed(Math.round((totals.net / totals.income) * 100))}% margin` : ""
-                }`}
+                hint={m.tiles.netHint(f.compact(totals.income), f.compact(totals.expenses), margin)}
               />
               <StatTile
                 className="xl:col-span-2"
                 icon={Coins}
-                label="Income"
-                value={compact(totals.income)}
+                label={m.tiles.income}
+                value={f.compact(totals.income)}
                 unit="ISK"
                 hint={incomeHint || ctx.valuationLabel}
               />
               <StatTile
                 className="xl:col-span-2"
                 icon={ReceiptText}
-                label="Expenses"
-                value={compact(totals.expenses)}
+                label={m.tiles.expenses}
+                value={f.compact(totals.expenses)}
                 unit="ISK"
                 hint={
                   report.purchases.suggested.count > 0 ? (
@@ -124,67 +125,63 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                       href={`/mining/pnl/expenses?${pnlQueryString(filters, { status: "suggested", bucket: "day", page: 1 })}`}
                       className="text-accent hover:underline"
                     >
-                      {report.purchases.suggested.count} suggested ({compact(report.purchases.suggested.amount)})
+                      {m.tiles.suggested(report.purchases.suggested.count, f.compact(report.purchases.suggested.amount))}
                     </Link>
                   ) : totals.manual > 0 ? (
-                    `${compact(totals.manual)} manual`
+                    m.tiles.manual(f.compact(totals.manual))
                   ) : undefined
                 }
               />
               <StatTile
                 className="xl:col-span-2"
                 icon={Clock}
-                label="ISK per hour"
-                value={report.iskPerHour.gross === null ? "—" : compact(report.iskPerHour.gross)}
+                label={m.tiles.iskPerHour}
+                value={report.iskPerHour.gross === null ? "—" : f.compact(report.iskPerHour.gross)}
                 unit={report.iskPerHour.gross === null ? undefined : "ISK"}
                 hint={
                   report.iskPerHour.gross === null
-                    ? "No measured activity yet"
-                    : `net ${signed(report.iskPerHour.net ?? 0)} · ${hours(report.activity.wallClockHours)} active`
+                    ? m.tiles.noActivity
+                    : m.tiles.iskPerHourHint(signed(f, report.iskPerHour.net ?? 0), hours(report.activity.wallClockHours))
                 }
               />
               <StatTile
                 className="xl:col-span-2"
                 icon={Box}
-                label="Cost per m³"
-                value={report.costPerM3 === null ? "—" : unitPrice(report.costPerM3).replace(" ISK", "")}
+                label={m.tiles.costPerM3}
+                value={report.costPerM3 === null ? "—" : f.unitPrice(report.costPerM3).replace(" ISK", "")}
                 unit={report.costPerM3 === null ? undefined : "ISK"}
-                hint={`${compact(totals.volume)} m³ mined`}
+                hint={m.tiles.mined(f.volume(totals.volume))}
               />
             </div>
 
             <div className="grid gap-4 xl:grid-cols-12">
-              <Panel
-                className="xl:col-span-8"
-                title={`Income and expenses by ${filters.bucket}`}
-                subtitle="EVE time (UTC); weeks start on Monday"
-              >
+              <Panel className="xl:col-span-8" title={m.chartTitle[filters.bucket]} subtitle={m.chartSubtitle}>
                 <PnlChart buckets={report.buckets} bucket={filters.bucket} />
               </Panel>
               <Panel
                 className="xl:col-span-4"
-                title="Expenses"
-                subtitle="Counted purchases and manual entries"
+                title={m.expenses.title}
+                subtitle={m.expenses.subtitle}
                 actions={
                   <ButtonLink href={`/mining/pnl/expenses?${query}`} size="sm">
-                    Review
+                    {m.expenses.review}
                   </ButtonLink>
                 }
               >
                 {report.byCategory.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-ink-3">No expenses counted in this period.</p>
+                  <p className="py-6 text-center text-sm text-ink-3">{m.expenses.empty}</p>
                 ) : (
                   <ul className="space-y-2.5 text-sm">
                     {report.byCategory.map((c) => (
                       <li key={c.category} className="flex items-center justify-between gap-3">
-                        <span className="text-ink-2">{EXPENSE_CATEGORY_META[c.category].label}</span>
-                        <span className="font-semibold tabular-nums">{compact(c.amount)}</span>
+                        <span className="text-ink-2">{t.pnl.categories[c.category].label}</span>
+                        <span className="font-semibold tabular-nums">{f.compact(c.amount)}</span>
                       </li>
                     ))}
                     <li className="flex items-center justify-between gap-3 border-t border-white/8 pt-2.5 text-xs text-ink-3">
-                      <span>Wallet purchases · manual entries</span>
+                      <span>{m.expenses.split}</span>
                       <span className="tabular-nums">
-                        {compact(totals.wallet)} · {compact(totals.manual)}
+                        {f.compact(totals.wallet)} · {f.compact(totals.manual)}
                       </span>
                     </li>
                   </ul>
@@ -193,41 +190,44 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                   <p className="mt-4 flex items-start gap-1.5 border-t border-white/8 pt-3 text-xs text-ink-3">
                     <Wallet className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                     <span>
-                      Wallet import is off for all your characters.{" "}
-                      <Link href="/mining/pnl/settings" className="text-accent hover:underline">
-                        Enable it
-                      </Link>{" "}
-                      to pick up crystals, fuel, burst charges, drones and hulls you buy.
+                      {m.expenses.walletOff(
+                        <Link href="/mining/pnl/settings" className="text-accent hover:underline">
+                          {m.expenses.enable}
+                        </Link>,
+                      )}
                     </span>
                   </p>
                 )}
               </Panel>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-12">
-              <Panel className="xl:col-span-7" title="By character" subtitle="Expenses of the character that paid">
+            {/* Side by side only on wide screens: German numbers and labels need the room. */}
+            <div className="grid gap-4 2xl:grid-cols-12">
+              <Panel className="2xl:col-span-7" title={m.byCharacter.title} subtitle={m.byCharacter.subtitle}>
                 <div className="overflow-x-auto">
                   <table className="ks-table">
                     <thead>
                       <tr>
-                        <th>Character</th>
-                        <th className="num">Income</th>
-                        <th className="num">m³</th>
-                        <th className="num">Active</th>
-                        <th className="num">ISK/h</th>
-                        <th className="num">Expenses</th>
-                        <th className="num">Net</th>
+                        <th>{m.columns.character}</th>
+                        <th className="num">{m.columns.income}</th>
+                        <th className="num">{m.columns.volume}</th>
+                        <th className="num">{m.columns.active}</th>
+                        <th className="num">{m.columns.iskPerHour}</th>
+                        <th className="num">{m.columns.expenses}</th>
+                        <th className="num">{m.columns.net}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {report.characters.map((c) => (
                         <tr key={c.characterId ?? "account"}>
-                          <td className={c.characterId === null ? "text-ink-3" : "text-ink"}>{c.name}</td>
-                          <td className="num">{c.income ? compact(c.income) : "—"}</td>
-                          <td className="num text-ink-2">{c.volume ? compact(c.volume) : "—"}</td>
+                          <td className={c.characterId === null ? "whitespace-nowrap text-ink-3" : "whitespace-nowrap text-ink"}>
+                            {c.characterId === null ? t.pnl.accountWide : (c.name ?? t.pnl.characterFallback(c.characterId))}
+                          </td>
+                          <td className="num">{c.income ? f.compact(c.income) : "—"}</td>
+                          <td className="num text-ink-2">{c.volume ? f.compact(c.volume) : "—"}</td>
                           <td className="num text-ink-2">{c.hours ? hours(c.hours) : "—"}</td>
-                          <td className="num text-ink-2">{c.iskPerHour === null ? "—" : compact(c.iskPerHour)}</td>
-                          <td className="num text-ink-2">{c.expenses ? compact(c.expenses) : "—"}</td>
+                          <td className="num text-ink-2">{c.iskPerHour === null ? "—" : f.compact(c.iskPerHour)}</td>
+                          <td className="num text-ink-2">{c.expenses ? f.compact(c.expenses) : "—"}</td>
                           <td className="num">
                             <SignedIsk value={c.net} />
                           </td>
@@ -238,28 +238,22 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                 </div>
               </Panel>
               <Panel
-                className="xl:col-span-5"
-                title="By activity"
-                subtitle={
-                  report.allocation === "hours"
-                    ? "Expenses split by active hours"
-                    : report.allocation === "volume"
-                      ? "Expenses split by m³ mined"
-                      : "Ore, moon, ice and gas"
-                }
+                className="2xl:col-span-5"
+                title={m.byActivity.title}
+                subtitle={m.byActivity.subtitle[report.allocation ?? "none"]}
               >
                 {report.activities.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-ink-3">No mining in this period.</p>
+                  <p className="py-6 text-center text-sm text-ink-3">{m.byActivity.empty}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="ks-table">
                       <thead>
                         <tr>
-                          <th>Activity</th>
-                          <th className="num">Income</th>
-                          <th className="num">ISK/h</th>
-                          <th className="num">Expenses</th>
-                          <th className="num">Net</th>
+                          <th>{m.columns.activity}</th>
+                          <th className="num">{m.columns.income}</th>
+                          <th className="num">{m.columns.iskPerHour}</th>
+                          <th className="num">{m.columns.expenses}</th>
+                          <th className="num">{m.columns.net}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -268,12 +262,12 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                             <td>
                               <span className="flex items-center gap-2">
                                 <span className="size-2.5 rounded-[3px]" style={{ background: CHART_CLASS_COLOR[a.activity] }} aria-hidden />
-                                {a.label}
+                                {t.mining.chartClasses[a.activity]}
                               </span>
                             </td>
-                            <td className="num">{a.income ? compact(a.income) : "—"}</td>
-                            <td className="num text-ink-2">{a.iskPerHour === null ? "—" : compact(a.iskPerHour)}</td>
-                            <td className="num text-ink-2">{a.expenses ? compact(a.expenses) : "—"}</td>
+                            <td className="num">{a.income ? f.compact(a.income) : "—"}</td>
+                            <td className="num text-ink-2">{a.iskPerHour === null ? "—" : f.compact(a.iskPerHour)}</td>
+                            <td className="num text-ink-2">{a.expenses ? f.compact(a.expenses) : "—"}</td>
                             <td className="num">
                               <SignedIsk value={a.net} />
                             </td>
@@ -286,42 +280,36 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
               </Panel>
             </div>
 
-            <Panel title="How this is calculated">
+            <Panel title={m.how.title}>
               <ul className="grid gap-3 text-xs text-ink-2 md:grid-cols-2">
                 <li className="flex items-start gap-1.5">
                   <Info className="mt-0.5 size-3.5 shrink-0 text-ink-3" aria-hidden />
                   <span>
-                    <b className="text-ink">Income</b> is the ore your characters mined, valued like the mining dashboard (
-                    {ctx.valuationLabel}){ratePct !== 100 ? `, at ${ratePct}% of that value` : ""}. Ores with a price rule use
-                    your price instead.{" "}
-                    {totals.baseIncome !== totals.income && `At the plain dashboard value it would be ${compact(totals.baseIncome)}.`}
+                    {m.how.income(
+                      ctx.valuationLabel,
+                      rate,
+                      totals.baseIncome !== totals.income ? f.compact(totals.baseIncome) : null,
+                    )}
                   </span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <Info className="mt-0.5 size-3.5 shrink-0 text-ink-3" aria-hidden />
-                  <span>
-                    <b className="text-ink">Expenses</b> are wallet purchases you counted (or that are counted automatically
-                    for characters where you switched that on) plus manual entries; spread entries are divided evenly over
-                    their days.
-                  </span>
+                  <span>{m.how.expenses()}</span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <Info className="mt-0.5 size-3.5 shrink-0 text-ink-3" aria-hidden />
                   <span>
-                    <b className="text-ink">ISK per hour</b> comes from how much your ledgers grew between 15-minute syncs
-                    (precision ±15 min per session). Characters mining at the same time count once (
-                    {hours(report.activity.wallClockHours)} wall-clock, {hours(report.activity.characterHours)} character
-                    hours). {report.activity.trackedSince
-                      ? `Tracked since ${shortDate(report.activity.trackedSince.toISOString().slice(0, 10))}; covers ${(report.activity.measuredShare * 100).toFixed(0)}% of this period's income.`
-                      : "Tracking starts with the next ledger sync; earlier mining has no activity data."}
+                    {m.how.iskPerHour(
+                      hours(report.activity.wallClockHours),
+                      hours(report.activity.characterHours),
+                      report.activity.trackedSince ? f.shortDate(report.activity.trackedSince.toISOString().slice(0, 10)) : null,
+                      f.percent(report.activity.measuredShare, 0),
+                    )}
                   </span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <Info className="mt-0.5 size-3.5 shrink-0 text-ink-3" aria-hidden />
-                  <span>
-                    <b className="text-ink">Cost per m³</b> is all expenses divided by the volume mined.
-                    {totals.unpricedRows > 0 && ` ${totals.unpricedRows} ledger rows have no price yet and count as 0 ISK.`}
-                  </span>
+                  <span>{m.how.costPerM3(totals.unpricedRows)}</span>
                 </li>
               </ul>
             </Panel>

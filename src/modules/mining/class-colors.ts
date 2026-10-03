@@ -8,12 +8,15 @@ import type { OreClass } from "@/core/eve/ore";
  */
 export type ChartClass = "moon" | "ore" | "ice" | "gas" | "other";
 
-export const CHART_CLASSES: { id: ChartClass; label: string; color: string }[] = [
-  { id: "moon", label: "Moon ore", color: "#3987e5" },
-  { id: "ore", label: "Asteroid ore", color: "#d95926" },
-  { id: "ice", label: "Ice", color: "#199e70" },
-  { id: "gas", label: "Gas", color: "#c98500" },
-  { id: "other", label: "Other", color: "#5d6878" },
+export type MoonOreClass = Extract<OreClass, `moon_${string}`>;
+
+/** Series order and colours; labels live in the dictionaries (`t.mining.chartClasses`). */
+export const CHART_CLASSES: { id: ChartClass; color: string }[] = [
+  { id: "moon", color: "#3987e5" },
+  { id: "ore", color: "#d95926" },
+  { id: "ice", color: "#199e70" },
+  { id: "gas", color: "#c98500" },
+  { id: "other", color: "#5d6878" },
 ];
 
 export const CHART_CLASS_COLOR: Record<ChartClass, string> = Object.fromEntries(
@@ -26,13 +29,16 @@ export function chartClassOf(oreClass: OreClass): ChartClass {
   return "other";
 }
 
-/** Ordinal ramp for moon rarity: rarer = lighter (more salient on the dark surface). */
-export const MOON_RARITY: { id: OreClass; label: string; color: string }[] = [
-  { id: "moon_r4", label: "R4 Ubiquitous", color: "#184f95" },
-  { id: "moon_r8", label: "R8 Common", color: "#256abf" },
-  { id: "moon_r16", label: "R16 Uncommon", color: "#3987e5" },
-  { id: "moon_r32", label: "R32 Rare", color: "#6da7ec" },
-  { id: "moon_r64", label: "R64 Exceptional", color: "#9ec5f4" },
+/**
+ * Ordinal ramp for moon rarity: rarer = lighter (more salient on the dark surface).
+ * Labels live in the dictionaries (`t.mining.moonRarity`).
+ */
+export const MOON_RARITY: { id: MoonOreClass; color: string }[] = [
+  { id: "moon_r4", color: "#184f95" },
+  { id: "moon_r8", color: "#256abf" },
+  { id: "moon_r16", color: "#3987e5" },
+  { id: "moon_r32", color: "#6da7ec" },
+  { id: "moon_r64", color: "#9ec5f4" },
 ];
 
 export function oreClassColor(oreClass: OreClass): string {

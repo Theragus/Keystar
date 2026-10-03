@@ -1,5 +1,5 @@
 import { TypeIcon } from "@/components/ui/eve-image";
-import { compact, dateTime } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import { KILL_COLOR, LOSS_COLOR } from "../colors";
 import { zkillKill } from "../links";
 import type { ActivityRow } from "../queries";
@@ -9,8 +9,9 @@ import type { ActivityRow } from "../queries";
  * killmail on zKillboard. The colour sits on the marker and edge only; text
  * stays in text colours.
  */
-export function RecentActivity({ rows }: { rows: ActivityRow[] }) {
-  if (!rows.length) return <p className="py-6 text-center text-sm text-ink-3">No kills or losses in this period.</p>;
+export async function RecentActivity({ rows }: { rows: ActivityRow[] }) {
+  const { t, f } = await getI18n();
+  if (!rows.length) return <p className="py-6 text-center text-sm text-ink-3">{t.killboard.recent.empty}</p>;
   return (
     <ol className="space-y-1.5">
       {rows.map((r) => {
@@ -28,21 +29,21 @@ export function RecentActivity({ rows }: { rows: ActivityRow[] }) {
               <TypeIcon id={r.shipTypeId} size={36} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm">
-                  <span className="font-medium text-ink">{r.shipName ?? `Type ${r.shipTypeId}`}</span>
+                  <span className="font-medium text-ink">{r.shipName ?? t.killboard.fallback.type(r.shipTypeId)}</span>
                   {r.victimName && <span className="text-ink-2"> · {r.victimName}</span>}
                 </div>
                 <div className="mt-0.5 flex items-center gap-2 text-xs text-ink-3">
                   <span className="inline-flex items-center gap-1.5 font-medium text-ink-2">
                     <span className="size-2 rounded-full" style={{ background: color }} aria-hidden />
-                    {kill ? "Kill" : "Loss"}
+                    {t.killboard.recent.kind[r.kind]}
                   </span>
-                  {r.solo && <span>solo</span>}
-                  <span className="truncate">{r.systemName ?? "Unknown system"}</span>
+                  {r.solo && <span>{t.killboard.recent.solo}</span>}
+                  <span className="truncate">{r.systemName ?? t.killboard.fallback.system}</span>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-semibold text-ink tabular-nums">{compact(r.value)}</div>
-                <div className="text-2xs whitespace-nowrap text-ink-3 tabular-nums">{dateTime(r.time).replace(" ET", "")}</div>
+                <div className="text-sm font-semibold text-ink tabular-nums">{f.compact(r.value)}</div>
+                <div className="text-2xs whitespace-nowrap text-ink-3 tabular-nums">{f.dateTime(r.time).replace(" ET", "")}</div>
               </div>
             </a>
           </li>

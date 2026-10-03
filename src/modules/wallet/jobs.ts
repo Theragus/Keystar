@@ -15,7 +15,7 @@ const CHUNK = 1000;
  */
 export const walletTransactionsJob: JobDefinition = {
   key: "wallet.character-transactions",
-  label: "Wallet transactions",
+  label: (t) => t.wallet.module.jobs.transactions,
   module: "wallet",
   owner: "character",
   requiredScopes: [WALLET_SCOPE],

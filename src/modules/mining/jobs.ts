@@ -36,7 +36,7 @@ const CHUNK = 1000;
 
 export const characterLedgerJob: JobDefinition = {
   key: "mining.character-ledger",
-  label: "Personal mining ledger",
+  label: (t) => t.mining.module.jobs.characterLedger,
   module: "mining",
   owner: "character",
   requiredScopes: ["esi-industry.read_character_mining.v1"],
@@ -146,7 +146,7 @@ export const characterLedgerJob: JobDefinition = {
 
 export const corporationObserversJob: JobDefinition = {
   key: "mining.corporation-observers",
-  label: "Moon mining observers",
+  label: (t) => t.mining.module.jobs.observers,
   module: "mining",
   owner: "corporation",
   requiredScopes: ["esi-industry.read_corporation_mining.v1"],
@@ -227,7 +227,7 @@ export const corporationObserversJob: JobDefinition = {
 /** Names and locations of refineries, so observers are not just numeric ids. */
 export const corporationStructuresJob: JobDefinition = {
   key: "mining.corporation-structures",
-  label: "Refinery names",
+  label: (t) => t.mining.module.jobs.structures,
   module: "mining",
   owner: "corporation",
   requiredScopes: ["esi-corporations.read_structures.v1"],

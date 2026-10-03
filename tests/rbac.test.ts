@@ -28,7 +28,7 @@ describe("roles", () => {
 describe("permissions", () => {
   const defs: PermissionDef[] = [
     ...CORE_PERMISSIONS,
-    { key: "mining.view.corp", label: "", description: "", group: "Mining", defaultMinRole: "viewer" },
+    { key: "mining.view.corp", label: () => "", description: () => "", group: () => "Mining", defaultMinRole: "viewer" },
   ];
 
   it("grants by minimum role", () => {

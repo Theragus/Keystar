@@ -1,21 +1,11 @@
 /**
  * Mining expense categories and the auto-tagging of wallet purchases by item
- * type/group. Isomorphic. Group and type ids from ESI /universe/groups and
+ * type/group. Isomorphic; labels are in the dictionaries (`t.pnl.categories`). Group and type ids from ESI /universe/groups and
  * /universe/types (checked against Tranquility).
  */
 export const EXPENSE_CATEGORIES = ["crystals", "fuel", "bursts", "drones", "ships", "subscription", "other"] as const;
 
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
-
-export const EXPENSE_CATEGORY_META: Record<ExpenseCategory, { label: string; hint: string }> = {
-  crystals: { label: "Mining crystals", hint: "Mining and Mercoxit mining crystals" },
-  fuel: { label: "Fuel", hint: "Heavy Water for Orca / Rorqual industrial cores" },
-  bursts: { label: "Burst charges", hint: "Mining Foreman burst charges" },
-  drones: { label: "Mining drones", hint: "Mining, ice and excavator drones" },
-  ships: { label: "Ships & fittings", hint: "Mining hulls, mining modules, rigs, compressors" },
-  subscription: { label: "PLEX / Omega", hint: "Game time for mining alts" },
-  other: { label: "Other", hint: "Anything else you count as a mining cost" },
-};
 
 /** Types in generic groups (Venture is a "Frigate", Pioneer a "Destroyer"); checked before groups. */
 const TYPE_CATEGORIES: Record<number, ExpenseCategory> = {
@@ -63,13 +53,6 @@ export function purchaseCategorySqlCase(typeCol: string, groupCol: string): stri
 }
 
 export type ExpenseStatus = "counted" | "suggested" | "excluded" | "untagged";
-
-export const EXPENSE_STATUS_META: Record<ExpenseStatus, { label: string; hint: string }> = {
-  counted: { label: "Counted", hint: "Included in your expenses" },
-  suggested: { label: "Suggested", hint: "Tagged as a mining cost, waiting for you to include it" },
-  excluded: { label: "Excluded", hint: "You excluded it" },
-  untagged: { label: "Other purchases", hint: "Not recognised as a mining cost; tag it to count it" },
-};
 
 /**
  * Effective state of a wallet purchase. Mirrors the SQL in pnl/queries.ts:

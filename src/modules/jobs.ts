@@ -7,6 +7,7 @@ import {
   serverStatusJob,
 } from "@/core/sync/core-jobs";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
+import type { Messages } from "@/i18n/messages";
 import { killboardJobs } from "./killboard/jobs";
 import { miningJobs, miningPriceInterest } from "./mining/jobs";
 import { walletJobs } from "./wallet/jobs";
@@ -29,4 +30,9 @@ export const JOBS: JobDefinition[] = [
   ...walletJobs,
 ];
 
-export const JOB_LABELS: Record<string, string> = Object.fromEntries(JOBS.map((j) => [j.key, j.label]));
+const JOBS_BY_KEY = new Map(JOBS.map((j) => [j.key, j]));
+
+/** Display name of a job in the viewer's language; unknown (removed) jobs show their key. */
+export function jobLabel(key: string, t: Messages): string {
+  return JOBS_BY_KEY.get(key)?.label(t) ?? key;
+}

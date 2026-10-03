@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 /** Submit button that dims while its form's server action runs. */
@@ -59,6 +60,7 @@ export function AutoSubmitSelect({
 /** On/off switch that submits its form (the action flips the value). */
 export function SwitchButton({ on, label }: { on: boolean; label: string }) {
   const { pending } = useFormStatus();
+  const { t } = useI18n();
   return (
     <button
       type="submit"
@@ -83,7 +85,7 @@ export function SwitchButton({ on, label }: { on: boolean; label: string }) {
         />
       </span>
       <span className="text-ink-2 group-hover:text-ink">
-        {label} <span className={cn("font-semibold", on ? "text-accent" : "text-ink-3")}>{on ? "On" : "Off"}</span>
+        {label} <span className={cn("font-semibold", on ? "text-accent" : "text-ink-3")}>{on ? t.pnl.switch.on : t.pnl.switch.off}</span>
       </span>
     </button>
   );

@@ -18,19 +18,10 @@ export interface PnlFilters {
   page: number;
 }
 
-export const PNL_BUCKETS: { value: DateBucket; label: string }[] = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-];
+export const PNL_BUCKETS: DateBucket[] = ["day", "week", "month"];
 
-export const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: "mining", label: "Mining costs" },
-  { value: "suggested", label: "Suggested" },
-  { value: "counted", label: "Counted" },
-  { value: "excluded", label: "Excluded" },
-  { value: "untagged", label: "Other purchases" },
-];
+/** Expenses page tabs; labels in `t.pnl.statusFilters`. */
+export const STATUS_FILTERS: StatusFilter[] = ["mining", "suggested", "counted", "excluded", "untagged"];
 
 type RawParams = Record<string, string | string[] | undefined>;
 
@@ -47,7 +38,7 @@ export function parsePnlFilters(params: RawParams, today: string = isoDate(new D
     to: base.to,
     characters: base.characters,
     bucket: bucket === "week" || bucket === "month" ? bucket : "day",
-    status: STATUS_FILTERS.some((s) => s.value === status) ? (status as StatusFilter) : "mining",
+    status: (STATUS_FILTERS as string[]).includes(status ?? "") ? (status as StatusFilter) : "mining",
     page: base.page,
   };
 }

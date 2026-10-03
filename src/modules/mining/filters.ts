@@ -24,17 +24,10 @@ export interface MiningFilters {
   page: number;
 }
 
-export const MINING_SOURCES: { value: MiningSource; label: string; hint: string }[] = [
-  { value: "all", label: "Combined", hint: "Member ledgers plus observer entries not already covered by them" },
-  { value: "personal", label: "Member ledgers", hint: "Personal ledgers of registered characters (all mining)" },
-  { value: "observer", label: "Refineries", hint: "Moon mining recorded by corporation refineries (anyone)" },
-];
+/** Options in display order; labels and hints live in the dictionaries (`t.mining.sources`, `t.mining.metrics`). */
+export const MINING_SOURCES: readonly MiningSource[] = ["all", "personal", "observer"];
 
-export const MINING_METRICS: { value: MiningMetric; label: string }[] = [
-  { value: "value", label: "ISK" },
-  { value: "volume", label: "m³" },
-  { value: "quantity", label: "Units" },
-];
+export const MINING_METRICS: readonly MiningMetric[] = ["value", "volume", "quantity"];
 
 type RawParams = Record<string, string | string[] | undefined>;
 

@@ -803,7 +803,7 @@ describe.skipIf(!enabled)("integration", async () => {
   describe("sync scheduler", () => {
     const job = (run: () => Promise<void>) => ({
       key: "test.job",
-      label: "Test",
+      label: () => "Test",
       module: "test",
       owner: "character" as const,
       requiredScopes: ["scope.a"],

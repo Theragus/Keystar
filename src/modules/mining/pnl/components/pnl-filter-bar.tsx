@@ -6,6 +6,7 @@ import { Portrait } from "@/components/ui/eve-image";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { usePendingNavigation } from "@/components/ui/pending";
 import { Segmented } from "@/components/ui/segmented";
+import { useI18n } from "@/i18n/client";
 import { PNL_BUCKETS, pnlQueryString, type PnlFilters } from "../filters";
 
 export function PnlFilterBar({
@@ -20,6 +21,7 @@ export function PnlFilterBar({
   showBucket?: boolean;
 }) {
   const { navigate } = usePendingNavigation();
+  const { t } = useI18n();
   const apply = (overrides: Partial<PnlFilters>) => navigate(pnlQueryString(filters, { ...overrides, page: 1 }));
 
   return (
@@ -27,8 +29,8 @@ export function PnlFilterBar({
       <DateRangePicker from={filters.from} to={filters.to} presets={presets} onChange={(r) => apply(r)} />
       {characters.length > 1 && (
         <MultiSelect
-          label="Characters"
-          allLabel="All"
+          label={t.pnl.filters.characters}
+          allLabel={t.common.multiSelect.all}
           icon={<Users className="size-3.5 text-accent" aria-hidden />}
           selected={filters.characters}
           onApply={(v) => apply({ characters: v.map(Number) })}
@@ -37,10 +39,10 @@ export function PnlFilterBar({
       )}
       {showBucket && (
         <Segmented
-          label="Group by"
+          label={t.pnl.filters.groupBy}
           value={filters.bucket}
           onChange={(bucket) => apply({ bucket })}
-          options={PNL_BUCKETS.map((b) => ({ value: b.value, label: b.label }))}
+          options={PNL_BUCKETS.map((b) => ({ value: b, label: t.pnl.buckets[b] }))}
         />
       )}
       {filters.characters.length > 0 && (
@@ -49,7 +51,7 @@ export function PnlFilterBar({
           onClick={() => apply({ characters: [] })}
           className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs text-ink-3 transition hover:bg-white/6 hover:text-ink"
         >
-          <RotateCcw className="size-3.5" aria-hidden /> Reset
+          <RotateCcw className="size-3.5" aria-hidden /> {t.pnl.filters.reset}
         </button>
       )}
     </div>

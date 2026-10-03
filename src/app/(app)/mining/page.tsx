@@ -7,7 +7,8 @@ import { Glass, Panel } from "@/components/ui/glass";
 import { PendingFrame, PendingProvider } from "@/components/ui/pending";
 import { Delta, StatTile } from "@/components/ui/stat-tile";
 import type { OreClass } from "@/core/eve/ore";
-import { compact, delta, relativeTime, shortDate } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
+import { delta } from "@/lib/format";
 import { toChartClasses } from "@/modules/mining/class-colors";
 import { ClassComposition, MemberLeaderboard, OreTable, SystemTable } from "@/modules/mining/components/breakdowns";
 import { DailyChart } from "@/modules/mining/components/daily-chart";
@@ -26,10 +27,15 @@ import {
   getTypeBreakdown,
 } from "@/modules/mining/queries";
 
-export const metadata = { title: "Mining" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.mining.overview.metaTitle };
+}
 
 export default async function MiningPage({ searchParams }: PageProps<"/mining">) {
   const ctx = await miningPageContext(await searchParams);
+  const { t, f } = await getI18n();
+  const m = t.mining.overview;
   const { filters, scope, valuation, user } = ctx;
 
   const [summary, daily, members, types, systems, options, coverage] = await Promise.all([
@@ -44,36 +50,35 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
 
   const { current, previous } = summary;
   const span = daysBetween(filters.from, filters.to);
-  const period = `prior ${span}d`;
-  const metricLabel = filters.metric === "value" ? "ISK" : filters.metric === "volume" ? "m³" : "units";
+  const period = m.priorPeriod(span);
   const byClass: Partial<Record<OreClass, number>> = {};
-  for (const t of types) byClass[t.oreClass] = (byClass[t.oreClass] ?? 0) + t[filters.metric];
+  for (const type of types) byClass[type.oreClass] = (byClass[type.oreClass] ?? 0) + type[filters.metric];
   const hasAnyData = options.characters.length > 0;
 
   return (
     <PendingProvider>
       <div className="space-y-6">
         <PageHeader
-          eyebrow="Industry"
-          title="Mining Overview"
+          eyebrow={t.mining.module.navSection}
+          title={t.mining.module.nav.overview}
           description={
             scope.corp
-              ? "Ore, ice, gas and moon mining by home-corporation characters and at corporation refineries."
+              ? m.description.corp
               : user.can(MINING_PERMISSIONS.viewCorp)
-                ? "Mining of your own characters. Corporation-wide views appear once an admin sets the home corporation."
-                : "Mining of your own characters. Ask a director for corporation-wide access."
+                ? m.description.noHomeCorp
+                : m.description.own
           }
           actions={
             <>
               <ButtonLink href={`/mining/ledger?${miningQueryString(filters)}`} size="sm">
-                <TableProperties className="size-4" aria-hidden /> Ledger
+                <TableProperties className="size-4" aria-hidden /> {m.ledger}
               </ButtonLink>
               {user.can(MINING_PERMISSIONS.export) && (
                 <a
                   href={`/mining/export?${miningQueryString(filters)}`}
                   className="glass-chip inline-flex h-8 items-center gap-2 rounded-lg px-3.5 text-xs font-medium hover:bg-white/10"
                 >
-                  <Download className="size-4" aria-hidden /> Export CSV
+                  <Download className="size-4" aria-hidden /> {t.mining.exportCsv}
                 </a>
               )}
             </>
@@ -86,11 +91,14 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
           <Glass>
             <EmptyState
               icon={Pickaxe}
-              title="No mining data yet"
-              action={<ButtonLink href="/characters" variant="primary">Manage characters</ButtonLink>}
+              title={m.empty.title}
+              action={
+                <ButtonLink href="/characters" variant="primary">
+                  {m.empty.action}
+                </ButtonLink>
+              }
             >
-              Link your characters with the mining ledger scope. The worker syncs personal ledgers every 15 minutes and
-              refinery observers hourly; ESI keeps the last 30 days, Keystar keeps everything from then on.
+              {m.empty.body}
             </EmptyState>
           </Glass>
         ) : (
@@ -100,8 +108,8 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
                 hero
                 icon={Coins}
                 className="col-span-2 lg:col-span-4 xl:col-span-4"
-                label={`Value mined · ${shortDate(filters.from)} – ${shortDate(filters.to)}`}
-                value={compact(current.value)}
+                label={m.valueMined(f.shortDate(filters.from), f.shortDate(filters.to))}
+                value={f.compact(current.value)}
                 unit="ISK"
                 delta={<Delta value={delta(current.value, previous.value)} period={period} />}
                 trend={daily.map((d) => d.value)}
@@ -109,48 +117,48 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
               <StatTile
                 className="xl:col-span-2"
                 icon={Box}
-                label="Volume"
-                value={compact(current.volume)}
+                label={m.volume}
+                value={f.compact(current.volume)}
                 unit="m³"
                 delta={<Delta value={delta(current.volume, previous.volume)} period={period} />}
               />
               <StatTile
                 className="xl:col-span-2"
                 icon={Layers3}
-                label="Units"
-                value={compact(current.quantity)}
+                label={m.units}
+                value={f.compact(current.quantity)}
                 delta={<Delta value={delta(current.quantity, previous.quantity)} period={period} />}
               />
               <StatTile
                 className="xl:col-span-2"
                 icon={Users}
-                label="Active pilots"
-                value={String(current.miners)}
+                label={m.activePilots}
+                value={f.integer(current.miners)}
                 delta={<Delta value={delta(current.miners, previous.miners)} period={period} />}
-                hint={`${current.characters} characters`}
+                hint={m.characters(current.characters)}
               />
               <StatTile
                 className="xl:col-span-2"
                 icon={CalendarDays}
-                label="Value per active day"
-                value={compact(current.activeDays ? current.value / current.activeDays : 0)}
+                label={m.valuePerActiveDay}
+                value={f.compact(current.activeDays ? current.value / current.activeDays : 0)}
                 unit="ISK"
-                hint={`${current.activeDays} of ${span} days active`}
+                hint={m.activeDays(current.activeDays, span)}
               />
             </div>
 
             <div className="grid gap-4 xl:grid-cols-12">
               <Panel
                 className="xl:col-span-8"
-                title={`Daily ${metricLabel} by resource`}
-                subtitle={filters.metric === "value" ? ctx.valuationLabel : "EVE time (UTC) days"}
+                title={m.daily[filters.metric]}
+                subtitle={filters.metric === "value" ? ctx.valuationLabel : m.eveDays}
               >
                 <DailyChart
                   metric={filters.metric}
                   rows={daily.map((d) => ({ date: d.date, total: d.total, values: toChartClasses(d.byClass) }))}
                 />
               </Panel>
-              <Panel className="xl:col-span-4" title="Resource mix" subtitle={`Share of ${metricLabel}`}>
+              <Panel className="xl:col-span-4" title={m.resourceMix} subtitle={m.shareOf[filters.metric]}>
                 <ClassComposition byClass={byClass} metric={filters.metric} />
               </Panel>
             </div>
@@ -158,83 +166,82 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
             <div className="grid gap-4 xl:grid-cols-12">
               <Panel
                 className="xl:col-span-5"
-                title="Top miners"
-                subtitle={filters.groupBy === "user" ? "Alts grouped under their main" : "Click a character to focus on it"}
+                title={m.topMiners}
+                subtitle={filters.groupBy === "user" ? m.topMinersGrouped : m.topMinersDrill}
                 actions={<GroupByToggle filters={filters} />}
               >
                 {members.length ? (
                   <MemberLeaderboard rows={members} filters={filters} canDrill />
                 ) : (
-                  <p className="py-8 text-center text-sm text-ink-3">Nobody mined in this period.</p>
+                  <p className="py-8 text-center text-sm text-ink-3">{m.noMiners}</p>
                 )}
               </Panel>
-              <Panel className="xl:col-span-7" title="Ore breakdown" subtitle={ctx.valuationLabel}>
+              <Panel className="xl:col-span-7" title={m.oreBreakdown} subtitle={ctx.valuationLabel}>
                 {types.length ? (
                   <OreTable rows={types} filters={filters} metric={filters.metric} />
                 ) : (
-                  <p className="py-8 text-center text-sm text-ink-3">No ore in this period.</p>
+                  <p className="py-8 text-center text-sm text-ink-3">{m.noOre}</p>
                 )}
               </Panel>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-12">
-              <Panel className="xl:col-span-7" title="Systems" subtitle="Where the mining happened">
+              <Panel className="xl:col-span-7" title={m.systems} subtitle={m.systemsSubtitle}>
                 <SystemTable rows={systems} filters={filters} />
               </Panel>
-              <Panel className="xl:col-span-5" title="Data coverage" subtitle="How complete these numbers are">
+              <Panel className="xl:col-span-5" title={m.coverage.title} subtitle={m.coverage.subtitle}>
                 <ul className="space-y-3 text-sm">
                   <li className="flex justify-between gap-4">
-                    <span className="text-ink-2">Characters with mining ledger access</span>
-                    <span className="font-semibold tabular-nums">{coverage.trackedCharacters}</span>
+                    <span className="text-ink-2">{m.coverage.tracked}</span>
+                    <span className="font-semibold tabular-nums">{f.integer(coverage.trackedCharacters)}</span>
                   </li>
                   {coverage.missingScope > 0 && (
                     <li className="flex items-start justify-between gap-4">
                       <span className="flex items-center gap-1.5 text-ink-2">
-                        <AlertTriangle className="size-3.5 text-warning" aria-hidden /> Characters missing the mining scope
+                        <AlertTriangle className="size-3.5 text-warning" aria-hidden /> {m.coverage.missingScope}
                       </span>
                       <Link href="/characters" className="font-semibold text-warning tabular-nums hover:underline">
-                        {coverage.missingScope}
+                        {f.integer(coverage.missingScope)}
                       </Link>
                     </li>
                   )}
                   {coverage.invalidTokens > 0 && (
                     <li className="flex items-start justify-between gap-4">
                       <span className="flex items-center gap-1.5 text-ink-2">
-                        <AlertTriangle className="size-3.5 text-critical-text" aria-hidden /> Revoked or expired tokens
+                        <AlertTriangle className="size-3.5 text-critical-text" aria-hidden /> {m.coverage.invalidTokens}
                       </span>
-                      <span className="font-semibold text-critical-text tabular-nums">{coverage.invalidTokens}</span>
+                      <span className="font-semibold text-critical-text tabular-nums">{f.integer(coverage.invalidTokens)}</span>
                     </li>
                   )}
                   {coverage.unregisteredMembers !== null && (
                     <li className="flex justify-between gap-4">
-                      <span className="text-ink-2">Corp members not registered</span>
+                      <span className="text-ink-2">{m.coverage.unregistered}</span>
                       <Link href="/admin/members" className="font-semibold tabular-nums hover:text-accent">
-                        {coverage.unregisteredMembers}
+                        {f.integer(coverage.unregisteredMembers)}
                       </Link>
                     </li>
                   )}
                   <li className="flex justify-between gap-4">
-                    <span className="text-ink-2">Last personal ledger sync</span>
-                    <span className="tabular-nums">{relativeTime(coverage.lastLedgerSync)}</span>
+                    <span className="text-ink-2">{m.coverage.lastLedgerSync}</span>
+                    <span className="tabular-nums">{f.relativeTime(coverage.lastLedgerSync)}</span>
                   </li>
                   {scope.corp && (
                     <li className="flex justify-between gap-4">
-                      <span className="text-ink-2">Last refinery observer sync</span>
+                      <span className="text-ink-2">{m.coverage.lastObserverSync}</span>
                       <span className="tabular-nums">
-                        {coverage.lastObserverSync ? relativeTime(coverage.lastObserverSync) : "not configured"}
+                        {coverage.lastObserverSync ? f.relativeTime(coverage.lastObserverSync) : m.coverage.notConfigured}
                       </span>
                     </li>
                   )}
                   {current.unpricedRows > 0 && (
                     <li className="flex items-start gap-1.5 text-xs text-warning">
                       <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                      {current.unpricedRows} ledger rows have no price yet and count as 0 ISK.
+                      {m.coverage.unpriced(current.unpricedRows)}
                     </li>
                   )}
                   <li className="flex items-start gap-1.5 border-t border-white/8 pt-3 text-xs text-ink-3">
                     <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                    ESI ledgers are daily totals per ore and system. &ldquo;Combined&rdquo; counts refinery entries only when
-                    they are not already in a member&apos;s personal ledger. ISK values use {ctx.valuationLabel}.
+                    {m.coverage.note(ctx.valuationLabel)}
                   </li>
                 </ul>
               </Panel>

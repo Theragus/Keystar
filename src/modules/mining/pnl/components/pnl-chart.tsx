@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Bar, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Segmented } from "@/components/ui/segmented";
 import type { DateBucket } from "@/lib/dates";
-import { compact } from "@/lib/format";
+import { useI18n } from "@/i18n/client";
 import { CHART_CLASSES, type ChartClass } from "../../class-colors";
 import { EXPENSE_COLOR, NET_COLOR } from "../colors";
 import { bucketLabel } from "../labels";
@@ -80,30 +80,33 @@ function axisTicks(buckets: PnlBucket[]): number[] {
 }
 
 function ChartTooltip({ active, payload, bucket }: { active?: boolean; payload?: { payload: Row }[]; bucket: DateBucket }) {
+  const { t, f } = useI18n();
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   const classes = CHART_CLASSES.filter((c) => Number(row[c.id]) > 0);
   return (
     <div className="glass min-w-[220px] rounded-2xl bg-space-800/85 px-4 py-3 text-xs">
       <div className="eve-label mb-2 text-2xs text-ink-3">
-        {bucketLabel({ start: String(row.start), end: String(row.end) }, bucket, true)}
-        {row.partial ? " · partial" : ""}
+        {bucketLabel({ start: String(row.start), end: String(row.end) }, bucket, f, true)}
+        {row.partial ? ` · ${t.pnl.chart.partial}` : ""}
       </div>
       {classes.map((c) => (
         <div key={c.id} className="flex items-center gap-2 py-0.5">
           <span className="size-2.5 rounded-[3px]" style={{ background: c.color }} aria-hidden />
-          <span className="text-ink-3">{c.label}</span>
-          <span className="ml-auto font-semibold text-ink tabular-nums">{compact(Number(row[c.id]))}</span>
+          <span className="text-ink-3">{t.mining.chartClasses[c.id]}</span>
+          <span className="ml-auto font-semibold text-ink tabular-nums">{f.compact(Number(row[c.id]))}</span>
         </div>
       ))}
       <div className="flex items-center gap-2 py-0.5">
         <span className="size-2.5 rounded-[3px]" style={{ background: EXPENSE_COLOR }} aria-hidden />
-        <span className="text-ink-3">Expenses</span>
-        <span className="ml-auto font-semibold text-ink tabular-nums">{Number(row.expenses) ? `−${compact(Number(row.expenses))}` : "0"}</span>
+        <span className="text-ink-3">{t.pnl.chart.expenses}</span>
+        <span className="ml-auto font-semibold text-ink tabular-nums">
+          {Number(row.expenses) ? `−${f.compact(Number(row.expenses))}` : "0"}
+        </span>
       </div>
       <div className="mt-1.5 flex items-center gap-2 border-t border-white/10 pt-1.5">
         <span className="h-0.5 w-3 rounded-full" style={{ background: NET_COLOR }} aria-hidden />
-        <span className="text-ink-3">Net</span>
+        <span className="text-ink-3">{t.pnl.chart.netShort}</span>
         <span className="ml-auto">
           <SignedIsk value={Number(row.net)} />
         </span>
@@ -114,6 +117,7 @@ function ChartTooltip({ active, payload, bucket }: { active?: boolean; payload?:
 
 /** Income stacked up by resource, expenses down, net profit as a line. */
 export function PnlChart({ buckets, bucket }: { buckets: PnlBucket[]; bucket: DateBucket }) {
+  const { t, f } = useI18n();
   const [view, setView] = useState<"chart" | "table">("chart");
   const present = CHART_CLASSES.filter((c) => buckets.some((b) => b.incomeByClass[c.id] > 0));
   const order = present.map((c) => c.id);
@@ -129,38 +133,38 @@ export function PnlChart({ buckets, bucket }: { buckets: PnlBucket[]; bucket: Da
   }));
   const ticks = axisTicks(buckets);
   const totals = buckets.reduce(
-    (t, b) => ({ income: t.income + b.income, expenses: t.expenses + b.expenses }),
+    (sum, b) => ({ income: sum.income + b.income, expenses: sum.expenses + b.expenses }),
     { income: 0, expenses: 0 },
   );
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" aria-label="Legend">
+        <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" aria-label={t.pnl.chart.legend}>
           {present.map((c) => (
             <li key={c.id} className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-[3px]" style={{ background: c.color }} aria-hidden />
-              <span className="text-ink-2">{c.label}</span>
+              <span className="text-ink-2">{t.mining.chartClasses[c.id]}</span>
             </li>
           ))}
           <li className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-[3px]" style={{ background: EXPENSE_COLOR }} aria-hidden />
-            <span className="text-ink-2">Expenses</span>
-            <span className="text-ink-3 tabular-nums">{compact(totals.expenses)}</span>
+            <span className="text-ink-2">{t.pnl.chart.expenses}</span>
+            <span className="text-ink-3 tabular-nums">{f.compact(totals.expenses)}</span>
           </li>
           <li className="flex items-center gap-1.5">
             <span className="h-0.5 w-3 rounded-full" style={{ background: NET_COLOR }} aria-hidden />
-            <span className="text-ink-2">Net profit</span>
+            <span className="text-ink-2">{t.pnl.chart.net}</span>
           </li>
         </ul>
         <Segmented
           size="sm"
-          label="Chart or table"
+          label={t.pnl.chart.view}
           value={view}
           onChange={setView}
           options={[
-            { value: "chart", label: "Chart" },
-            { value: "table", label: "Table" },
+            { value: "chart", label: t.pnl.chart.chart },
+            { value: "table", label: t.pnl.chart.table },
           ]}
         />
       </div>
@@ -172,7 +176,7 @@ export function PnlChart({ buckets, bucket }: { buckets: PnlBucket[]; bucket: Da
               <CartesianGrid vertical={false} strokeWidth={1} />
               <XAxis
                 dataKey="start"
-                tickFormatter={(d: string) => bucketLabel({ start: d, end: d }, bucket)}
+                tickFormatter={(d: string) => bucketLabel({ start: d, end: d }, bucket, f)}
                 tickLine={false}
                 axisLine={false}
                 minTickGap={28}
@@ -182,10 +186,10 @@ export function PnlChart({ buckets, bucket }: { buckets: PnlBucket[]; bucket: Da
               <YAxis
                 domain={[ticks[0], ticks[ticks.length - 1]]}
                 ticks={ticks}
-                tickFormatter={(v: number) => (v < 0 ? `−${compact(-v, 1)}` : compact(v, 1))}
+                tickFormatter={(v: number) => (v < 0 ? `−${f.compact(-v, 1)}` : f.compact(v, 1))}
                 tickLine={false}
                 axisLine={false}
-                width={56}
+                width={f.locale === "de" ? 80 : 60}
                 tick={{ fontSize: 12 }}
               />
               <ReferenceLine y={0} stroke="var(--axis)" />
@@ -205,7 +209,7 @@ export function PnlChart({ buckets, bucket }: { buckets: PnlBucket[]; bucket: Da
                     maxBarSize={28}
                     isAnimationActive={false}
                     shape={<Shape />}
-                    name={c.label}
+                    name={t.mining.chartClasses[c.id]}
                   />
                 );
               })}
@@ -216,7 +220,7 @@ export function PnlChart({ buckets, bucket }: { buckets: PnlBucket[]; bucket: Da
                 maxBarSize={28}
                 isAnimationActive={false}
                 shape={<ExpenseShape />}
-                name="Expenses"
+                name={t.pnl.chart.expenses}
               />
               <Line
                 dataKey="net"
@@ -225,7 +229,7 @@ export function PnlChart({ buckets, bucket }: { buckets: PnlBucket[]; bucket: Da
                 strokeWidth={2}
                 dot={buckets.length <= 16 ? { r: 3, fill: NET_COLOR, strokeWidth: 0 } : false}
                 isAnimationActive={false}
-                name="Net profit"
+                name={t.pnl.chart.net}
               />
             </ComposedChart>
           </ResponsiveContainer>
@@ -235,21 +239,21 @@ export function PnlChart({ buckets, bucket }: { buckets: PnlBucket[]; bucket: Da
           <table className="ks-table">
             <thead className="sticky top-0 bg-space-800/90 backdrop-blur">
               <tr>
-                <th>{bucket === "day" ? "Day" : bucket === "week" ? "Week" : "Month"}</th>
-                <th className="num">Income</th>
-                <th className="num">Expenses</th>
-                <th className="num">Net</th>
+                <th>{t.pnl.buckets[bucket]}</th>
+                <th className="num">{t.pnl.chart.income}</th>
+                <th className="num">{t.pnl.chart.expenses}</th>
+                <th className="num">{t.pnl.chart.netShort}</th>
               </tr>
             </thead>
             <tbody>
               {[...buckets].reverse().map((b) => (
                 <tr key={b.start}>
                   <td className="text-ink-2 tabular-nums">
-                    {bucketLabel(b, bucket, true)}
-                    {b.partial && <span className="ml-1.5 text-2xs text-ink-3">partial</span>}
+                    {bucketLabel(b, bucket, f, true)}
+                    {b.partial && <span className="ml-1.5 text-2xs text-ink-3">{t.pnl.chart.partial}</span>}
                   </td>
-                  <td className="num">{b.income ? compact(b.income) : "—"}</td>
-                  <td className="num">{b.expenses ? compact(b.expenses) : "—"}</td>
+                  <td className="num">{b.income ? f.compact(b.income) : "—"}</td>
+                  <td className="num">{b.expenses ? f.compact(b.expenses) : "—"}</td>
                   <td className="num">
                     <SignedIsk value={b.net} />
                   </td>

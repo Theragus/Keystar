@@ -23,7 +23,7 @@ import { classifyPurchase, isExpenseCategory } from "@/modules/mining/pnl/catego
 import { parsePnlFilters } from "@/modules/mining/pnl/filters";
 import { getPurchases } from "@/modules/mining/pnl/queries";
 import { pnlScope } from "@/modules/mining/pnl/scope";
-import { SPREAD_OPTIONS } from "@/modules/mining/pnl/spread";
+import { SPREAD_DAYS } from "@/modules/mining/pnl/spread";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
 
 /**
@@ -229,7 +229,7 @@ export async function includeAllSuggested(formData: FormData) {
     to: String(formData.get("to") ?? ""),
     chars: String(formData.get("chars") ?? ""),
   });
-  const { valuation } = miningValuation(await getSettings());
+  const valuation = miningValuation(await getSettings());
   const scope = pnlScope(user, filters, valuation, 100);
   const { rows } = await getPurchases(scope, { status: "suggested", limit: 5000, offset: 0 });
   if (rows.length) {
@@ -253,7 +253,7 @@ export async function addManualEntry(formData: FormData) {
   const category = String(formData.get("category") ?? "");
   if (!isExpenseCategory(category)) throw new Error("Pick a category");
   const spreadDays = Number(formData.get("spreadDays") ?? 1);
-  if (!SPREAD_OPTIONS.some((o) => o.days === spreadDays)) throw new Error("Invalid spread");
+  if (!SPREAD_DAYS.includes(spreadDays)) throw new Error("Invalid spread");
   const rawChar = String(formData.get("characterId") ?? "");
   const characterId = rawChar ? ownCharacter(user, rawChar) : null;
   const description = String(formData.get("description") ?? "").trim().slice(0, 200);

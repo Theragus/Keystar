@@ -9,28 +9,31 @@ import { StatTile } from "@/components/ui/stat-tile";
 import { requirePermission } from "@/core/auth/dal";
 import { appraisals, getDb } from "@/core/db";
 import { env } from "@/core/env";
-import { compact, dateTime, integer } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import { SortableTable, type Column, type EntityRow } from "@/components/ui/sortable-table";
 import { AppraisalForm } from "@/modules/trade/components/appraisal-form";
 import { TRADE_PERMISSIONS } from "@/modules/trade/module";
 import { splitPrice, type AppraisalItem, type AppraisalTotals, type UnparsedLine } from "@/modules/trade/appraisal/types";
 import { createAppraisal } from "../actions";
 
-export const metadata = { title: "Appraisal" };
-
-const COLUMNS: Column[] = [
-  { key: "quantity", label: "Qty", format: "int" },
-  { key: "buy", label: "Buy / unit", format: "unitIsk" },
-  { key: "sell", label: "Sell / unit", format: "unitIsk" },
-  { key: "totalBuy", label: "Buy total", format: "isk" },
-  { key: "totalSell", label: "Sell total", format: "isk" },
-  { key: "volume", label: "Volume", format: "m3" },
-];
-
-const full = (v: number) => `${Math.round(v).toLocaleString("en-US")} ISK`;
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.trade.appraisal.metaTitle };
+}
 
 export default async function AppraisalResultPage({ params }: PageProps<"/trade/appraisal/[id]">) {
   await requirePermission(TRADE_PERMISSIONS.appraisal);
+  const { t, f } = await getI18n();
+  const m = t.trade.result;
+  const full = (v: number) => f.isk(v, { compact: false });
+  const columns: Column[] = [
+    { key: "quantity", label: m.columns.quantity, format: "int" },
+    { key: "buy", label: m.columns.buy, format: "unitIsk" },
+    { key: "sell", label: m.columns.sell, format: "unitIsk" },
+    { key: "totalBuy", label: m.columns.totalBuy, format: "isk" },
+    { key: "totalSell", label: m.columns.totalSell, format: "isk" },
+    { key: "volume", label: m.columns.volume, format: "m3" },
+  ];
   const { id } = await params;
   if (!/^[A-Za-z0-9]{6,20}$/.test(id)) notFound();
   const [row] = await getDb().select().from(appraisals).where(eq(appraisals.id, id));
@@ -60,56 +63,53 @@ export default async function AppraisalResultPage({ params }: PageProps<"/trade/
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Trade"
-        title="Appraisal"
-        description={`Jita 4-4 prices from ${dateTime(row.createdAt)}${row.createdByName ? ` · by ${row.createdByName}` : ""}`}
+        eyebrow={t.trade.appraisal.eyebrow}
+        title={t.trade.appraisal.title}
+        description={m.description(f.dateTime(row.createdAt), row.createdByName)}
         actions={
           <ButtonLink href="/trade/appraisal" size="sm">
-            <ArrowLeft className="size-4" aria-hidden /> New appraisal
+            <ArrowLeft className="size-4" aria-hidden /> {m.newAppraisal}
           </ButtonLink>
         }
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Jita sell" value={compact(totals.sell)} unit="ISK" hint={full(totals.sell)} />
-        <StatTile label="Jita buy" value={compact(totals.buy)} unit="ISK" hint={full(totals.buy)} />
-        <StatTile label="Split" value={compact(totals.split)} unit="ISK" hint={full(totals.split)} />
+        <StatTile label={m.jitaSell} value={f.compact(totals.sell)} unit="ISK" hint={full(totals.sell)} />
+        <StatTile label={m.jitaBuy} value={f.compact(totals.buy)} unit="ISK" hint={full(totals.buy)} />
+        <StatTile label={m.split} value={f.compact(totals.split)} unit="ISK" hint={full(totals.split)} />
         <StatTile
-          label="Volume"
-          value={compact(totals.volume)}
+          label={m.volume}
+          value={f.compact(totals.volume)}
           unit="m³"
-          hint={`${integer(totals.types)} types · ${integer(totals.quantity)} items`}
+          hint={m.volumeHint(totals.types, totals.quantity)}
         />
       </div>
 
       {pct !== 100 && (
         <Glass className="flex flex-wrap items-baseline gap-x-6 gap-y-2 px-5 py-4">
-          <div className="eve-label text-2xs text-gold">{pct}% of Jita</div>
+          <div className="eve-label text-2xs text-gold">{m.ofJita(f.percent(pct / 100, 0))}</div>
           <div className="text-sm text-ink-2">
-            Buy <span className="ml-1 font-semibold text-ink tabular-nums">{full((totals.buy * pct) / 100)}</span>
+            {m.buy} <span className="ml-1 font-semibold text-ink tabular-nums">{full((totals.buy * pct) / 100)}</span>
           </div>
           <div className="text-sm text-ink-2">
-            Split <span className="ml-1 font-semibold text-ink tabular-nums">{full((totals.split * pct) / 100)}</span>
+            {m.split} <span className="ml-1 font-semibold text-ink tabular-nums">{full((totals.split * pct) / 100)}</span>
           </div>
           <div className="text-sm text-ink-2">
-            Sell <span className="ml-1 font-semibold text-ink tabular-nums">{full((totals.sell * pct) / 100)}</span>
+            {m.sell} <span className="ml-1 font-semibold text-ink tabular-nums">{full((totals.sell * pct) / 100)}</span>
           </div>
         </Glass>
       )}
 
-      <Panel title="Share" subtitle="Anyone signed in to Keystar with appraisal access can open this link.">
+      <Panel title={m.share} subtitle={m.shareSubtitle}>
         <CopyField value={`${env().APP_URL}/trade/appraisal/${row.id}`} />
       </Panel>
 
-      <Panel
-        title="Items"
-        subtitle={totals.unpriced ? `${totals.unpriced} item types have no Jita price and count as 0.` : "Sorted by Jita sell value"}
-      >
-        <SortableTable entityLabel="Item" columns={COLUMNS} rows={rows} defaultSort="totalSell" initialRows={50} />
+      <Panel title={m.items} subtitle={totals.unpriced ? m.unpriced(totals.unpriced) : m.itemsSorted}>
+        <SortableTable entityLabel={m.item} columns={columns} rows={rows} defaultSort="totalSell" initialRows={50} />
       </Panel>
 
       {unparsed.length > 0 && (
-        <Panel title={`Not recognised (${unparsed.length})`} subtitle="These lines didn't match an item name and were skipped.">
+        <Panel title={m.unparsed(unparsed.length)} subtitle={m.unparsedSubtitle}>
           <ul className="space-y-1 font-mono text-xs text-ink-2">
             {unparsed.slice(0, 200).map((u) => (
               <li key={u.line} className="flex gap-3">
@@ -122,7 +122,7 @@ export default async function AppraisalResultPage({ params }: PageProps<"/trade/
         </Panel>
       )}
 
-      <Panel title="Appraise again" subtitle="Same input at today's prices, as a new appraisal.">
+      <Panel title={m.again} subtitle={m.againSubtitle}>
         <AppraisalForm action={createAppraisal} defaultInput={row.input} defaultPercent={pct} />
       </Panel>
     </div>

@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, ClipboardPaste, Eraser, Loader2, TriangleAle
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { TypeIcon } from "@/components/ui/eve-image";
 import { Glass, Panel } from "@/components/ui/glass";
-import { compact, integer, isk, percent, unitPrice } from "@/lib/format";
+import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { priceSurveyTypes, type SurveyPrice } from "./actions";
 import { parseSurveyScan, summariseSurvey } from "./parse";
@@ -58,11 +58,13 @@ function NumberField({
 }
 
 export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
+  const { t: messages, f } = useI18n();
+  const m = messages.mining.estimator;
   const [text, setText] = useState("");
   const [maxDistance, setMaxDistance] = useState("");
   const [fleetYield, setFleetYield] = useState("");
   const [prices, setPrices] = useState<Record<string, SurveyPrice>>({});
-  const [priceError, setPriceError] = useState<string | null>(null);
+  const [priceError, setPriceError] = useState(false);
   const [pricing, startPricing] = useTransition();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -87,9 +89,9 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
         try {
           const result = await priceSurveyTypes(names);
           setPrices((p) => ({ ...p, ...result }));
-          setPriceError(null);
+          setPriceError(false);
         } catch {
-          setPriceError("Could not load Keystar prices — showing scanner values only.");
+          setPriceError(true);
         }
       });
     }, 300);
@@ -133,8 +135,8 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
     <div className="grid gap-4 xl:grid-cols-12">
       <Panel
         className="xl:col-span-4"
-        title="Survey scan"
-        subtitle="Survey scanner → select all → copy, then paste here"
+        title={m.scan.title}
+        subtitle={m.scan.subtitle}
         actions={
           <>
             <button
@@ -142,14 +144,14 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
               onClick={() => setText(EXAMPLE)}
               className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-ink-3 hover:bg-white/6 hover:text-ink"
             >
-              <ClipboardPaste className="size-3.5" aria-hidden /> Example
+              <ClipboardPaste className="size-3.5" aria-hidden /> {m.scan.example}
             </button>
             <button
               type="button"
               onClick={() => setText("")}
               className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-ink-3 hover:bg-white/6 hover:text-ink"
             >
-              <Eraser className="size-3.5" aria-hidden /> Clear
+              <Eraser className="size-3.5" aria-hidden /> {m.scan.clear}
             </button>
           </>
         }
@@ -158,99 +160,115 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           spellCheck={false}
-          placeholder={"Scordite III-Grade\t8.904\t1.335 m3\t168.000,00 ISK\t25 km\n…"}
+          placeholder={m.scan.placeholder}
           className="glass-inset h-[360px] w-full resize-y rounded-lg p-3 font-mono text-2xs leading-relaxed whitespace-pre text-ink outline-none placeholder:text-ink-3"
-          aria-label="Survey scanner result"
+          aria-label={m.scan.input}
         />
         {parsed.skipped.length > 0 && (
           <p className="mt-2 flex items-start gap-1.5 text-xs text-warning">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            Skipped {parsed.skipped.length} line{parsed.skipped.length > 1 ? "s" : ""} that didn&apos;t look like asteroids
-            (line {parsed.skipped.slice(0, 3).map((s) => s.line).join(", ")}
-            {parsed.skipped.length > 3 ? ", …" : ""}).
+            {m.skipped(
+              parsed.skipped.length,
+              parsed.skipped
+                .slice(0, 3)
+                .map((s) => s.line)
+                .join(", ") + (parsed.skipped.length > 3 ? ", …" : ""),
+            )}
           </p>
         )}
         <div className="mt-4 flex gap-3">
-          <NumberField label="Max distance" value={maxDistance} onChange={setMaxDistance} placeholder="any" suffix="km" />
-          <NumberField label="Fleet yield" value={fleetYield} onChange={setFleetYield} placeholder="e.g. 60000" suffix="m³/h" />
+          <NumberField
+            label={m.maxDistance}
+            value={maxDistance}
+            onChange={setMaxDistance}
+            placeholder={m.anyDistance}
+            suffix="km"
+          />
+          <NumberField
+            label={m.fleetYield}
+            value={fleetYield}
+            onChange={setFleetYield}
+            placeholder={m.fleetYieldPlaceholder}
+            suffix="m³/h"
+          />
         </div>
       </Panel>
 
       <div className="min-w-0 space-y-4 xl:col-span-8">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Glass className="px-5 py-4">
-            <div className="eve-label text-2xs text-ink-3">Keystar value</div>
+            <div className="eve-label text-2xs text-ink-3">{m.keystarValue}</div>
             <div className="mt-2 text-2xl font-semibold">
-              {compact(totals.keystar)}
+              {f.compact(totals.keystar)}
               <span className="ml-1 text-sm text-ink-2">ISK</span>
             </div>
             <div className="mt-1 truncate text-2xs text-ink-3" title={valuationLabel}>
               {pricing ? (
                 <span className="inline-flex items-center gap-1">
-                  <Loader2 className="size-3 animate-spin" aria-hidden /> pricing…
+                  <Loader2 className="size-3 animate-spin" aria-hidden /> {m.pricing}
                 </span>
               ) : totals.unpriced ? (
-                `${totals.unpriced} type(s) unpriced`
+                m.unpriced(totals.unpriced)
               ) : (
                 valuationLabel
               )}
             </div>
           </Glass>
           <Glass className="px-5 py-4">
-            <div className="eve-label text-2xs text-ink-3">Scanner estimate</div>
+            <div className="eve-label text-2xs text-ink-3">{m.scannerEstimate}</div>
             <div className="mt-2 text-2xl font-semibold">
-              {compact(totals.scanner)}
+              {f.compact(totals.scanner)}
               <span className="ml-1 text-sm text-ink-2">ISK</span>
             </div>
-            <div className="mt-1 text-2xs text-ink-3">EVE average price</div>
+            <div className="mt-1 text-2xs text-ink-3">{m.eveAverage}</div>
           </Glass>
           <Glass className="px-5 py-4">
-            <div className="eve-label text-2xs text-ink-3">Volume</div>
+            <div className="eve-label text-2xs text-ink-3">{m.volume}</div>
             <div className="mt-2 text-2xl font-semibold">
-              {compact(totals.volume)}
+              {f.compact(totals.volume)}
               <span className="ml-1 text-sm text-ink-2">m³</span>
             </div>
             <div className="mt-1 text-2xs text-ink-3">
-              {totals.volume ? `${unitPrice((totals.keystar || totals.scanner) / totals.volume)} per m³` : "—"}
+              {totals.volume ? m.perM3(f.unitPrice((totals.keystar || totals.scanner) / totals.volume)) : "—"}
             </div>
           </Glass>
           <Glass className="px-5 py-4">
-            <div className="eve-label text-2xs text-ink-3">{hoursToClear !== null ? "Time to clear" : "Asteroids"}</div>
+            <div className="eve-label text-2xs text-ink-3">{hoursToClear !== null ? m.timeToClear : m.asteroids}</div>
             <div className="mt-2 text-2xl font-semibold">
               {hoursToClear !== null
-                ? `${Math.floor(hoursToClear)}h ${Math.round((hoursToClear % 1) * 60)}m`
-                : integer(totals.rocks)}
+                ? m.duration(Math.floor(hoursToClear), Math.round((hoursToClear % 1) * 60))
+                : f.integer(totals.rocks)}
             </div>
             <div className="mt-1 text-2xs text-ink-3">
-              {hoursToClear !== null ? `${integer(totals.rocks)} asteroids` : `${summary.length} ore types`}
+              {hoursToClear !== null ? m.asteroidCount(totals.rocks) : m.oreTypes(summary.length)}
             </div>
           </Glass>
         </div>
 
         {priceError && (
           <p className="flex items-center gap-1.5 text-xs text-warning">
-            <TriangleAlert className="size-3.5" aria-hidden /> {priceError}
+            <TriangleAlert className="size-3.5" aria-hidden /> {m.priceError}
           </p>
         )}
 
         <Glass className="overflow-hidden">
           {summary.length === 0 ? (
             <div className="px-6 py-16 text-center text-sm text-ink-3">
-              Paste a survey scan to see the field broken down by ore and grade.
+              {m.empty}
             </div>
           ) : (
             <div className="overflow-x-auto px-2 py-2">
               <table className="ks-table">
                 <thead>
                   <tr>
-                    <th>Ore</th>
-                    <th className="num">Rocks</th>
-                    <th className="num">Units</th>
-                    <th className="num">Volume</th>
-                    <th className="num">Unit price</th>
-                    <th className="num">Scanner</th>
-                    <th className="num">Keystar</th>
-                    <th className="w-[120px]">Share</th>
+                    <th>{m.columns.ore}</th>
+                    <th className="num">{m.columns.rocks}</th>
+                    <th className="num">{m.columns.units}</th>
+                    <th className="num">{m.columns.volume}</th>
+                    <th className="num">{m.columns.unitPrice}</th>
+                    <th className="num">{m.columns.scanner}</th>
+                    <th className="num">{m.columns.keystar}</th>
+                    <th className="w-[120px]">{m.columns.share}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -271,15 +289,15 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
                               )}
                               {iconId ? <TypeIcon id={iconId} size={24} /> : <span className="size-6" />}
                               <span className="font-semibold">{ore.base}</span>
-                              <span className="text-xs text-ink-3">{ore.grades.length} grade{ore.grades.length > 1 ? "s" : ""}</span>
+                              <span className="text-xs text-ink-3">{m.grades(ore.grades.length)}</span>
                             </div>
                           </td>
-                          <td className="num">{ore.rocks}</td>
-                          <td className="num">{integer(ore.quantity)}</td>
-                          <td className="num">{integer(ore.volume)} m³</td>
+                          <td className="num">{f.integer(ore.rocks)}</td>
+                          <td className="num">{f.integer(ore.quantity)}</td>
+                          <td className="num">{f.integer(ore.volume)} m³</td>
                           <td className="num text-ink-3">—</td>
-                          <td className="num">{isk(ore.scannerValue)}</td>
-                          <td className="num font-semibold">{oreValue ? isk(oreValue) : "—"}</td>
+                          <td className="num">{f.isk(ore.scannerValue)}</td>
+                          <td className="num font-semibold">{oreValue ? f.isk(oreValue) : "—"}</td>
                           <td>
                             <ShareBar value={shareBase ? shareValue / shareBase : 0} />
                           </td>
@@ -293,19 +311,21 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
                                 <td>
                                   <div className="flex items-center gap-2 pl-9 whitespace-nowrap" title={g.name}>
                                     <span className="rounded border border-white/10 px-1.5 py-px font-mono text-3xs text-ink-2">
-                                      {g.grade}
+                                      {g.grade === "Base" ? m.baseGrade : g.grade}
                                     </span>
                                     {g.minDistanceKm !== null && (
-                                      <span className="text-2xs text-ink-3">closest {g.minDistanceKm} km</span>
+                                      <span className="text-2xs text-ink-3">
+                                        {m.closest(f.number(g.minDistanceKm, Number.isInteger(g.minDistanceKm) ? 0 : 1))}
+                                      </span>
                                     )}
                                   </div>
                                 </td>
-                                <td className="num">{g.rocks}</td>
-                                <td className="num">{integer(g.quantity)}</td>
-                                <td className="num">{integer(g.volume)} m³</td>
-                                <td className="num">{p !== null ? unitPrice(p) : pricing ? "…" : "—"}</td>
-                                <td className="num">{isk(g.scannerValue)}</td>
-                                <td className="num">{v !== null ? isk(v) : "—"}</td>
+                                <td className="num">{f.integer(g.rocks)}</td>
+                                <td className="num">{f.integer(g.quantity)}</td>
+                                <td className="num">{f.integer(g.volume)} m³</td>
+                                <td className="num">{p !== null ? f.unitPrice(p) : pricing ? "…" : "—"}</td>
+                                <td className="num">{f.isk(g.scannerValue)}</td>
+                                <td className="num">{v !== null ? f.isk(v) : "—"}</td>
                                 <td>
                                   <ShareBar value={shareBase ? (totals.keystar ? (v ?? 0) : g.scannerValue) / shareBase : 0} subtle />
                                 </td>
@@ -326,6 +346,7 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
 }
 
 function ShareBar({ value, subtle }: { value: number; subtle?: boolean }) {
+  const { f } = useI18n();
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 flex-1 rounded-full bg-white/5">
@@ -334,7 +355,7 @@ function ShareBar({ value, subtle }: { value: number; subtle?: boolean }) {
           style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%` }}
         />
       </div>
-      <span className="w-10 text-right text-2xs text-ink-3 tabular-nums">{percent(value, 0)}</span>
+      <span className="w-10 text-right text-2xs text-ink-3 tabular-nums">{f.percent(value, 0)}</span>
     </div>
   );
 }

@@ -16,7 +16,7 @@ export const walletModule: KeystarModule = {
       scope: WALLET_SCOPE,
       level: "character",
       optional: true,
-      reason: "Reads market purchases and sales so the mining P&L can count mining costs and sale prices (opt-in).",
+      reason: (t) => t.wallet.module.scopes.characterWallet,
     },
   ],
   permissions: [],

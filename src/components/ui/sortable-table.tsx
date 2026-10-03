@@ -3,7 +3,7 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Portrait, TypeIcon } from "@/components/ui/eve-image";
-import { compact, integer, percent, unitPrice } from "@/lib/format";
+import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { DeltaChip } from "./deltas";
 
@@ -32,26 +32,27 @@ export interface EntityRow {
 }
 
 function Cell({ row, col }: { row: EntityRow; col: Column }) {
+  const { f } = useI18n();
   const v = row.values[col.key];
   if (v === null || v === undefined) return <span className="text-ink-3">—</span>;
   switch (col.format) {
     case "int":
-      return <>{integer(v)}</>;
+      return <>{f.integer(v)}</>;
     case "isk":
-      return <span className="text-ink-2">{v ? compact(v) : "0"}</span>;
+      return <span className="text-ink-2">{v ? f.compact(v) : "0"}</span>;
     case "unitIsk":
-      return <span className="text-ink-2">{unitPrice(v).replace(" ISK", "")}</span>;
+      return <span className="text-ink-2">{f.unitPrice(v).replace(" ISK", "")}</span>;
     case "signedIsk":
       return (
         <span className={cn("font-semibold", v > 0 ? "text-good-text" : v < 0 ? "text-critical-text" : "text-ink-2")}>
           {v > 0 ? "+" : v < 0 ? "−" : ""}
-          {compact(Math.abs(v))}
+          {f.compact(Math.abs(v))}
         </span>
       );
     case "pct":
-      return <>{percent(v, 1)}</>;
+      return <>{f.percent(v, 1)}</>;
     case "m3":
-      return <span className="text-ink-2">{compact(v)} m³</span>;
+      return <span className="text-ink-2">{f.compact(v)} m³</span>;
     case "delta":
       return <DeltaChip value={v} />;
     case "deltaInverse":
@@ -59,8 +60,8 @@ function Cell({ row, col }: { row: EntityRow; col: Column }) {
     case "ratio":
       return (
         <>
-          {integer(v)}
-          <span className="text-ink-3">/{integer(row.values[col.ratioKey ?? ""] ?? 0)}</span>
+          {f.integer(v)}
+          <span className="text-ink-3">/{f.integer(row.values[col.ratioKey ?? ""] ?? 0)}</span>
         </>
       );
   }
@@ -72,7 +73,7 @@ export function SortableTable({
   defaultSort,
   entityLabel,
   initialRows = 12,
-  emptyText = "Nothing in this period.",
+  emptyText,
 }: {
   columns: Column[];
   rows: EntityRow[];
@@ -81,6 +82,7 @@ export function SortableTable({
   initialRows?: number;
   emptyText?: string;
 }) {
+  const { t } = useI18n();
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: defaultSort, dir: "desc" });
   const [expanded, setExpanded] = useState(false);
 
@@ -94,7 +96,7 @@ export function SortableTable({
     });
   }, [rows, sort]);
 
-  if (!rows.length) return <p className="py-6 text-center text-sm text-ink-3">{emptyText}</p>;
+  if (!rows.length) return <p className="py-6 text-center text-sm text-ink-3">{emptyText ?? t.common.table.empty}</p>;
   const shown = expanded ? sorted : sorted.slice(0, initialRows);
 
   const header = (key: string, label: string, title?: string, align: "left" | "right" = "right") => {
@@ -165,7 +167,7 @@ export function SortableTable({
           onClick={() => setExpanded((e) => !e)}
           className="mt-3 text-xs font-medium text-accent hover:underline"
         >
-          {expanded ? "Show fewer" : `Show all ${rows.length}`}
+          {expanded ? t.common.table.showFewer : t.common.table.showAll(rows.length)}
         </button>
       )}
     </div>

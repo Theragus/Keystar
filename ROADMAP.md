@@ -15,6 +15,9 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - ✅ Background sync worker: ESI caching (ETag/Expires), pagination, error-limit and rate-limit back-off, compatibility date
 - ✅ Member audit: in-game roster vs registered characters, missing/revoked ESI
 - ✅ Self-hosting: Docker Compose (Postgres, app, worker, Caddy HTTPS)
+- ✅ English and German UI: browser language detection (English fallback), language switch in the sidebar footer, localised number and date formats
+- 💡 German item, system and ship names (ESI `language=de`) for German-speaking corporations
+- 💡 Situation report in the reader's language (today it is written once, in English)
 
 ## Mining
 

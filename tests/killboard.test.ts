@@ -161,6 +161,7 @@ describe("killboard windows", () => {
 
   it("formats labels and EVE years", () => {
     expect(rangeLabel({ from: "2026-09-25", to: "2026-10-01" })).toBe("Sep 25 – Oct 1");
+    expect(rangeLabel({ from: "2026-10-01", to: "2026-10-07" }, "de")).toBe("1. Okt. – 7. Okt.");
     expect(ycYear("2026-05-19")).toBe(128);
   });
 });

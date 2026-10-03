@@ -33,7 +33,8 @@ export interface PnlBucket {
 export interface PnlCharacterRow {
   /** null: account-wide manual entries. */
   characterId: number | null;
-  name: string;
+  /** null for account-wide entries or a character no longer linked. */
+  name: string | null;
   income: number;
   volume: number;
   hours: number;
@@ -44,7 +45,6 @@ export interface PnlCharacterRow {
 
 export interface PnlActivityRow {
   activity: ChartClass;
-  label: string;
   income: number;
   volume: number;
   hours: number;
@@ -140,7 +140,7 @@ export function buildPnlReport(input: {
     if (!row) {
       row = {
         characterId: id,
-        name: id === null ? "Account-wide entries" : (names.get(id) ?? `Character ${id}`),
+        name: id === null ? null : (names.get(id) ?? null),
         income: 0,
         volume: 0,
         hours: 0,
@@ -244,7 +244,6 @@ export function buildPnlReport(input: {
     const expensesShare = allocated.get(c.id) ?? 0;
     return {
       activity: c.id,
-      label: c.label,
       income: classIncome[c.id],
       volume: classVolume[c.id],
       hours: figure?.hours ?? 0,
@@ -255,7 +254,11 @@ export function buildPnlReport(input: {
   }).filter((a) => a.income !== 0 || a.volume !== 0 || a.hours !== 0);
 
   const characters = [...chars.values()].sort((a, b) =>
-    a.characterId === null ? 1 : b.characterId === null ? -1 : b.income - a.income || a.name.localeCompare(b.name),
+    a.characterId === null
+      ? 1
+      : b.characterId === null
+        ? -1
+        : b.income - a.income || (a.name ?? "").localeCompare(b.name ?? ""),
   );
 
   return {

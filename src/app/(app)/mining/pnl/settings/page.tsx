@@ -6,7 +6,7 @@ import { Portrait, TypeIcon } from "@/components/ui/eve-image";
 import { Glass, Panel } from "@/components/ui/glass";
 import { env } from "@/core/env";
 import { reauthorizeHref } from "@/core/modules/registry";
-import { compact, relativeTime, shortDate, unitPrice } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import { SubmitButton, SwitchButton } from "@/modules/mining/pnl/components/form-controls";
 import { PnlTabs } from "@/modules/mining/pnl/components/pnl-tabs";
 import { pnlQueryString } from "@/modules/mining/pnl/filters";
@@ -22,7 +22,10 @@ import {
   setIncomeRate,
 } from "../actions";
 
-export const metadata = { title: "Mining P&L · Settings" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.pnl.metaTitle.settings };
+}
 
 const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink [color-scheme:dark]";
 const RETURN_TO = "/mining/pnl/settings";
@@ -34,6 +37,8 @@ function isoDay(d: Date) {
 
 export default async function PnlSettingsPage({ searchParams }: PageProps<"/mining/pnl/settings">) {
   const ctx = await pnlPageContext(await searchParams);
+  const { t, f } = await getI18n();
+  const m = t.pnl.settings;
   const { filters, scope, user } = ctx;
   const demo = env().KEYSTAR_DEMO_MODE;
   const hints = hintRange(ctx.today);
@@ -44,21 +49,22 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
     getSaleHints(allOwn, hints),
     getMinedTypes(user.characterIds, hints.from),
   ]);
-  const ruleTypes = new Map([...mined.map((t) => [t.id, t.name] as const), ...rules.map((r) => [r.typeId, r.typeName ?? `Type ${r.typeId}`] as const)]);
+  const ruleTypes = new Map([
+    ...mined.map((type) => [type.id, type.name] as const),
+    ...rules.map((r) => [r.typeId, r.typeName ?? String(r.typeId)] as const),
+  ]);
+  const price = (value: number) => f.unitPrice(value).replace(" ISK", "");
 
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Industry"
-        title="Mining P&L · Settings"
-        description="Wallet import per character, how ore income is valued, and what you really sell for."
+        eyebrow={t.mining.module.navSection}
+        title={t.pnl.metaTitle.settings}
+        description={m.description}
         actions={<PnlTabs current="settings" query={pnlQueryString(filters, { status: "mining", page: 1 })} />}
       />
 
-      <Panel
-        title="Wallet import"
-        subtitle="Optional and per character. Keystar then reads that character's market purchases and sales; only you see them."
-      >
+      <Panel title={m.wallet.title} subtitle={m.wallet.subtitle}>
         <div className="space-y-3">
           {wallet.map((w) => {
             const enable = reauthorizeHref(w.grantedScopes, { add: [WALLET_SCOPE], returnTo: RETURN_TO });
@@ -71,57 +77,61 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-ink">{w.name}</span>
                     {w.tokenStatus === "invalid" ? (
-                      <StatusBadge status="error" label="Token revoked" />
+                      <StatusBadge status="error" label={m.wallet.revoked} />
                     ) : w.granted ? (
-                      <StatusBadge status={w.lastStatus === "error" ? "warning" : "ok"} label="Wallet import on" />
+                      <StatusBadge status={w.lastStatus === "error" ? "warning" : "ok"} label={m.wallet.on} />
                     ) : (
-                      <StatusBadge status="pending" label="Wallet import off" />
+                      <StatusBadge status="pending" label={m.wallet.off} />
                     )}
                   </div>
                   <p className="text-xs text-ink-3">
                     {w.granted
                       ? w.transactions > 0
-                        ? `${w.transactions} transactions since ${shortDate(isoDay(w.firstTransactionAt!))} · synced ${relativeTime(w.lastSuccessAt)}`
+                        ? m.wallet.imported(
+                            w.transactions,
+                            f.shortDate(isoDay(w.firstTransactionAt!)),
+                            f.relativeTime(w.lastSuccessAt),
+                          )
                         : w.lastSuccessAt
-                          ? `No market transactions in the last 30 days · synced ${relativeTime(w.lastSuccessAt)}`
-                          : "First import within a few minutes"
+                          ? m.wallet.noTransactions(f.relativeTime(w.lastSuccessAt))
+                          : m.wallet.firstImport
                       : w.transactions > 0
-                        ? `${w.transactions} imported transactions kept`
-                        : "Nothing imported"}
+                        ? m.wallet.kept(w.transactions)
+                        : m.wallet.nothing}
                     {w.granted && w.lastStatus === "error" && w.lastError ? ` · ${w.lastError}` : ""}
                   </p>
                   <p className="flex items-center gap-1 text-xs text-ink-3">
                     <Activity className="size-3.5" aria-hidden />
                     {w.activitySince
-                      ? `Mining activity measured since ${shortDate(isoDay(w.activitySince))}`
+                      ? m.wallet.activitySince(f.shortDate(isoDay(w.activitySince)))
                       : tracksMining
-                        ? "Mining activity is measured from the next ledger sync"
-                        : "No mining ledger access: activity can't be measured"}
+                        ? m.wallet.activityNext
+                        : m.wallet.activityNone}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   {w.granted && (
                     <form action={setAutoInclude.bind(null, w.characterId, !w.autoInclude)}>
-                      <SwitchButton on={w.autoInclude} label="Count tagged purchases automatically" />
+                      <SwitchButton on={w.autoInclude} label={m.wallet.autoCount} />
                     </form>
                   )}
                   {demo ? (
-                    <Button size="sm" disabled title="Not available in demo mode">
-                      <KeyRound className="size-3.5" aria-hidden /> {w.granted ? "Stop wallet import" : "Enable wallet import"}
+                    <Button size="sm" disabled title={m.wallet.demo}>
+                      <KeyRound className="size-3.5" aria-hidden /> {w.granted ? m.wallet.stop : m.wallet.enable}
                     </Button>
                   ) : w.granted ? (
                     <ButtonLink href={stop} size="sm" variant="ghost">
-                      Stop wallet import
+                      {m.wallet.stop}
                     </ButtonLink>
                   ) : (
                     <ButtonLink href={enable} size="sm" variant="primary">
-                      <Wallet className="size-3.5" aria-hidden /> Enable wallet import
+                      <Wallet className="size-3.5" aria-hidden /> {m.wallet.enable}
                     </ButtonLink>
                   )}
                   {!w.granted && w.transactions > 0 && (
                     <form action={deleteWalletData.bind(null, w.characterId)}>
-                      <SubmitButton variant="danger" title="Delete this character's imported wallet transactions">
-                        <Trash2 className="size-3.5" aria-hidden /> Delete history
+                      <SubmitButton variant="danger" title={m.wallet.deleteHistoryHint}>
+                        <Trash2 className="size-3.5" aria-hidden /> {m.wallet.deleteHistory}
                       </SubmitButton>
                     </form>
                   )}
@@ -131,47 +141,38 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
           })}
         </div>
         <ul className="mt-4 list-disc space-y-1 pl-4 text-xs text-ink-3">
-          <li>
-            Enabling sends you to the EVE login with your current scopes plus wallet read access. <b>Pick the same
-            character there</b>; EVE replaces a character&apos;s scopes on every login.
-          </li>
-          <li>
-            &ldquo;Count tagged purchases automatically&rdquo; is off by default: purchases tagged as mining costs are only
-            suggested until you include them. Switch it on for characters that buy for mining only; you can still exclude
-            single purchases.
-          </li>
-          <li>Stopping removes the scope on the EVE login again. Imported history is kept until you delete it.</li>
+          <li>{m.wallet.notes.enable()}</li>
+          <li>{m.wallet.notes.autoCount}</li>
+          <li>{m.wallet.notes.stop}</li>
         </ul>
       </Panel>
 
-      <div className="grid gap-4 xl:grid-cols-12">
-        <Panel className="xl:col-span-4" title="Income valuation" subtitle={`Base: ${ctx.valuationLabel}`}>
+      <div className="grid gap-4 2xl:grid-cols-12">
+        <Panel className="2xl:col-span-4" title={m.income.title} subtitle={m.income.base(ctx.valuationLabel)}>
           <form action={setIncomeRate} className="space-y-3">
             <label className="block space-y-1 text-xs text-ink-3">
-              Share of the valuation you actually get
+              {m.income.share}
               <span className="flex items-center gap-2">
-                <input name="rate" defaultValue={String(scope.ratePct)} inputMode="decimal" required className={inputClass} />
+                <input name="rate" defaultValue={f.number(scope.ratePct, Number.isInteger(scope.ratePct) ? 0 : 1)} inputMode="decimal" required className={inputClass} />
                 <span className="text-sm text-ink-2">%</span>
               </span>
             </label>
-            <p className="text-xs text-ink-3">
-              E.g. 90 if you sell to a buyback at 90% of Jita buy. Ores with a price rule use that price instead.
-            </p>
-            <SubmitButton variant="primary">Save</SubmitButton>
+            <p className="text-xs text-ink-3">{m.income.hint}</p>
+            <SubmitButton variant="primary">{m.income.save}</SubmitButton>
           </form>
         </Panel>
 
-        <Panel className="xl:col-span-8" title="Ore prices" subtitle="What you get per unit of a specific ore (overrides the %)">
+        <Panel className="2xl:col-span-8" title={m.prices.title} subtitle={m.prices.subtitle}>
           {rules.length > 0 && (
             <div className="mb-4 overflow-x-auto">
               <table className="ks-table">
                 <thead>
                   <tr>
-                    <th>Ore</th>
-                    <th className="num">ISK / unit</th>
-                    <th>From</th>
-                    <th>To</th>
-                    <th className="num" aria-label="Actions" />
+                    <th>{m.prices.columns.ore}</th>
+                    <th className="num">{m.prices.columns.unitPrice}</th>
+                    <th>{m.prices.columns.from}</th>
+                    <th>{m.prices.columns.to}</th>
+                    <th className="num" aria-label={m.prices.columns.actions} />
                   </tr>
                 </thead>
                 <tbody>
@@ -180,15 +181,15 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
                       <td>
                         <span className="flex items-center gap-2">
                           <TypeIcon id={r.typeId} size={22} />
-                          {r.typeName ?? `Type ${r.typeId}`}
+                          {r.typeName ?? r.typeId}
                         </span>
                       </td>
-                      <td className="num font-semibold">{unitPrice(r.unitPrice).replace(" ISK", "")}</td>
-                      <td className="text-ink-2">{r.validFrom ? shortDate(r.validFrom) : "always"}</td>
-                      <td className="text-ink-2">{r.validTo ? shortDate(r.validTo) : "—"}</td>
+                      <td className="num font-semibold">{price(r.unitPrice)}</td>
+                      <td className="text-ink-2">{r.validFrom ? f.shortDate(r.validFrom) : m.prices.always}</td>
+                      <td className="text-ink-2">{r.validTo ? f.shortDate(r.validTo) : "—"}</td>
                       <td className="num">
                         <form action={deletePriceRule.bind(null, r.id)}>
-                          <SubmitButton variant="ghost" title="Delete this rule">
+                          <SubmitButton variant="ghost" title={m.prices.deleteHint}>
                             <Trash2 className="size-3.5" aria-hidden />
                           </SubmitButton>
                         </form>
@@ -200,13 +201,13 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
             </div>
           )}
           {ruleTypes.size === 0 ? (
-            <p className="text-sm text-ink-3">Ore you mined in the last {HINT_DAYS} days can be priced here.</p>
+            <p className="text-sm text-ink-3">{m.prices.empty(HINT_DAYS)}</p>
           ) : (
             <form action={addPriceRule} className="grid items-end gap-3 sm:grid-cols-5">
               <label className="space-y-1 text-xs text-ink-3 sm:col-span-2">
-                Ore
+                {m.prices.ore}
                 <select name="typeId" required className={inputClass}>
-                  {[...ruleTypes].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => (
+                  {[...ruleTypes].sort((a, b) => String(a[1]).localeCompare(String(b[1]))).map(([id, name]) => (
                     <option key={id} value={id}>
                       {name}
                     </option>
@@ -214,62 +215,59 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
                 </select>
               </label>
               <label className="space-y-1 text-xs text-ink-3">
-                ISK / unit
-                <input name="unitPrice" required inputMode="decimal" placeholder="e.g. 18.5" className={inputClass} />
+                {m.prices.unitPrice}
+                <input name="unitPrice" required inputMode="decimal" placeholder={m.prices.unitPricePlaceholder} className={inputClass} />
               </label>
               <label className="space-y-1 text-xs text-ink-3">
-                From (optional)
+                {m.prices.from}
                 <input type="date" name="validFrom" className={inputClass} />
               </label>
               <label className="space-y-1 text-xs text-ink-3">
-                To (optional)
+                {m.prices.to}
                 <input type="date" name="validTo" className={inputClass} />
               </label>
               <div className="sm:col-span-5">
                 <SubmitButton variant="primary">
-                  <Plus className="size-3.5" aria-hidden /> Add price
+                  <Plus className="size-3.5" aria-hidden /> {m.prices.add}
                 </SubmitButton>
               </div>
             </form>
           )}
 
           <div className="mt-5 border-t border-white/8 pt-4">
-            <div className="eve-label mb-2 text-2xs text-ink-3">From your wallet sells · last {HINT_DAYS} days</div>
+            <div className="eve-label mb-2 text-2xs text-ink-3">{m.prices.hints.title(HINT_DAYS)}</div>
             {saleHints.length === 0 ? (
-              <p className="text-xs text-ink-3">
-                No market sales of the ore you mined (raw or compressed) in imported wallets. Sales via contracts or a
-                buyback don&apos;t show up here; use the % above for those.
-              </p>
+              <p className="text-xs text-ink-3">{m.prices.hints.empty}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="ks-table">
                   <thead>
                     <tr>
-                      <th>Ore</th>
-                      <th className="num">Sold (raw units)</th>
-                      <th className="num">You got / unit</th>
-                      <th className="num">Valuation / unit</th>
-                      <th className="num" aria-label="Actions" />
+                      <th>{m.prices.hints.columns.ore}</th>
+                      <th className="num">{m.prices.hints.columns.sold}</th>
+                      <th className="num">{m.prices.hints.columns.got}</th>
+                      <th className="num">{m.prices.hints.columns.valuation}</th>
+                      <th className="num" aria-label={m.prices.columns.actions} />
                     </tr>
                   </thead>
                   <tbody>
                     {saleHints.map((h) => (
                       <tr key={h.typeId}>
                         <td>
-                          <span className="flex items-center gap-2">
+                          <span className="flex items-center gap-2 whitespace-nowrap">
                             <TypeIcon id={h.typeId} size={22} />
                             {h.typeName}
                           </span>
                         </td>
                         <td className="num text-ink-2">
-                          {compact(h.rawUnits)} <span className="text-ink-3">({h.sales === 1 ? "1 sale" : `${h.sales} sales`})</span>
+                          {f.compact(h.rawUnits)} <span className="text-ink-3">({m.prices.hints.sales(h.sales)})</span>
                         </td>
-                        <td className="num font-semibold">{unitPrice(h.rawUnitPrice).replace(" ISK", "")}</td>
+                        <td className="num font-semibold">{price(h.rawUnitPrice)}</td>
                         <td className="num text-ink-2">
                           {h.baseUnitPrice ? (
                             <>
-                              {unitPrice(h.baseUnitPrice).replace(" ISK", "")}{" "}
-                              <span className="text-ink-3">({((h.rawUnitPrice / h.baseUnitPrice) * 100).toFixed(0)}%)</span>
+                              {price(h.baseUnitPrice)}{" "}
+                              <span className="text-ink-3">({f.percent(h.rawUnitPrice / h.baseUnitPrice, 0)})</span>
                             </>
                           ) : (
                             "—"
@@ -277,7 +275,7 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
                         </td>
                         <td className="num">
                           <form action={applyPriceHint.bind(null, h.typeId, Math.round(h.rawUnitPrice * 100) / 100)}>
-                            <SubmitButton title="Use this as the ore's price (no date limits)">Use</SubmitButton>
+                            <SubmitButton title={m.prices.hints.useHint}>{m.prices.hints.use}</SubmitButton>
                           </form>
                         </td>
                       </tr>

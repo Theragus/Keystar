@@ -15,24 +15,39 @@ export const skillsModule: KeystarModule = {
   name: "Skills",
   description: "Character skills, queues and corporation skill plans.",
   scopes: [
-    { scope: "esi-skills.read_skills.v1", level: "character", reason: "Reads your trained skills." },
-    { scope: "esi-skills.read_skillqueue.v1", level: "character", reason: "Shows your training queue." },
+    { scope: "esi-skills.read_skills.v1", level: "character", reason: (t) => t.skills.module.scopes.skills },
+    { scope: "esi-skills.read_skillqueue.v1", level: "character", reason: (t) => t.skills.module.scopes.queue },
   ],
   permissions: [
-    { key: "skills.view.own", label: "View own skills", description: "…", group: "Skills", defaultMinRole: "member" },
-    { key: "skills.view.corp", label: "View corp skills", description: "…", group: "Skills", defaultMinRole: "viewer" },
-    { key: "skills.plans.manage", label: "Manage skill plans", description: "…", group: "Skills", defaultMinRole: "contributor" },
+    {
+      key: "skills.view.own",
+      label: (t) => t.skills.module.permissions.viewOwn.label,
+      description: (t) => t.skills.module.permissions.viewOwn.description,
+      group: (t) => t.skills.module.permissionGroup,
+      defaultMinRole: "member",
+    },
+    // … skills.view.corp, skills.plans.manage
   ],
   nav: [
     {
       id: "pilots",
-      label: "Pilots",
+      label: (t) => t.skills.module.navSection,
       order: 20,
-      items: [{ href: "/skills", label: "Skills", icon: GraduationCap, anyPermission: ["skills.view.own", "skills.view.corp"] }],
+      items: [
+        {
+          href: "/skills",
+          label: (t) => t.skills.module.nav.skills,
+          icon: GraduationCap,
+          anyPermission: ["skills.view.own", "skills.view.corp"],
+        },
+      ],
     },
   ],
 };
 ```
+
+User-facing text is never written into the manifest directly: `label`, `description`, `group` and `reason` are
+selectors into the dictionaries (see step 5), so the sidebar and settings render in the viewer's language.
 
 Register it in `src/core/modules/registry.ts` (`MODULES`). That alone:
 
@@ -68,7 +83,7 @@ import type { JobDefinition } from "@/core/sync/types";
 
 export const skillsJob: JobDefinition = {
   key: "skills.character-skills",
-  label: "Character skills",
+  label: (t) => t.skills.module.jobs.characterSkills,
   module: "skills",
   owner: "character",                       // character | corporation | global
   requiredScopes: ["esi-skills.read_skills.v1"],
@@ -103,6 +118,14 @@ Reuse the UI kit in `src/components/ui` (`Panel`, `StatTile`, `MultiSelect`, `Da
 `StatusBadge`, `Portrait`, `TypeIcon`, …) and keep filters in the URL like the mining pages do (`PendingProvider`
 dims the previous render while new data loads).
 
+## 5. Texts — `src/i18n/messages/{en,de}/skills.ts`
+
+Add a `skills` namespace to the English dictionary (`src/i18n/messages/en/skills.ts`, registered in
+`en/index.ts`) and the German one (`de/skills.ts`, typed `typeof en` and registered in `de/index.ts`). The
+typecheck fails until both languages have exactly the same keys. In pages use `const { t, f } = await getI18n()`
+(`@/i18n/server`), in client components `useI18n()` (`@/i18n/client`), and format numbers and dates with `f`
+(`f.isk`, `f.compact`, `f.relativeTime`, …) — the English helpers in `@/lib/format` are for logs and exports only.
+
 ## Checklist
 
 - [ ] Manifest registered in `MODULES`
@@ -110,5 +133,6 @@ dims the previous render while new data loads).
 - [ ] Jobs registered in `src/modules/jobs.ts`
 - [ ] Pages check permissions; member views scoped to own characters
 - [ ] New scopes added to the EVE application and listed in `docs/deployment.md`
+- [ ] Texts in both dictionaries (`src/i18n/messages/en` and `de`), no hard-coded UI strings
 - [ ] Tests for parsing/aggregation logic (`tests/`)
 - [ ] ROADMAP.md updated
