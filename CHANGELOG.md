@@ -24,6 +24,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
   dashboard's killboard button now read "Combat Report".
 
+### Fixed
+
+- Page content no longer shifts a few pixels sideways between pages that scroll and pages that don't (with
+  scrollbars that take up space, such as macOS "Show scroll bars: Always" or Windows).
+
 ## [0.10.0] - 2026-10-03
 
 ### Added
