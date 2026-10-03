@@ -27,6 +27,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   missing or stale prices: it shows "ESI unavailable, try again" and saves nothing. The ore field estimator says
   which ores couldn't be priced and tries them again, and both log the ESI error so admins can tell an outage from bad
   input. ([#17](https://github.com/Theragus/Keystar/issues/17))
+- Name lookups no longer multiply ESI requests during an outage. Keystar splits a batch only when ESI rejects it for
+  an invalid id; a server error, timeout or rate limit now fails the job, so the scheduler backs off instead of
+  sending about two failing requests per id and reporting success. ([#19](https://github.com/Theragus/Keystar/issues/19))
 
 ## [0.6.0] - 2026-10-03
 

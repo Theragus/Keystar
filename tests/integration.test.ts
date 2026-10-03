@@ -1391,4 +1391,43 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(stats).toMatchObject({ rosterKnown: false, roster: 0, registered: 3, unregistered: 0, matched: 3 });
     });
   });
+
+  describe("name resolver", async () => {
+    const { ensureNames } = await import("@/core/eve/resolver");
+    const { EsiError, getEsi } = await import("@/core/esi");
+    const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+    const names = async () =>
+      (await db().select().from(schema.eveEntities)).map((e) => e.id).sort((a, b) => a - b);
+
+    it("bisects a batch that ESI rejects for one invalid id", async () => {
+      const BAD = 666;
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async (path: string, ids: unknown) => {
+        const chunk = ids as number[];
+        if (chunk.includes(BAD)) throw new EsiError(`ESI POST ${path} failed`, 404, path);
+        return reply(chunk.map((id) => ({ id, name: `Pilot ${id}`, category: "character" })));
+      });
+      try {
+        await ensureNames([11, 12, BAD, 13]);
+        expect(await names()).toEqual([9, 11, 12, 13]);
+        // [11,12,666,13] → [11,12] ok, [666,13] → [666] invalid, [13] ok.
+        expect(postSpy).toHaveBeenCalledTimes(5);
+      } finally {
+        postSpy.mockRestore();
+      }
+    });
+
+    it.each([
+      ["a server error", new EsiError("ESI POST /universe/names failed: HTTP 503", 503, "/universe/names")],
+      ["a network error", new EsiError("ESI request failed: timeout", 0, "/universe/names")],
+    ])("fails on %s instead of bisecting", async (_, error) => {
+      const postSpy = vi.spyOn(getEsi(), "post").mockRejectedValue(error);
+      try {
+        await expect(ensureNames([11, 12, 13, 14])).rejects.toBe(error);
+        expect(postSpy).toHaveBeenCalledTimes(1);
+        expect(await names()).toEqual([9]);
+      } finally {
+        postSpy.mockRestore();
+      }
+    });
+  });
 });
