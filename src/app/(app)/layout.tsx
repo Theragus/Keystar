@@ -13,6 +13,7 @@ import { env } from "@/core/env";
 import { getSettings } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
 import { KILLBOARD_PERMISSIONS } from "@/modules/killboard/module";
+import { SOCIAL_PERMISSIONS } from "@/modules/social/module";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
@@ -39,7 +40,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
               serverStatus={settings["eve.serverStatus"]}
               demo={env().KEYSTAR_DEMO_MODE}
               crumbs={crumbs}
-              liveKills={user.can(KILLBOARD_PERMISSIONS.view) && Boolean(settings["corp.homeCorporationId"])}
+              alerts={{
+                kills: user.can(KILLBOARD_PERMISSIONS.view) && Boolean(settings["corp.homeCorporationId"]),
+                mail: user.can(SOCIAL_PERMISSIONS.mail),
+              }}
             />
             <main className="mx-auto w-full max-w-[1600px] flex-1 px-8 pt-8 pb-16">
               {user.role === "guest" && (

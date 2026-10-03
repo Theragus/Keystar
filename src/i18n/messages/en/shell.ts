@@ -36,4 +36,17 @@ export const shell = {
     settings: "Settings",
     audit: "Audit Log",
   },
+  /** Live alerts menu in the top bar. */
+  alerts: {
+    button: "Alerts",
+    menu: "Alert settings",
+    kills: { label: "Kills and losses", hint: "When a corporation member gets a kill or loses a ship" },
+    mail: { label: "EVE mail", hint: "When one of your characters with mail access receives mail" },
+    desktop: {
+      label: "Desktop notifications",
+      hint: "Show alerts as system notifications while Keystar is in the background",
+      blocked: "Blocked for this site in the browser settings",
+      unsupported: "Not available in this browser here (needs HTTPS)",
+    },
+  },
 };

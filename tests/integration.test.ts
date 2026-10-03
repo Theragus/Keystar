@@ -1349,6 +1349,38 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await db().select().from(schema.mailMessages)).toEqual([]);
     });
 
+    it("announces new unread mail once per account, without sent or old mail", async () => {
+      const { liveCursorNow, parseLiveCursor } = await import("@/core/live-cursor");
+      const cursor = parseLiveCursor(await liveCursorNow())!;
+      await db().insert(schema.mailLists).values({ characterId: 2, mailingListId: 145, userId: userB, name: "Keystar Ops" });
+      const recent = new Date(Date.now() - 10 * 60_000);
+      const corp = { labels: [4], recipients: [{ id: 100, type: "corporation" as const }] };
+      const row = (characterId: number, mailId: number, extra: Partial<typeof schema.mailMessages.$inferInsert> = {}) => ({
+        characterId, mailId, userId: userB, fromId: 9, subject: `Mail ${mailId}`, sentAt: recent, labels: [1],
+        recipients: [{ id: characterId, type: "character" as const }], ...extra,
+      });
+      await db().insert(schema.mailMessages).values([row(2, 600), row(2, 601, corp)]);
+      await db().insert(schema.mailMessages).values([
+        row(3, 601, corp), // The same corp mail, imported later for Bravo Alt.
+        row(2, 602, { labels: [], recipients: [{ id: 145, type: "mailing_list" }] }),
+        row(2, 603, { isRead: true }),
+        row(2, 604, { sentAt: new Date(Date.now() - 5 * 3600_000) }),
+        row(3, 605, { fromId: 3, labels: [2] }), // Bravo Alt writes to Bravo: the account's own mail.
+        row(2, 605, { fromId: 3 }),
+        { ...row(1, 606), userId: userA },
+      ]);
+
+      const live = await mail.getLiveMail(userB, cursor);
+      expect(live.mails).toEqual([
+        expect.objectContaining({ mailId: 600, characterId: 2, characterName: "Bravo", fromName: "Outsider", fromCategory: "character", kind: "direct", listName: null }),
+        expect.objectContaining({ mailId: 601, characterId: 2, kind: "corp" }),
+        expect.objectContaining({ mailId: 602, kind: "list", listName: "Keystar Ops" }),
+      ]);
+      expect(parseLiveCursor(live.cursor)!.id).toBe(602);
+      expect((await mail.getLiveMail(userB, parseLiveCursor(live.cursor)!)).mails).toEqual([]);
+      expect((await mail.getLiveMail(userA, cursor)).mails.map((m) => m.mailId)).toEqual([606]);
+    });
+
     it("drops the previous owner's mail when a character is transferred", async () => {
       const { detachTransferredCharacter } = await import("@/core/auth/provision");
       await run(2);

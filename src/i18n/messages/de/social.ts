@@ -141,4 +141,17 @@ export const social: typeof en = {
     search: { title: "Keine Treffer", body: "Keine Mail passt zu deiner Suche." },
     importing: { title: "Mails werden importiert", body: "Der erste Import läuft. Die Mails erscheinen hier in wenigen Minuten." },
   },
+  live: {
+    api: { unauthorized: "Nicht angemeldet", forbidden: "Kein Zugriff" },
+    region: "Benachrichtigungen über neue Mails",
+    title: "Neue Mail",
+    from: (name: string) => `Von ${name}`,
+    to: (name: string) => `An ${name}`,
+    unknownSender: "Unbekannter Absender",
+    yourCharacter: "deinen Charakter",
+    noSubject: "(kein Betreff)",
+    kind: { corp: "Corporation", alliance: "Allianz", list: "Mailingliste" },
+    open: "Diese Mail öffnen",
+    dismiss: "Schließen",
+  },
 };
