@@ -127,6 +127,24 @@ describe("formatting", () => {
     expect(de.dateTime("2026-10-02T18:05:00Z")).toBe("2026-10-02 18:05 ET");
   });
 
+  it("names the weekday of the EVE (UTC) date in the viewer's language", () => {
+    expect(en.weekday("2026-10-02")).toBe("Friday");
+    expect(de.weekday("2026-10-02")).toBe("Freitag");
+    expect(en.weekday("2027-01-01")).toBe("Friday");
+    expect(de.weekday("2026-10-04")).toBe("Sonntag");
+    // West of UTC, midnight of the 2nd is still the 1st locally; the ledger's day is the UTC one.
+    const tz = process.env.TZ;
+    process.env.TZ = "Pacific/Honolulu";
+    try {
+      expect(new Date("2026-10-02T00:00:00Z").getDay()).toBe(4);
+      expect(en.weekday("2026-10-02")).toBe("Friday");
+      expect(de.weekday("2026-10-02")).toBe("Freitag");
+    } finally {
+      if (tz === undefined) delete process.env.TZ;
+      else process.env.TZ = tz;
+    }
+  });
+
   it("formats relative times in the viewer's language", () => {
     const now = new Date("2026-10-02T12:00:00Z");
     expect(de.relativeTime(null)).toBe("nie");
