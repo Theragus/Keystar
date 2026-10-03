@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Use narrower four-column pilot cards on wide screens and three vertical rows of recent kills and losses.
+
 - Disable navigation scrolling in the collapsed sidebar while retaining expanded navigation scrolling.
 
 - Link pilot corporation and alliance labels to their respective zKillboard pages.

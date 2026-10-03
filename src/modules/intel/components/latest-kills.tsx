@@ -12,7 +12,7 @@ export async function LatestKills({ events, names, limit = 5, compact = false }:
   const { t, f } = await getI18n();
   const l = t.intel.latest;
   return (
-    <ol className="flex flex-wrap gap-x-2 gap-y-1.5">
+    <ol className={compact ? "flex flex-col gap-1.5" : "flex flex-wrap gap-x-2 gap-y-1.5"}>
       {newestEvents(events).slice(0, limit).map((e) => {
         const color = e.isLoss ? LOSS_COLOR : KILL_COLOR;
         const targetHull = eventTargetHull(e);
