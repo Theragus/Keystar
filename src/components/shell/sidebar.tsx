@@ -68,7 +68,9 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
               tone={section.tone}
               card={
                 <>
-                  <div className="eve-label px-2.5 pt-1.5 pb-1 text-2xs text-ink-3">{section.label(t)}</div>
+                  <div className="eve-label px-2.5 pt-1.5 pb-1 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))]">
+                    {section.label(t)}
+                  </div>
                   <ul className="space-y-0.5" data-flyout-anchor>
                     {section.items.map((item) => (
                       <li key={item.href}>

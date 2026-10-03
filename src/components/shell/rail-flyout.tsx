@@ -14,7 +14,8 @@ const CLOSE_DELAY_MS = 120;
  * `[data-flyout-anchor]` lines up with the trigger's, so a section's links sit
  * level with its icons. It is a mouse shortcut only (`aria-hidden`, links out
  * of the tab order): the rail links already carry their labels as sr-only text.
- * Rendered into <body> so the nav's scroll clipping can't cut it off.
+ * Rendered into <body> so the nav's scroll clipping can't cut it off; `tone`
+ * and the `group` class let the card tint its heading like the sidebar does.
  */
 export function RailFlyout({
   card,
@@ -96,7 +97,7 @@ export function RailFlyout({
             onMouseEnter={show}
             onMouseLeave={hideSoon}
             style={{ position: "fixed" }}
-            className="glass z-50 min-w-44 bg-space-800/95 p-1.5 shadow-2xl transition-[opacity,translate] duration-100 starting:-translate-x-1 starting:opacity-0 motion-reduce:transition-none"
+            className="glass group z-50 min-w-44 bg-space-800/95 p-1.5 shadow-2xl transition-[opacity,translate] duration-100 starting:-translate-x-1 starting:opacity-0 motion-reduce:transition-none"
           >
             {card}
           </div>,
