@@ -46,6 +46,12 @@ export async function housekeeping(db: Db, now = new Date()) {
             select max(c.removed_at) from wh_connections c
             where c.map_id = s.map_id and (c.a_system_id = s.system_id or c.b_system_id = s.system_id)
           ) < ${graceAgo.toISOString()}::timestamptz
+          -- Only systems that were on the map when they lost their last connection: one a pilot added again
+          -- afterwards, even without a connection, is meant to be there.
+          and s.added_at <= (
+            select max(c.removed_at) from wh_connections c
+            where c.map_id = s.map_id and (c.a_system_id = s.system_id or c.b_system_id = s.system_id)
+          )
         returning s.system_id`);
 
       if (collapsed.length || orphans.length) {
