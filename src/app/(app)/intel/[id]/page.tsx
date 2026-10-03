@@ -83,8 +83,8 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
               <ArrowLeft className="size-4" aria-hidden /> {text.newScan}
             </ButtonLink>
             <RescanButton scanId={scan.id} action={rescan} />
-            {canDelete && <DeleteScanButton scanId={scan.id} action={deleteScan} />}
             <DscanDropdown supplied={!!scan.dscan}>{dscanPanel}</DscanDropdown>
+            {canDelete && <DeleteScanButton scanId={scan.id} action={deleteScan} />}
           </>
         }
       />
