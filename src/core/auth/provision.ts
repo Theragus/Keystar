@@ -20,13 +20,11 @@ import { ensureNames, refreshCorporations } from "@/core/eve/resolver";
 import { optionalScopes } from "@/core/modules/registry";
 import type { Role } from "@/core/rbac/roles";
 import { getSettings, setSetting } from "@/core/settings";
+import { lockUsers } from "./manage-users";
 import { policyRole, reconcileRole } from "./policy";
 import type { TokenResponse, VerifiedCharacter } from "./sso";
 
 export type SsoIntent = "login" | "join" | "link" | "link-corp";
-
-/** Advisory lock id that serialises provisioning (first-admin bootstrap, linking). */
-const PROVISION_LOCK = 727_275;
 
 export class ProvisionError extends Error {
   constructor(message: string) {
@@ -41,7 +39,7 @@ type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
  * Removes a character whose EVE account changed (sold or transferred) from its
  * previous Keystar account. An account left without characters is retired:
  * disabled and signed out everywhere, so the previous owner can't keep using an
- * existing session. It keeps its role, so a former admin still counts for the
+ * existing session. The account itself stays, so it still counts for the
  * first-user bootstrap and a newcomer can't become admin that way.
  */
 export async function detachTransferredCharacter(
@@ -113,8 +111,8 @@ export async function provisionFromSso(params: {
   const db = getDb();
   const result = await db.transaction(async (tx) => {
     // Serialise sign-ins so two simultaneous first logins can't both become admin;
-    // the admin count below is read after the lock, so it sees the other commit.
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROVISION_LOCK})`);
+    // the user count below is read after the lock, so it sees the other commit.
+    await lockUsers(tx);
     const [existing] = await tx.select().from(characters).where(eq(characters.characterId, verified.characterId));
 
     if (existing && existing.ownerHash !== verified.ownerHash) {
@@ -132,10 +130,9 @@ export async function provisionFromSso(params: {
     }
     const owned = existing && existing.ownerHash === verified.ownerHash ? existing : undefined;
 
-    const [{ count: adminCount }] = await tx
-      .select({ count: sql<number>`count(*)::int` })
-      .from(users)
-      .where(eq(users.role, "admin"));
+    // Only the very first account is bootstrapped as admin. Counting admins instead would hand admin to the
+    // next sign-in, whoever that is, if the last admin were ever demoted.
+    const [anyUser] = await tx.select({ id: users.id }).from(users).limit(1);
     const homeCorp = homeCorporationId
       ? (await tx.select().from(eveCorporations).where(eq(eveCorporations.corporationId, homeCorporationId)))[0]
       : undefined;
@@ -144,7 +141,7 @@ export async function provisionFromSso(params: {
       corporationId,
       allianceId,
       adminCharacterIds: env().ADMIN_CHARACTER_IDS,
-      hasAdmin: adminCount > 0,
+      hasUsers: Boolean(anyUser),
       homeCorporationId,
       homeAllianceId: homeCorp?.allianceId ?? null,
       autoApproveCorpMembers: settings["access.autoApproveCorpMembers"],

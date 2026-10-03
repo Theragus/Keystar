@@ -23,6 +23,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - The mining CSV export no longer turns negative security status (`-0.45`) into text, so null-sec and wormhole rows
   stay numeric in spreadsheets. Names starting with `=`, `+`, `-` or `@` are still neutralised.
   ([#18](https://github.com/Theragus/Keystar/issues/18))
+- Two admins demoting or disabling each other at the same moment could both succeed and leave Keystar without an
+  admin, after which the next pilot to sign in became admin. Role and access changes now re-check both users at the
+  moment of the change, one at a time, and only the very first account ever is made admin automatically.
+  ([#16](https://github.com/Theragus/Keystar/issues/16))
 - When EVE's ESI is down or rate limiting, the appraisal no longer saves real items as unrecognised lines or with
   missing or stale prices: it shows "ESI unavailable, try again" and saves nothing. The ore field estimator says
   which ores couldn't be priced and tries them again, and both log the ESI error so admins can tell an outage from bad

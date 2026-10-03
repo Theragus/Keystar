@@ -59,7 +59,7 @@ describe("role policy on sign-in", () => {
     corporationId: 100,
     allianceId: 500,
     adminCharacterIds: [],
-    hasAdmin: true,
+    hasUsers: true,
     homeCorporationId: 100,
     homeAllianceId: 500,
     autoApproveCorpMembers: true,
@@ -67,11 +67,11 @@ describe("role policy on sign-in", () => {
   };
 
   it("makes the very first user admin when no admin list is configured", () => {
-    expect(policyRole({ ...base, hasAdmin: false })).toBe("admin");
+    expect(policyRole({ ...base, hasUsers: false })).toBe("admin");
   });
 
   it("only uses ADMIN_CHARACTER_IDS when configured", () => {
-    expect(policyRole({ ...base, hasAdmin: false, adminCharacterIds: [99] })).toBe("member");
+    expect(policyRole({ ...base, hasUsers: false, adminCharacterIds: [99] })).toBe("member");
     expect(policyRole({ ...base, adminCharacterIds: [1] })).toBe("admin");
   });
 

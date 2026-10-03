@@ -253,6 +253,103 @@ describe.skipIf(!enabled)("integration", async () => {
     });
   });
 
+  describe("user management", () => {
+    const roles = async () =>
+      Object.fromEntries((await db().select().from(schema.users)).map((u) => [u.id, u.role]));
+    const makeAdmins = () => db().update(schema.users).set({ role: "admin" });
+
+    it("never lets two admins demote each other at the same time", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await makeAdmins();
+      const results = await Promise.allSettled([
+        changeUserAccess(userA, userB, { role: "director" }),
+        changeUserAccess(userB, userA, { role: "director" }),
+      ]);
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(Object.values(await roles()).sort()).toEqual(["admin", "director"]);
+    });
+
+    it("judges the actor by their role and status at the time of the change", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await makeAdmins();
+      await changeUserAccess(userA, userB, { role: "director" });
+      // Bravo's request was authorised while still an admin; by now Bravo is a director.
+      await expect(changeUserAccess(userB, userA, { role: "member" })).rejects.toThrow(/below your own role/);
+      expect(await roles()).toEqual({ [userA]: "admin", [userB]: "director" });
+
+      await db().update(schema.users).set({ role: "admin" });
+      await changeUserAccess(userA, userB, { isDisabled: true });
+      await expect(changeUserAccess(userB, userA, { isDisabled: true })).rejects.toThrow(/permission/);
+      const [a] = await db().select().from(schema.users).where(sql`id = ${userA}`);
+      expect(a.isDisabled).toBe(false);
+    });
+
+    it("re-checks users.manage, so a manager demoted mid-request can't approve a guest", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await db().update(schema.users).set({ role: "member" }).where(sql`id = ${userA}`);
+      await db().update(schema.users).set({ role: "guest" }).where(sql`id = ${userB}`);
+      // Alpha was a director when the request was authorised; a member still outranks a guest.
+      await expect(changeUserAccess(userA, userB, { role: "member" }, { onlyFromRole: "guest" })).rejects.toThrow(/permission/);
+      expect((await roles())[userB]).toBe("guest");
+
+      // An override that hands users.manage to members is honoured: a member may disable a guest.
+      const { setSetting } = await import("@/core/settings");
+      await setSetting("permissions.overrides", { "users.manage": "member" });
+      await changeUserAccess(userA, userB, { isDisabled: true });
+      const [b] = await db().select().from(schema.users).where(sql`id = ${userB}`);
+      expect(b.isDisabled).toBe(true);
+    });
+
+    it("signs a user out everywhere when disabling them", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      const { createSession } = await import("@/core/auth/session");
+      await db().update(schema.users).set({ role: "admin" }).where(sql`id = ${userA}`);
+      await createSession(userA);
+      await createSession(userB);
+      await changeUserAccess(userA, userB, { isDisabled: true });
+      expect((await db().select().from(schema.sessions)).map((r) => r.userId)).toEqual([userA]);
+    });
+
+    it("only approves users who are still guests", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await db().update(schema.users).set({ role: "admin" }).where(sql`id = ${userA}`);
+      await db().update(schema.users).set({ role: "director" }).where(sql`id = ${userB}`);
+      const result = await changeUserAccess(userA, userB, { role: "member" }, { onlyFromRole: "guest" });
+      expect(result).toEqual({ from: "director", changed: false });
+      expect((await roles())[userB]).toBe("director");
+    });
+
+    it("makes only the very first account admin, not the next sign-in after the last admin is gone", async () => {
+      const { provisionFromSso } = await import("@/core/auth/provision");
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) =>
+          reply(path.startsWith("/corporations/") ? { name: "Elsewhere", ticker: "ELSE", member_count: 3 } : { corporation_id: 200 }),
+        ) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      const signIn = (characterId: number) =>
+        provisionFromSso({
+          verified: { characterId, name: `Pilot ${characterId}`, ownerHash: `h${characterId}`, scopes: [], expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent: "login",
+          currentUserId: null,
+        });
+      try {
+        // Alpha and Bravo exist, but neither is an admin.
+        expect((await signIn(50)).role).toBe("guest");
+        await db().execute(sql`TRUNCATE users, characters RESTART IDENTITY CASCADE`);
+        expect((await signIn(51)).role).toBe("admin");
+        // The first admin's corporation became the home corporation, so a corp mate is auto-approved.
+        expect((await signIn(52)).role).toBe("member");
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
+    });
+  });
+
   describe("killboard", () => {
     const kb = () => import("@/modules/killboard/queries");
     const HOME = 100;
