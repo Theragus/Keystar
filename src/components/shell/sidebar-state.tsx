@@ -1,27 +1,55 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
 import { SIDEBAR_COOKIE, SIDEBAR_COOKIE_MAX_AGE } from "./sidebar-config";
 
-const SidebarContext = createContext<{ collapsed: boolean; toggle: () => void }>({
+/**
+ * Fade-out, then resize, then fade-in. The opacity (100ms) and width (150ms)
+ * transitions live on the sidebar in sidebar.tsx; FADE_MS leaves a frame of
+ * slack so the new layout never shows before the contents are hidden.
+ */
+const FADE_MS = 120;
+const RESIZE_MS = 150;
+
+const SidebarContext = createContext<{ collapsed: boolean; fading: boolean; toggle: () => void }>({
   collapsed: false,
+  fading: false,
   toggle: () => {},
 });
 
 /**
  * Collapsed/expanded state of the app sidebar. The server reads the cookie for
- * the first render; toggling only writes it, so the switch is instant.
+ * the first render; toggling only writes it, so no request is involved. The
+ * contents are hidden (`fading`) while the width changes, so the labels never
+ * show squeezed mid-animation.
  */
 export function SidebarProvider({ collapsed: initial, children }: { collapsed: boolean; children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(initial);
+  const [fading, setFading] = useState(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
   const toggle = useCallback(() => {
+    if (timers.current.length > 0) return;
     const next = !collapsed;
-    setCollapsed(next);
-    document.cookie = `${SIDEBAR_COOKIE}=${next ? "collapsed" : "expanded"}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}; SameSite=Lax`;
+    const apply = () => {
+      setCollapsed(next);
+      document.cookie = `${SIDEBAR_COOKIE}=${next ? "collapsed" : "expanded"}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}; SameSite=Lax`;
+    };
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return apply();
+    setFading(true);
+    timers.current = [
+      setTimeout(apply, FADE_MS),
+      setTimeout(() => {
+        setFading(false);
+        timers.current = [];
+      }, FADE_MS + RESIZE_MS),
+    ];
   }, [collapsed]);
-  const value = useMemo(() => ({ collapsed, toggle }), [collapsed, toggle]);
+
+  const value = useMemo(() => ({ collapsed, fading, toggle }), [collapsed, fading, toggle]);
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }
 

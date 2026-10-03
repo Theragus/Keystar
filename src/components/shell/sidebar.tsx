@@ -34,9 +34,10 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
   return (
     <aside
       id="app-sidebar"
-      className="relative z-30 w-[232px] shrink-0 self-stretch border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl group-data-[sidebar=collapsed]/shell:w-14"
+      className="relative z-30 w-[232px] shrink-0 self-stretch border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl transition-[width] duration-150 ease-out group-data-[sidebar=collapsed]/shell:w-14 motion-reduce:transition-none"
     >
-      <div className="sticky top-0 flex h-dvh flex-col">
+      {/* Hidden while the width changes (SidebarProvider), so labels never show squeezed. */}
+      <div className="sticky top-0 flex h-dvh flex-col transition-opacity duration-100 group-data-[sidebar-fading]/shell:opacity-0 motion-reduce:transition-none">
         <Link
           href="/"
           className="flex h-14 shrink-0 items-center gap-2.5 border-b border-surface-contrast/[0.07] px-4 group-data-[sidebar=collapsed]/shell:justify-center group-data-[sidebar=collapsed]/shell:px-0"

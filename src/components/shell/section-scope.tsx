@@ -21,9 +21,14 @@ export function SectionScope({
 }) {
   const pathname = usePathname();
   const tone = matchNavItem(pathname, items)?.tone;
-  const { collapsed } = useSidebar();
+  const { collapsed, fading } = useSidebar();
   return (
-    <div className="group/shell flex min-h-screen" data-section-tone={tone} data-sidebar={collapsed ? "collapsed" : "expanded"}>
+    <div
+      className="group/shell flex min-h-screen"
+      data-section-tone={tone}
+      data-sidebar={collapsed ? "collapsed" : "expanded"}
+      data-sidebar-fading={fading || undefined}
+    >
       {children}
     </div>
   );
