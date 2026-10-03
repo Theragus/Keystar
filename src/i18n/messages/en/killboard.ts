@@ -155,6 +155,13 @@ export const killboard = {
       enable: "Show a notification when a corporation member gets a kill or loss",
       disable: "Stop showing kill and loss notifications",
     },
+    desktop: {
+      label: "Desktop notifications",
+      enable: "Also show desktop notifications while Keystar is in the background",
+      disable: "Stop desktop notifications",
+      blocked: "Desktop notifications are blocked for this site in the browser settings",
+      unsupported: "This browser can't show desktop notifications here (HTTPS is needed)",
+    },
   },
   ships: {
     entity: "Ship",

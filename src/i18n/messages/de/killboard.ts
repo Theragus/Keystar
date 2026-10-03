@@ -144,6 +144,13 @@ export const killboard: typeof en = {
       enable: "Benachrichtigen, wenn ein Corp-Mitglied einen Kill oder Verlust hat",
       disable: "Keine Kill- und Verlust-Benachrichtigungen mehr anzeigen",
     },
+    desktop: {
+      label: "Desktop-Benachrichtigungen",
+      enable: "Auch Desktop-Benachrichtigungen zeigen, solange Keystar im Hintergrund ist",
+      disable: "Keine Desktop-Benachrichtigungen mehr",
+      blocked: "Desktop-Benachrichtigungen sind für diese Seite in den Browser-Einstellungen blockiert",
+      unsupported: "Dieser Browser kann hier keine Desktop-Benachrichtigungen anzeigen (HTTPS nötig)",
+    },
   },
   ships: {
     entity: "Schiff",

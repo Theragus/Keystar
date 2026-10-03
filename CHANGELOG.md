@@ -16,6 +16,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   types" in the panel header switches back to one row per type.
 - **Survey scanner groups ice and anomaly ore variants.** The field estimator now counts Thick Blue Ice, Pristine
   White Glaze, Hadal Talassonite and similar variants under their base ore.
+- **Desktop notifications for kills and losses.** A new monitor button next to "Kill alerts" turns on native
+  notifications (Windows notification center, macOS Notification Center) for live kills and losses while Keystar
+  is open but not in focus, such as a background tab or a browser window behind the EVE client. Clicking a
+  notification opens the killmail on zKillboard. When a Keystar tab is in focus, kills still appear only as in-page
+  toasts. This needs the browser's permission and an HTTPS address.
 
 ### Changed
 
