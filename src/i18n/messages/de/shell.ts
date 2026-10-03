@@ -17,6 +17,7 @@ export const shell: typeof en = {
   theme: {
     light: "Hell", dark: "Dunkel", toLight: "Zum hellen Modus wechseln", toDark: "Zum dunklen Modus wechseln",
   },
+  sidebar: { collapse: "Seitenleiste einklappen", expand: "Seitenleiste ausklappen" },
   language: {
     label: "Sprache",
     change: "Sprache ändern",

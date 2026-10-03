@@ -55,7 +55,10 @@ Entries without an issue carry no reference.
 2. Wait for CI to pass on that commit on `main`, then open the Actions tab → **Release** → **Run workflow** (on
    `main`). The workflow (`.github/workflows/release.yml`) checks that `v0.2.0` doesn't exist yet and that CI passed
    on the commit, then:
-   - builds the Docker image and pushes `ghcr.io/theragus/keystar:0.2.0`, `:0.2` and `:latest`,
+   - builds the Docker image and pushes `ghcr.io/theragus/keystar:0.2.0`, `:0.2` and `:latest`. `:latest` only moves
+     when the version is newer than every earlier release, and `:0.2` when it is the newest `0.2.x`, so a fix for an
+     older line (e.g. `0.1.6` after `0.2.0`) gets its own tags without moving them back; the GitHub release is then
+     not marked *Latest* either,
    - creates the `v0.2.0` tag and a GitHub release whose notes are that CHANGELOG section.
 
    If the version is already tagged, CI hasn't passed yet or the CHANGELOG section is missing, the workflow stops

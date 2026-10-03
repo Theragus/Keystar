@@ -19,9 +19,16 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   surfaces, readable status colours, controls, tables, chart chrome, and keyboard focus. Charts get their own
   colour-vision-checked series and rarity/threat colours for the light surface, and EVE mail colours that would be too
   pale on it are darkened. Dark remains the default.
+- **Collapsible sidebar.** The menu button at the left of the top bar shrinks the sidebar to a narrow icon rail
+  and back with a short slide and fade (instant when reduced motion is requested). On the rail, hovering or focusing
+  an icon opens its section as a menu beside it, and hovering the portrait shows the pilot's name, role and corp.
+  The choice is remembered for a year and applied before rendering.
 
 ### Changed
 
+- **Releasing an older version line no longer moves `:latest` back.** The Release workflow now tags an image
+  `:latest` (and marks the GitHub release *Latest*) only when its version is newer than every earlier release, and
+  moves `:<major.minor>` only to the newest patch of that line.
 - **Threat Intel puts evidence first.** A compact Local Situation summary, early D-scan input, timestamped
   local co-attacker observations, and always-visible latest kill, loss and cyno-history fields replace the dense
   briefing-led layout. Historical ship profiles and optional score details are clearly separated from scanner
