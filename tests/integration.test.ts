@@ -1614,6 +1614,17 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(bravo).toMatchObject({ name: "Bravo", inRoster: true, registered: true, mainName: "Bravo", scopes: ["scope.a"] });
     });
 
+    it("sorts names without regard to case", async () => {
+      await db().insert(schema.corporationMembers).values([11, 12, 13].map((characterId) => ({ corporationId: 100, characterId })));
+      await db().insert(schema.eveEntities).values([
+        { id: 11, name: "bravo", category: "character" },
+        { id: 12, name: "alpha", category: "character" },
+        { id: 13, name: "ALPHA", category: "character" },
+      ]);
+      // Byte order would put "ALPHA" and "Outsider" before every lowercase name.
+      expect(await ids({ filter: "unregistered" })).toEqual(["13", "12", "11", "9", "10"]);
+    });
+
     it("filters like the stat tiles count", async () => {
       expect(await ids({ filter: "roster" })).toEqual(["1", "2", "9", "10"]);
       expect(await ids({ filter: "registered" })).toEqual(["1", "2"]);
