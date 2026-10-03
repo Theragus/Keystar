@@ -66,6 +66,9 @@ describe("grades", () => {
     expect(oreGrade("Scordite")).toEqual({ base: "Scordite", grade: "Base", rank: 1 });
     expect(oreGrade("Blue Ice IV-Grade")).toMatchObject({ base: "Blue Ice", grade: "IV-Grade" });
     expect(oreGrade("Glistening Zeolites")).toMatchObject({ base: "Zeolites", grade: "Glistening", rank: 3 });
+    expect(oreGrade("Thick Blue Ice")).toMatchObject({ base: "Blue Ice", grade: "Thick", rank: 2 });
+    expect(oreGrade("Thick Blue Ice IV-Grade")).toEqual({ base: "Blue Ice", grade: "Thick IV-Grade", rank: 5 });
+    expect(oreGrade("Hadal Talassonite")).toMatchObject({ base: "Talassonite", rank: 3 });
     expect(oreGrade("Azure Ice")).toMatchObject({ base: "Azure Ice", grade: "Base" });
     expect(oreGrade("Golden Mykoserocin")).toMatchObject({ base: "Golden Mykoserocin" });
   });

@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { Portrait, TypeIcon } from "@/components/ui/eve-image";
+import { Portrait } from "@/components/ui/eve-image";
 import { SecurityStatus } from "@/components/ui/security";
 import type { Messages } from "@/i18n/messages";
 import { getI18n } from "@/i18n/server";
 import type { Formatter } from "@/lib/format";
-import { CHART_CLASSES, MOON_RARITY, oreClassColor, toChartClasses } from "../class-colors";
+import { CHART_CLASSES, MOON_RARITY, toChartClasses } from "../class-colors";
 import { miningQueryString, type MiningFilters } from "../filters";
-import type { ClassValues, MemberRow, SystemRow, TypeRow } from "../queries";
+import type { ClassValues, MemberRow, SystemRow } from "../queries";
 
 type Metric = MiningFilters["metric"];
 
@@ -146,55 +146,6 @@ export async function ClassComposition({ byClass, metric }: { byClass: ClassValu
           </ul>
         </div>
       )}
-    </div>
-  );
-}
-
-export async function OreTable({ rows, filters, metric }: { rows: TypeRow[]; filters: MiningFilters; metric: Metric }) {
-  const { t, f } = await getI18n();
-  const total = rows.reduce((s, r) => s + r[metric], 0);
-  return (
-    <div className="max-h-[700px] overflow-y-auto">
-      <table className="ks-table">
-        <thead className="sticky top-0 z-10 bg-space-800/90 backdrop-blur">
-          <tr>
-            <th>{t.mining.columns.ore}</th>
-            <th className="num">{t.mining.columns.units}</th>
-            <th className="num">{t.mining.columns.volume}</th>
-            <th className="num">{t.mining.columns.unitPrice}</th>
-            <th className="num">{t.mining.columns.value}</th>
-            <th className="num">{t.mining.columns.share}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.typeId}>
-              <td>
-                <Link
-                  href={`?${miningQueryString(filters, { types: [r.typeId], page: 1 })}`}
-                  scroll={false}
-                  className="flex items-center gap-2.5 hover:text-accent"
-                >
-                  <TypeIcon id={r.typeId} size={26} />
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{r.name}</span>
-                    <span className="flex items-center gap-1.5 text-2xs text-ink-3">
-                      <span className="size-1.5 rounded-full" style={{ background: oreClassColor(r.oreClass) }} aria-hidden />
-                      {t.eve.oreClasses[r.oreClass].short}
-                      {r.groupName && ` · ${r.groupName}`}
-                    </span>
-                  </span>
-                </Link>
-              </td>
-              <td className="num">{f.integer(r.quantity)}</td>
-              <td className="num">{f.volume(r.volume)}</td>
-              <td className="num text-ink-2">{r.unitPrice ? f.unitPrice(r.unitPrice) : "—"}</td>
-              <td className="num font-semibold">{f.isk(r.value)}</td>
-              <td className="num text-ink-3">{total ? f.percent(r[metric] / total) : "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

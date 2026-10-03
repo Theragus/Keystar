@@ -136,6 +136,10 @@ export const mining: typeof en = {
     notRegistered: "nicht registriert",
     moonByRarity: "Monderz nach Seltenheit",
     unknownLocation: "Unbekannter Ort",
+    groupOres: "Erzsorten gruppieren",
+    groupOresHint: "Stufen und Varianten jedes Erzes (Scordite II-Grade, Thick Blue Ice …) in einer Zeile zusammenfassen",
+    variants: (count: number) => plural(count, "Variante", "Varianten"),
+    averagePrice: "Durchschnitt über die Stufen, gewichtet nach Einheiten",
   },
 
   overview: {

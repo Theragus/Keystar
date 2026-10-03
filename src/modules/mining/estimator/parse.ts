@@ -111,8 +111,12 @@ export function parseSurveyScan(text: string): SurveyParseResult {
 const GRADE_SUFFIX = /^(.*?)\s+(0|I|II|III|IV|V|X)-Grade$/i;
 const ROMAN: Record<string, number> = { "0": 0.5, I: 1, II: 2, III: 3, IV: 4, V: 5, X: 10 };
 
-/** Moon ore variants: [better, best] prefix per rarity (e.g. Brimful / Glistening Zeolites). */
-const MOON_PREFIXES: Record<string, number> = {
+/**
+ * Variant prefixes and their rank: moon ore [better, best] per rarity
+ * (e.g. Brimful / Glistening Zeolites), enriched ice (Thick Blue Ice) and
+ * the anomaly ores (Abyssal / Hadal Talassonite).
+ */
+const VARIANT_PREFIXES: Record<string, number> = {
   brimful: 2,
   copious: 2,
   lavish: 2,
@@ -123,6 +127,12 @@ const MOON_PREFIXES: Record<string, number> = {
   shimmering: 3,
   glowing: 3,
   shining: 3,
+  enriched: 2,
+  thick: 2,
+  pristine: 2,
+  smooth: 2,
+  abyssal: 2,
+  hadal: 3,
 };
 
 export interface GradeInfo {
@@ -134,18 +144,26 @@ export interface GradeInfo {
   rank: number;
 }
 
+/** Splits a type name into its ore family and grade; a name can carry both a prefix and a suffix (Thick Blue Ice IV-Grade). */
 export function oreGrade(name: string): GradeInfo {
+  let base = name;
+  const grades: string[] = [];
+  let rank = 1;
   const suffix = name.match(GRADE_SUFFIX);
   if (suffix) {
     const roman = suffix[2].toUpperCase();
-    return { base: suffix[1], grade: `${roman}-Grade`, rank: ROMAN[roman] ?? 1 };
+    base = suffix[1];
+    grades.push(`${roman}-Grade`);
+    rank = ROMAN[roman] ?? 1;
   }
-  const [first, ...rest] = name.split(" ");
-  const prefix = first.toLowerCase();
-  if (rest.length && MOON_PREFIXES[prefix]) {
-    return { base: rest.join(" "), grade: first, rank: MOON_PREFIXES[prefix] };
+  const [first, ...rest] = base.split(" ");
+  const prefixRank = VARIANT_PREFIXES[first.toLowerCase()];
+  if (rest.length && prefixRank) {
+    base = rest.join(" ");
+    grades.unshift(first);
+    rank += prefixRank - 1;
   }
-  return { base: name, grade: "Base", rank: 1 };
+  return { base, grade: grades.join(" ") || "Base", rank };
 }
 
 /* ----------------------------------------------------------- Aggregation */
