@@ -1,7 +1,8 @@
 /**
  * Seeds a self-contained demo corporation (users of every role, ~120 days of
- * mining, two moon refineries, prices) so Keystar can be explored without EVE
- * SSO credentials. Requires KEYSTAR_DEMO_MODE=true to log in as demo users.
+ * mining, two moon refineries, prices, a killboard, past fleets, threat-intel
+ * scans and a mining P&L) so Keystar can be explored without EVE SSO
+ * credentials. Requires KEYSTAR_DEMO_MODE=true to log in as demo users.
  *
  *   pnpm demo:seed            # refuses if real (non-demo) users exist
  *   pnpm demo:seed --force    # wipes ALL Keystar data first
