@@ -1,5 +1,5 @@
 import { LogOut } from "lucide-react";
-import Link from "next/link";
+
 import type { CurrentUser } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { navSections } from "@/core/modules/registry";
@@ -9,7 +9,7 @@ import { Portrait } from "@/components/ui/eve-image";
 import { RoleBadge } from "@/components/ui/badge";
 import { ThemeSwitcher } from "./theme-switcher";
 import { LanguageSwitcher } from "./language-switcher";
-import { KeystarMark } from "./logo";
+import { SidebarToggle } from "./sidebar-state";
 import { NavLink } from "./nav-link";
 import { RailFlyout } from "./rail-flyout";
 
@@ -48,15 +48,9 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
     >
       {/* Hidden while the width changes (SidebarProvider), so labels never show squeezed. */}
       <div className="sticky top-0 flex h-dvh flex-col transition-opacity duration-100 group-data-[sidebar-fading]/shell:opacity-0 motion-reduce:transition-none">
-        <Link
-          href="/"
-          className="flex h-14 shrink-0 items-center gap-2.5 border-b border-surface-contrast/[0.07] px-4 group-data-[sidebar=collapsed]/shell:justify-center group-data-[sidebar=collapsed]/shell:px-0"
-        >
-          <KeystarMark className="size-7" />
-          <span className="font-display text-[1.05rem] font-bold tracking-[0.2em] text-ink group-data-[sidebar=collapsed]/shell:sr-only">
-            KEYSTAR
-          </span>
-        </Link>
+        <div className="flex h-14 shrink-0 items-center border-b border-surface-contrast/[0.07] px-4 group-data-[sidebar=collapsed]/shell:justify-center group-data-[sidebar=collapsed]/shell:px-0">
+          <SidebarToggle />
+        </div>
         <nav
           className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 group-data-[sidebar=collapsed]/shell:space-y-3"
           aria-label={t.shell.mainNav}

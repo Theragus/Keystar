@@ -55,7 +55,7 @@ export function SidebarProvider({ collapsed: initial, children }: { collapsed: b
 
 export const useSidebar = () => useContext(SidebarContext);
 
-/** Burger button in the top bar: collapses the sidebar to its icon rail and back. */
+/** Burger button in the sidebar: collapses the sidebar to its icon rail and back. */
 export function SidebarToggle() {
   const { t } = useI18n();
   const { collapsed, toggle } = useSidebar();
@@ -68,7 +68,7 @@ export function SidebarToggle() {
       aria-controls="app-sidebar"
       aria-label={label}
       title={label}
-      className="-ml-2 grid size-8 shrink-0 place-items-center rounded-md text-ink-3 transition hover:bg-surface-contrast/[0.06] hover:text-ink"
+      className="grid size-8 shrink-0 place-items-center rounded-md text-ink-3 transition hover:bg-surface-contrast/[0.06] hover:text-ink"
     >
       <Menu className="size-4" aria-hidden />
     </button>
