@@ -26,6 +26,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **"Corp wallet journal" instead of "Wallet journal".** The sidebar entry, the journal page heading and the button
   on the corporation wallet page now make clear that the journal covers the corporation's wallets, not your own.
 
+### Fixed
+
+- Page content no longer shifts a few pixels sideways between pages that scroll and pages that don't (with
+  scrollbars that take up space, such as macOS "Show scroll bars: Always" or Windows).
+
 ## [0.10.0] - 2026-10-03
 
 ### Added
