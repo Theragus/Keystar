@@ -69,7 +69,7 @@ export async function PilotEvidence({
                 <span className="truncate">{event ? (hull ? (names.types.get(hull)?.name ?? e.unknown) : e.unknown) : e.noEvent}</span>
                 {event && <span className="shrink-0 whitespace-nowrap text-3xs text-ink-3">· {f.relativeTime(event.time)}</span>}
               </span>
-              {event && <span className="mt-0.5 block text-xs text-ink-3">{names.systems.get(event.systemId)?.name ?? e.unknown} · {e.attackers(event.attackerCount)}</span>}
+              {event && <span className="mt-0.5 block text-3xs text-ink-3">{names.systems.get(event.systemId)?.name ?? e.unknown} · {e.attackers(event.attackerCount)}</span>}
             </span>
           </div>
         );

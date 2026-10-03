@@ -79,7 +79,7 @@ export async function PilotRow({
         <div className="w-full border-y border-surface-contrast/6 py-3">
           <PilotEvidence profile={profile} names={names} associates={flyingWith.length} />
         </div>
-        <div className="grid w-full gap-3">
+        <div className="grid w-full grid-cols-2 gap-2">
           {[{ label: t.intel.evidence.recentKills, loss: false }, { label: t.intel.evidence.recentLosses, loss: true }].map(({ label, loss }) => {
             const events = profile?.recent.latest.filter(event => event.isLoss === loss) ?? [];
             return (

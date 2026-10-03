@@ -13,7 +13,7 @@ export async function LatestKills({ events, names, limit = 5, compact = false }:
   const { t, f } = await getI18n();
   const l = t.intel.latest;
   return (
-    <ol className={compact ? "grid grid-cols-[repeat(3,minmax(0,3.5rem))] gap-1.5" : "flex flex-wrap gap-1.5"}>
+    <ol className={compact ? "grid grid-cols-[repeat(3,minmax(0,3rem))] gap-1.5" : "flex flex-wrap gap-1.5"}>
       {newestEvents(events).slice(0, limit).map((e) => {
         const color = e.isLoss ? LOSS_COLOR : KILL_COLOR;
         const targetHull = eventTargetHull(e);
@@ -30,7 +30,7 @@ export async function LatestKills({ events, names, limit = 5, compact = false }:
               title={`${l.title({ isLoss: e.isLoss, ship: other, system, isk: f.compact(e.value), attackers: e.attackerCount })} · ${f.relativeTime(e.time)}`}
             >
               {!compact && targetHull ? <TypeIcon id={targetHull} size={22} className="rounded" /> : null}
-              <span className={compact ? "relative w-full min-w-0 bg-white/40 px-1 py-0.5 text-slate-950 backdrop-blur-sm" : "min-w-0"}>
+              <span className={compact ? "sr-only" : "min-w-0"}>
                 <span className={compact ? "block truncate font-medium" : "block max-w-36 truncate text-ink"}>
                   <span className="sr-only">{l.srKind(e.isLoss)}</span>
                   {other ?? t.intel.pilot.unknownHull}
