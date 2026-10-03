@@ -60,25 +60,29 @@ export async function PilotRow({
   const profile = (pilot.profile as PilotProfile | null) ?? null;
   const flyingWith = (profile?.associates ?? []).filter((a) => pilotNames.has(a.characterId) && a.characterId !== pilot.characterId);
   return (
-    <details className="group glass-inset rounded-lg">
-      <summary className="flex cursor-pointer list-none items-start gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
-        <ChevronRight className="size-4 shrink-0 text-ink-3 transition-transform group-open:rotate-90" aria-hidden />
-        <Portrait id={pilot.characterId} size={28} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="truncate text-sm font-medium text-ink">{pilot.name}</span>
-            <StandingBadge standing={standing} />
-            <HistoryChip history={history} />
+    <details className="group glass-inset min-w-0 rounded-xl open:md:col-span-2 open:xl:col-span-3">
+      <summary className="flex aspect-[5/4] min-h-56 cursor-pointer list-none flex-col gap-3 p-3 group-open:aspect-auto group-open:min-h-0 [&::-webkit-details-marker]:hidden">
+        <div className="flex w-full items-start gap-2">
+          <Portrait id={pilot.characterId} size={32} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold text-ink" title={pilot.name}>{pilot.name}</div>
+            <div className="mt-0.5 truncate text-xs text-ink-3" title={pilot.corporationName ?? undefined}>
+              {ticker ?? pilot.corporationName ?? p.unknownCorporation}
+              {pilot.allianceId && <> · {pilot.allianceName ?? p.alliance(pilot.allianceId)}</>}
+            </div>
           </div>
-          <div className="mt-0.5 truncate text-xs text-ink-3">
-            {ticker && <span className="text-ink-2">{ticker} </span>}
-            {pilot.corporationName ?? (pilot.corporationId ? p.corporation(pilot.corporationId) : p.unknownCorporation)}
-            {pilot.allianceId && <> · {pilot.allianceName ?? p.alliance(pilot.allianceId)}</>}
-          </div>
-          <PilotEvidence profile={profile} names={names} associates={flyingWith.length} />
+          <ScoreBadge score={score} />
         </div>
-        <ProfileStatus pilot={pilot} />
-        <ScoreBadge score={score} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <StandingBadge standing={standing} />
+          <HistoryChip history={history} />
+          <ProfileStatus pilot={pilot} />
+        </div>
+        <PilotEvidence profile={profile} names={names} associates={flyingWith.length} />
+        <div className="mt-auto flex items-center gap-1 text-xs text-accent">
+          <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden />
+          {p.latestTitle}
+        </div>
       </summary>
       <div className="space-y-4 border-t border-surface-contrast/6 px-4 py-3">
         <p className="text-xs text-ink-3">

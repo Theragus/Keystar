@@ -32,7 +32,7 @@ export async function LatestKills({ events, names, limit = 5 }: { events: Latest
               <span className="min-w-0">
                 <span className="block max-w-36 truncate text-ink">
                   <span className="sr-only">{l.srKind(e.isLoss)}</span>
-                  {l.chip(e.isLoss, other)}
+                  {other ?? t.intel.pilot.unknownHull}
                 </span>
                 <span className="block text-3xs text-ink-3">
                   {f.relativeTime(e.time)} · {system ?? "?"} · {e.solo ? l.solo : l.pilots(e.attackerCount)}

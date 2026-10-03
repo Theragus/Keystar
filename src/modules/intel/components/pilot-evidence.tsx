@@ -58,13 +58,14 @@ export async function PilotEvidence({
   const e = t.intel.evidence;
   const latest = latestEvidence(profile);
   return (
-    <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-      {[{ label: e.lastKill, event: latest.kill }, { label: e.lastLoss, event: latest.loss }].map(({ label, event }) => {
+    <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
+      {[{ label: e.tileKill, event: latest.kill }, { label: e.tileLoss, event: latest.loss }].map(({ label, event }) => {
         const hull = event ? eventTargetHull(event) : null;
-        return <span key={label} className="text-ink-2"><span className="text-ink-3">{label}: </span>{event ? `${hull ? (names.types.get(hull)?.name ?? e.unknown) : e.unknown} · ${f.relativeTime(event.time)}` : e.noEvent}</span>;
+        return <div key={label} className="contents"><span className="text-ink-3">{label}</span><span className="min-w-0 text-ink"><span className="block truncate">{event ? (hull ? (names.types.get(hull)?.name ?? e.unknown) : e.unknown) : e.noEvent}</span>{event && <span className="text-3xs text-ink-3">{f.relativeTime(event.time)}</span>}</span></div>;
       })}
-      <span className={cynoEvidence(profile).length ? "text-warning" : "text-ink-3"}>{e.cyno}: {cynoEvidence(profile).length ? cynoEvidence(profile).map(fit => `${e.cynoKinds[fit.kind]} · ${f.relativeTime(fit.lastAt)}`).join(" · ") : profile?.depth === "deep" ? e.noCyno : e.unknown}</span>
-      {associates > 0 && <span className="text-ink-2">{e.associates(associates)}</span>}
+      <span className="text-ink-3">{e.tileCyno}</span>
+      <span className={cynoEvidence(profile).length ? "text-warning" : "text-ink-3"}>{cynoEvidence(profile).length ? cynoEvidence(profile).map(fit => `${e.cynoKinds[fit.kind]} · ${f.relativeTime(fit.lastAt)}`).join(" · ") : profile?.depth === "deep" ? e.tileNoCyno : e.unknown}</span>
+      <span className="text-ink-3">{e.tileAssociates}</span><span className="text-ink-2">{profile ? f.integer(associates) : e.unknown}</span>
     </div>
   );
 }
