@@ -41,6 +41,13 @@ version in `package.json` alone.
 
 The version shows in the sidebar footer and in `GET /api/health`.
 
+## Trying unreleased changes
+
+Every commit on `main` that passes CI is also published as `ghcr.io/theragus/keystar:main` (and
+`:sha-<commit>`) by the **Main image** workflow (`.github/workflows/main-image.yml`). Set `KEYSTAR_VERSION=main` on a
+test server to follow it. `main` can be unstable and its sidebar shows the last released version; `:latest` and the
+version tags only ever point at releases.
+
 ## One-time setup
 
 - **Package visibility:** the first published image is private. Open the package
