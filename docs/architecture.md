@@ -169,6 +169,7 @@ Current jobs:
 | `mining.corporation-observers`   | 1 h      | Moon-refinery observer ledgers (Accountant)                |
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
 | `killboard.zkill-sync`           | 1 h      | Home corporation kills/losses from zKillboard (no token)   |
+| `killboard.live-feed`            | 10 s     | zKillboard's live feed (R2Z2): home-corporation killmails within seconds, for the live notifications |
 | `killboard.situation-report`     | 1 h      | Writes the weekly situation report once a week has closed  |
 | `intel.scan-worker`              | 2 s      | zKillboard work for threat intel scans (idles at 1 min; woken by new scans) |
 | `intel.briefings`                | 1 min    | Briefings for scans that became ready (woken by the scan worker) |
@@ -302,6 +303,22 @@ without schema changes.
 - `src/modules/killboard/zkill.ts` is the only code that talks to zKillboard: a descriptive User-Agent (with
   `ESI_CONTACT`), gzip, requests spaced ≥ 1.1 s apart, retries on 429/5xx. zKillboard caches API responses for an
   hour, so the sync runs hourly.
+- **Live feed**: `killboard.live-feed` reads zKillboard's R2Z2 feed (`r2z2.zkillboard.com/ephemeral/{sequence}.json`,
+  the replacement of RedisQ, which closed in May 2026). Every killmail in New Eden gets the next sequence number;
+  the job counts upwards from its stored position (job meta) until a 404, at most 300 files a run spaced 100 ms
+  apart, then waits 10 s (zKillboard asks for at least 6). The feed is unfiltered: killmails without the home
+  corporation are skipped, the rest go through `storeKillmails` and their names (plus the outside final-blow
+  pilot, corporation tickers and regions) are resolved right away. A missing number below the published pointer is
+  skipped as a gap; a position older than 20 h (files are kept for at least 24 h) or for another corporation starts
+  over at the pointer, and the hourly sweep fills anything in between. A 403/429 keeps it away for 10 minutes.
+- **Live notifications**: for users with `killboard.view`, the top bar polls `/api/killboard/live` every 15 s while
+  the tab is visible and shows a toast for each kill or loss stored after its cursor (`first_seen_at` to the
+  microsecond plus the killmail id, since one insert stores many rows with the same timestamp; killmails older than
+  3 h are never announced, so backfills stay quiet). A toast shows
+  the destroyed hull, the corporation's pilot (loss: the victim; kill: the final blow, or top damage when an outsider
+  landed it), the other side, system and ISK value, stays 30 s (the countdown bar pauses on hover) and opens the
+  killmail on zKillboard. The bell beside it mutes them per browser (localStorage). Tabs claim each killmail in a
+  shared localStorage record under a Web Lock, so one browser announces it once. Demo mode doesn't run the live job.
 - The first sync imports 90 days month by month (`/corporationID/{id}/year/{y}/month/{m}/`); afterwards an hourly
   7-day sweep (`/pastSeconds/604800/`) also catches killmails zKillboard receives late. A gap longer than six days,
   or a new home corporation, triggers another backfill.
