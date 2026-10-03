@@ -44,7 +44,7 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
   return (
     <aside
       id="app-sidebar"
-      className="relative z-30 w-[232px] shrink-0 self-stretch border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl transition-[width] duration-150 ease-out group-data-[sidebar=collapsed]/shell:w-14 motion-reduce:transition-none"
+      className="relative z-30 w-[232px] shrink-0 self-stretch border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl transition-[width] duration-300 ease-out group-data-[sidebar=collapsed]/shell:w-14 motion-reduce:transition-none"
     >
       {/* Preserve heading space so collapsed icons keep their vertical positions. */}
       <div className="sticky top-0 flex h-dvh flex-col ">
