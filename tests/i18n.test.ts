@@ -99,13 +99,17 @@ describe("formatting", () => {
   });
 
   it("uses German separators, units and words", () => {
-    expect(de.compact(1234)).toBe("1,23 Tsd.");
-    expect(de.compact(-2500)).toBe("-2,50 Tsd.");
+    const nb = "\u00a0";
+    expect(de.compact(1234)).toBe("1.234");
+    expect(de.compact(-2500)).toBe("-2.500");
+    expect(de.compact(999_999)).toBe("999.999");
     expect(de.compact(0.5)).toBe("0,5");
-    expect(de.isk(9_870_000)).toBe("9,87 Mio. ISK");
-    expect(de.isk(1.5e9)).toBe("1,50 Mrd. ISK");
+    expect(de.compact(320e6, 1)).toBe(`320${nb}Mio.`);
+    expect(de.isk(9_870_000)).toBe(`9,87${nb}Mio. ISK`);
+    expect(de.isk(1.5e9)).toBe(`1,50${nb}Mrd. ISK`);
     expect(de.isk(1_234_567, { compact: false })).toBe("1.234.567 ISK");
-    expect(de.volume(2.5e12)).toBe("2,50 Bio. m³");
+    expect(de.unitPrice(4630)).toBe("4.630 ISK");
+    expect(de.volume(2.5e12)).toBe(`2,50${nb}Bio. m³`);
     expect(de.integer(1_234_567)).toBe("1.234.567");
     expect(de.number(1234.5, 2)).toBe("1.234,50");
     expect(de.percent(0.1234)).toBe("12,3 %");

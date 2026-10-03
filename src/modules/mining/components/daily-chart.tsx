@@ -128,7 +128,7 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
                 tickFormatter={(v: number) => f.compact(v, 1)}
                 tickLine={false}
                 axisLine={false}
-                width={52}
+                width={60}
                 tick={{ fontSize: 12 }}
               />
               <Tooltip

@@ -54,7 +54,7 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
           href={`${env().SOURCE_URL}/releases`}
           target="_blank"
           rel="noopener noreferrer"
-          className="px-2 font-mono text-3xs text-ink-3 hover:text-ink-2"
+          className="px-2 font-mono text-3xs whitespace-nowrap text-ink-3 hover:text-ink-2"
           title={t.shell.releaseNotes}
         >
           Keystar v{KEYSTAR_VERSION}

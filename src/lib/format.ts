@@ -40,11 +40,12 @@ const RULES: Record<Locale, LocaleRules> = {
   },
   de: {
     number: "de-DE",
+    // As in CLDR's German compact notation, thousands are written out ("12.345") rather than
+    // abbreviated. Non-breaking spaces keep number and unit together (chart ticks, table cells).
     compactUnits: [
-      [1e12, " Bio."],
-      [1e9, " Mrd."],
-      [1e6, " Mio."],
-      [1e3, " Tsd."],
+      [1e12, "\u00a0Bio."],
+      [1e9, "\u00a0Mrd."],
+      [1e6, "\u00a0Mio."],
     ],
     // DIN 5008: a (non-breaking) space before the percent sign.
     percentSuffix: " %",
@@ -62,7 +63,7 @@ export interface Formatter {
   locale: Locale;
   /** Fixed number of decimals in the locale's notation: 1234.5 → "1,234.50" / "1.234,50". */
   number(value: number, digits?: number): string;
-  /** 1234 → "1.23K" / "1,23 Tsd.", 9_870_000 → "9.87M" / "9,87 Mio.". */
+  /** 1234 → "1.23K" / "1.234", 9_870_000 → "9.87M" / "9,87 Mio.". */
   compact(value: number, digits?: number): string;
   isk(value: number, opts?: { compact?: boolean }): string;
   integer(value: number): string;
@@ -93,7 +94,8 @@ export function createFormatter(locale: Locale): Formatter {
         return `${fixed(v, d)}${suffix}`;
       }
     }
-    return fixed(value, abs > 0 && abs < 10 && !Number.isInteger(value) ? 1 : 0);
+    // Below the smallest unit: whole numbers (grouped, e.g. German "12.345"), one decimal under 10.
+    return abs >= 1000 ? grouped(value) : fixed(value, abs > 0 && abs < 10 && !Number.isInteger(value) ? 1 : 0);
   };
 
   const isk = (value: number, opts: { compact?: boolean } = {}) =>

@@ -139,7 +139,8 @@ export const mining: typeof en = {
       action: "Charaktere verwalten",
       body: "Verknüpfe deine Charaktere mit dem Mining-Ledger-Scope. Der Worker synchronisiert persönliche Ledger alle 15 Minuten und Raffinerie-Observer stündlich; ESI hält die letzten 30 Tage vor, Keystar behält ab dann alles.",
     },
-    priorPeriod: (days: number) => `Vorperiode (${plural(days, "Tag", "Tage")})`,
+    // Short on purpose: it follows "ggü." in narrow stat tiles.
+    priorPeriod: (days: number) => (days === 1 ? "Vortag" : "Vorperiode"),
     valueMined: (from: string, to: string) => `Abgebauter Wert · ${from} – ${to}`,
     volume: "Volumen",
     units: "Einheiten",
