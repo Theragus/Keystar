@@ -1,6 +1,7 @@
 import { Hourglass } from "lucide-react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { FlashToasts } from "@/components/shell/flash-toasts";
 import { SectionScope } from "@/components/shell/section-scope";
 import { Sidebar, visibleNav } from "@/components/shell/sidebar";
 import { isSidebarCollapsed, SIDEBAR_COOKIE } from "@/components/shell/sidebar-config";
@@ -11,6 +12,7 @@ import { requireUser } from "@/core/auth/dal";
 import { getCorporation } from "@/core/corp";
 import { availableAlerts } from "@/core/modules/registry";
 import { env } from "@/core/env";
+import { optionalScopeLabels } from "@/core/modules/registry";
 import { getSettings } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
 
@@ -31,6 +33,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <SidebarProvider collapsed={sidebarCollapsed}>
       <ToastProvider>
+        <FlashToasts scopeLabels={optionalScopeLabels(t)} />
         <SectionScope items={crumbs}>
           <Sidebar user={user} corpTicker={userCorp?.ticker ?? null} />
           <div className="section-glow flex min-w-0 flex-1 flex-col">

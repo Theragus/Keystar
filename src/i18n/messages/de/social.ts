@@ -18,6 +18,7 @@ export const social: typeof en = {
     },
     scopes: {
       readMail: "Liest deine EVE-Mails, Labels und Mailinglisten, damit du sie in Keystar lesen kannst (optional, nur lesend).",
+      readMailLabel: "Mail-Import",
     },
     jobs: { mail: "EVE-Mail" },
   },
@@ -43,6 +44,17 @@ export const social: typeof en = {
     kept: (value: number) => `${count(value, "Mail", "Mails")} von früher gespeichert`,
     deleteStored: "Gespeicherte Mails löschen",
     deleteStoredHint: "Löscht die Mails dieses Charakters aus Keystar. Die Mails im Spiel bleiben unberührt.",
+    stopHint: "Keystar importiert die Mails dieses Charakters ab sofort nicht mehr, ohne EVE-Login.",
+    toast: {
+      deleted: (name: string) => `Gespeicherte Mails von ${name} gelöscht`,
+      failed: (name: string) => `Die Mails von ${name} konnten nicht gelöscht werden`,
+      errors: {
+        forbidden: "Du hast keinen Zugriff mehr auf EVE-Mails in Keystar.",
+        notOwned: "Dieser Charakter ist nicht mehr mit deinem Konto verknüpft.",
+        stillImporting: "Beende zuerst den Mail-Import für diesen Charakter.",
+        unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+      },
+    },
     error: (message: string) => `Letzter Import fehlgeschlagen: ${message}`,
     noCharacters: "Verknüpfe einen Charakter, um seine Mails zu lesen.",
   },

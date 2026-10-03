@@ -65,11 +65,15 @@ Remember to enable new scopes on the EVE developer application, and tell members
 shows "missing scopes" automatically).
 
 Sensitive scopes, or scopes that only some users need, can be **optional**:
-`{ scope, level: "character", optional: true, manageHref: "/your-page", reason }`. They are left out of the member and
-corporation scope sets and never reported as missing. Let users enable them per character on the `manageHref` page
-(My Characters links there) with `reauthorizeHref(grantedScopes, { add: [scope] })` (and `{ remove: [scope] }` to
-stop); jobs that require the scope are only planned for characters that granted it. See the wallet, mail and fleet
-modules for examples.
+`{ scope, level: "character", optional: true, manageHref: "/your-page", managePermission, label, reason }`. They are left out of the
+member and corporation scope sets and never reported as missing. Let users enable them per character on the
+`manageHref` page (My Characters links there) with `reauthorizeHref(grantedScopes, { add: [scope] })`. Switching one
+off happens in Keystar, without an EVE login: an `ActionForm` around `setOptionalScope(characterId, scope, false)`
+(`src/app/(app)/characters/actions.ts`). The same action with `true` switches it back on while the token still holds
+it (`esi_tokens.disabled_scopes`); see "Optional scopes" in `docs/architecture.md`. `label` names the access in
+toasts and notes ("Fleet access"); `managePermission` is the permission `setOptionalScope` requires (the one
+the `manageHref` page checks). Jobs that require the scope are only planned for characters that use it. See the
+wallet, mail and fleet modules for examples.
 
 ## 2. Schema — `src/modules/<name>/schema.ts`
 
@@ -132,7 +136,11 @@ dims the previous render while new data loads).
 
 To confirm an action or report a refusal from a client component, call `useToast().toast({ tone, title,
 description, action, durationMs })` (`src/components/ui/toast.tsx`). The app layout already mounts the
-`ToastProvider`. A feature that keeps its own list of richer cards, like the live kills, renders `<Toast>`s
+`ToastProvider`. For a single button, a server page can wrap it in `ActionForm` (`src/components/ui/action-form.tsx`)
+instead: pass the bound action and the translated `success`, `failed` and `errors` texts, and the action returns an
+`ActionResult` (`src/lib/action-result.ts`). A route handler that redirects (like the SSO callback) can't show a
+toast; it sets a one-shot cookie with `encodeFlash()` (`src/core/flash.ts`) that `FlashToasts` in the app layout
+turns into one. A feature that keeps its own list of richer cards, like the live kills, renders `<Toast>`s
 inside a `<ToastViewport>`; they join the same stack. To announce new events as they
 happen, declare a live alert (section 6). Server actions behind a toast return a result object, not an exception, so the message can be
 translated. For a `<select>` whose value the server can change, avoid `<form action>` plus `defaultValue`.
