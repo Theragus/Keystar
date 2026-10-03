@@ -24,10 +24,17 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - ✅ Valuation from Jita 4-4 buy/sell/split or ESI average, current or historical prices
 - ✅ Ledger table and CSV export
 - ✅ **Ore field estimator** — paste a survey scanner result and get the total value of the field, grouped by ore type and sub-grouped by grade (e.g. Scordite / II-Grade / III-Grade). Handles German and English number formats.
-- 📝 **Personal mining P&L (income / expense sheet)** — for pilots mining with alts:
-  - *Income*: ore mined by your own characters, valued automatically from the mining ledger (same price source as the dashboard), optionally overridden by actual sale prices.
-  - *Expenses*: imported from your characters' wallet transactions (`esi-wallet.read_character_wallet.v1`). Purchases are auto-tagged by item group — mining crystals, heavy water / Orca fuel, mining foreman burst charges, drones, ship replacements — so mining costs are separated from unrelated shopping. Anything else stays out unless you tag it; manual entries cover costs ESI can't see (e.g. PLEX/Omega for alts, contracts).
-  - *Breakdown*: net profit per day / week / month, ISK per hour (from ledger activity), cost per m³, per-character and per-activity (ore / moon / ice) splits.
+- ✅ **Personal mining P&L (income / expense sheet)** — for pilots mining with alts:
+  - *Income*: ore mined by your own characters, valued like the dashboard, adjusted by a buyback % and per-ore price
+    rules; realised prices from your wallet sells are offered as one-click rules.
+  - *Expenses*: opt-in wallet import per character (`esi-wallet.read_character_wallet.v1`). Purchases are auto-tagged
+    by item group — mining crystals, Heavy Water, mining foreman burst charges, mining drones, mining hulls and
+    fittings — and only *suggested* until you include them (or switch on automatic counting per character); anything
+    else stays out unless you tag it. Manual entries (optionally spread over up to a year) cover PLEX/Omega for alts,
+    contracts and other costs ESI can't see.
+  - *Breakdown*: net profit per day / week / month, ISK per hour from measured ledger activity (wall-clock and per
+    character), cost per m³, per-character and per-activity (ore / moon / ice / gas) splits.
+- 💡 Mining P&L: recurring manual costs (monthly Omega), contract import for buyback sales
 - 💡 Mining tax / buyback calculations per member
 - 💡 Moon extraction timers (`/corporation/{id}/mining/extractions`, Station_Manager)
 
@@ -94,7 +101,8 @@ EVE now lets fleet bosses share fleet information through ESI
 ### 📝 Wallets & corporation finances
 
 - Corporation divisions, journal and transactions (`esi-wallet.read_corporation_wallets.v1`, Accountant/Junior Accountant).
-- Personal wallets per character (`esi-wallet.read_character_wallet.v1`), visible to the owner and permitted roles.
+- 🚧 Personal wallets per character (`esi-wallet.read_character_wallet.v1`): opt-in transaction import exists (used
+  by the mining P&L); journal, balances and a wallet page are still to come.
 - Income/expense breakdowns (bounties, mining tax, market, industry).
 
 ## Platform ideas

@@ -87,14 +87,20 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    esi-corporations.read_structures.v1
    esi-industry.read_character_mining.v1
    esi-industry.read_corporation_mining.v1
+   esi-wallet.read_character_wallet.v1
    ```
 
    Keystar only ever asks members for the scopes its enabled modules need; corporation scopes are requested only when
-   a director links a character with "corporation access". (The login page also shows this exact list while SSO is
-   not configured yet.)
+   a director links a character with "corporation access", and the wallet scope only when a pilot enables wallet
+   import for a character in the mining P&L. (The login page also shows this exact list while SSO is not configured
+   yet.)
 5. Save and keep the **Client ID** and **Secret Key** for the next step.
 
-When future modules (skills, assets, wallets, fleets) are added, add their scopes to the application as well.
+When future modules (skills, assets, fleets) are added, add their scopes to the application as well.
+
+> **Upgrading to 0.1.3 or later:** add `esi-wallet.read_character_wallet.v1` to the EVE application. Without it,
+> "Enable wallet import" in the mining P&L fails at the EVE login with `invalid_scope`. Nobody is asked for the scope
+> unless they enable wallet import themselves.
 
 ## 6. Get Keystar and configure it
 

@@ -3,6 +3,36 @@
 All notable changes to Keystar. Versions follow [Semantic Versioning](https://semver.org/); while Keystar is below
 1.0, new features bump the patch version. Releasing is described in [docs/releasing.md](docs/releasing.md).
 
+## [0.1.3] - 2026-10-03
+
+### Added
+
+- **Mining P&L** (Industry → Mining P&L): a personal income/expense sheet for pilots mining with alts, visible only
+  to the account itself.
+  - Income: ore mined by your characters, valued like the mining dashboard, with an optional buyback % and per-ore
+    price rules (with date ranges); realised prices from your wallet sells can be applied with one click.
+  - Expenses: opt-in wallet import per character. Purchases of mining crystals, Heavy Water, Mining Foreman burst
+    charges, mining drones and mining hulls/fittings are auto-tagged and only suggested until you include them;
+    "count tagged purchases automatically" can be switched on per character (off by default). Other purchases stay
+    out unless you tag them. Manual costs (PLEX/Omega, contracts …) can be spread over up to a year.
+  - Net profit per day / week / month, ISK per hour (gross and net), cost per m³, and splits per character and per
+    activity (ore / moon / ice / gas).
+- **Mining activity tracking**: the personal ledger sync now records when each character's ledger grows, which gives
+  active hours (wall-clock across alts and per character) from now on.
+- **Optional ESI scopes**: modules can declare scopes that users enable per character instead of every member being
+  asked for them. The first is wallet read access; enable `esi-wallet.read_character_wallet.v1` on your EVE
+  application (see docs/deployment.md).
+
+### Changed
+
+- "Re-authorise" on My Characters keeps the character's corporation and optional scopes instead of requesting only
+  the member scopes.
+
+### Fixed
+
+- Resolving new item types (appraisal, killboard, wallet) no longer fetches every type of their group from ESI; only
+  ore, ice and gas groups are scanned for compressed variants.
+
 ## [0.1.2] - 2026-10-02
 
 ### Changed

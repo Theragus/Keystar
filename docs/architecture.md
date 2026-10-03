@@ -48,6 +48,7 @@ src/
     mining/            the mining module: schema, jobs, queries, filters, UI components, estimator
     killboard/         zKillboard client and sync, combat aggregates, situation report (Claude or template), UI
     trade/             appraisal: paste parser, name resolution, Jita pricing, saved shareable snapshots
+    wallet/            opt-in character wallet transactions (raw data used by the mining P&L)
     jobs.ts            registry of background jobs (worker only)
   worker/index.ts      worker entry point
   scripts/             migrate, demo-seed
@@ -73,6 +74,13 @@ docker/                entrypoint, Caddyfile
 Authorisation is enforced in the **data access layer** (`src/core/auth/dal.ts`): `requireUser()`,
 `requirePermission()` for pages and `assertPermission()` for server actions. `src/proxy.ts` only does an optimistic
 redirect for visitors without a session cookie.
+
+**Optional scopes.** A module can mark a scope `optional` (e.g. wallet read for the mining P&L): it is never part of
+the member or corporation scope sets and never shown as missing. A user enables it per character; the link
+(`/auth/login?intent=link&with=<scope>`) is built by `reauthorizeHref()` in `src/core/modules/registry.ts`, which also
+re-requests the corporation and optional scopes the character already holds, because EVE replaces a token's scopes
+on every login. Re-linking a character through the generic "Link a character" or `/join` therefore drops optional
+scopes (the P&L settings then show wallet import as off; imported history is kept).
 
 ## Roles and permissions
 
@@ -125,11 +133,12 @@ Current jobs:
 | `core.corporation-members`       | 1 h      | Corp roster for the member audit                           |
 | `core.market-prices`             | 1 h      | ESI average + Jita 4-4 buy/sell, valuations, daily history |
 | `core.housekeeping`              | 6 h      | Expired sessions and cache entries                         |
-| `mining.character-ledger`        | 15 min   | Personal mining ledgers                                    |
+| `mining.character-ledger`        | 15 min   | Personal mining ledgers; records mining activity windows   |
 | `mining.corporation-observers`   | 1 h      | Moon-refinery observer ledgers (Accountant)                |
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
 | `killboard.zkill-sync`           | 1 h      | Home corporation kills/losses from zKillboard (no token)   |
 | `killboard.situation-report`     | 1 h      | Writes the weekly situation report once a week has closed  |
+| `wallet.character-transactions`  | 1 h      | Market transactions of characters that opted in to wallets |
 
 ## Mining data model
 
@@ -144,6 +153,35 @@ Current jobs:
   market falls back to its compressed variant (by portion size), then the ESI average and adjusted prices.
 
 ESI keeps 30 days of ledger history; Keystar keeps everything it has synced.
+
+## Mining P&L
+
+A personal income/expense sheet (Industry → Mining P&L), only ever showing the signed-in account's own characters,
+whatever corporation-wide permissions the user has (`mining.pnl`, default member).
+
+- **Income** reuses the mining `ledger` CTE (own characters, combined sources, the corporation's valuation setting) and
+  applies the account's income rate (`mining_pnl_settings`, e.g. 90% for buyback sellers) unless a per-ore price rule
+  (`mining_pnl_price_rules`, optional date range, latest start wins) sets the price.
+- **Wallet import** is opt-in per character (optional `esi-wallet.read_character_wallet.v1` scope). The wallet job
+  pages back with `from_id` until it reaches stored transactions and stores personal transactions in
+  `wallet_transactions` with the owning account (`user_id`), so wallet data never follows a sold character and is
+  deleted with the account or when the character is removed.
+- **Expenses**: buys are auto-tagged by item group/type (`src/modules/mining/pnl/categories.ts`, with an SQL twin):
+  mining crystals, Heavy Water, Mining Foreman burst charges, mining drones, mining hulls and fittings. A tagged
+  purchase is *suggested* until the user includes it, or counted automatically for characters where the user
+  switched that on (`mining_pnl_characters`, off by default); the user's category/include decisions
+  (`mining_pnl_tx_overrides`) always win. Everything else stays out unless tagged. Manual entries
+  (`mining_pnl_entries`) cover PLEX/Omega, contracts etc. and can be spread evenly over up to a year.
+- **Sale hints**: wallet sells of a mined ore or its compressed variant, converted to raw units with the valuation's
+  compression ratio, offered as one-click price rules.
+- **Active hours / ISK per hour**: the ledger job compares each fresh ESI snapshot with the stored ledger in one
+  transaction and records the window in which a character's quantities grew (`mining_activity`, per ledger day and
+  ore; `mining_activity_coverage` per character). Observation time is ESI's `Last-Modified` when it is a plausible
+  snapshot time; snapshots from Keystar's own cache are ignored; gaps over 40 minutes are not guessed at; growth
+  within 35 minutes of the previous growth continues the session. Hours are unions of those windows (`range_agg`):
+  wall-clock across characters, and per character and activity. ISK/h values the measured growth itself, so it only
+  covers mining since the feature was deployed. Expenses are split across activities by active hours when measured
+  activity covers ≥ 90% of income, otherwise by m³.
 
 ## Killboard
 
