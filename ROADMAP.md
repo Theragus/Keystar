@@ -87,6 +87,16 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 
 ## Planned modules
 
+### 📝 Wormhole mapping
+
+Proposal: [docs/proposals/wormhole-mapping.md](docs/proposals/wormhole-mapping.md).
+
+- Shared chain maps in the spirit of Pathfinder: systems with class, effect and statics; connections with wormhole
+  type, lifetime band and estimated time left, mass state and ship size.
+- Pan/zoom/drag canvas with a tree layout from the home system that stays readable on its own, plus a list view.
+- Opt-in location tracking (`esi-location.*`) that maps jumps automatically and shows pilots on the map.
+- Later: signatures, mass log and rolling, routes through the chain (`POST /route` with custom connections), kills in chain.
+
 ### 📝 Skills & corporation skill plans
 
 - Character skills and queues (`esi-skills.read_skills.v1`, `esi-skills.read_skillqueue.v1`).

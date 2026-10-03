@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="680" viewBox="0 0 1280 680" font-family="Inter, system-ui, sans-serif">
+  <title>Wormhole map mockup</title>
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#1d2026"/>
+    </pattern>
+    <style>
+      .card { fill: #15171b; stroke: #2a2e36; stroke-width: 1; }
+      .name { fill: #ededee; font-size: 14px; font-weight: 600; }
+      .sub { fill: #a3a8b2; font-size: 11px; }
+      .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+      .muted { fill: #6f7581; font-size: 11px; }
+      .badge-t { font-size: 11px; font-weight: 700; text-anchor: middle; }
+      .chip { fill: #101114; stroke: #2a2e36; }
+      .chip-t { fill: #ededee; font-size: 11px; text-anchor: middle; }
+      .edge { fill: none; stroke: #a3a8b2; stroke-linecap: round; }
+      .h { fill: #ededee; font-size: 13px; font-weight: 600; }
+      .btn { fill: #1d2026; stroke: #2a2e36; }
+      .btn-t { fill: #ededee; font-size: 12px; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="680" fill="#0b0c0e"/>
+
+  <!-- Toolbar -->
+  <text x="24" y="40" class="h" font-size="15">Wormholes › Home chain</text>
+  <g transform="translate(250 22)">
+    <rect width="110" height="28" rx="7" class="btn"/>
+    <rect x="2" y="2" width="52" height="24" rx="6" fill="#2a2e36"/>
+    <text x="28" y="18" class="btn-t" text-anchor="middle">Map</text>
+    <text x="82" y="18" class="btn-t" text-anchor="middle" fill="#a3a8b2">List</text>
+  </g>
+  <g transform="translate(372 22)"><rect width="86" height="28" rx="7" class="btn"/><text x="43" y="18" class="btn-t" text-anchor="middle">+ System</text></g>
+  <g transform="translate(466 22)"><rect width="104" height="28" rx="7" class="btn"/><text x="52" y="18" class="btn-t" text-anchor="middle">Auto-arrange</text></g>
+  <g transform="translate(578 22)"><rect width="46" height="28" rx="7" class="btn"/><text x="23" y="18" class="btn-t" text-anchor="middle">Fit</text></g>
+  <g transform="translate(632 22)">
+    <rect width="216" height="28" rx="7" class="btn"/>
+    <circle cx="16" cy="14" r="5" fill="#3ccf3c"/>
+    <text x="28" y="18" class="btn-t">Tracking: Theragus · online</text>
+  </g>
+
+  <!-- Map canvas -->
+  <rect x="16" y="64" width="936" height="600" rx="12" fill="#101114" stroke="#1d2026"/>
+  <rect x="16" y="64" width="936" height="600" rx="12" fill="url(#grid)"/>
+  <text x="36" y="88" class="muted">depth 0 · home</text>
+  <text x="386" y="88" class="muted">depth 1</text>
+  <text x="736" y="88" class="muted">depth 2</text>
+
+  <!-- Selection halo under the selected edge -->
+  <path d="M236 329 C 311 329, 311 459, 386 459" fill="none" stroke="#5cc8ff" stroke-opacity="0.22" stroke-width="12"/>
+
+  <!-- Edges: lifetime → dash pattern, mass → stroke width -->
+  <path class="edge" d="M236 329 C 311 329, 311 199, 386 199" stroke-width="4"/>
+  <path class="edge" d="M236 329 C 311 329, 311 459, 386 459" stroke-width="4" stroke="#fab219" stroke-dasharray="2 6"/>
+  <path class="edge" d="M586 199 C 661 199, 661 129, 736 129" stroke-width="2.5"/>
+  <path class="edge" d="M586 199 C 661 199, 661 269, 736 269" stroke-width="4" stroke-dasharray="10 6"/>
+  <path class="edge" d="M586 459 L 736 459" stroke-width="1.2" stroke="#f07a7a"/>
+
+  <!-- Nodes: fixed size so the layout is predictable -->
+  <g transform="translate(36 300)">
+    <rect width="200" height="58" rx="10" class="card"/>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#6da7ec"/><text x="27" y="24" class="badge-t" fill="#06101c">C4</text>
+    <text x="52" y="25" class="name">J113551 ★</text>
+    <circle cx="182" cy="20" r="9" fill="#2a2e36"/><text x="182" y="24" class="badge-t" fill="#ededee">3</text>
+    <text x="10" y="47" class="sub">Red Giant</text>
+    <text x="190" y="47" class="sub mono" text-anchor="end">C3·C247 C2·N766</text>
+  </g>
+  <g transform="translate(386 170)">
+    <rect width="200" height="58" rx="10" class="card"/>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#256abf"/><text x="27" y="24" class="badge-t" fill="#ffffff">C2</text>
+    <text x="52" y="25" class="name">J160941</text>
+    <text x="10" y="47" class="sub">—</text>
+    <text x="190" y="47" class="sub mono" text-anchor="end">HS·B274 C3·O477</text>
+  </g>
+  <g transform="translate(386 430)">
+    <rect width="200" height="58" rx="10" class="card"/>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#3987e5"/><text x="27" y="24" class="badge-t" fill="#ffffff">C3</text>
+    <text x="52" y="25" class="name">J153546</text>
+    <circle cx="182" cy="20" r="9" fill="#2a2e36"/><text x="182" y="24" class="badge-t" fill="#ededee">1</text>
+    <text x="10" y="47" class="sub">Wolf-Rayet</text>
+    <text x="190" y="47" class="sub mono" text-anchor="end">NS·K346</text>
+  </g>
+  <g transform="translate(736 100)">
+    <rect width="200" height="58" rx="10" class="card"/>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#f3fd82"/><text x="27" y="24" class="badge-t" fill="#06101c">0.5</text>
+    <text x="52" y="25" class="name">Hek</text>
+    <text x="10" y="47" class="sub">Metropolis · 8 jumps to Jita</text>
+  </g>
+  <g transform="translate(736 240)">
+    <rect width="200" height="58" rx="10" class="card"/>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#184f95"/><text x="27" y="24" class="badge-t" fill="#ffffff">C1</text>
+    <text x="52" y="25" class="name">J105443</text>
+    <text x="10" y="47" class="sub">—</text>
+    <text x="190" y="47" class="sub mono" text-anchor="end">NS·Z060</text>
+  </g>
+  <g transform="translate(736 430)">
+    <rect width="200" height="58" rx="10" class="card"/>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#8f2f69"/><text x="27" y="24" class="badge-t" fill="#ffffff">-0.4</text>
+    <text x="52" y="25" class="name">1DQ1-A</text>
+    <text x="10" y="47" class="sub">Delve · nullsec</text>
+  </g>
+
+  <!-- Edge labels: centred in the column gap, drawn last so nothing covers them -->
+  <g transform="translate(311 264)"><rect x="-46" y="-10" width="92" height="20" rx="10" class="chip"/><text y="4" class="chip-t mono">N766 · ≤14h</text></g>
+  <g transform="translate(311 394)"><rect x="-58" y="-10" width="116" height="20" rx="10" class="chip" stroke="#fab219"/><text y="4" class="chip-t mono">C247 · EOL ≤3h</text></g>
+  <g transform="translate(661 164)"><rect x="-64" y="-10" width="128" height="20" rx="10" class="chip"/><text y="4" class="chip-t mono">B274 · ≤21h · ½m</text></g>
+  <g transform="translate(661 234)"><rect x="-46" y="-10" width="92" height="20" rx="10" class="chip"/><text y="4" class="chip-t mono">K162 · &lt;1d</text></g>
+  <g transform="translate(661 459)"><rect x="-68" y="-10" width="136" height="20" rx="10" class="chip" stroke="#f07a7a"/><text y="4" class="chip-t mono">K346 · ≤9h · crit</text></g>
+
+  <!-- Legend -->
+  <g transform="translate(36 588)">
+    <text x="0" y="0" class="muted">Lifetime</text>
+    <line x1="0" y1="16" x2="40" y2="16" class="edge" stroke-width="4"/><text x="46" y="20" class="sub">fresh</text>
+    <line x1="92" y1="16" x2="132" y2="16" class="edge" stroke-width="4" stroke-dasharray="10 6"/><text x="138" y="20" class="sub">&lt; 1 day</text>
+    <line x1="196" y1="16" x2="236" y2="16" class="edge" stroke-width="4" stroke="#fab219" stroke-dasharray="2 6"/><text x="242" y="20" class="sub">&lt; 4 h (EOL)</text>
+    <text x="350" y="0" class="muted">Mass</text>
+    <line x1="350" y1="16" x2="390" y2="16" class="edge" stroke-width="4"/><text x="396" y="20" class="sub">stable</text>
+    <line x1="446" y1="16" x2="486" y2="16" class="edge" stroke-width="2.5"/><text x="492" y="20" class="sub">reduced (½m)</text>
+    <line x1="580" y1="16" x2="620" y2="16" class="edge" stroke-width="1.2" stroke="#f07a7a"/><text x="626" y="20" class="sub">critical</text>
+    <text x="0" y="48" class="muted">Every state is also written on the label, so colour and line style are never the only cue.</text>
+  </g>
+
+  <!-- Side panel -->
+  <rect x="964" y="64" width="300" height="600" rx="12" fill="#15171b" stroke="#1d2026"/>
+  <text x="984" y="94" class="h">Connection</text>
+  <text x="984" y="116" class="sub mono">J113551 (C4) ↔ J153546 (C3)</text>
+
+  <text x="984" y="148" class="muted">Wormhole type</text>
+  <rect x="984" y="156" width="260" height="30" rx="7" class="btn"/>
+  <text x="996" y="176" class="btn-t mono">C247 → C3  (static)</text>
+  <text x="984" y="204" class="sub">16 h max · 2,000 Mt · ≤ 375 Mt/jump (L)</text>
+
+  <text x="984" y="236" class="muted">Lifetime</text>
+  <g transform="translate(984 244)">
+    <rect width="260" height="28" rx="7" class="btn"/>
+    <text x="32" y="18" class="btn-t" text-anchor="middle" fill="#a3a8b2">&gt; 1 d</text>
+    <text x="97" y="18" class="btn-t" text-anchor="middle" fill="#a3a8b2">&lt; 1 d</text>
+    <rect x="132" y="2" width="61" height="24" rx="6" fill="#fab219"/>
+    <text x="162" y="18" class="btn-t" text-anchor="middle" fill="#06101c">&lt; 4 h</text>
+    <text x="227" y="18" class="btn-t" text-anchor="middle" fill="#a3a8b2">&lt; 1 h</text>
+  </g>
+  <text x="984" y="292" class="sub">≤ 3 h 12 min left</text>
+  <text x="984" y="308" class="muted">EOL set 48 min ago by Theragus</text>
+
+  <text x="984" y="340" class="muted">Mass</text>
+  <g transform="translate(984 348)">
+    <rect width="260" height="28" rx="7" class="btn"/>
+    <rect x="2" y="2" width="83" height="24" rx="6" fill="#2a2e36"/>
+    <text x="43" y="18" class="btn-t" text-anchor="middle">stable</text>
+    <text x="130" y="18" class="btn-t" text-anchor="middle" fill="#a3a8b2">reduced</text>
+    <text x="217" y="18" class="btn-t" text-anchor="middle" fill="#a3a8b2">critical</text>
+  </g>
+
+  <text x="984" y="408" class="muted">Signatures</text>
+  <text x="984" y="428" class="sub mono">J113551  KDN-421</text>
+  <text x="984" y="446" class="sub mono">J153546  ZQE-882 (K162)</text>
+
+  <text x="984" y="478" class="muted">History</text>
+  <text x="984" y="498" class="sub">Mapped 12 h ago by Theragus (jump)</text>
+  <text x="984" y="516" class="sub">Marked EOL 48 min ago by Theragus</text>
+
+  <g transform="translate(984 616)"><rect width="140" height="30" rx="7" fill="#2a1517" stroke="#d03b3b"/><text x="70" y="20" class="btn-t" text-anchor="middle" fill="#f07a7a">Delete connection</text></g>
+</svg>
