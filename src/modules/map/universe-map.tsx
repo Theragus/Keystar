@@ -13,7 +13,7 @@ export function UniverseMap({initialSystemId=null}:{initialSystemId?:number|null
  const [error, setError] = useState(false); const [attempt, setAttempt] = useState(0);
  const [query, setQuery] = useState(""); const [space, setSpace] = useState("known");
  const [selected, setSelected] = useState<MapSystem | null>(null); const [labels, setLabels] = useState(true);
- const camera = useRef({ yaw: 0, pitch: .6, zoom: 1.4 });
+ const camera = useRef({ yaw: 0, pitch: .6, zoom: 1.4, panX: 0, panY: 0 });
  const redraw = useRef<() => void>(() => {});
  const rotationFrame = useRef(0);
  const stopRotation = () => { cancelAnimationFrame(rotationFrame.current); rotationFrame.current = 0; };
@@ -40,10 +40,10 @@ export function UniverseMap({initialSystemId=null}:{initialSystemId?:number|null
   return () => element.removeEventListener("wheel", zoom);
  }, []);
  const hits = useRef<{system: MapSystem; x: number; y: number}[]>([]);
- const drag = useRef<{x: number; y: number; moved: boolean} | null>(null);
+ const drag = useRef<{x: number; y: number; moved: boolean; pan: boolean} | null>(null);
  useEffect(() => {
   const controller = new AbortController();
-  fetch("/data/map-systems.json", { signal: controller.signal }).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then((rows:MapSystem[]) => {setSystems(rows);const target=rows.find(s=>s[0]===initialSystemId);if(target){setSelected(target);setSpace(target[0]>=31000000?"wormholes":"known");camera.current={yaw:0,pitch:.6,zoom:5};}}).catch(e => { if (e.name !== "AbortError") setError(true); });
+  fetch("/data/map-systems.json", { signal: controller.signal }).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then((rows:MapSystem[]) => {setSystems(rows);const target=rows.find(s=>s[0]===initialSystemId);if(target){setSelected(target);setSpace(target[0]>=31000000?"wormholes":"known");camera.current={yaw:0,pitch:.6,zoom:5,panX:0,panY:0};}}).catch(e => { if (e.name !== "AbortError") setError(true); });
   return () => controller.abort();
  }, [attempt, initialSystemId]);
  const visible = useMemo(() => systems.filter(s => space === "all" || (space === "wormholes" ? s[0] >= 31000000 && s[0] < 32000000 : s[0] < 31000000)), [systems, space]);
@@ -72,13 +72,13 @@ export function UniverseMap({initialSystemId=null}:{initialSystemId?:number|null
   return () => { cancelAnimationFrame(rotationFrame.current); rotationFrame.current = 0; };
  }, [selected]);
  const button = "glass-chip rounded-md px-3 py-1.5 text-xs text-ink-2 hover:text-ink transition-colors";
- const choose = (s: MapSystem) => { stopRotation(); setSpace(s[0]>=31000000?"wormholes":"known"); setSelected(s); setCamera(c => ({...c,zoom:Math.max(c.zoom,5)})); };
+ const choose = (s: MapSystem) => { stopRotation(); setSpace(s[0]>=31000000?"wormholes":"known"); setSelected(s); setCamera(c => ({...c,zoom:Math.max(c.zoom,5),panX:0,panY:0})); };
  return <div className="space-y-3"><Panel title={m.universe} subtitle={m.controls} actions={<span className="text-xs font-semibold tabular-nums text-ink-2">{f.integer(visible.length)} {m.systems}</span>} bodyClassName="px-3 pb-3">
   <div className="mb-3 flex flex-wrap items-center gap-2">
    <input aria-label={m.search} placeholder={m.search} value={query} list="map-system-search" onChange={e => {setQuery(e.target.value);const match=systems.find(s=>s[1].toLowerCase()===e.target.value.trim().toLowerCase());if(match)choose(match);}} onKeyDown={e=>{if(e.key==="Enter"){const match=visible.find(s=>s[1].toLowerCase().startsWith(query.trim().toLowerCase()));if(query.trim()&&match){setQuery(match[1]);choose(match);}}}} className="glass-inset min-w-48 rounded-md px-3 py-2 text-xs text-ink"/>
    <datalist id="map-system-search">{query.trim()&&systems.filter(s=>s[1].toLowerCase().includes(query.trim().toLowerCase())).slice(0,20).map(s=><option key={s[0]} value={s[1]}/>)}</datalist>
-   <select aria-label={m.systems} value={space} onChange={e => {stopRotation();setSpace(e.target.value);setSelected(null);setCamera({yaw:0,pitch:.6,zoom:1.4});}} className="glass-inset rounded-md px-3 py-2 text-xs text-ink"><option value="known">{m.known}</option><option value="wormholes">{m.wormholes}</option><option value="all">{m.all}</option></select>
-   <button className={button} onClick={() => {stopRotation();setSelected(null);setCamera({yaw:0,pitch:.6,zoom:1.4});}}>{m.reset}</button>
+   <select aria-label={m.systems} value={space} onChange={e => {stopRotation();setSpace(e.target.value);setSelected(null);setCamera({yaw:0,pitch:.6,zoom:1.4,panX:0,panY:0});}} className="glass-inset rounded-md px-3 py-2 text-xs text-ink"><option value="known">{m.known}</option><option value="wormholes">{m.wormholes}</option><option value="all">{m.all}</option></select>
+   <button className={button} onClick={() => {stopRotation();setSelected(null);setCamera({yaw:0,pitch:.6,zoom:1.4,panX:0,panY:0});}}>{m.reset}</button>
    <button className={button} aria-label={m.zoomIn} onClick={() => setCamera(c => ({...c,zoom:Math.min(100,c.zoom*1.4)}))}>+</button>
    <button className={button} aria-label={m.zoomOut} onClick={() => setCamera(c => ({...c,zoom:Math.max(.3,c.zoom/1.4)}))}>−</button>
    <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)}/>{m.labels}</label>
@@ -86,10 +86,11 @@ export function UniverseMap({initialSystemId=null}:{initialSystemId?:number|null
   <div className="grid gap-3">
    <div className="glass-inset relative min-w-0 overflow-hidden rounded-lg">
     <canvas ref={canvas} aria-label={m.canvas} className="h-[65vh] min-h-96 w-full text-ink touch-none cursor-grab"
-     onPointerDown={e => {stopRotation();drag.current={x:e.clientX,y:e.clientY,moved:false};e.currentTarget.setPointerCapture(e.pointerId);}}
-     onPointerMove={e => {const d=drag.current;if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.abs(dx)+Math.abs(dy)>2)d.moved=true;setCamera(c => ({...c,yaw:c.yaw+dx*.006,pitch:Math.max(-Math.PI/2,Math.min(Math.PI/2,c.pitch+dy*.006))}));d.x=e.clientX;d.y=e.clientY;}}
+     onContextMenu={e=>e.preventDefault()}
+     onPointerDown={e => {stopRotation();drag.current={x:e.clientX,y:e.clientY,moved:false,pan:e.button===2||e.button===1||e.shiftKey};e.currentTarget.setPointerCapture(e.pointerId);}}
+     onPointerMove={e => {const d=drag.current;if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.abs(dx)+Math.abs(dy)>2)d.moved=true;setCamera(c => d.pan ? {...c,panX:c.panX+dx,panY:c.panY+dy} : {...c,yaw:c.yaw+dx*.006,pitch:Math.max(-Math.PI/2,Math.min(Math.PI/2,c.pitch+dy*.006))});d.x=e.clientX;d.y=e.clientY;}}
      onPointerCancel={() => {drag.current=null;redraw.current();}}
-     onPointerUp={e => {if(drag.current && !drag.current.moved){const rect=e.currentTarget.getBoundingClientRect();const x=e.clientX-rect.left,y=e.clientY-rect.top;const p=hits.current.reduce<{system:MapSystem;x:number;y:number}|null>((best,p) => Math.hypot(p.x-x,p.y-y)<Math.min(12,best?Math.hypot(best.x-x,best.y-y):12)?p:best,null);if(p)choose(p.system);}drag.current=null;redraw.current();}}/>
+     onPointerUp={e => {if(drag.current && !drag.current.moved && !drag.current.pan){const rect=e.currentTarget.getBoundingClientRect();const x=e.clientX-rect.left,y=e.clientY-rect.top;const p=hits.current.reduce<{system:MapSystem;x:number;y:number}|null>((best,p) => Math.hypot(p.x-x,p.y-y)<Math.min(12,best?Math.hypot(best.x-x,best.y-y):12)?p:best,null);if(p)choose(p.system);}drag.current=null;redraw.current();}}/>
     {!systems.length && <div role="status" className="absolute inset-0 flex items-center justify-center text-sm text-ink-2">{error ? <button onClick={() => {setError(false);setAttempt(a=>a+1);}}>{m.error} · {m.retry}</button> : m.loading}</div>}
    </div>
   </div>

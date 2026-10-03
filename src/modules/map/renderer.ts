@@ -5,7 +5,7 @@ import { securityClass } from "./model";
 type Hit = { system: MapSystem; x: number; y: number };
 type Options = {
  overlay?: () => MapOverlay;
- camera: () => { yaw: number; pitch: number; zoom: number };
+ camera: () => { yaw: number; pitch: number; zoom: number; panX?: number; panY?: number };
  dragging: () => boolean; selected: number | null; query: string; labels: boolean;
  distanceUnit?: string;
  format: (value: number) => string; onHits: (hits: Hit[]) => void;
@@ -22,6 +22,8 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
  const range = Math.max(...max.map((v,i)=>v-min[i]),1);
  let lastOverlay: MapOverlay | undefined;
  let route = new Set<number>(), inRange = new Set<number>();
+ let routeKey = "", beamStarted = 0;
+ const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
  const query = options.query.trim().toLowerCase();
  ctx.font="11px Inter, sans-serif";
  const points = systems.map(s => {
@@ -43,10 +45,12 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
   ctx!.setTransform(dpr,0,0,dpr,0,0);ctx!.font="11px Inter, sans-serif";
   schedule();
  }
- function draw() {
+ function draw(now: number) {
   frame=0;if(destroyed || !ctx)return;
   const overlay = options.overlay?.();
   if(overlay !== lastOverlay) {
+   const nextRouteKey = (overlay?.route ?? []).join(",");
+   if (nextRouteKey !== routeKey) { routeKey = nextRouteKey; beamStarted = now; }
    lastOverlay=overlay; route=new Set(overlay?.route ?? []);inRange=new Set(overlay?.inRange ?? []);
    const origin=points.find(p=>p.system[0]===overlay?.originId);
    if(origin&&overlay?.range)for(const p of points)if(inRange.has(p.system[0])||p.system[0]===overlay.originId){p.rangeLabel=`${p.label} · ${options.format(Math.hypot(p.x-origin.x,p.y-origin.y,p.z-origin.z))} ${options.distanceUnit ?? "LY"}`;p.rangeWidth=ctx.measureText(p.rangeLabel).width;}
@@ -59,8 +63,8 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
   const paths: Record<string,Path2D>={};
   const onScreen: typeof points=[];
   for(const p of points) {
-   const x=width/2+(p.x*cy-p.z*sy)*scale;
-   const y=height/2-(p.y*cp-(p.x*sy+p.z*cy)*sp)*scale;
+   const x=width/2+(c.panX??0)+(p.x*cy-p.z*sy)*scale;
+   const y=height/2+(c.panY??0)-(p.y*cp-(p.x*sy+p.z*cy)*sp)*scale;
    p.hit.x=x;p.hit.y=y;
    if(x<0||y<0||x>width||y>height)continue;
    hits.push(p.hit);onScreen.push(p);
@@ -78,13 +82,33 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
    const path=new Path2D();let previous=false;
    for(const id of overlay.route) {const p=points.find(p=>p.system[0]===id);if(!p){previous=false;continue;}if(previous)path.lineTo(p.hit.x,p.hit.y);else path.moveTo(p.hit.x,p.hit.y);previous=true;}
    ctx.strokeStyle=colors.range||ink;ctx.lineWidth=1.5;ctx.stroke(path);
+   const hops = overlay.route.length - 1;
+   const duration = Math.min(hops * 750, 6000);
+   const elapsed = now - beamStarted;
+   if (!reducedMotion && hops > 0) {
+    const progress = (elapsed % duration) / duration * hops;
+    const index = Math.floor(progress), fraction = progress - index;
+    const from = points.find(p => p.system[0] === overlay.route[index]);
+    const to = points.find(p => p.system[0] === overlay.route[index + 1]);
+    if (from && to) {
+     const x = from.hit.x + (to.hit.x - from.hit.x) * fraction;
+     const y = from.hit.y + (to.hit.y - from.hit.y) * fraction;
+     const tail = Math.max(0, fraction - .18);
+     ctx.save();ctx.shadowColor=colors.range||ink;ctx.shadowBlur=10;
+     ctx.strokeStyle=ink;ctx.lineWidth=2.5;ctx.beginPath();
+     ctx.moveTo(from.hit.x+(to.hit.x-from.hit.x)*tail,from.hit.y+(to.hit.y-from.hit.y)*tail);
+     ctx.lineTo(x,y);ctx.stroke();
+     ctx.fillStyle=ink;ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
+    schedule();
+   }
   }
   if(overlay?.range) {
    const origin=points.find(p=>p.system[0]===overlay?.originId);
    if(origin){ctx.strokeStyle=colors.range||ink;ctx.lineWidth=1;ctx.beginPath();ctx.arc(origin.hit.x,origin.hit.y,overlay.range*scale,0,Math.PI*2);ctx.stroke();}
   }
   if(focus) {
-   ctx.strokeStyle=ink;ctx.beginPath();ctx.arc(width/2,height/2,7,0,Math.PI*2);ctx.stroke();
+   ctx.strokeStyle=ink;ctx.beginPath();ctx.arc(width/2+(c.panX??0),height/2+(c.panY??0),7,0,Math.PI*2);ctx.stroke();
   }
   // Detailed labels return immediately after interaction; moving frames only draw stars.
   if(options.dragging())return;

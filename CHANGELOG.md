@@ -25,6 +25,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
+
 - Align the universe map with Threat Intel’s glass panels and compact controls; batch canvas rendering and cache geometry and labels for smoother rotation. Remove the system sidebar, center searched systems with a fading rotation, and keep wheel zoom from scrolling the page.
 
 - Keep browser-fetched zKillboard counters in a private, temporary preview only. Remove browser uploads to the shared pilot cache; the worker verifies statistics before shared profiles and danger scores use them.
@@ -59,6 +61,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   offers single-day presets for the current and the previous EVE day, above "7 days".
 
 ### Changed
+
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
 
 - **Main character listed first.** The Characters page, the dashboard's character panel, fleet tracking, the mail
   character list and the P&L wallet status show your main character at the top, followed by the others
@@ -99,6 +103,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   says why it was refused and keeps what you entered.
 
 ### Changed
+
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
 
 - **Dropdowns match the theme.** In Chrome, Edge and Safari 27+, the open list of every dropdown is a glass panel
   in the current theme with an accent check mark, instead of the system's list. Other browsers keep their native
@@ -142,6 +148,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
+
 - **Fleet access is opt-in per character.** Members are no longer asked for `esi-fleets.read_fleet.v1` when they join
   or link a character: only the fleet boss's character can read a fleet's members, so pilots who run fleets turn it on
   for that character with "Enable fleet access" on the Live fleet page (and can revoke it there). Characters that already
@@ -156,6 +164,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 ## [0.7.0] - 2026-10-03
 
 ### Changed
+
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
 
 - **Member audit** handles large corporations: search by character, account (main) or character ID as you type, click a
   stat tile (In-game roster, Registered, Not registered, Missing or revoked ESI) to show only those characters, and page
@@ -194,6 +204,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 ## [0.6.0] - 2026-10-03
 
 ### Changed
+
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
 
 - Each section has its own colour: Industry amber, Combat crimson, Trade teal (Overview, Account and Administration
   keep the cyan accent). It shows in the page heading label, the sidebar marker and a faint glow at the top of the page.
@@ -238,6 +250,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
+
 - The situation report on the killboard starts collapsed; click its header to read it.
 
 ## [0.4.0] - 2026-10-03
@@ -267,6 +281,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   asked for them. The first is wallet read access.
 
 ### Changed
+
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
 
 - "Re-authorise" on My Characters keeps the character's corporation and optional scopes instead of requesting only
   the member scopes. When another EVE login drops an opt-in scope anyway, My Characters says so and offers to turn
@@ -345,6 +361,8 @@ corporation scopes.
 
 ### Changed
 
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
+
 - Cards that looked clickable now are, or are gone. On the dashboard, the KPI tiles open the page behind the
   number: the killboard tiles open the killboard on the same 30 days (ISK destroyed jumps to the ISK breakdown, ISK
   efficiency to pilot efficiency), and the mining tile opens Mining. The info row links to the corporation on
@@ -386,12 +404,16 @@ corporation scopes.
 
 ### Changed
 
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
+
 - Module manifests and sync jobs name their texts with dictionary selectors instead of English strings (see
   docs/modules.md). Item, system and pilot names, CSV exports and stored situation reports remain in English.
 
 ## [0.1.2] - 2026-10-02
 
 ### Changed
+
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
 
 - Larger small text across the app for readability at 100% zoom on large monitors: section titles (e.g. "Top
   pilots") go from 11px to 13px, field labels and table headers from 9–11px to 12px, badges and chips to 11px, and
@@ -413,6 +435,8 @@ corporation scopes.
   without building on the server. The version is shown in the sidebar and in `/api/health`.
 
 ### Changed
+
+- Add mouse panning (right-, middle-, or Shift-drag), a continuously looping light beam along selected travel routes, and a star-map navigation icon; retain reduced-motion support.
 
 - The dashboard leads with combat: kills, ISK destroyed and efficiency for 30 days, a kills-over-time chart, the
   latest kills and losses and the MVP. Mining is down to one tile.
