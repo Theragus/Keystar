@@ -62,6 +62,7 @@ export const skillsModule: KeystarModule = {
       id: "pilots",
       label: (t) => t.skills.module.navSection,
       order: 5,
+      tone: "pilots",
       items: [
         {
           href: "/skills",
