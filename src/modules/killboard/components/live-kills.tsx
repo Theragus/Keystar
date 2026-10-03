@@ -17,7 +17,39 @@ const MAX_VISIBLE = 3;
 /** After a tab was hidden this long, start fresh instead of replaying what was missed. */
 const RESUME_GAP_MS = 2 * 60_000;
 const MUTE_KEY = "ks_kill_alerts";
-const CHANNEL = "ks-live-kills";
+/** Killmails some tab of this browser already announced (id → when), shared through localStorage. */
+const CLAIMS_KEY = "ks_kill_alerts_shown";
+const CLAIMS_TTL_MS = 6 * 3600_000;
+const CLAIMS_LOCK = "ks-kill-alerts-claims";
+
+/**
+ * Claims killmails for this tab and returns the ones it may announce: across
+ * tabs only the first claim wins. Read-check-write runs under a Web Lock, so two
+ * tabs polling at the same moment can't both take the same killmail. Without
+ * storage (blocked) every tab announces on its own.
+ */
+async function claimForThisTab(ids: number[]): Promise<number[]> {
+  const claim = () => {
+    let shown: Record<string, number> = {};
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(CLAIMS_KEY) ?? "{}");
+      if (parsed && typeof parsed === "object") shown = parsed as Record<string, number>;
+    } catch {
+      return ids;
+    }
+    const now = Date.now();
+    for (const [id, at] of Object.entries(shown)) if (!(now - at < CLAIMS_TTL_MS)) delete shown[id];
+    const mine = ids.filter((id) => !(String(id) in shown));
+    for (const id of mine) shown[id] = now;
+    try {
+      localStorage.setItem(CLAIMS_KEY, JSON.stringify(shown));
+    } catch {
+      // Storage full or blocked: announce anyway.
+    }
+    return mine;
+  };
+  return typeof navigator !== "undefined" && navigator.locks ? navigator.locks.request(CLAIMS_LOCK, claim) : claim();
+}
 
 /** Per-browser mute switch in localStorage; other tabs follow through the storage event. */
 const muteListeners = new Set<() => void>();
@@ -62,21 +94,6 @@ export function LiveKills() {
   const muted = useSyncExternalStore(subscribeMuted, readMuted, () => false);
   const [toasts, setToasts] = useState<LiveEvent[]>([]);
   const seen = useRef(new Set<number>());
-  const channel = useRef<BroadcastChannel | null>(null);
-
-  // Tabs tell each other what they announced, so one browser shows each killmail once.
-  useEffect(() => {
-    if (typeof BroadcastChannel === "undefined") return;
-    const bc = new BroadcastChannel(CHANNEL);
-    bc.onmessage = (e: MessageEvent<number>) => {
-      if (typeof e.data === "number") seen.current.add(e.data);
-    };
-    channel.current = bc;
-    return () => {
-      bc.close();
-      channel.current = null;
-    };
-  }, []);
 
   useEffect(() => {
     if (muted) return;
@@ -98,11 +115,11 @@ export function LiveKills() {
           });
           if (res.ok) {
             const body = (await res.json()) as { events: LiveEvent[]; cursor: string };
-            const fresh = body.events.filter((e) => !seen.current.has(e.killmailId));
-            for (const e of fresh) {
-              seen.current.add(e.killmailId);
-              channel.current?.postMessage(e.killmailId);
-            }
+            const unseen = body.events.filter((e) => !seen.current.has(e.killmailId));
+            for (const e of unseen) seen.current.add(e.killmailId);
+            // One browser shows each killmail once, in whichever tab claims it first.
+            const mine = new Set(unseen.length ? await claimForThisTab(unseen.map((e) => e.killmailId)) : []);
+            const fresh = unseen.filter((e) => mine.has(e.killmailId));
             if (!cancelled && fresh.length) setToasts((list) => [...list, ...fresh]);
             cursor = body.cursor;
           }

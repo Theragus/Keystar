@@ -501,7 +501,8 @@ describe.skipIf(!enabled)("integration", async () => {
       // eve_corporations isn't truncated here (other suites leave rows behind): set the two this test reads.
       await db().execute(sql`DELETE FROM eve_corporations WHERE corporation_id IN (${HOME}, 555)`);
       await db().insert(schema.eveCorporations).values({ corporationId: 555, name: "Enemy Corp", ticker: "ENMY" });
-      const cursor = await q2.liveCursorNow();
+      const cursor = q2.parseLiveCursor(await q2.liveCursorNow())!;
+      expect(cursor.id).toBe(0);
       // The fixture above is older than the live window and was stored before the cursor anyway.
       expect((await q2.getLiveEvents(HOME, cursor)).events).toEqual([]);
 
@@ -545,11 +546,29 @@ describe.skipIf(!enabled)("integration", async () => {
           systemName: "Tama", value: 40e6, solo: true,
         }),
       ]);
-      expect(live.cursor > cursor).toBe(true);
-      // Nothing new after the returned cursor; a malformed cursor is rejected by the pattern.
-      expect((await q2.getLiveEvents(HOME, live.cursor)).events).toEqual([]);
-      expect(q2.LIVE_CURSOR_PATTERN.test(live.cursor)).toBe(true);
-      expect(q2.LIVE_CURSOR_PATTERN.test("now(); DROP")).toBe(false);
+      const next = q2.parseLiveCursor(live.cursor)!;
+      expect(next.id).toBe(12);
+      expect((await q2.getLiveEvents(HOME, next)).events).toEqual([]);
+
+      // A batch sharing one timestamp, larger than a page: the id in the cursor keeps the rest.
+      await storeKillmails(db(), Array.from({ length: 12 }, (_, i) => ({
+        killmail_id: 100 + i, killmail_time: recent, solar_system_id: 30000180,
+        victim: { character_id: 9, corporation_id: 555, ship_type_id: 622, damage_taken: 1 },
+        attackers: [{ character_id: 1, corporation_id: HOME, ship_type_id: 622, damage_done: 1, final_blow: true }],
+        zkb: { hash: `b${i}`, totalValue: 1 },
+      })) as never);
+      const first = await q2.getLiveEvents(HOME, next);
+      const second = await q2.getLiveEvents(HOME, q2.parseLiveCursor(first.cursor)!);
+      expect([...first.events, ...second.events].map((e) => e.killmailId)).toEqual(Array.from({ length: 12 }, (_, i) => 100 + i));
+    });
+
+    it("accepts only well-formed live cursors that name a real instant", async () => {
+      const { parseLiveCursor } = await kb();
+      expect(parseLiveCursor("2026-10-03T16:01:34.110089Z_42")).toEqual({ at: "2026-10-03T16:01:34.110089Z", id: 42 });
+      expect(parseLiveCursor("2026-10-03T16:01:34Z_0")).toEqual({ at: "2026-10-03T16:01:34Z", id: 0 });
+      for (const bad of ["2026-99-99T00:00:00Z_1", "2026-02-30T00:00:00Z_1", "2026-10-03T16:01:34Z", "now(); DROP", "", null]) {
+        expect(parseLiveCursor(bad)).toBeNull();
+      }
     });
 
     it("syncs only killmails inside the plan's window", async () => {

@@ -43,8 +43,10 @@ export function resumeSequence(state: LiveFeedState, corporationId: number, now:
 }
 
 export interface LiveFeedOutcome {
-  /** Next sequence number to read. */
-  sequence: number;
+  /** Next sequence number to read; null when not even the starting point could be read. */
+  sequence: number | null;
+  /** Requests made (sequence files, missing ones included, and pointer reads); capped per run. */
+  requests: number;
   scanned: number;
   stored: number;
   caughtUp: boolean;
@@ -72,16 +74,23 @@ export async function readLiveFeed(
   const resolve = deps.resolve ?? resolveLiveNames;
   const max = deps.maxPerRun ?? MAX_PER_RUN;
 
-  let sequence = resumeSequence(state, corporationId, deps.now ?? new Date()) ?? (await r2z2.sequence());
+  let sequence = resumeSequence(state, corporationId, deps.now ?? new Date());
+  let requests = 0;
   let scanned = 0;
   let stored = 0;
   let caughtUp = false;
   let error: ZkillError | null = null;
   try {
-    while (scanned < max) {
+    if (sequence === null) {
+      requests += 1;
+      sequence = await r2z2.sequence();
+    }
+    while (requests < max) {
+      requests += 1;
       const res = await r2z2.entry(sequence);
       if (res.kind === "pending") {
         // A missing number below the published pointer is a gap, not the end of the feed.
+        requests += 1;
         const head = await r2z2.sequence();
         if (head > sequence) {
           sequence += 1;
@@ -102,7 +111,7 @@ export async function readLiveFeed(
     if (!(err instanceof ZkillError)) throw err;
     error = err;
   }
-  return { sequence, scanned, stored, caughtUp, error };
+  return { sequence, requests, scanned, stored, caughtUp, error };
 }
 
 /**
@@ -150,18 +159,23 @@ export const liveFeedJob: JobDefinition = {
   async run({ db, meta }) {
     const corporationId = await getSetting("corp.homeCorporationId");
     if (!corporationId) return { summary: "No home corporation configured" };
-    const out = await readLiveFeed(db, corporationId, meta as LiveFeedState);
-    // Nothing read at all: report the failure so it shows on the sync page (and backs off).
-    if (out.error && out.scanned === 0) throw out.error;
-    const state: LiveFeedState = { corporationId, sequence: out.sequence, updatedAt: new Date().toISOString() };
+    const state = meta as LiveFeedState;
+    const out = await readLiveFeed(db, corporationId, state);
     const refused = out.error?.status === 403 || out.error?.status === 429;
+    // Nothing read at all: report the failure so it shows on the sync page (and backs off).
+    // A refusal instead keeps away for the full cooldown, whatever it interrupted.
+    if (out.error && !refused && out.scanned === 0) throw out.error;
+    const moved = out.sequence !== null && out.sequence !== state.sequence;
+    const next: LiveFeedState =
+      out.sequence === null
+        ? state
+        : { corporationId, sequence: out.sequence, updatedAt: moved ? new Date().toISOString() : state.updatedAt };
+    const read = out.sequence === null ? "Read nothing" : `Read ${out.scanned} killmails up to #${out.sequence - 1}, ${out.stored} for the corporation`;
     return {
-      summary:
-        `Read ${out.scanned} killmails up to #${out.sequence - 1}, ${out.stored} for the corporation` +
-        (out.error ? ` (stopped: ${out.error.message})` : ""),
+      summary: out.error ? `${read} (stopped: ${out.error.message}${refused ? "; retrying in 10 minutes" : ""})` : read,
       // Behind: continue right away (the scheduler still waits the interval); refused: stay away for a while.
       nextRunAt: refused ? new Date(Date.now() + REFUSED_BACKOFF_MS) : null,
-      meta: { ...state },
+      meta: { ...next },
     };
   },
 };

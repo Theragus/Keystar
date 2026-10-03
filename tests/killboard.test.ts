@@ -244,6 +244,27 @@ describe("zKillboard live feed (R2Z2)", () => {
       maxPerRun: 5,
     });
     expect(capped).toMatchObject({ sequence: 15, scanned: 5, caughtUp: false });
+    // Missing files and pointer reads count against the cap as well.
+    const gaps = await readLiveFeed({} as never, 100, fresh, {
+      r2z2: { sequence: async () => 999, entry: async () => ({ kind: "pending" }) },
+      now,
+      maxPerRun: 6,
+    });
+    expect(gaps).toMatchObject({ sequence: 13, requests: 6, scanned: 0, caughtUp: false });
+  });
+
+  it("reports a refusal of the very first request instead of throwing it", async () => {
+    const out = await readLiveFeed({} as never, 100, {}, {
+      r2z2: {
+        sequence: async () => {
+          throw new ZkillError("R2Z2 responded 403 for /sequence.json", 403);
+        },
+        entry: async () => ({ kind: "pending" }),
+      },
+      now,
+    });
+    expect(out).toMatchObject({ sequence: null, requests: 1, scanned: 0 });
+    expect(out.error?.status).toBe(403);
   });
 });
 

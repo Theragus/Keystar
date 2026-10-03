@@ -70,7 +70,7 @@ export function Toast({
     <div
       role="status"
       className={cn(
-        "glass toast-in pointer-events-auto overflow-hidden transition-[opacity,translate] duration-300",
+        "glass toast-in pointer-events-auto relative overflow-hidden transition-[opacity,translate] duration-300",
         leaving && "translate-x-4 opacity-0",
       )}
       onMouseEnter={() => setPaused(true)}

@@ -392,7 +392,29 @@ const LIVE_MAX_AGE_HOURS = 3;
 const LIVE_LIMIT = 10;
 /** Postgres timestamps keep microseconds; the cursor carries all of them so `>` never repeats a row. */
 const CURSOR_FORMAT = `YYYY-MM-DD"T"HH24:MI:SS.US"Z"`;
-export const LIVE_CURSOR_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/;
+const CURSOR_PATTERN = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z)_(\d{1,15})$/;
+
+/**
+ * Position in the live stream: `first_seen_at` plus the killmail id, since one
+ * insert stores many killmails with the same timestamp. Written `<ISO time>_<id>`.
+ */
+export interface LiveCursor {
+  at: string;
+  id: number;
+}
+
+export const formatLiveCursor = (c: LiveCursor) => `${c.at}_${c.id}`;
+
+/** A cursor from the browser, or null unless it is well formed and names a real instant. */
+export function parseLiveCursor(value: string | null | undefined): LiveCursor | null {
+  const m = value ? CURSOR_PATTERN.exec(value) : null;
+  if (!m) return null;
+  const [, at, id] = m;
+  const parsed = new Date(at!);
+  // Out-of-range parts (month 13, 30 February, …) either fail to parse or roll over.
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 19) !== at!.slice(0, 19)) return null;
+  return { at: at!, id: Number(id) };
+}
 
 export interface LiveEvent {
   killmailId: number;
@@ -428,12 +450,13 @@ export interface LiveEvent {
 /** Database time as a live cursor: announce what arrives after this. */
 export async function liveCursorNow(): Promise<string> {
   const [row] = await getDb().execute<{ now: string }>(sql`SELECT to_char(now() AT TIME ZONE 'UTC', ${CURSOR_FORMAT}) AS now`);
-  return String(row?.now);
+  return formatLiveCursor({ at: String(row?.now), id: 0 });
 }
 
-/** Kills and losses stored after `since` (oldest first), with everything a notification shows. */
-export async function getLiveEvents(corp: number, since: string): Promise<{ events: LiveEvent[]; cursor: string }> {
-  const fresh = sql`k.first_seen_at > ${since}::timestamptz AND k.killmail_time > now() - make_interval(hours => ${LIVE_MAX_AGE_HOURS})`;
+/** Kills and losses stored after the cursor (oldest first), with everything a notification shows. */
+export async function getLiveEvents(corp: number, since: LiveCursor): Promise<{ events: LiveEvent[]; cursor: string }> {
+  const fresh = sql`(k.first_seen_at, k.killmail_id) > (${since.at}::timestamptz, ${since.id})
+    AND k.killmail_time > now() - make_interval(hours => ${LIVE_MAX_AGE_HOURS})`;
   const rows = await getDb().execute<Record<string, unknown>>(sql`
     WITH ev AS (
       SELECT 'kill'::text AS kind, k.* FROM killmails k
@@ -498,5 +521,6 @@ export async function getLiveEvents(corp: number, since: string): Promise<{ even
       solo: r.solo === true,
     }),
   );
-  return { events, cursor: rows.length ? String(rows[rows.length - 1]!.seen) : since };
+  const last = rows.at(-1);
+  return { events, cursor: formatLiveCursor(last ? { at: String(last.seen), id: num(last.id) } : since) };
 }
