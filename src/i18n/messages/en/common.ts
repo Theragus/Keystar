@@ -28,6 +28,8 @@ export const common = {
     admin: { label: "Admin", description: "Full control, including application settings and admin assignments." },
   } satisfies Record<Role, { label: string; description: string }>,
   datePresets: {
+    today: "Today",
+    yesterday: "Yesterday",
     "7d": "7 days",
     "30d": "30 days",
     "90d": "90 days",

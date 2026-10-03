@@ -9,6 +9,17 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 ### Changed
 
 - Keep sidebar icons and section-heading prefixes fixed while labels expand to the right. Show three-character collapsed headings, remove fade flicker, use a 300 ms width animation, disable collapsed navigation scrolling, and move branding to the top bar with the toggle in the sidebar.
+- **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
+  dashboard's killboard button now read "Combat Report".
+
+## [0.10.0] - 2026-10-03
+
+### Added
+
+- **"Today" and "Yesterday" date ranges.** The date-range picker on the mining, P&L, finances and killboard pages
+  offers single-day presets for the current and the previous EVE day, above "7 days".
+
+### Changed
 
 - **Main character listed first.** The Characters page, the dashboard's character panel, fleet tracking, the mail
   character list and the P&L wallet status show your main character at the top, followed by the others
