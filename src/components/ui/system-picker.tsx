@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { isWormholeSystem, matchSystems, wormholeClass, type SystemOption } from "@/core/eve/systems";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
@@ -64,7 +64,7 @@ export function SystemPicker({
     setOpen(false);
   };
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       if (!showList) setOpen(true);
@@ -99,6 +99,8 @@ export function SystemPicker({
           : matches.length === 0
             ? s.noMatches
             : null;
+  // The listbox only exists when there are suggestions; a status line stands in for it otherwise.
+  const listOpen = showList && !status;
 
   return (
     <div className="relative">
@@ -110,9 +112,9 @@ export function SystemPicker({
         spellCheck={false}
         role="combobox"
         aria-autocomplete="list"
-        aria-expanded={showList}
-        aria-controls={listId}
-        aria-activedescendant={showList && matches[active] ? `${listId}-${active}` : undefined}
+        aria-expanded={listOpen}
+        aria-controls={listOpen ? listId : undefined}
+        aria-activedescendant={listOpen && matches[active] ? `${listId}-${active}` : undefined}
         onFocus={load}
         onBlur={() => setOpen(false)}
         onChange={(e) => {
@@ -126,7 +128,9 @@ export function SystemPicker({
       {showList && (
         <div className="absolute top-[calc(100%+6px)] left-0 z-50 w-72 rounded-xl border border-white/10 bg-space-800 p-1 shadow-2xl">
           {status ? (
-            <p className="px-2 py-3 text-xs text-ink-3">{status}</p>
+            <p role="status" className="px-2 py-3 text-xs text-ink-3">
+              {status}
+            </p>
           ) : (
             <ul ref={listRef} id={listId} role="listbox" className="max-h-72 overflow-y-auto">
               {matches.map((option, i) => (
