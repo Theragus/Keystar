@@ -23,6 +23,8 @@ export interface Mailbox {
   characterId: number;
   name: string;
   granted: boolean;
+  /** Switched off in Keystar while the token still holds the scope: can be switched back on without an EVE login. */
+  switchedOff: boolean;
   grantedScopes: string[];
   tokenStatus: "active" | "invalid" | null;
   lastSuccessAt: Date | null;
@@ -35,7 +37,7 @@ export interface Mailbox {
 /** The viewer's characters with mail access, import status and counts. */
 export async function getMailboxes(userId: string): Promise<Mailbox[]> {
   const rows = await getDb().execute<Record<string, unknown>>(sql`
-    SELECT c.character_id, c.name, t.scopes, t.status AS token_status,
+    SELECT c.character_id, c.name, t.scopes, t.disabled_scopes, t.status AS token_status,
            j.last_success_at, j.last_status, j.last_error, mm.n, mm.unread
     FROM characters c
     LEFT JOIN esi_tokens t ON t.character_id = c.character_id
@@ -53,6 +55,7 @@ export async function getMailboxes(userId: string): Promise<Mailbox[]> {
       characterId: num(r.character_id),
       name: String(r.name),
       granted: scopes.includes(MAIL_SCOPE),
+      switchedOff: Array.isArray(r.disabled_scopes) && (r.disabled_scopes as string[]).includes(MAIL_SCOPE),
       grantedScopes: scopes,
       tokenStatus: r.token_status === "active" || r.token_status === "invalid" ? r.token_status : null,
       lastSuccessAt: toDate(r.last_success_at),

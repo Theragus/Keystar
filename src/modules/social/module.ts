@@ -25,6 +25,7 @@ export const socialModule: KeystarModule = {
       optional: true,
       manageHref: "/mail",
       reason: (t) => t.social.module.scopes.readMail,
+      label: (t) => t.social.module.scopes.readMailLabel,
     },
   ],
   permissions: [

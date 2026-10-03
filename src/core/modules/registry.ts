@@ -6,6 +6,7 @@ import { socialModule } from "@/modules/social/module";
 import { tradeModule } from "@/modules/trade/module";
 import { walletModule } from "@/modules/wallet/module";
 import type { PermissionDef } from "@/core/rbac/permissions";
+import type { Messages } from "@/i18n/messages";
 import { coreModule } from "./core-module";
 import type { KeystarModule, NavSection, ScopeRequirement } from "./types";
 
@@ -56,6 +57,11 @@ export function optionalScopes(): string[] {
 /** Every scope Keystar may request: what the EVE developer application must allow. */
 export function applicationScopes(): string[] {
   return [...new Set(allScopeRequirements().map((s) => s.scope))].sort();
+}
+
+/** Short names of the opt-in scopes ("Fleet access"), falling back to the scope id. */
+export function optionalScopeLabels(t: Messages): Record<string, string> {
+  return Object.fromEntries(allScopeRequirements().flatMap((s) => (s.optional ? [[s.scope, s.label?.(t) ?? s.scope]] : [])));
 }
 
 export const LOGIN_INTENTS = ["login", "join", "link", "link-corp"] as const;

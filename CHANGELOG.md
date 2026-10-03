@@ -19,6 +19,15 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- **Revoking optional access stays in Keystar.** "Revoke access" on the Live fleet page, "Stop wallet import" and
+  "Stop" for EVE mail now switch the access off right away instead of opening the EVE login. Turning it back on works
+  the same way while the character's EVE token still includes it. My Characters notes which access is only switched
+  off in Keystar; re-authorising the character there removes it from the token for good.
+- **Feedback for account and access actions.** A toast now confirms or explains the outcome when you link a
+  character, re-authorise one, grant corporation access, enable or switch off optional access, make a character your
+  main, queue its syncs or remove it, start or stop sharing a fleet, delete imported mail or wallet history, approve,
+  disable or re-enable a user, and run or pause syncs. If linking a character fails while you're signed in, you now
+  return to the page you came from with the reason instead of landing on the dashboard without one.
 - Keep sidebar icons and section-heading prefixes fixed while labels expand to the right. Show three-character collapsed headings, remove fade flicker, use a 300 ms width animation, disable collapsed navigation scrolling, and move branding to the top bar with the toggle in the sidebar.
 
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
