@@ -43,7 +43,7 @@ export const shell = {
     desktop: {
       label: "Desktop notifications",
       hint: "Show alerts as system notifications while Keystar is in the background",
-      blocked: "Blocked by the browser or system settings for this site",
+      blocked: "Blocked by the browser, system settings or an extension",
       unsupported: "Not available in this browser here (needs HTTPS)",
     },
   },
