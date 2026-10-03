@@ -372,11 +372,12 @@ export async function getLiveMail(userId: string, since: LiveCursor): Promise<{ 
       AND (m.first_seen_at, m.mail_id) > (${since.at}::timestamptz, ${since.id})
       AND m.sent_at > now() - make_interval(hours => ${LIVE_MAX_AGE_HOURS})
       AND NOT m.is_read
-      AND m.from_id <> m.character_id
+      -- Sent by one of the account's own characters, whether or not that character shares its mail.
+      AND NOT EXISTS (SELECT 1 FROM characters own WHERE own.user_id = m.user_id AND own.character_id = m.from_id)
       AND NOT EXISTS (
         SELECT 1 FROM mail_messages o
         WHERE o.user_id = m.user_id AND o.mail_id = m.mail_id
-          AND (o.from_id = o.character_id OR (o.first_seen_at, o.character_id) < (m.first_seen_at, m.character_id))
+          AND (o.first_seen_at, o.character_id) < (m.first_seen_at, m.character_id)
       )
     ORDER BY m.first_seen_at, m.mail_id
     LIMIT ${LIVE_LIMIT}`);

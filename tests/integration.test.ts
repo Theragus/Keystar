@@ -1367,6 +1367,7 @@ describe.skipIf(!enabled)("integration", async () => {
         row(2, 604, { sentAt: new Date(Date.now() - 5 * 3600_000) }),
         row(3, 605, { fromId: 3, labels: [2] }), // Bravo Alt writes to Bravo: the account's own mail.
         row(2, 605, { fromId: 3 }),
+        row(3, 607, { fromId: 2 }), // From Bravo, whose own mailbox doesn't have it: still the account's own mail.
         { ...row(1, 606), userId: userA },
       ]);
 
