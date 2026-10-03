@@ -6,6 +6,15 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-03
+
+**When updating:** skill queues need two optional character scopes.
+
+1. Add `esi-skills.read_skillqueue.v1` and `esi-skills.read_skills.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>. Nobody is asked for them unless they share their skills on the
+   Skills access page, but without them on the application that EVE login fails with `invalid_scope`.
+2. Update as usual; the database migrations run on start.
+
 ### Added
 
 - **Sortable ore breakdown.** Click any column header of the mining dashboard's ore breakdown to sort by it; click
@@ -47,8 +56,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   jobs. Now nothing is changed, and a message says which character to pick.
 - **Alerts menu.** The kill alert button in the top bar is now an "Alerts" menu with switches for kills and losses,
   EVE mail and desktop notifications. Each choice is saved per browser; an earlier "kill alerts off" choice is kept.
-- Keep sidebar icons and section-heading prefixes fixed while labels expand to the right. Show three-character collapsed headings, remove fade flicker, use a 300 ms width animation, disable collapsed navigation scrolling, and move branding to the top bar with the toggle in the sidebar.
-
+- **Steadier collapsible sidebar.** Icons and section headings stay in place while the sidebar expands, collapsed
+  section headings show three characters, the width animates over 300 ms without flicker, the collapsed navigation
+  no longer scrolls, and the Keystar branding moves to the top bar with the collapse toggle in the sidebar.
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
   dashboard's killboard button now read "Combat Report".
 - **"Corp wallet journal" instead of "Wallet journal".** The sidebar entry, the journal page heading and the button
