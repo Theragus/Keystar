@@ -64,8 +64,14 @@ export async function priceSurveyTypes(names: string[]): Promise<SurveyPricing> 
       });
     const ids = res?.data.inventory_types?.map((t) => t.id) ?? [];
     if (ids.length) {
-      await ensureTypes(ids);
+      await ensureTypes(ids).catch((err: unknown) => {
+        if (!(err instanceof EsiError)) throw err;
+        log.warn("Could not load ore types", { types: ids.length, error: errorMessage(err) });
+      });
       types = await findTypes();
+      // ensureTypes skips types ESI fails to return; their names are left out and tried again next time.
+      const stored = await db.select({ typeId: eveTypes.typeId }).from(eveTypes).where(inArray(eveTypes.typeId, ids));
+      if (stored.length < new Set(ids).size) esiUnavailable = true;
     }
   }
 

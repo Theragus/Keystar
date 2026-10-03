@@ -78,7 +78,20 @@ export async function resolveTypeNames(names: string[]): Promise<Map<string, num
       found.push(t.id);
     }
   }
-  if (found.length) await ensureTypes(found);
+  if (found.length) {
+    // ensureTypes skips types ESI fails to return, which would leave resolved ids without a name or volume.
+    await ensureTypes(found).catch((err: unknown) => {
+      if (!(err instanceof EsiError)) throw err;
+      log.warn("Could not load item types", { types: found.length, error: errorMessage(err) });
+      throw new AppraisalUnavailableError(err);
+    });
+    const stored = await db.select({ typeId: eveTypes.typeId }).from(eveTypes).where(inArray(eveTypes.typeId, found));
+    const missing = new Set(found).size - stored.length;
+    if (missing) {
+      log.warn("Could not load item types", { types: missing });
+      throw new AppraisalUnavailableError(`${missing} resolved item types could not be loaded`);
+    }
+  }
   return byLower;
 }
 

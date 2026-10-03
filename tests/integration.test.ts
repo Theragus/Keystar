@@ -478,6 +478,42 @@ describe.skipIf(!enabled)("integration", async () => {
       }
     });
 
+    it("refuses an appraisal when a resolved type can't be loaded", async () => {
+      const { appraise, AppraisalUnavailableError } = await import("@/modules/trade/appraisal/appraise");
+      const { getEsi } = await import("@/core/esi");
+      const postSpy = vi.spyOn(getEsi(), "post").mockResolvedValue(reply({ inventory_types: [{ id: 1228, name: "Scordite" }] }));
+      // Only the type lookup fails; pricing would succeed.
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) => {
+          if (path.startsWith("/universe/types/")) throw outage();
+          return reply([]);
+        }) as unknown as { mockRestore: () => void };
+      try {
+        await expect(appraise("Scordite x 5")).rejects.toBeInstanceOf(AppraisalUnavailableError);
+      } finally {
+        postSpy.mockRestore();
+        getSpy.mockRestore();
+      }
+    });
+
+    it("flags ores whose resolved type can't be loaded in the field estimator", async () => {
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userA }) }));
+      const { priceSurveyTypes } = await import("@/modules/mining/estimator/actions");
+      const { getEsi } = await import("@/core/esi");
+      const postSpy = vi.spyOn(getEsi(), "post").mockResolvedValue(reply({ inventory_types: [{ id: 1228, name: "Scordite" }] }));
+      const getSpy = vi.spyOn(getEsi(), "get").mockRejectedValue(outage()) as unknown as { mockRestore: () => void };
+      try {
+        const result = await priceSurveyTypes(["Veldspar", "Scordite"]);
+        expect(result.esiUnavailable).toBe(true);
+        expect(Object.keys(result.prices)).toEqual(["veldspar"]);
+      } finally {
+        postSpy.mockRestore();
+        getSpy.mockRestore();
+        vi.doUnmock("@/core/auth/dal");
+      }
+    });
+
     it("refuses an appraisal when stale items can't be priced", async () => {
       const { appraise, AppraisalUnavailableError } = await import("@/modules/trade/appraisal/appraise");
       const { getEsi } = await import("@/core/esi");
