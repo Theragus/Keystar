@@ -157,6 +157,8 @@ export const liveFeedJob: JobDefinition = {
   owner: "global",
   intervalSeconds: LIVE_POLL_SECONDS,
   async run({ db, meta }) {
+    // Demo data is fake; the worker leaves this job out in demo mode, and it never calls zKillboard there itself.
+    if (env().KEYSTAR_DEMO_MODE) return { summary: "Demo mode: the live feed is off" };
     const corporationId = await getSetting("corp.homeCorporationId");
     if (!corporationId) return { summary: "No home corporation configured" };
     const state = meta as LiveFeedState;

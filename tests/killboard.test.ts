@@ -7,7 +7,7 @@ import { parseMarkup, stripMarkup } from "@/modules/killboard/report/markup";
 import { readinessOf, templateReport } from "@/modules/killboard/report/template";
 import type { ReportFacts } from "@/modules/killboard/report/types";
 import { planSync } from "@/modules/killboard/sync";
-import { readLiveFeed, resumeSequence } from "@/modules/killboard/live";
+import { liveFeedJob, readLiveFeed, resumeSequence } from "@/modules/killboard/live";
 import {
   fromR2z2,
   involvesCorporation,
@@ -251,6 +251,21 @@ describe("zKillboard live feed (R2Z2)", () => {
       maxPerRun: 6,
     });
     expect(gaps).toMatchObject({ sequence: 13, requests: 6, scanned: 0, caughtUp: false });
+  });
+
+  it("never reads the feed in demo mode", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    process.env.KEYSTAR_DEMO_MODE = "true";
+    resetEnvCache();
+    try {
+      const out = await liveFeedJob.run({ db: {}, meta: {} } as never);
+      expect(out?.summary).toMatch(/demo/i);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.KEYSTAR_DEMO_MODE;
+      resetEnvCache();
+      fetchSpy.mockRestore();
+    }
   });
 
   it("reports a refusal of the very first request instead of throwing it", async () => {
