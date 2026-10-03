@@ -85,7 +85,22 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - 💡 More markets (Amarr, Dodixie, Rens, Hek) and a market selector
 - 💡 Corp buyback: a configured percentage per item group, contract instructions for members
 
-## Planned modules
+## Finances
+
+- ✅ **Corporation wallets** (`esi-wallet.read_corporation_wallets.v1`, Accountant/Junior Accountant; division names
+  with `esi-corporations.read_divisions.v1`, Director):
+  - Balances, income, expenses and net for all seven divisions, per day / week / month, with transfers between
+    divisions kept out of income and expenses
+  - Wallet journal with categories, counterparties, filters by division, category and income/expense/transfer
+  - Long-term archive: ESI keeps only ~30 days, Keystar keeps every journal entry, market transaction and daily
+    balance, and shows any gaps it could not fill
+- 💡 Where the money goes and comes from: top categories, ref types and counterparties per period
+- 💡 Item-level spending and sales from the archived market transactions
+- 💡 Balance and spending trends (daily balance history, month over month)
+- 💡 Office rent tracking per station/structure (`office_rental_fee`) with due-date reminders
+- 💡 Corporation tax income per member (bounty and mission tax by `context_id`)
+- 💡 CSV export of the journal
+
 
 ### 📝 Skills & corporation skill plans
 
@@ -98,12 +113,10 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - Look up inventory for specific players (`esi-assets.read_assets.v1`) and corporation hangars (`esi-assets.read_corporation_assets.v1`, Director).
 - Search by item across all members, with location names and valuation (reuses market prices).
 
-### 📝 Wallets & corporation finances
+### 📝 Personal wallets
 
-- Corporation divisions, journal and transactions (`esi-wallet.read_corporation_wallets.v1`, Accountant/Junior Accountant).
 - 🚧 Personal wallets per character (`esi-wallet.read_character_wallet.v1`): opt-in transaction import exists (used
   by the mining P&L); journal, balances and a wallet page are still to come.
-- Income/expense breakdowns (bounties, mining tax, market, industry).
 
 ## Platform ideas
 

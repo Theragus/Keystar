@@ -13,8 +13,8 @@ export interface EsiWalletTransaction {
   journal_ref_id: number;
 }
 
-export interface FetchedTransactions {
-  rows: EsiWalletTransaction[];
+export interface FetchedTransactions<T = EsiWalletTransaction> {
+  rows: T[];
   /** ESI requests made. */
   pages: number;
   /** Stopped at `maxPages` before reaching known (or the oldest) transactions. */
@@ -30,14 +30,33 @@ export interface FetchedTransactions {
  * responses bypass the ESI response cache, so deleting imported history
  * leaves no copy behind (the job runs at ESI's hourly cache interval anyway).
  */
-export async function fetchNewTransactions(
+export function fetchNewTransactions(
   esi: EsiClient,
   characterId: number,
   newestStoredId: number | null,
   maxPages = 10,
 ): Promise<FetchedTransactions> {
-  const path = `/characters/${characterId}/wallet/transactions`;
-  const first = await esi.get<EsiWalletTransaction[]>(path, { characterId, noCache: true });
+  return fetchTransactionsSince<EsiWalletTransaction>(
+    esi,
+    `/characters/${characterId}/wallet/transactions`,
+    characterId,
+    newestStoredId,
+    maxPages,
+  );
+}
+
+/**
+ * `from_id` paging shared by character and corporation wallet transactions: `path` is the transactions route,
+ * `characterId` the character whose token reads it.
+ */
+export async function fetchTransactionsSince<T extends { transaction_id: number }>(
+  esi: EsiClient,
+  path: string,
+  characterId: number,
+  newestStoredId: number | null,
+  maxPages = 10,
+): Promise<FetchedTransactions<T>> {
+  const first = await esi.get<T[]>(path, { characterId, noCache: true });
   let batch = first.data ?? [];
   const rows = [...batch];
   let pages = 1;
@@ -49,7 +68,7 @@ export async function fetchNewTransactions(
       truncated = true;
       break;
     }
-    const res = await esi.get<EsiWalletTransaction[]>(path, { characterId, query: { from_id: cursor }, noCache: true });
+    const res = await esi.get<T[]>(path, { characterId, query: { from_id: cursor }, noCache: true });
     pages++;
     // Guard against a cursor that is ignored: only strictly older rows advance.
     batch = (res.data ?? []).filter((t) => t.transaction_id < cursor);

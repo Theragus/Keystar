@@ -6,6 +6,26 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+**When updating:** corporation wallets need two corporation scopes.
+
+1. Add `esi-wallet.read_corporation_wallets.v1` and `esi-corporations.read_divisions.v1` to the scopes of your EVE
+   application at <https://developers.eveonline.com/applications>.
+2. Update as usual; the database migrations run on start.
+3. A member with the in-game Accountant or Junior Accountant role re-links their character with corporation access
+   (My Characters → Link with corporation access); a Director also brings the division names. ESI only keeps about
+   30 days of wallet history, so the archive starts there.
+
+### Added
+
+- **Corporation wallets** (Finances → Corporation wallet / Wallet journal, default Director and up):
+  - Balance, income, expenses and net for all wallet divisions, per day, week or month, with a chart and a per-division
+    table. ISK moved between the corporation's own divisions is shown separately, not as income or expense.
+  - Wallet journal with category, counterparties and reason; filters by division, category and income, expenses or
+    transfers.
+  - Long-term archive: the worker imports new journal entries, market transactions and daily balances every hour and
+    never deletes them, so history grows beyond the ~30 days ESI keeps. Periods it could not import (no token with the
+    Accountant role for over a month) are shown as gaps.
+
 ### Changed
 
 - The situation report on the killboard starts collapsed; click its header to read it.
