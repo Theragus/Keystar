@@ -46,13 +46,6 @@
   --color-critical: #d03b3b;
   --color-critical-text: #f07a7a;
 
-  /* Data series (validated: dark surface #14161a, adjacent CVD ΔE ≥ 8.4) */
-  --color-series-moon: #3987e5;
-  --color-series-ore: #d95926;
-  --color-series-ice: #199e70;
-  --color-series-gas: #c98500;
-  --color-series-other: #5d6878;
-
   /* Section colours (NavSection.tone): page headings, sidebar marker, header glow.
      Text on space-950/900 and under the glow: crimson >= 4.5:1, amber and teal >= 6.9:1.
      Colour-vision check (dark surface #101114): all pairs CVD ΔE >= 8.7, normal ΔE >= 20.
@@ -67,17 +60,64 @@
 
 :root {
   color-scheme: dark;
-  --surface-rgb: 255, 255, 255;
   --glass-background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)), rgba(21, 23, 27, 0.72);
+  --glass-rim: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.08) 18%,
+    rgba(255, 255, 255, 0.07) 60%,
+    rgba(140, 200, 255, 0.12) 100%
+  );
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 12px 32px -18px rgba(0, 0, 0, 0.7);
   --chip-background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03)), rgba(28, 31, 36, 0.7);
+  --chip-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 12px -6px rgba(0, 0, 0, 0.6);
   --inset-background: rgba(0, 0, 0, 0.22);
+  --inset-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   --link-hover: rgba(32, 36, 43, 0.8);
+  --link-hover-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(92, 200, 255, 0.22),
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 12px 32px -18px rgba(0, 0, 0, 0.7);
   --link-current: rgba(24, 40, 52, 0.85);
+  --link-current-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(92, 200, 255, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 12px 32px -18px rgba(0, 0, 0, 0.7);
   --chart-surface: #14161a;
   --hairline: rgba(255, 255, 255, 0.075);
   --hairline-strong: rgba(255, 255, 255, 0.13);
+  --row-rule: rgba(255, 255, 255, 0.045);
+  --scrollbar: rgba(255, 255, 255, 0.15);
   --grid: #23262c;
   --axis: #34383f;
+  /* Chart chrome: hover band, empty-state fill and the stat-tile sparkline. */
+  --chart-cursor: color-mix(in srgb, var(--color-surface-contrast) 4.5%, transparent);
+  --chart-empty: color-mix(in srgb, var(--color-surface-contrast) 6%, transparent);
+  --sparkline: rgba(169, 182, 200, 0.55);
+  /* Data series (src/modules/mining/class-colors.ts), validated on the dark surface
+     #14161a: adjacent CVD ΔE ≥ 8.4, normal ΔE ≥ 19.8, all ≥ 3:1. */
+  --series-moon: #3987e5;
+  --series-ore: #d95926;
+  --series-ice: #199e70;
+  --series-gas: #c98500;
+  --series-other: #5d6878;
+  /* Ordinal ramp (moon rarity, threat tiers, heatmap), low → high: one hue, the
+     high end most salient against the surface. Validated with --ordinal. */
+  --ramp-1: #184f95;
+  --ramp-2: #256abf;
+  --ramp-3: #3987e5;
+  --ramp-4: #6da7ec;
+  --ramp-5: #9ec5f4;
+  /* Net line of the P&L and wallet charts. */
+  --series-net: var(--color-ink);
   /* Current section colour; the accent unless the route's section has a tone. */
   --section: var(--color-accent);
 }
@@ -188,10 +228,7 @@ select option:disabled {
   background: var(--glass-background);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    0 12px 32px -18px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--glass-shadow);
 
   /* Hairline border with a soft specular highlight along the top-left. */
   &::before {
@@ -200,13 +237,7 @@ select option:disabled {
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(
-      160deg,
-      rgba(255, 255, 255, 0.2) 0%,
-      rgba(255, 255, 255, 0.08) 18%,
-      rgba(255, 255, 255, 0.07) 60%,
-      rgba(140, 200, 255, 0.12) 100%
-    );
+    background: var(--glass-rim);
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
@@ -224,15 +255,12 @@ select option:disabled {
   background: var(--chip-background);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 4px 12px -6px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--chip-shadow);
 }
 
 @utility glass-inset {
   background: var(--inset-background);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: var(--inset-shadow);
 }
 
 /* A glass surface that is a link: brighter on hover, accent rim when it is the
@@ -244,20 +272,18 @@ select option:disabled {
 
   &:hover {
     background-color: var(--link-hover);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      inset 0 0 0 1px rgba(92, 200, 255, 0.22),
-      0 1px 2px rgba(0, 0, 0, 0.35),
-      0 12px 32px -18px rgba(0, 0, 0, 0.7);
+    box-shadow: var(--link-hover-shadow);
   }
 
   &[aria-current="true"] {
     background-color: var(--link-current);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      inset 0 0 0 1px rgba(92, 200, 255, 0.7),
-      0 1px 2px rgba(0, 0, 0, 0.35),
-      0 12px 32px -18px rgba(0, 0, 0, 0.7);
+    box-shadow: var(--link-current-shadow);
+  }
+
+  /* The light glass gradient is nearly opaque and would hide the hover colour. */
+  &:where([data-theme="light"] *):hover,
+  &:where([data-theme="light"] *)[aria-current="true"] {
+    background-image: none;
   }
 }
 
@@ -291,7 +317,7 @@ select option:disabled {
 
 /* Dotted grid texture for hero/feature surfaces. */
 @utility dot-grid {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+  background-image: radial-gradient(color-mix(in srgb, var(--color-surface-contrast) 9%, transparent) 1px, transparent 1px);
   background-size: 16px 16px;
 }
 
@@ -316,19 +342,19 @@ select option:disabled {
   color: var(--color-ink-3);
   text-align: left;
   padding: 0.6rem 0.9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  border-bottom: 1px solid var(--hairline);
   white-space: nowrap;
 }
 .ks-table td {
   padding: 0.6rem 0.9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  border-bottom: 1px solid var(--row-rule);
   vertical-align: middle;
 }
 .ks-table tbody tr {
   transition: background-color 120ms ease;
 }
 .ks-table tbody tr:hover {
-  background: rgba(var(--surface-rgb), 0.025);
+  background: color-mix(in srgb, var(--color-surface-contrast) 2.5%, transparent);
 }
 .ks-table .num {
   text-align: right;
@@ -339,7 +365,7 @@ select option:disabled {
 /* Scrollbars that fit the theme. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 
 /* Keyboard focus that is always visible on glass. */
@@ -368,7 +394,6 @@ select option:disabled {
   --color-ink-2: #435268;
   --color-ink-3: #58677a;
   --color-surface-contrast: #182332;
-  --surface-rgb: 24, 35, 50;
   --color-accent: #006b9d;
   --color-accent-strong: #005880;
   --color-gold: #865800;
@@ -384,13 +409,35 @@ select option:disabled {
   --chart-surface: #ffffff;
   --hairline: rgba(24, 35, 50, 0.12);
   --hairline-strong: rgba(24, 35, 50, 0.2);
+  --row-rule: var(--hairline);
+  --scrollbar: rgba(24, 35, 50, 0.3);
   --grid: #d9e0e9;
   --axis: #aab5c3;
+  --sparkline: rgba(88, 103, 122, 0.7);
+  /* Validated on the light page #f3f5f8 (the glass panels are lighter):
+     adjacent CVD ΔE ≥ 9.0, normal ΔE ≥ 17.6, all ≥ 3.6:1. */
+  --series-moon: #2f7fe0;
+  --series-ore: #d4541f;
+  --series-ice: #16916a;
+  --series-gas: #ad7300;
+  /* Darkest = highest on a light surface, so the ramp runs the other way round. */
+  --ramp-1: #7fb0ea;
+  --ramp-2: #5797e4;
+  --ramp-3: #2f7fe0;
+  --ramp-4: #2163b3;
+  --ramp-5: #154785;
   --glass-background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.8));
-  --chip-background: linear-gradient(180deg, #ffffff, #edf1f6);
+  --glass-rim: linear-gradient(160deg, rgba(24, 35, 50, 0.18), rgba(24, 35, 50, 0.08));
+  --glass-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(24, 35, 50, 0.08), 0 12px 32px -18px rgba(24, 35, 50, 0.18);
+  /* A translucent tint over an opaque base: hover:bg-* utilities replace the base. */
+  --chip-background: linear-gradient(180deg, rgba(24, 35, 50, 0), rgba(24, 35, 50, 0.06)), #ffffff;
+  --chip-shadow: inset 0 0 0 1px var(--hairline), 0 4px 12px -6px rgba(24, 35, 50, 0.16);
   --inset-background: rgba(24, 35, 50, 0.035);
+  --inset-shadow: inset 0 0 0 1px var(--hairline);
   --link-hover: #e5edf5;
+  --link-hover-shadow: inset 0 0 0 1px var(--color-accent), 0 4px 12px -6px rgba(24, 35, 50, 0.16);
   --link-current: #dcecf7;
+  --link-current-shadow: var(--link-hover-shadow);
 }
 
 [data-theme="light"] .space-backdrop {
@@ -399,24 +446,12 @@ select option:disabled {
     linear-gradient(180deg, #f6f8fb, #edf1f6);
 }
 [data-theme="light"] .space-backdrop::after { opacity: 0; }
-[data-theme="light"] .glass {
-  box-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(24, 35, 50, 0.08), 0 12px 32px -18px rgba(24, 35, 50, 0.18);
-}
-[data-theme="light"] .glass::before {
-  background: linear-gradient(160deg, rgba(24, 35, 50, 0.18), rgba(24, 35, 50, 0.08));
-}
-[data-theme="light"] .glass-chip {
-  box-shadow: inset 0 0 0 1px var(--hairline), 0 4px 12px -6px rgba(24, 35, 50, 0.16);
-}
-[data-theme="light"] .glass-inset { box-shadow: inset 0 0 0 1px var(--hairline); }
-[data-theme="light"] .glass-link:hover,
-[data-theme="light"] .glass-link[aria-current="true"] {
-  background-image: none;
-  box-shadow: inset 0 0 0 1px var(--color-accent), 0 4px 12px -6px rgba(24, 35, 50, 0.16);
-}
-[data-theme="light"] .dot-grid {
-  background-image: radial-gradient(rgba(24, 35, 50, 0.09) 1px, transparent 1px);
-}
 
-[data-theme="light"] .ks-table td { border-bottom-color: var(--hairline); }
-[data-theme="light"] * { scrollbar-color: rgba(24, 35, 50, 0.3) transparent; }
+/* EVE mail colours are chosen for the client's dark background. On light, those
+   too pale to read keep a trace of their hue but take the text colour's lightness. */
+.mail-color {
+  color: var(--mail-color);
+}
+[data-theme="light"] .mail-color[data-pale] {
+  color: color-mix(in oklab, var(--mail-color) 25%, var(--color-ink));
+}

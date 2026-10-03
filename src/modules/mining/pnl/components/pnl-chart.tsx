@@ -194,7 +194,7 @@ export function PnlChart({ buckets, bucket }: { buckets: PnlBucket[]; bucket: Da
               />
               <ReferenceLine y={0} stroke="var(--axis)" />
               <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.045)" }}
+                cursor={{ fill: "var(--chart-cursor)" }}
                 content={<ChartTooltip bucket={bucket} />}
                 isAnimationActive={false}
               />

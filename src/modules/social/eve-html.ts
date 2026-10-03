@@ -136,16 +136,38 @@ export function parseColor(value: string | undefined): string | undefined {
   const r = parseInt(rgb.slice(0, 2), 16);
   const g = parseInt(rgb.slice(2, 4), 16);
   const b = parseInt(rgb.slice(4, 6), 16);
-  // Colours assume the client's dark background. Keystar is dark too, but text that would
-  // vanish (near black, nearly transparent) falls back to the regular text colour.
+  // Colours assume the client's dark background, like Keystar's default theme: text that
+  // would vanish there (near black, nearly transparent) falls back to the regular text
+  // colour. The light theme tones down the pale rest (isPaleOnLight).
+  if (luminance(r, g, b) < 0.05 || a < 90) return undefined;
+  const alpha = Math.round((a / 255) * 100) / 100;
+  return alpha >= 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** WCAG relative luminance of an sRGB colour (channels 0–255). */
+function luminance(r: number, g: number, b: number): number {
   const lin = (c: number) => {
     const s = c / 255;
     return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
   };
-  const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-  if (luminance < 0.05 || a < 90) return undefined;
-  const alpha = Math.round((a / 255) * 100) / 100;
-  return alpha >= 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+/** The light theme's page background (`--color-space-950`), the darkest surface mail sits on. */
+const LIGHT_SURFACE = [0xf3, 0xf5, 0xf8] as const;
+
+/**
+ * Whether a colour from parseColor stays below WCAG AA text contrast (4.5:1) on the light
+ * theme's surfaces, so the light theme has to darken it (`.mail-color[data-pale]`).
+ */
+export function isPaleOnLight(color: string): boolean {
+  const m = /^rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)$/.exec(color);
+  if (!m) return false;
+  const alpha = m[4] === undefined ? 1 : Number(m[4]);
+  const [r, g, b] = [m[1], m[2], m[3]].map((c, i) => alpha * Number(c) + (1 - alpha) * LIGHT_SURFACE[i]);
+  const text = luminance(r, g, b);
+  const surface = luminance(...LIGHT_SURFACE);
+  return (surface + 0.05) / (text + 0.05) < 4.5;
 }
 
 /** Font size in pixels (EVE's body text is 12) as a clamped multiple of the surrounding text; 1 means "unchanged". */

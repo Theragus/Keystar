@@ -155,7 +155,7 @@ export function WalletChart({ buckets, bucket }: { buckets: WalletBucket[]; buck
               />
               <ReferenceLine y={0} stroke="var(--axis)" />
               <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.045)" }}
+                cursor={{ fill: "var(--chart-cursor)" }}
                 content={<ChartTooltip bucket={bucket} />}
                 isAnimationActive={false}
               />

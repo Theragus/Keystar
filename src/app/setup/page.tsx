@@ -85,7 +85,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
                       name="corporationId"
                       value={c.corporationId}
                       defaultChecked={c.corporationId === (home?.corporationId ?? ownCorps[0]?.corporationId)}
-                      className="accent-[#5cc8ff]"
+                      className="accent-accent"
                     />
                     <CorpLogo id={c.corporationId} size={36} />
                     <div className="min-w-0 flex-1">
@@ -236,7 +236,7 @@ function StepHeader({
 function Toggle({ name, checked, title, hint }: { name: string; checked: boolean; title: string; hint: string }) {
   return (
     <label className="flex cursor-pointer items-start gap-3 rounded-xl glass-inset px-4 py-3">
-      <input type="checkbox" name={name} defaultChecked={checked} className="mt-0.5 size-4 accent-[#5cc8ff]" />
+      <input type="checkbox" name={name} defaultChecked={checked} className="mt-0.5 size-4 accent-accent" />
       <span>
         <span className="font-medium">{title}</span>
         <span className="block text-xs text-ink-3">{hint}</span>

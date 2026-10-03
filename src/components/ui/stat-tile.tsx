@@ -20,9 +20,9 @@ export function Sparkline({ values, className }: { values: number[]; className?:
   const [lx, ly] = pts[pts.length - 1];
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className={cn("h-10 w-40 overflow-visible", className)} aria-hidden>
-      <path d={`${d} L${w},${h} L0,${h} Z`} fill="rgba(92,200,255,0.08)" />
-      <path d={d} fill="none" stroke="rgba(169,182,200,0.55)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={lx} cy={ly} r={4} fill="#5cc8ff" stroke="#14161a" strokeWidth={2} />
+      <path d={`${d} L${w},${h} L0,${h} Z`} className="fill-accent/8" />
+      <path d={d} fill="none" stroke="var(--sparkline)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={lx} cy={ly} r={4} strokeWidth={2} className="fill-accent stroke-(--chart-surface)" />
     </svg>
   );
 }

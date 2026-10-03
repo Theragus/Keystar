@@ -18,8 +18,7 @@ function ThemeButton() {
       name="theme"
       value={light ? "dark" : "light"}
       disabled={pending}
-      aria-label={t.shell.theme.toggle}
-      aria-pressed={light}
+      // The visible current theme is the accessible name (WCAG 2.5.3); the title describes the action.
       title={light ? t.shell.theme.toDark : t.shell.theme.toLight}
       className="flex h-7 items-center gap-1.5 rounded-md px-2 text-2xs text-ink-3 transition hover:bg-surface-contrast/6 hover:text-ink disabled:opacity-60"
     >

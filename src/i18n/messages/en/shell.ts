@@ -15,7 +15,7 @@ export const shell = {
     body: "A director has to approve your account before you can see corporation data. You can already link your characters and grant ESI access.",
   },
   theme: {
-    toggle: "Light mode", light: "Light", dark: "Dark", toLight: "Switch to light mode", toDark: "Switch to dark mode",
+    light: "Light", dark: "Dark", toLight: "Switch to light mode", toDark: "Switch to dark mode",
   },
   language: {
     label: "Language",

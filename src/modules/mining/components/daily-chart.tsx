@@ -132,7 +132,7 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
                 tick={{ fontSize: 12 }}
               />
               <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.045)" }}
+                cursor={{ fill: "var(--chart-cursor)" }}
                 content={<ChartTooltip metric={metric} />}
                 isAnimationActive={false}
               />

@@ -68,3 +68,30 @@ describe("light palette text contrast", () => {
     }
   });
 });
+
+// Chart tokens (src/modules/mining/class-colors.ts): each theme has its own steps.
+const dark = css.split(":root {")[1].split("\n}")[0];
+const tokens = (block: string, prefix: string) =>
+  [...block.matchAll(new RegExp(`--${prefix}-[\\w-]+: (#[0-9a-f]{6});`, "g"))].map((m) => m[1]);
+const ratio = (x: string, y: string) => {
+  const a = luminance(x),
+    b = luminance(y);
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+};
+describe("chart palette per theme", () => {
+  it("defines every series and ramp step for both themes", () => {
+    expect(tokens(dark, "series")).toHaveLength(5);
+    expect(tokens(light, "series")).toHaveLength(4); // the neutral slate is shared
+    expect(tokens(dark, "ramp")).toHaveLength(5);
+    expect(tokens(light, "ramp")).toHaveLength(5);
+  });
+  it("keeps light series marks at 3:1 on the light page", () => {
+    for (const c of [...tokens(light, "series"), "#5d6878"]) expect(ratio(c, colors["space-950"])).toBeGreaterThanOrEqual(3);
+  });
+  it("makes the high end of the ramp the most salient on each surface", () => {
+    const contrast = (ramp: string[], surface: string) => ramp.map((c) => ratio(c, surface));
+    const increasing = (xs: number[]) => xs.every((x, i) => i === 0 || x > xs[i - 1]);
+    expect(increasing(contrast(tokens(dark, "ramp"), "#14161a"))).toBe(true);
+    expect(increasing(contrast(tokens(light, "ramp"), colors["space-950"]))).toBe(true);
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectLinks, mailPreview, parseColor, parseEveHtml, parseFontSize, plainText, type EveNode } from "@/modules/social/eve-html";
+import { collectLinks, isPaleOnLight, mailPreview, parseColor, parseEveHtml, parseFontSize, plainText, type EveNode } from "@/modules/social/eve-html";
 import { classifyLink, linkIds, resolveShowinfo, webUrlFor } from "@/modules/social/links";
 
 const text = (s: string) => plainText(parseEveHtml(s));
@@ -44,6 +44,17 @@ describe("EVE HTML parser", () => {
     expect(parseColor("#10ffffff")).toBeUndefined(); // nearly transparent
     expect(parseColor("red;position:fixed")).toBeUndefined();
     expect(parseColor("expression(alert(1))")).toBeUndefined();
+  });
+
+  it("flags colours too pale for the light theme", () => {
+    const pale = (c: string) => isPaleOnLight(parseColor(c)!);
+    expect(pale("#bfffffff")).toBe(true); // the client's default 75 % white
+    expect(pale("yellow")).toBe(true);
+    expect(pale("#ffffd98d")).toBe(true); // the client's link gold
+    expect(pale("#ff0000ff")).toBe(false); // pure blue reads on light
+    expect(pale("#ff8b0000")).toBe(false); // dark red
+    expect(pale("#808b0000")).toBe(true); // ...but not at half opacity
+    expect(isPaleOnLight("var(--x)")).toBe(false);
   });
 
   it("scales and clamps font sizes", () => {
