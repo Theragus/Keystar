@@ -59,7 +59,8 @@ export type Op =
   | { kind: "connect"; id: string; from: number; to: number }
   | { kind: "updateConnection"; id: string; patch: ConnectionPatch }
   | { kind: "removeConnection"; id: string }
-  | { kind: "arrange"; resetAll: boolean };
+  | { kind: "arrange"; resetAll: boolean }
+  | { kind: "clear" };
 
 export const LABEL_MAX = 40;
 
@@ -202,6 +203,12 @@ export function applyOp(
       };
     case "removeConnection":
       return { ...state, connections: state.connections.filter((c) => c.id !== op.id) };
+    case "clear":
+      return {
+        ...state,
+        systems: systems.filter((s) => s.id === state.home).map((s) => ({ ...s, x: 0, y: 0 })),
+        connections: [],
+      };
     case "arrange": {
       const positions = arrange(systems.map(toLayout), state.connections, state.home, { resetAll: op.resetAll });
       return {

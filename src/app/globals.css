@@ -307,3 +307,28 @@ select option:disabled {
 .recharts-text {
   fill: var(--color-ink-3);
 }
+
+/* Wormhole chain map (React Flow): its controls and minimap in the glass theme. */
+.wh-map {
+  --xy-background-color: transparent;
+  --xy-connectionline-stroke: var(--color-accent);
+  --xy-connectionline-stroke-width: 2;
+  --xy-minimap-background-color: var(--color-space-900);
+  --xy-minimap-mask-background-color: rgba(11, 12, 14, 0.7);
+  --xy-controls-button-background-color: var(--color-space-800);
+  --xy-controls-button-background-color-hover: var(--color-space-700);
+  --xy-controls-button-color: var(--color-ink-2);
+  --xy-controls-button-color-hover: var(--color-ink);
+  --xy-controls-button-border-color: rgba(255, 255, 255, 0.08);
+  --xy-controls-box-shadow: none;
+  --xy-attribution-background-color: transparent;
+}
+.wh-map .react-flow__controls,
+.wh-map .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+.wh-map .react-flow__attribution a {
+  color: var(--color-ink-3);
+}

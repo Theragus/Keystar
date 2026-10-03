@@ -45,6 +45,7 @@ import { seedFleets } from "./demo-data/fleet";
 import { seedIntel } from "./demo-data/intel";
 import { seedKillboard } from "./demo-data/killboard";
 import { seedMiningPnl } from "./demo-data/pnl";
+import { seedWormholes } from "./demo-data/wormholes";
 
 const DEMO_CHARACTER_BASE = 2_120_000_000;
 const HOME_CORP = { corporationId: 98_765_432, name: "Keystar Industries", ticker: "KSTR" };
@@ -190,7 +191,8 @@ async function main() {
     mining_observer_ledger, killmails, killmail_attackers, killboard_reports, fleets, fleet_members, fleet_trackers,
     eve_constellations, intel_scans, intel_scan_pilots, intel_pilots, intel_pilot_killmails, intel_queue, intel_contacts,
     intel_ai_notes, wallet_transactions, mining_activity, mining_activity_coverage, mining_pnl_settings,
-    mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries RESTART IDENTITY CASCADE`);
+    mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries, wh_maps, wh_map_systems,
+    wh_connections RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
   await db.insert(eveGroups).values(staticData.groups);
@@ -509,11 +511,13 @@ async function main() {
   // Needs the home corporation setting, so it runs last.
   const report = await generateSituationReport(db, HOME_CORP.corporationId, new Date(), { force: true });
   const intel = await seedIntel(db, { homeCorporationId: HOME_CORP.corporationId, userId: demoUserIds.director, userName: "Tovan Rhask", now: new Date() });
+  const chain = await seedWormholes(db, { userId: demoUserIds.director, userName: "Tovan Rhask", now: new Date() });
 
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
       `${killboard.killmails} killmails, ${fleetCount} fleets, ${pnl.transactions} wallet transactions, ${pnl.windows} ` +
-      `activity windows, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
+      `activity windows, a ${report.source} situation report, a threat intel scan of ${intel.pilots} pilots and a ` +
+      `wormhole chain of ${chain.systems} systems.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");
   await closeDb();

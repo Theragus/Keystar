@@ -56,7 +56,7 @@ describe.skipIf(!enabled)("wormholes integration", async () => {
     expect(state.home).toBe(HOME);
     expect(state.systems.map((s) => [s.name, s.x])).toEqual([
       ["J113551", 0],
-      ["J162656", 340],
+      ["J162656", 360],
     ]);
     expect(state.systems[0]).toMatchObject({ cls: "c4", effect: "Red Giant", statics: [{ code: "C247", dest: "c3" }, { code: "N766", dest: "c2" }] });
     expect(state.connections).toMatchObject([{ id: uuid(1), a: HOME, b: OTHER, life: "fresh", updatedByName: "Tester" }]);
@@ -117,7 +117,7 @@ describe.skipIf(!enabled)("wormholes integration", async () => {
     expect(hek).toMatchObject({ x: 1000, y: 500 });
     await maps.autoArrange(db(), mapId, true);
     hek = (await maps.loadMapState(db(), mapId)).systems.find((s) => s.id === HEK)!;
-    expect(hek).toMatchObject({ x: 340, y: 0, pinned: false });
+    expect(hek).toMatchObject({ x: 360, y: 0, pinned: false });
     await maps.clearMap(db(), mapId);
     const state = await maps.loadMapState(db(), mapId);
     expect(state.systems.map((s) => s.id)).toEqual([HOME]);

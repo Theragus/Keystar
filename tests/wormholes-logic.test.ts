@@ -184,4 +184,13 @@ describe("map state", () => {
     s = applyOp(s, { kind: "label", id: 1, label: "  farm  " }, types, t0);
     expect(s.systems[0].label).toBe("farm");
   });
+
+  it("clears everything but home", () => {
+    let s = applyOp(empty, { kind: "setHome", system: summary(1, "Home", "c4") }, types, t0);
+    s = applyOp(s, { kind: "addSystem", system: summary(2, "Next", "c2"), connectTo: 1, connId: "c1" }, types, t0);
+    s = applyOp(s, { kind: "move", moves: [{ id: 1, x: 200, y: 200 }] }, types, t0);
+    s = applyOp(s, { kind: "clear" }, types, t0);
+    expect(s.systems.map((x) => [x.id, x.x, x.y])).toEqual([[1, 0, 0]]);
+    expect(s.connections).toEqual([]);
+  });
 });

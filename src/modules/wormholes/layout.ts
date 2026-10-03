@@ -7,10 +7,10 @@ import { CLASS_ORDER, type ClassKey } from "./static";
  * class then name. The same chain always gives the same picture. The column
  * gap leaves room for the connection label, so labels never sit under a node.
  */
-export const NODE_W = 180;
+export const NODE_W = 200;
 export const NODE_H = 60;
 /** Column pitch: node width plus a gap wide enough for an edge label. */
-export const COL = 340;
+export const COL = 360;
 /** Row pitch. */
 export const ROW = 80;
 export const GRID = 20;
