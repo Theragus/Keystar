@@ -13,6 +13,7 @@ import { mining } from "./mining";
 import { pnl } from "./pnl";
 import { setup } from "./setup";
 import { shell } from "./shell";
+import { skills } from "./skills";
 import { social } from "./social";
 import { trade } from "./trade";
 import { wallet } from "./wallet";
@@ -36,4 +37,5 @@ export const de: Messages = {
   trade,
   wallet,
   social,
+  skills,
 };

@@ -122,11 +122,13 @@ character, so it lives in one module.
 
 ## Planned modules
 
-### 📝 Skills & corporation skill plans
+### 🚧 Skills & corporation skill plans
 
-- Character skills and queues (`esi-skills.read_skills.v1`, `esi-skills.read_skillqueue.v1`).
-- Corporation skill plans: define plans/doctrines, see who can fly what and what is missing.
-- Training progress and queue-empty warnings.
+- ✅ **Skill queues** (opt-in per character, `esi-skills.read_skillqueue.v1`, `esi-skills.read_skills.v1`): skill in
+  training with progress, finish time of every queued skill and of the whole queue, paused/empty/ending-soon
+  warnings, attributes and remap availability; own characters, plus a corporation view for directors
+- 💡 Remap optimiser: the attribute remap (yearly or bonus) that finishes the current queue fastest
+- 💡 Corporation skill plans: paste a plan copied from the game, see which members have it trained and what is missing
 
 ### 📝 Assets / inventory
 
