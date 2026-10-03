@@ -273,15 +273,19 @@ export function useLiveFeed<E>(opts: {
           const res = await fetch(cursor ? `${url}?since=${encodeURIComponent(cursor)}` : url, { cache: "no-store" });
           if (res.ok) {
             const body = (await res.json()) as { events: E[]; cursor: string };
+            if (cancelled) return;
             const unseen = body.events.filter((e) => !seen.has(o.idOf(e)));
-            const native = o.desktop && !looking();
-            // A focused tab polls these too (its own cursor) and shows them as toasts.
-            if (unseen.length && !(native && otherTabFocused())) {
+            const lookedAt = looking();
+            // A focused tab polls these too (its own cursor) and shows them as toasts where the user is looking.
+            if (unseen.length && !(!lookedAt && otherTabFocused())) {
               for (const e of unseen) seen.add(o.idOf(e));
               const mine = new Set(await claimForThisTab(o.claimsKey, unseen.map(o.idOf)));
+              // Switched off (unmounted) while the request was out: announce nothing.
+              if (cancelled) return;
               const fresh = unseen.filter((e) => mine.has(o.idOf(e)));
+              const native = latest.current.desktop && !lookedAt;
               const toasts = native ? fresh.filter((e) => !showNative(o.native(e))) : fresh;
-              if (!cancelled && toasts.length) o.onToasts(toasts);
+              if (toasts.length) o.onToasts(toasts);
             }
             cursor = body.cursor;
           }
