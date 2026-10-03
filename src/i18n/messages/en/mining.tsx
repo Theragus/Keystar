@@ -223,6 +223,8 @@ export const mining = {
     dayMeta: (entries: number, characters: number) =>
       `${plural(entries, "entry", "entries")} · ${plural(characters, "character", "characters")}`,
     dayPartial: (shown: number, entries: number) => `${n(shown)} of ${n(entries)} on this page`,
+    collapseAll: "Collapse all",
+    expandAll: "Expand all",
     pagination: "Pagination",
     previous: "Previous",
     next: "Next",

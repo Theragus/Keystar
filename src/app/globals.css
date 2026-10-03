@@ -340,8 +340,23 @@ select option:disabled {
 .ks-table tbody:first-of-type .ks-group-row > * {
   border-top: 0;
 }
-.ks-table tbody tr.ks-group-row:hover {
-  background: transparent;
+.ks-table tbody tr.ks-group-row:hover > * {
+  background: rgba(255, 255, 255, 0.055);
+}
+/* Rows of a collapsed group: invisible and zero-height, but still sizing the columns
+   (`visibility: collapse` would do this, but Safari treats it as `hidden`). */
+.ks-table [data-collapsed] > tr:not(.ks-group-row) > td {
+  visibility: hidden;
+  padding-block: 0;
+  border-bottom: 0;
+  line-height: 0;
+}
+.ks-table [data-collapsed] > tr:not(.ks-group-row) > td > * {
+  max-height: 0;
+  padding-block: 0;
+  border-block-width: 0;
+  vertical-align: top;
+  overflow: hidden;
 }
 .ks-table .num {
   text-align: right;
