@@ -15,6 +15,7 @@ import { shell } from "./shell";
 import { social } from "./social";
 import { trade } from "./trade";
 import { wallet } from "./wallet";
+import { wormholes } from "./wormholes";
 
 /**
  * English source dictionary, one namespace per area. Its shape is the
@@ -38,6 +39,7 @@ export const en = {
   trade,
   wallet,
   social,
+  wormholes,
 };
 
 export type Messages = typeof en;

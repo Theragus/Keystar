@@ -45,3 +45,6 @@ next-env.d.ts
 
 # worker bundle
 /dist
+
+# downloaded source data (pnpm wh:data)
+/.cache

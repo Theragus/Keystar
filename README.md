@@ -74,6 +74,11 @@ long-term journal archive.
   tackle, capital …), who flies together, standings from your contacts, and a briefing, pilot dossiers and d-scan
   reads written by Claude (optional API key) or from templates. Scans are shareable and feed a corp-wide
   "recently seen hostiles" list.
+- **Wormhole chain map** (Exploration): a shared map of the corporation's chain in the spirit of Pathfinder —
+  systems with class, effect and statics; connections with wormhole type, lifetime band and "at most … left", mass and
+  largest ship; a tree layout from home that stays readable on its own, drag to pin or connect, a list sorted by time
+  left, keyboard shortcuts, live updates for everyone with the map open. Plus a **system lookup** for any J-code or
+  known-space system. No extra scopes.
 - **Appraisal** (Trade): paste cargo, inventory, contracts, EFT fittings, d-scans, killmails or item lists and get
   Jita 4-4 buy / sell / split values, volume and a percentage price (e.g. for buyback), saved as a shareable link.
 - **Corporation wallets** (Finances): balances, income, expenses and net for every wallet division per day / week /
@@ -149,7 +154,7 @@ KEYSTAR_DEMO_MODE=true pnpm dev
 ## Tech stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · PostgreSQL + Drizzle ORM · jose · zod ·
-Recharts · lucide · Anthropic SDK (optional Claude reports) · Vitest · Docker Compose + Caddy.
+Recharts · React Flow · d3-hierarchy · lucide · Anthropic SDK (optional Claude reports) · Vitest · Docker Compose + Caddy.
 
 ## License
 
@@ -158,6 +163,9 @@ modify and share it; if you run a modified version as a service for other people
 (set `SOURCE_URL` to your fork — the login page links to it).
 
 ---
+
+Wormhole types, system effects and statics come from [anoik.is](https://anoik.is/); system data from CCP's static
+data export.
 
 EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide. Keystar is a
 fan-made tool and is not affiliated with or endorsed by CCP hf.

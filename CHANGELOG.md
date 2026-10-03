@@ -6,8 +6,32 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Wormhole chain map** (Exploration → Chain map, German "Chain-Karte"): a shared map of the corporation's wormhole
+  chain. No new scopes; the migration runs on start. A director chooses the home system on first use.
+  - Systems show class (C1–C3 green, C4–C5 yellow, C6 red, known space in its security colour), effect and
+    statics; the details panel adds the effect's modifiers at the system's strength and links to anoik.is, DOTLAN
+    and zKillboard.
+  - Connections carry the wormhole type (picked from those that spawn in the system's class, statics first), which
+    side shows it, lifetime band (more than a day … closing), mass (stable, reduced, critical) and largest ship.
+    Lifetime is drawn as the line style and mass as its width, and the label spells both out with an upper bound of
+    the time left. Collapsed holes fade out and are removed, together with systems they left stranded.
+  - The chain is laid out as a tree from home, one column per jump, with room for the labels; new systems slot in
+    next to the system they connect to without moving anything else. Drag a system to pin it, drag between systems to
+    connect them, Auto-arrange to tidy up. A list view sorts connections by time left. Keyboard shortcuts: 1–5
+    lifetime, E end of life, 7/8/9 mass, Del, / to add a system, F to fit.
+  - Everyone with the map open sees edits within a few seconds.
+  - Permissions: view and edit (member), manage — home system, clear map (director).
+- **System lookup** (Exploration → System lookup): any J-code or known-space system with class, effect, statics,
+  the wormholes that can appear there (lifetime, mass, largest ship) and links.
+- Wormhole data is bundled (CCP's static data export and anoik.is, credited in the app); `pnpm wh:data` regenerates
+  it.
+
 ### Changed
 
+- Null-sec security status (0.0 and below) is shown in red instead of purple everywhere, so the security colours run
+  from blue at 1.0 to red.
 - **Member audit** handles large corporations: search by character, account (main) or character ID as you type, click a
   stat tile (In-game roster, Registered, Not registered, Missing or revoked ESI) to show only those characters, and page
   through 50 at a time. Searching, filtering and paging happen in the database, and the state is in the URL, so a
