@@ -8,6 +8,7 @@ export const killboard: typeof en = {
   module: {
     navSection: "Kampf",
     nav: { killboard: "Killboard" },
+    alerts: { kills: { label: "Kills und Verluste", hint: "Wenn ein Corp-Mitglied einen Kill hat oder ein Schiff verliert" } },
     permissionGroup: "Killboard",
     permissions: {
       view: {

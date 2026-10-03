@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { createSwitch, useLiveFeed } from "@/components/shell/live-feed";
+import { useLiveFeed } from "@/components/shell/live-feed";
 import { Toast, ToastViewport } from "@/components/ui/toast";
 import { allianceLogo, characterPortrait, corporationLogo } from "@/core/eve/images";
 import { useI18n } from "@/i18n/client";
@@ -13,9 +13,6 @@ const POLL_MS = 30_000;
 const TOAST_MS = 30_000;
 const MAX_VISIBLE = 3;
 const MAIL_COLOR = "var(--color-accent)";
-
-/** Mail alerts on or off, per browser. */
-export const mailAlertsSwitch = createSwitch("ks_mail_alerts", true);
 
 const mailUrl = (m: LiveMailEvent) => `/mail?mail=${m.characterId}-${m.mailId}`;
 
@@ -35,7 +32,7 @@ function senderIcon(m: LiveMailEvent): string | undefined {
 /**
  * Live notifications for new EVE mail in the viewer's own mailboxes: toasts,
  * or desktop notifications while the user isn't looking at Keystar. Each opens
- * the mail in Keystar. Mounted only while mail alerts are on.
+ * the mail in Keystar. Registered as `social.mail` in src/modules/alerts.ts.
  */
 export function LiveMail() {
   const { t } = useI18n();

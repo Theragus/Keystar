@@ -39,8 +39,6 @@ export const shell: typeof en = {
   alerts: {
     button: "Alarme",
     menu: "Alarm-Einstellungen",
-    kills: { label: "Kills und Verluste", hint: "Wenn ein Corp-Mitglied einen Kill hat oder ein Schiff verliert" },
-    mail: { label: "EVE-Mail", hint: "Wenn einer deiner Charaktere mit Mail-Zugriff eine Mail bekommt" },
     desktop: {
       label: "Desktop-Benachrichtigungen",
       hint: "Alarme als System-Benachrichtigung zeigen, solange Keystar im Hintergrund ist",

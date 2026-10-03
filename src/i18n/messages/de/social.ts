@@ -8,6 +8,7 @@ export const social: typeof en = {
   module: {
     navSection: "Soziales",
     nav: { mail: "EVE-Mail" },
+    alerts: { mail: { label: "EVE-Mail", hint: "Wenn einer deiner Charaktere mit Mail-Zugriff eine Mail bekommt" } },
     permissionGroup: "Soziales",
     permissions: {
       mail: {

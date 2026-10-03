@@ -183,9 +183,12 @@ Current jobs:
 
 ## Live alerts
 
-The **Alerts** menu in the top bar (`src/components/shell/live-alerts.tsx`) switches kill/loss alerts, mail alerts
-and desktop notifications on or off per browser (localStorage). Each feed is a `useLiveFeed` hook
-(`src/components/shell/live-feed.ts`) polling its endpoint with a cursor from `src/core/live-cursor.ts`:
+Modules declare live alerts in their manifest (`alerts`; today `killboard.kills` and `social.mail`) and register a
+feed component for each in `src/modules/alerts.ts`. The **Alerts** menu in the top bar
+(`src/components/shell/live-alerts.tsx`) shows a per-browser switch (localStorage) for every alert the user may get
+(`availableAlerts`: permissions and settings), plus one for desktop notifications. Each feed polls its endpoint
+through `useLiveFeed` (`src/components/shell/live-feed.ts`), with a cursor from `src/core/live-cursor.ts`. How to
+add one is described in docs/modules.md.
 
 - A tab the user is looking at (visible and focused) shows new events as toasts. A hidden tab stops polling, and
   after 2 minutes hidden it starts over from "now" instead of replaying what it missed.

@@ -12,6 +12,7 @@ export const killboard = {
   module: {
     navSection: "Combat",
     nav: { killboard: "Combat Report" },
+    alerts: { kills: { label: "Kills and losses", hint: "When a corporation member gets a kill or loses a ship" } },
     permissionGroup: "Killboard",
     permissions: {
       view: {

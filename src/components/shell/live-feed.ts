@@ -23,7 +23,7 @@ const FOCUS_TTL_MS = FOCUS_BEAT_MS + 10_000;
  * other tabs follow through the storage event. Without storage the choice
  * lasts for this page only.
  */
-export function createSwitch(key: string, defaultOn: boolean) {
+function createSwitch(key: string, defaultOn: boolean) {
   const changed = defaultOn ? "off" : "on";
   const listeners = new Set<() => void>();
   let fallback = defaultOn;
@@ -44,6 +44,7 @@ export function createSwitch(key: string, defaultOn: boolean) {
   };
   return {
     read,
+    subscribe,
     write(on: boolean) {
       fallback = on;
       try {
@@ -56,6 +57,16 @@ export function createSwitch(key: string, defaultOn: boolean) {
     },
     useValue: () => useSyncExternalStore(subscribe, read, () => defaultOn),
   };
+}
+
+type Switch = ReturnType<typeof createSwitch>;
+const alertSwitches = new Map<string, Switch>();
+
+/** The per-browser on/off switch of one alert (on until turned off), stored under `ks_alerts_<id>` unless given a key. */
+export function alertSwitch(id: string, storageKey?: string): Switch {
+  let s = alertSwitches.get(id);
+  if (!s) alertSwitches.set(id, (s = createSwitch(storageKey ?? `ks_alerts_${id}`, true)));
+  return s;
 }
 
 /** Opt-in for native desktop notifications, per browser. The key predates mail alerts. */

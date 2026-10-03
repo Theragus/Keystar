@@ -1,32 +1,51 @@
 "use client";
 
 import { Bell, BellOff } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { Popover } from "@/components/ui/popover";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
-import { killAlertsSwitch, LiveKills } from "@/modules/killboard/components/live-kills";
-import { LiveMail, mailAlertsSwitch } from "@/modules/social/components/live-mail";
-import { useDesktopAlerts, useFocusBeacon } from "./live-feed";
+import { ALERT_FEEDS } from "@/modules/alerts";
+import { alertSwitch, useDesktopAlerts, useFocusBeacon } from "./live-feed";
+
+/** A live alert the viewer may get, with its text resolved on the server (`AlertDef`). */
+export interface AlertOption {
+  id: string;
+  label: string;
+  hint: string;
+}
 
 /**
- * Top bar alerts: a menu to switch kill/loss and mail alerts and desktop
- * notifications on or off (per browser), and the feeds that are on.
+ * Top bar alerts: a menu with a per-browser switch for every alert the viewer
+ * may get and one for desktop notifications, plus the feeds that are on.
  */
-export function LiveAlerts({ kills, mail }: { kills: boolean; mail: boolean }) {
+export function LiveAlerts({ alerts }: { alerts: AlertOption[] }) {
   const { t } = useI18n();
   const a = t.shell.alerts;
-  const killsOn = killAlertsSwitch.useValue() && kills;
-  const mailOn = mailAlertsSwitch.useValue() && mail;
+  const options = useMemo(() => alerts.filter((o) => ALERT_FEEDS[o.id]), [alerts]);
+  const switches = useMemo(() => options.map((o) => alertSwitch(o.id, ALERT_FEEDS[o.id]!.storageKey)), [options]);
+  const subscribe = useCallback(
+    (listener: () => void) => {
+      const offs = switches.map((s) => s.subscribe(listener));
+      return () => offs.forEach((off) => off());
+    },
+    [switches],
+  );
+  // The ids that are on, as one string so the snapshot compares by value.
+  const onKey = useSyncExternalStore(
+    subscribe,
+    () => options.filter((_, i) => switches[i]!.read()).map((o) => o.id).join(" "),
+    () => options.map((o) => o.id).join(" "),
+  );
+  const on = new Set(onKey.split(" ").filter(Boolean));
   const desktop = useDesktopAlerts();
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  const anyOn = killsOn || mailOn;
-  useFocusBeacon(anyOn);
+  useFocusBeacon(on.size > 0);
 
   const desktopHint =
     desktop.permission === "denied" ? a.desktop.blocked : desktop.permission === "unsupported" ? a.desktop.unsupported : a.desktop.hint;
-  const Icon = anyOn ? Bell : BellOff;
+  const Icon = on.size > 0 ? Bell : BellOff;
 
   return (
     <>
@@ -45,16 +64,15 @@ export function LiveAlerts({ kills, mail }: { kills: boolean; mail: boolean }) {
             title={a.menu}
             className="flex h-8 items-center gap-1.5 rounded-md border border-surface-contrast/[0.08] bg-surface-contrast/[0.03] px-2.5 text-xs text-ink-3 transition hover:text-ink"
           >
-            <Icon className={anyOn ? "size-3.5 text-accent" : "size-3.5"} aria-hidden />
+            <Icon className={on.size > 0 ? "size-3.5 text-accent" : "size-3.5"} aria-hidden />
             <span className="sr-only sm:not-sr-only">{a.button}</span>
           </button>
         }
       >
         <div role="dialog" aria-label={a.menu} className="flex flex-col">
-          {kills && (
-            <SwitchRow label={a.kills.label} hint={a.kills.hint} checked={killsOn} onChange={() => killAlertsSwitch.write(!killsOn)} />
-          )}
-          {mail && <SwitchRow label={a.mail.label} hint={a.mail.hint} checked={mailOn} onChange={() => mailAlertsSwitch.write(!mailOn)} />}
+          {options.map((o, i) => (
+            <SwitchRow key={o.id} label={o.label} hint={o.hint} checked={on.has(o.id)} onChange={() => switches[i]!.write(!on.has(o.id))} />
+          ))}
           <div className="my-1 border-t border-surface-contrast/[0.08]" />
           <SwitchRow
             label={a.desktop.label}
@@ -65,8 +83,12 @@ export function LiveAlerts({ kills, mail }: { kills: boolean; mail: boolean }) {
           />
         </div>
       </Popover>
-      {killsOn && <LiveKills />}
-      {mailOn && <LiveMail />}
+      {options
+        .filter((o) => on.has(o.id))
+        .map((o) => {
+          const { Feed } = ALERT_FEEDS[o.id]!;
+          return <Feed key={o.id} />;
+        })}
     </>
   );
 }

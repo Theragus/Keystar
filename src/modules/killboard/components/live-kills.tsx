@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { createSwitch, useLiveFeed } from "@/components/shell/live-feed";
+import { useLiveFeed } from "@/components/shell/live-feed";
 import { Portrait, ShipRender } from "@/components/ui/eve-image";
 import { SecurityStatus } from "@/components/ui/security";
 import { Toast, ToastViewport } from "@/components/ui/toast";
@@ -16,14 +16,11 @@ const POLL_MS = 15_000;
 const TOAST_MS = 30_000;
 const MAX_VISIBLE = 3;
 
-/** Kill and loss alerts on or off, per browser (stored as "off" under the key the mute switch always used). */
-export const killAlertsSwitch = createSwitch("ks_kill_alerts", true);
-
 /**
  * Live kill and loss notifications: toasts for killmails the worker picks up
  * from zKillboard's live feed, or desktop notifications while the user isn't
  * looking at Keystar. Each toast stays 30 seconds (paused while hovered) and
- * opens the killmail on zKillboard. Mounted only while kill alerts are on.
+ * opens the killmail on zKillboard. Registered as `killboard.kills` in src/modules/alerts.ts.
  */
 export function LiveKills() {
   const { t, f } = useI18n();

@@ -8,6 +8,7 @@ export const social = {
   module: {
     navSection: "Social",
     nav: { mail: "EVE Mail" },
+    alerts: { mail: { label: "EVE mail", hint: "When one of your characters with mail access receives mail" } },
     permissionGroup: "Social",
     permissions: {
       mail: {
