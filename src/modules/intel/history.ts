@@ -262,6 +262,10 @@ export function summarizeEngagement(
     iskKilled,
     iskLost,
     topKillmailId: top.killmailId,
+    battleAffiliations: [...new Map([
+      ...killmails.filter(k => k.victimCharacterId).map(k => [k.victimCharacterId!, { characterId: k.victimCharacterId!, corporationId: k.victimCorporationId, allianceId: k.victimAllianceId }] as const),
+      ...attackers.filter(a => a.characterId).map(a => [a.characterId!, { characterId: a.characterId!, corporationId: a.corporationId, allianceId: a.allianceId }] as const),
+    ]).values()],
     battle: { ours: shipsFor("ours"), theirs: shipsFor("theirs") },
   };
 }

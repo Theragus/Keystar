@@ -5,6 +5,7 @@ import { Radio } from "lucide-react";
 import { TIER_COLOR } from "../colors";
 import type { PilotScore } from "../types";
 import { IntelLoadingOverlay } from "./scan-progress";
+import { EngagementShips } from "./engagement-ships";
 import { PilotTags } from "./pilot-tags";
 import { Panel } from "@/components/ui/glass";
 import { getI18n } from "@/i18n/server";
@@ -118,16 +119,19 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
                   {[{ key: "ours" as const, label: e.ourTeam, losses: fight.ourLosses, isk: fight.iskLost }, { key: "theirs" as const, label: e.theirTeam, losses: fight.ourKills, isk: fight.iskKilled }].map(team => <div key={team.key} className="min-w-0">
                     <h4 className="font-semibold text-ink">{team.label}</h4>
                     <p className="mt-1 text-ink-3">{t.intel.engagements.lost(team.losses, f.compact(team.isk))} ISK</p>
-                    <ul className="mt-2 space-y-1">
-                      {(fight.battle?.[team.key] ?? []).map(ship => <li key={ship.shipTypeId} className={`flex flex-wrap items-center gap-1 rounded-md px-1.5 py-1 ${ship.lost ? "bg-critical/10" : "bg-surface-contrast/5"}`}>
-                        <TypeIcon id={ship.shipTypeId} size={18} className="rounded" />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1"><span className="text-ink-2">{f.integer(ship.count)}× {view.names.types.get(ship.shipTypeId)?.name ?? e.unknown}</span>
-                          {ship.lost > 0 && <span className="text-3xs text-critical-text">{e.shipsLost(ship.lost)}</span>}</div>
-                          <p className="mt-0.5 break-words text-3xs text-ink-3">{ship.pilotIds?.length ? ship.pilotIds.map(id => view.names.entities.get(id) ?? view.pilotNames.get(id) ?? e.unknown).join(", ") : e.unknown}</p>
-                        </div>
-                      </li>)}
-                    </ul>
+                    <EngagementShips legendLabel={e.allianceLegend} unknown={e.unknown} ships={(fight.battle?.[team.key] ?? []).map(ship => ({
+                      id: ship.shipTypeId, lost: ship.lost,
+                      heading: <><TypeIcon id={ship.shipTypeId} size={18} className="rounded" /><span className="text-ink-2">{f.integer(ship.count)}× {view.names.types.get(ship.shipTypeId)?.name ?? e.unknown}</span>{ship.lost > 0 && <span className="text-3xs text-critical-text">{e.shipsLost(ship.lost)}</span>}</>,
+                      pilots: (ship.pilotIds ?? []).map(id => {
+                        const affiliation = fight.battleAffiliations?.find(p => p.characterId === id);
+                        const key = affiliation?.allianceId ? `alliance:${affiliation.allianceId}` : affiliation?.corporationId ? `corporation:${affiliation.corporationId}` : `pilot:${id}`;
+                        const affiliationId = affiliation?.allianceId ?? affiliation?.corporationId;
+                        return { id, name: view.names.entities.get(id) ?? view.pilotNames.get(id) ?? e.unknown, affiliationId: key,
+                          affiliationName: affiliationId ? view.names.entities.get(affiliationId) ?? e.unknown : e.unknown,
+                          color: groupedPilots.find(g => g.id === key)?.color ?? CHART_CLASSES[(affiliationId ?? id) % CHART_CLASSES.length].color };
+                      }),
+                    }))} />
+
                   </div>)}
                 </div>
                 <p className="mt-2 text-3xs text-ink-3">{e.battleCoverage}</p>

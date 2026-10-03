@@ -19,6 +19,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Engagement ship rows support alliance/corporation highlighting and per-side legends, initially selecting the affiliation with the most recorded pilots on each side.
+
 - Reorganize Threat Intel Local Situation around wrapping pilot affiliation tags, last combat evidence, recent observed co-attacks, and the latest engagement with us. Pilot and legend selection highlights matching alliance members, falling back to corporation membership.
 - Show both sides of the latest engagement with observed ships, loss counts and ISK lost; highlight destroyed hulls in red and identify incomplete evidence. Give the engagement column more width than the observed-group column and show recorded pilot names beneath each hull.
 - Use compact equal-height pilot cards, direct character/corporation/alliance killboard links, and the three latest kills and losses as ship tags with detailed tooltips.

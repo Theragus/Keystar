@@ -338,5 +338,6 @@ export interface Engagement {
   iskLost: number;
   /** Most valuable killmail of the fight, for a link. */
   topKillmailId: number;
+  battleAffiliations?: { characterId: number; corporationId: number | null; allianceId: number | null }[];
   battle?: { ours: { shipTypeId: number; count: number; lost: number; pilotIds?: number[] }[]; theirs: { shipTypeId: number; count: number; lost: number; pilotIds?: number[] }[] };
 }
