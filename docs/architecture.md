@@ -22,9 +22,10 @@ Keystar is one TypeScript codebase that runs as two processes against one Postgr
 
 - The **app** never calls authenticated ESI routes on page loads; pages read from Postgres. It only talks to EVE
   during sign-in and for public lookups a user asks for (the ore field estimator and the appraisal resolving and
-  pricing item types they haven't seen before).
-- The **worker** owns all background ESI traffic and token refreshes, and also pulls public killmails from
-  zKillboard and (optionally) asks the Claude API to write the killboard's weekly situation report.
+  pricing item types they haven't seen before, a threat intel scan resolving pasted names and affiliations).
+- The **worker** owns all background ESI traffic and token refreshes, and also pulls public killmails and pilot
+  statistics from zKillboard and (optionally) asks the Claude API to write the killboard's weekly situation report
+  and threat intel briefings. Dossiers and d-scan reads are written when a user asks for them.
 
 ## Source layout
 
@@ -48,6 +49,8 @@ src/
   modules/
     mining/            the mining module: schema, jobs, queries, filters, UI components, estimator
     killboard/         zKillboard client and sync, combat aggregates, situation report (Claude or template), UI
+    intel/             threat intel: paste parser, scans, zKillboard worker, scoring, standings, history with us,
+                       d-scan matching, briefings and dossiers (Claude or template), UI
     trade/             appraisal: paste parser, name resolution, Jita pricing, saved shareable snapshots
     wallet/            opt-in character wallet transactions (raw data used by the mining P&L)
     jobs.ts            registry of background jobs (worker only)
@@ -113,7 +116,8 @@ stay `YYYY-MM-DD HH:mm ET` in both languages. Module manifests and job definitio
 selectors (`label: (t) => t.mining.module.nav.ledger`) so they can be rendered in any language.
 
 Not translated: names from ESI (items, systems, pilots — ESI is queried in English), CSV exports, log output and the
-stored killboard situation reports.
+stored killboard situation reports. Threat intel notes written by Claude stay in the language of whoever asked for
+them; its scores, tags and template notes are stored as data and shown in the reader's language.
 
 ## ESI client
 
@@ -144,7 +148,9 @@ Jobs are declared with an owner type:
 The worker re-plans every 30 s (new tokens get rows, revoked ones are disabled), claims due rows with
 `FOR UPDATE SKIP LOCKED` (several workers are safe), and records the outcome on the row: next run (at least the job
 interval, later if ESI's `Expires` says so), status, summary, duration, error, exponential back-off. Corporation jobs
-try characters that hold the preferred in-game role first and fall back to the next character on `403`.
+try characters that hold the preferred in-game role first and fall back to the next character on `403`; jobs whose
+endpoint needs no role (`anyCorpMember`) can use any member's token. `triggerJobs()` makes a job due now; a trigger
+that arrives while the job runs is kept, so it runs again right after.
 
 Current jobs:
 
@@ -161,6 +167,11 @@ Current jobs:
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
 | `killboard.zkill-sync`           | 1 h      | Home corporation kills/losses from zKillboard (no token)   |
 | `killboard.situation-report`     | 1 h      | Writes the weekly situation report once a week has closed  |
+| `intel.scan-worker`              | 2 s      | zKillboard work for threat intel scans (idles at 1 min; woken by new scans) |
+| `intel.briefings`                | 1 min    | Briefings for scans that became ready (woken by the scan worker) |
+| `intel.housekeeping`             | 6 h      | Retention of killmail digests, pilot profiles and scans    |
+| `intel.corporation-contacts`     | 15 min   | Home corporation contacts (standings), any member's token  |
+| `intel.alliance-contacts`        | 15 min   | Home alliance contacts (standings), any member's token     |
 | `wallet.character-transactions`  | 1 h      | Market transactions of characters that opted in to wallets |
 
 ## Mining data model
@@ -228,6 +239,42 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   set; otherwise, or if the call fails, a deterministic template writes it. Reports use a tiny inline markup
   (`**bold**`, `{+good}`, `{-bad}`, `{@Pilot}`) rendered as React text — model output is never rendered as HTML.
   Reports are stored with the facts they were written from (`killboard_reports`).
+
+## Threat intel
+
+A scan is a pasted list of pilots (local member list, fleet composition, chat lines, names) and an optional d-scan,
+saved under an unguessable id like an appraisal. Only the normalised names are stored, never the raw paste.
+
+- **Instantly** (in the server action): names resolve through `eve_entities`, then ESI `POST /universe/ids`;
+  affiliations through `POST /characters/affiliation` (cached an hour in `intel_pilots`); standings from the home
+  corporation and alliance (own corp/alliance always friendly; otherwise the most specific contact wins, the
+  corporation's list before the alliance's); and **history with us** from the killboard tables: kills on us,
+  losses to us and the hulls flown against us, plus fights (our killmails with any pasted pilot, clustered by system
+  and a 30-minute gap) with what they brought and who else was there.
+- **The worker** (`intel.scan-worker`) works through `intel_queue`, one row per pilot shared by every scan, in
+  stages: zKillboard statistics for every pilot first (`/api/stats/characterID/`), then each pilot's newest 200
+  killmails, highest quick score first, then older pages only until 30 days are covered (at most 3 pages; a stored
+  cursor stops at known killmails), and for dangerous pilots with few losses one page of losses for fit evidence
+  (cyno, cloak, tackle). Data is fresh for an hour, so rescans are nearly instant. Killmails are kept as a compact
+  per-pilot digest (`intel_pilot_killmails`), not in the killboard tables. A `403` from zKillboard stops the run;
+  other errors back off per pilot. In demo mode a deterministic generator replaces zKillboard.
+- **Scoring** (`score/`, pure functions): every event is weighted by recency (half-life 14 days); the digest covers
+  the newest killmails exactly and zKillboard's monthly statistics the time before, so nothing counts twice. Eight
+  dimensions (activity, lethality, style, specialties, nearby, history with us, active now, character), each 0–100
+  with a reason (stored as data, written out in the reader's language by `text.ts`), average into a composite that a **recency gate** damps for pilots who are not active now, so
+  lifetime fame alone never ranks high. Tags (cyno, hunter, tackle, capital, gate camper, ganker, …) come from hull
+  and module groups (`hulls.ts`, checked against ESI) and loss fits; evidence older than 30 days is marked historic.
+- **Claude** (`ai/`) only reads computed facts — each pilot's latest killmails first, lifetime numbers last — and
+  writes the narrative via structured outputs: a briefing per scan (automatically once the top pilots are read;
+  `intel.ai` permission of the creator, at least three non-friendly pilots), dossiers and d-scan reads on request.
+  D-scan reads may only name pilots the deterministic matcher proposed. Output is sanitised and rendered through
+  the killboard's safe markup. Without a key, without permission, over the hourly budget (20 per user, 120 per
+  instance; every call counts, failed ones too, and is reserved in a locked transaction before it is made) or on
+  failure, templates write the same notes. Notes are stored with their facts in `intel_ai_notes` and
+  reused for unchanged facts in the same language. Facts are always English; Claude writes in the language of
+  whoever asked (the scan creator's for automatic briefings, `intel_scans.locale`). Template notes are stored as
+  drafts (keys, numbers, names) and written out in each reader's language.
+- The **recently seen hostiles** feed lists pilots from anyone's scans in the last 7 days, without friendlies.
 
 ## Security notes
 

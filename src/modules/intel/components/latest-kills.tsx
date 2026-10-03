@@ -1,0 +1,74 @@
+import { TypeIcon } from "@/components/ui/eve-image";
+import { getI18n } from "@/i18n/server";
+import { KILL_COLOR, LOSS_COLOR } from "@/modules/killboard/colors";
+import { zkillKill } from "@/modules/killboard/links";
+import type { DisplayNames } from "../names";
+import type { LatestEvent, PilotProfile } from "../types";
+
+/** The pilot's newest kills and losses, newest first: what they fly right now and where. */
+export async function LatestKills({ events, names, limit = 5 }: { events: LatestEvent[]; names: DisplayNames; limit?: number }) {
+  if (!events.length) return null;
+  const { t, f } = await getI18n();
+  const l = t.intel.latest;
+  return (
+    <ol className="flex flex-wrap gap-1.5">
+      {events.slice(0, limit).map((e) => {
+        const color = e.isLoss ? LOSS_COLOR : KILL_COLOR;
+        const other = e.otherShipTypeId ? (names.types.get(e.otherShipTypeId)?.name ?? null) : null;
+        const system = names.systems.get(e.systemId)?.name ?? null;
+        return (
+          <li key={e.killmailId}>
+            <a
+              href={zkillKill(e.killmailId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-white/8"
+              style={{ borderLeftColor: color }}
+              title={l.title({ isLoss: e.isLoss, ship: other, system, isk: f.compact(e.value), attackers: e.attackerCount })}
+            >
+              {e.shipTypeId ? <TypeIcon id={e.shipTypeId} size={22} className="rounded" /> : null}
+              <span className="min-w-0">
+                <span className="block max-w-36 truncate text-ink">
+                  <span className="sr-only">{l.srKind(e.isLoss)}</span>
+                  {l.chip(e.isLoss, other)}
+                </span>
+                <span className="block text-3xs text-ink-3">
+                  {f.relativeTime(e.time)} · {system ?? "?"} · {e.solo ? l.solo : l.pilots(e.attackerCount)}
+                </span>
+              </span>
+            </a>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** "Last seen flying a Sabre, 3 h ago in Amamake" — or what zKillboard says they fly recently. */
+export async function LastSeen({ profile, names }: { profile: PilotProfile; names: DisplayNames }) {
+  const { t, f } = await getI18n();
+  const seen = profile.recent.lastSeen;
+  if (seen) {
+    const ship = seen.shipTypeId ? (names.types.get(seen.shipTypeId)?.name ?? null) : null;
+    const system = names.systems.get(seen.systemId)?.name ?? null;
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
+        {seen.shipTypeId && <TypeIcon id={seen.shipTypeId} size={16} className="rounded" />}
+        {t.intel.latest.lastSeen(seen.isLoss, ship, f.relativeTime(seen.time), system)}
+      </span>
+    );
+  }
+  const recent = profile.hulls.slice(0, 3);
+  if (!recent.length) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-ink-3">
+      {t.intel.latest.recentlyFlying}
+      {recent.map((h) => (
+        <span key={h.shipTypeId} className="inline-flex items-center gap-1 text-ink-2">
+          <TypeIcon id={h.shipTypeId} size={16} className="rounded" />
+          {names.types.get(h.shipTypeId)?.name ?? ""}
+        </span>
+      ))}
+    </span>
+  );
+}

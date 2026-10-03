@@ -58,6 +58,14 @@ situation report, and an **appraisal** tool for Jita prices.
 - **Killboard** for the home corporation from zKillboard (no extra scopes): kills, losses, ISK efficiency with
   week-over-week changes, a weekly **situation report** written by Claude (optional API key) or from a template, top
   systems, recent activity, most effective / used / lost ships and pilot efficiency.
+- **Live fleet**: the fleet boss shares their fleet from ESI; members by wing and squad with ship, system and role,
+  composition by ship class, joins and leaves, refreshed every 15 seconds, plus a list of past fleets.
+- **Threat intel** (Combat): paste local, a fleet composition or names (plus an optional d-scan) and see who they
+  are, whether they fought your corporation and what they brought, and how dangerous each pilot is *right now*:
+  explained scores weighted toward recent kills, the latest kills and losses per pilot, role tags (cyno, hunter,
+  tackle, capital …), who flies together, standings from your contacts, and a briefing, pilot dossiers and d-scan
+  reads written by Claude (optional API key) or from templates. Scans are shareable and feed a corp-wide
+  "recently seen hostiles" list.
 - **Appraisal** (Trade): paste cargo, inventory, contracts, EFT fittings, d-scans, killmails or item lists and get
   Jita 4-4 buy / sell / split values, volume and a percentage price (e.g. for buyback), saved as a shareable link.
 - **Administration**: users & roles, member audit (in-game roster vs registered), sync status with manual triggers,
@@ -66,9 +74,9 @@ situation report, and an **appraisal** tool for Jita prices.
   error-limit and per-group rate-limit back-off.
 - **English and German**: the language follows the browser (English for everything else) and can be switched in the
   sidebar footer; numbers and dates use the language's conventions (e.g. "9,87 Mio. ISK").
-- **Design**: dark, EVE-flavoured "liquid glass" UI with Supabase-style docked navigation, made for large screens.
+- **Design**: dark, EVE-flavoured UI.
 
-See [ROADMAP.md](ROADMAP.md) for what's next (threat intelligence, live fleet, skills, assets, wallets).
+See [ROADMAP.md](ROADMAP.md) for what's next (skills, assets, wallets).
 
 ## Deploy
 

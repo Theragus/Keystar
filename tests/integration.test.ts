@@ -37,8 +37,10 @@ describe.skipIf(!enabled)("integration", async () => {
     await db().execute(sql`TRUNCATE users, characters, esi_tokens, sessions, eve_types, eve_groups, eve_systems,
       eve_entities, type_values, type_value_history, mining_character_ledger, mining_observer_ledger, mining_observers,
       sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, esi_cache,
-      wallet_transactions, mining_activity, mining_activity_coverage, mining_pnl_settings, mining_pnl_characters,
-      mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries
+      fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
+      intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, mining_activity,
+      mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
+      mining_pnl_tx_overrides, mining_pnl_entries
       RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
@@ -800,6 +802,99 @@ describe.skipIf(!enabled)("integration", async () => {
     });
   });
 
+  describe("fleet", async () => {
+    const { createLogger } = await import("@/core/logger");
+    const { fleetLiveJob } = await import("@/modules/fleet/jobs");
+    const { EsiError } = await import("@/core/esi/client");
+    type Routes = Record<string, unknown>;
+    // Stub ESI: each path returns its fixture, an Error is thrown, a missing path is a 404.
+    const stubEsi = (routes: Routes) =>
+      ({
+        get: async (path: string) => {
+          const out = routes[path];
+          if (out instanceof Error) throw out;
+          if (out === undefined) throw new EsiError(`ESI GET ${path} failed: not found`, 404, path);
+          return { data: out, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false };
+        },
+      }) as unknown as InstanceType<typeof EsiClient>;
+    const run = (characterId: number, routes: Routes) =>
+      fleetLiveJob.run({
+        jobId: 1,
+        ownerType: "character",
+        ownerId: characterId,
+        characterId,
+        esi: stubEsi(routes),
+        db: db(),
+        log: createLogger("test"),
+        meta: {},
+      }).then((r) => ({ summary: r?.summary }));
+    const fm = (id: number, role: string, wing: number, squad: number, ship = 1230) => ({
+      character_id: id,
+      join_time: "2026-10-03T18:00:00Z",
+      role,
+      role_name: role,
+      ship_type_id: ship,
+      solar_system_id: 30000180,
+      squad_id: squad,
+      wing_id: wing,
+      takes_fleet_warp: true,
+    });
+    const boss = (members: unknown[]) => ({
+      "/characters/1/fleet": { fleet_id: 77, fleet_boss_id: 1, role: "fleet_commander", wing_id: -1, squad_id: -1 },
+      "/fleets/77": { is_free_move: true, is_registered: false, is_voice_enabled: false, motd: "hi" },
+      "/fleets/77/members": members,
+      "/fleets/77/wings": [{ id: 5, name: "Wing", squads: [{ id: 50, name: "Squad" }] }],
+    });
+
+    beforeEach(async () => {
+      await db().insert(schema.eveEntities).values([
+        { id: 1, name: "Alpha", category: "character" },
+        { id: 2, name: "Bravo", category: "character" },
+      ]);
+    });
+
+    it("does nothing without an active tracker", async () => {
+      const out = await run(1, {});
+      expect(out.summary).toBe("Not tracking");
+      expect(await db().select().from(schema.fleets)).toEqual([]);
+    });
+
+    it("records the fleet, then who left, then closes it when the boss leaves", async () => {
+      await db().insert(schema.fleetTrackers).values({ characterId: 1, userId: userA });
+      await run(1, boss([fm(1, "fleet_commander", -1, -1), fm(2, "squad_member", 5, 50, 45490), fm(9, "squad_member", 5, 50)]));
+      const [fleet] = await db().select().from(schema.fleets);
+      expect(fleet).toMatchObject({ fleetId: 77, bossCharacterId: 1, isFreeMove: true, endedAt: null });
+      expect(fleet.wings).toEqual([{ id: 5, name: "Wing", squads: [{ id: 50, name: "Squad" }] }]);
+      expect(await db().select().from(schema.fleetMembers)).toHaveLength(3);
+      const [tracker] = await db().select().from(schema.fleetTrackers);
+      expect(tracker).toMatchObject({ status: "tracking", fleetId: 77 });
+
+      await run(1, boss([fm(1, "fleet_commander", -1, -1), fm(2, "squad_member", 5, 50, 45490)]));
+      const members = await db().select().from(schema.fleetMembers);
+      expect(members.filter((m) => m.leftAt).map((m) => m.characterId)).toEqual([9]);
+
+      const out = await run(1, {});
+      expect(out.summary).toMatch(/Not in a fleet/);
+      const [ended] = await db().select().from(schema.fleets);
+      expect(ended.endedAt).not.toBeNull();
+      expect((await db().select().from(schema.fleetMembers)).every((m) => m.leftAt)).toBe(true);
+      const [stopped] = await db().select().from(schema.fleetTrackers);
+      expect(stopped.status).toBe("no_fleet");
+    });
+
+    it("waits without reading members while the character is not the boss", async () => {
+      await db().insert(schema.fleetTrackers).values({ characterId: 2, userId: userB });
+      const out = await run(2, {
+        "/characters/2/fleet": { fleet_id: 77, fleet_boss_id: 1, role: "squad_member", wing_id: 5, squad_id: 50 },
+        "/fleets/77/members": new Error("must not be called"),
+      });
+      expect(out.summary).toMatch(/not the boss/);
+      const [tracker] = await db().select().from(schema.fleetTrackers);
+      expect(tracker).toMatchObject({ status: "not_boss", fleetId: 77 });
+      expect(await db().select().from(schema.fleets)).toEqual([]);
+    });
+  });
+
   describe("sync scheduler", () => {
     const job = (run: () => Promise<void>) => ({
       key: "test.job",
@@ -863,6 +958,38 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(row.lastError).toBe("boom");
       expect(row.consecutiveFailures).toBe(1);
       expect(row.nextRunAt.getTime()).toBeGreaterThan(Date.now() + 50_000);
+    });
+
+    it("keeps a trigger that arrives while the job runs", async () => {
+      let triggered = false;
+      const def = job(async () => {
+        await scheduler.triggerJobs({ jobKey: "test.job" });
+        triggered = true;
+      });
+      await scheduler.planJobs([def]);
+      const [claimed] = await scheduler.claimDueJobs("w1", [def.key], 10);
+      await scheduler.executeJob(claimed, def, { esi });
+      expect(triggered).toBe(true);
+      const [row] = await db().select().from(schema.syncJobs);
+      expect(row.lastStatus).toBe("ok");
+      expect(row.nextRunAt.getTime()).toBeLessThan(Date.now() + 5_000);
+
+      // Without a trigger the interval applies again.
+      const [again] = await scheduler.claimDueJobs("w1", [def.key], 10);
+      await scheduler.executeJob(again, job(async () => {}), { esi });
+      const [after] = await db().select().from(schema.syncJobs);
+      expect(after.nextRunAt.getTime()).toBeGreaterThan(Date.now() + 590_000);
+    });
+
+    it("lets any corporation member serve role-less corporation jobs, role holders first", async () => {
+      await db().insert(schema.characterCorpRoles).values([
+        { characterId: 1, roles: [] },
+        { characterId: 2, roles: ["Director"] },
+      ]);
+      await db().execute(sql`UPDATE esi_tokens SET scopes = ARRAY['scope.a'], status = 'active'`);
+      const base = { ...job(async () => {}), owner: "corporation" as const };
+      expect(await scheduler.corporationCandidates(db(), 100, base)).toEqual([2, 3]);
+      expect(await scheduler.corporationCandidates(db(), 100, { ...base, anyCorpMember: true })).toEqual([2, 1, 3]);
     });
   });
 });

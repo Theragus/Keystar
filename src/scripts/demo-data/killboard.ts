@@ -73,16 +73,25 @@ const CAPSULE = H(670, "Capsule", 29, [10_000, 10_000]);
 /** Hot spots first; picked by name from the demo's static systems. */
 const KILL_SYSTEMS = ["Tama", "Amamake", "Akora", "Hek", "Rens", "Sobaseki"];
 
-const HOSTILE_CORPS = [
+export const HOSTILE_CORPS = [
   { corporationId: 98_500_101, name: "Crimson Talon Raiders", ticker: "CTRDS" },
   { corporationId: 98_500_202, name: "Null Vector Syndicate", ticker: "NVS" },
   { corporationId: 98_500_303, name: "Pale Horizon Logistics", ticker: "PHLOG" },
 ];
-const HOSTILE_NAMES = [
+export const HOSTILE_NAMES = [
   "Draven Kask", "Ilse Morrow", "Teo Varkhan", "Jun Aelric", "Mara Quessel", "Oskar Venn", "Yara Dusk",
   "Bastion Krell", "Nadia Strome", "Pyre Holt", "Cass Orlov", "Edda Vintner", "Rook Saelen", "Lio Marchetti",
   "Sable Wyrm", "Torvin Ashe", "Kaito Ren", "Veda Quill", "Hask Morrigan", "Ulla Brenn",
 ];
+
+/** The demo's hostile pilots (they fight the home corporation on its killboard). */
+export function hostilePilots() {
+  return HOSTILE_NAMES.map((name, i) => ({
+    characterId: 2_130_000_001 + i,
+    name,
+    corporationId: HOSTILE_CORPS[i % HOSTILE_CORPS.length].corporationId,
+  }));
+}
 
 export async function seedKillboard(
   db: Db,
@@ -113,11 +122,7 @@ export async function seedKillboard(
     .values(hulls.map((h) => ({ typeId: h.typeId, name: h.name, groupId: h.groupId, volume: 0, portionSize: 1, published: true })))
     .onConflictDoNothing();
   await db.insert(eveCorporations).values(HOSTILE_CORPS.map((c) => ({ ...c, memberCount: 40 }))).onConflictDoNothing();
-  const hostiles = HOSTILE_NAMES.map((name, i) => ({
-    characterId: 2_130_000_001 + i,
-    name,
-    corporationId: HOSTILE_CORPS[i % HOSTILE_CORPS.length].corporationId,
-  }));
+  const hostiles = hostilePilots();
   await db
     .insert(eveEntities)
     .values([

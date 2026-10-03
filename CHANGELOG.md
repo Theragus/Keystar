@@ -6,12 +6,39 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
-**Before updating:** add the scope `esi-wallet.read_character_wallet.v1` to your application on
-developers.eveonline.com. Nobody is asked for it unless they enable wallet import in the mining P&L, but without it
-on the application that EVE login fails with `invalid_scope`. Members don't need to re-link.
+**When updating:** Threat intel reads blues and reds from the corporation's and alliance's contacts, which needs two
+corporation scopes; wallet import in the mining P&L needs one optional character scope.
+
+1. Add `esi-corporations.read_contacts.v1`, `esi-alliances.read_contacts.v1` and
+   `esi-wallet.read_character_wallet.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>. Nobody is asked for the wallet scope unless they enable wallet
+   import in the mining P&L, but without it on the application that EVE login fails with `invalid_scope`.
+2. Update as usual; the database migrations run on start.
+3. One member of the corporation re-authorises a character under My Characters. Without the scopes, only your own
+   corporation and alliance count as friendly. Nobody needs to re-authorise for the wallet scope.
+4. Optional: `INTEL_MODEL` picks the Claude model for intel briefings, dossiers and d-scan reads (default
+   `claude-sonnet-5-5`); Claude is only used when `ANTHROPIC_API_KEY` is set.
 
 ### Added
 
+- **Threat intel** (Combat → Threat Intel): paste local, a fleet composition, chat lines or names, optionally with a
+  d-scan, and get:
+  - corporations, standings and **history with us** at once: kills on us, losses to us, the hulls they flew against
+    us, and the fights from our killboard with what they brought, who else was there and how it went;
+  - a **threat score** per pilot from zKillboard, filled in live: statistics for everyone first, then each pilot's
+    newest killmails (most dangerous first). Scores are weighted toward recent activity, explained in eight
+    dimensions and damped for pilots who are not active now; tags such as cyno (from loss fits), hunter, tackle,
+    capital, gate camper and ganker; the latest kills and losses and "last seen flying …" for every pilot;
+  - a group view (tiers, likely composition, roles, pilots who fly together), d-scan matching, a pilot page
+    (latest kills, ships, activity heatmap, fights with us, wingmen, corporation history);
+  - a **briefing** per scan, pilot **dossiers** and **d-scan reads** written by Claude when `ANTHROPIC_API_KEY` is
+    set (model `INTEL_MODEL`, default `claude-sonnet-5-5`; capped at 20 calls per user and 120 per instance an
+    hour), otherwise from templates;
+  - shareable scan links and a corp-wide **recently seen hostiles** feed;
+  - in English and German: scores, tags and template notes follow the reader's language, and Claude writes in the
+    language of whoever asks for a note (the scan's creator for automatic briefings).
+- New permissions **Use threat intel**, **Use Claude for intel** (both members by default) and **Manage threat
+  intel** (directors).
 - **Mining P&L** (Industry → Mining P&L, German "Mining-GuV"): a personal income/expense sheet for pilots mining
   with alts, visible only to the account itself, in English and German.
   - Income: ore mined by your characters, valued like the mining dashboard, with an optional buyback % and per-ore
@@ -37,8 +64,30 @@ on the application that EVE login fails with `invalid_scope`. Members don't need
 
 ### Fixed
 
-- Resolving new item types (appraisal, killboard, wallet) no longer fetches every type of their group from ESI; only
-  ore, ice and gas groups are scanned for compressed variants.
+- The ESI client no longer pauses for a second after responses without error-limit headers.
+- A sync job triggered while it is running now runs again right after instead of waiting for its next interval.
+- Looking up ship or module types no longer fetches every type of their group (only ores, ice and gas need that).
+
+## [0.2.0] - 2026-10-03
+
+**When updating:** Live fleet needs the new character scope `esi-fleets.read_fleet.v1`.
+
+1. Add `esi-fleets.read_fleet.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>.
+2. Update as usual (`KEYSTAR_VERSION=0.2.0`, `docker compose pull`, `docker compose up -d`); the database
+   migrations run on start.
+3. Members who run fleets re-authorise their characters under My Characters, which shows the missing scope.
+
+### Added
+
+- **Live fleet** (Combat → Live fleet): a fleet boss clicks "Track fleet" on one of their characters and the worker
+  reads the fleet from ESI every 15 seconds. The page shows members by wing and squad with ship, system and role,
+  the composition by ship class and hull, who joined and left, and a list of past fleets with their participants.
+  Only the tracked character is polled, because ESI shows members and wings only to the fleet boss. Tracking
+  stops on its own when the character leaves the fleet. Texts are in English and German, and the demo data
+  includes a live and two past fleets.
+- New character scope `esi-fleets.read_fleet.v1`: enable it on the EVE application, then members re-authorise
+  under My Characters to share fleets.
 
 ## [0.1.5] - 2026-10-03
 

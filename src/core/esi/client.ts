@@ -273,8 +273,11 @@ export class EsiClient {
     const group = res.headers.get("x-ratelimit-group");
     if (group) this.patternGroup.set(pattern, group);
 
-    const remain = Number(res.headers.get("x-esi-error-limit-remain"));
-    const reset = Number(res.headers.get("x-esi-error-limit-reset"));
+    // Number(null) is 0: only a response that actually reports the error limit may pause the client.
+    const remainHeader = res.headers.get("x-esi-error-limit-remain");
+    const resetHeader = res.headers.get("x-esi-error-limit-reset");
+    const remain = remainHeader === null ? NaN : Number(remainHeader);
+    const reset = resetHeader === null ? NaN : Number(resetHeader);
     if (Number.isFinite(remain) && Number.isFinite(reset) && remain < (this.opts.errorLimitFloor ?? 20)) {
       this.errorLimitPauseUntil = this.now() + (reset + 1) * 1000;
     }

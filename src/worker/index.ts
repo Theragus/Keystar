@@ -17,7 +17,16 @@ const log = createLogger("worker");
 const workerId = `${hostname()}:${process.pid}`;
 
 /** Demo data has fake characters and tokens, so only public, global jobs run in demo mode. */
-const DEMO_SAFE_JOBS = new Set(["core.server-status", "core.market-prices", "core.housekeeping", "killboard.situation-report"]);
+const DEMO_SAFE_JOBS = new Set([
+  "core.server-status",
+  "core.market-prices",
+  "core.housekeeping",
+  "killboard.situation-report",
+  // Threat intel reads generated demo data instead of zKillboard in demo mode.
+  "intel.scan-worker",
+  "intel.briefings",
+  "intel.housekeeping",
+]);
 const ACTIVE_JOBS = env().KEYSTAR_DEMO_MODE ? JOBS.filter((j) => DEMO_SAFE_JOBS.has(j.key)) : JOBS;
 const jobsByKey = new Map(ACTIVE_JOBS.map((j) => [j.key, j]));
 const running = new Set<Promise<void>>();

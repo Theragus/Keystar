@@ -47,12 +47,15 @@ const schema = z.object({
    */
   SOURCE_URL: z.string().url().default("https://github.com/theragus/keystar"),
   /**
-   * Optional Claude API key: the killboard's weekly situation report is then
-   * written by Claude. Without it, Keystar writes the report from a template.
+   * Optional Claude API key: the killboard's weekly situation report and the
+   * threat intel briefings are then written by Claude. Without it, Keystar
+   * writes them from templates.
    */
   ANTHROPIC_API_KEY: z.string().optional().default(""),
   /** Claude model for situation reports. */
   KILLBOARD_REPORT_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
+  /** Claude model for threat intel briefings, pilot dossiers and d-scan reads. */
+  INTEL_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
   /** Enables the demo login (no EVE SSO needed). Never enable on a public instance. */
   KEYSTAR_DEMO_MODE: booleanish.default(false),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(32).default(4),

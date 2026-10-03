@@ -7,6 +7,7 @@ import {
   workerHeartbeats,
 } from "@/core/db";
 import { purgeExpiredSessions } from "@/core/auth/session";
+import { fetchAffiliations } from "@/core/eve/affiliation";
 import { syncPrices } from "@/core/eve/prices";
 import { ensureNames, refreshCorporations } from "@/core/eve/resolver";
 import { setSetting } from "@/core/settings";
@@ -43,28 +44,22 @@ export const affiliationsJob: JobDefinition = {
     let changed = 0;
     const corpIds = new Set<number>(await trackedCorporations());
     const allianceIds = new Set<number>();
-    for (let i = 0; i < ids.length; i += 1000) {
-      const res = await esi.post<{ character_id: number; corporation_id: number; alliance_id?: number }[]>(
-        "/characters/affiliation",
-        ids.slice(i, i + 1000),
-      );
-      for (const a of res.data) {
-        corpIds.add(a.corporation_id);
-        if (a.alliance_id) allianceIds.add(a.alliance_id);
-        const updated = await db
-          .update(characters)
-          .set({
-            corporationId: a.corporation_id,
-            allianceId: a.alliance_id ?? null,
-            affiliationUpdatedAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(
-            sql`${characters.characterId} = ${a.character_id} AND (${characters.corporationId} <> ${a.corporation_id} OR ${characters.allianceId} IS DISTINCT FROM ${a.alliance_id ?? null})`,
-          )
-          .returning({ id: characters.characterId });
-        changed += updated.length;
-      }
+    for (const a of await fetchAffiliations(esi, ids)) {
+      corpIds.add(a.corporationId);
+      if (a.allianceId) allianceIds.add(a.allianceId);
+      const updated = await db
+        .update(characters)
+        .set({
+          corporationId: a.corporationId,
+          allianceId: a.allianceId,
+          affiliationUpdatedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(
+          sql`${characters.characterId} = ${a.characterId} AND (${characters.corporationId} <> ${a.corporationId} OR ${characters.allianceId} IS DISTINCT FROM ${a.allianceId})`,
+        )
+        .returning({ id: characters.characterId });
+      changed += updated.length;
     }
     await refreshCorporations(corpIds);
     await ensureNames([...corpIds, ...allianceIds]);

@@ -1,5 +1,5 @@
 import { inArray, sql } from "drizzle-orm";
-import { eveCorporations, eveEntities, eveGroups, eveSystems, eveTypes, getDb } from "@/core/db";
+import { eveConstellations, eveCorporations, eveEntities, eveGroups, eveSystems, eveTypes, getDb } from "@/core/db";
 import { getEsi } from "@/core/esi";
 import { createLogger } from "@/core/logger";
 import { classifyOre } from "@/core/eve/ore";
@@ -103,8 +103,8 @@ export async function ensureTypes(typeIds: Iterable<number>): Promise<void> {
   const groupIds = unique(fetched.map((t) => t.group_id));
   await ensureGroups(groupIds);
   await upsertTypes(fetched);
-  // Only mineable groups have compressed variants; fetching every type of a
-  // ship or charge group (wallet, appraisal, killboard) would waste requests.
+  // Only ores, ice and gas have compressed variants; ships and modules would fetch whole groups for nothing.
+  // classifyOre covers gas too, which lives outside the asteroid category.
   const groups = await db
     .select({ groupId: eveGroups.groupId, categoryId: eveGroups.categoryId })
     .from(eveGroups)
@@ -200,6 +200,33 @@ export async function ensureSystems(systemIds: Iterable<number>): Promise<void> 
       log.warn("Could not resolve system", { systemId, error: (err as Error).message });
     }
   });
+}
+
+/** Constellation → region for the given systems' constellations; region names go to eve_entities. */
+export async function ensureConstellations(constellationIds: Iterable<number>): Promise<void> {
+  const wanted = unique(constellationIds);
+  if (!wanted.length) return;
+  const db = getDb();
+  const known = await db
+    .select({ id: eveConstellations.constellationId })
+    .from(eveConstellations)
+    .where(inArray(eveConstellations.constellationId, wanted));
+  const knownSet = new Set(known.map((r) => r.id));
+  const missing = wanted.filter((id) => !knownSet.has(id));
+  const regions = new Set<number>();
+  await mapLimit(missing, 6, async (constellationId) => {
+    try {
+      const res = await getEsi().get<{ name: string; region_id: number }>(`/universe/constellations/${constellationId}`);
+      regions.add(res.data.region_id);
+      await db
+        .insert(eveConstellations)
+        .values({ constellationId, name: res.data.name, regionId: res.data.region_id })
+        .onConflictDoNothing();
+    } catch (err) {
+      log.warn("Could not resolve constellation", { constellationId, error: (err as Error).message });
+    }
+  });
+  await ensureNames(regions);
 }
 
 interface EsiCorporation {

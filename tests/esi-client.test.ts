@@ -127,6 +127,21 @@ describe("EsiClient", () => {
     expect(calls).toBe(1);
   });
 
+  it("pauses for the error limit only when ESI reports it", async () => {
+    const sleeps: number[] = [];
+    const sleep = async (ms: number) => void sleeps.push(ms);
+    const quiet = client(() => json({ ok: 1 }), { sleep });
+    await quiet.esi.get("/status");
+    await quiet.esi.get("/status", { noCache: true });
+    expect(sleeps).toEqual([]);
+
+    const low = client(() => json({ ok: 1 }, { headers: { "x-esi-error-limit-remain": "5", "x-esi-error-limit-reset": "10" } }), { sleep });
+    await low.esi.get("/status");
+    await low.esi.get("/status", { noCache: true });
+    expect(sleeps).toHaveLength(1);
+    expect(sleeps[0]).toBeGreaterThan(9_000);
+  });
+
   it("retries transient 5xx errors", async () => {
     let calls = 0;
     const { esi } = client(() => (++calls < 3 ? json({ error: "bad gateway" }, { status: 502 }) : json({ ok: 1 })));

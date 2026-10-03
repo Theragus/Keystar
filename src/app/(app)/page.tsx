@@ -11,7 +11,6 @@ import {
   KeyRound,
   Link2,
   Pickaxe,
-  Radar,
   Server,
   Swords,
   Target,
@@ -57,7 +56,6 @@ const ROADMAP = [
   { id: "skills", icon: BookOpen },
   { id: "assets", icon: Boxes },
   { id: "wallets", icon: Wallet },
-  { id: "fleet", icon: Radar },
 ] as const;
 
 export default async function OverviewPage() {

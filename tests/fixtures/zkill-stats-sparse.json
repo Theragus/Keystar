@@ -1,0 +1,44 @@
+{
+ "type": "characterID",
+ "id": 90000099,
+ "shipsLost": 2,
+ "iskLost": 12000000,
+ "attackersLost": 7,
+ "groups": {
+  "25": {
+   "groupID": 25,
+   "shipsLost": 2,
+   "iskLost": 12000000
+  }
+ },
+ "months": {
+  "202401": {
+   "year": 2024,
+   "month": 1,
+   "shipsLost": 2,
+   "iskLost": 12000000
+  }
+ },
+ "labels": {
+  "pvp": {
+   "shipsLost": 2
+  }
+ },
+ "soloLosses": 0,
+ "soloKills": 0,
+ "avgGangSize": 0,
+ "soloRatio": 0,
+ "activepvp": {},
+ "info": {
+  "type": "characterID",
+  "id": 90000099,
+  "name": "Quiet Alt",
+  "corporationID": 1000167,
+  "allianceID": 0,
+  "birthday": "2024-01-02T10:00:00Z",
+  "secStatus": 0.4
+ },
+ "topLists": [],
+ "topListsSort": "kills",
+ "topIskKillIDs": []
+}

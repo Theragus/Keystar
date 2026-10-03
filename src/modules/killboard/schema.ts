@@ -49,6 +49,7 @@ export const killmails = pgTable(
   (t) => [
     index("killmails_time_idx").on(t.killmailTime),
     index("killmails_victim_corp_idx").on(t.victimCorporationId, t.killmailTime),
+    index("killmails_victim_char_idx").on(t.victimCharacterId, t.killmailTime),
   ],
 );
 
