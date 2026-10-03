@@ -93,8 +93,10 @@ export const admin = {
       },
     },
     /** Line above the table: how many rows match, and which page is shown. */
-    results: (count: number, filter: string | null, q: string | null) =>
-      `${n(count)} ${count === 1 ? "character" : "characters"}${filter ? ` ${filter}` : ""}${q ? ` matching “${q}”` : ""}`,
+    results: (count: number, filter: string | null, q: string | null, account: string | null) =>
+      `${n(count)} ${count === 1 ? "character" : "characters"}${account ? ` ${account}` : ""}${filter ? ` ${filter}` : ""}${q ? ` matching “${q}”` : ""}`,
+    /** Fills `account` in `results` when the view is limited to one account. */
+    ofAccount: (main: string | null) => (main ? `of ${main}'s account` : "of an unknown account"),
     clearAll: "Clear search and filter",
     empty: "No characters match.",
     pageOf: (page: number, pages: number) => `Page ${n(page)} of ${n(pages)}`,

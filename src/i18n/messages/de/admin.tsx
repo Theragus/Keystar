@@ -83,8 +83,9 @@ export const admin: typeof en = {
         esi: "mit fehlendem oder widerrufenem ESI",
       },
     },
-    results: (count: number, filter: string | null, q: string | null) =>
-      `${n(count)} ${count === 1 ? "Charakter" : "Charaktere"}${filter ? ` ${filter}` : ""}${q ? `, Suche „${q}“` : ""}`,
+    results: (count: number, filter: string | null, q: string | null, account: string | null) =>
+      `${n(count)} ${count === 1 ? "Charakter" : "Charaktere"}${account ? ` ${account}` : ""}${filter ? ` ${filter}` : ""}${q ? `, Suche „${q}“` : ""}`,
+    ofAccount: (main: string | null) => (main ? `des Kontos ${main}` : "eines unbekannten Kontos"),
     clearAll: "Suche und Filter zurücksetzen",
     empty: "Keine passenden Charaktere.",
     pageOf: (page: number, pages: number) => `Seite ${n(page)} von ${n(pages)}`,

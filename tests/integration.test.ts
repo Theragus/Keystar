@@ -1294,6 +1294,7 @@ describe.skipIf(!enabled)("integration", async () => {
         unregistered: 2,
         esiTrouble: 2,
         matched: 5,
+        accountName: null,
       });
     });
 
@@ -1318,6 +1319,15 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await ids({ q: "10" })).toEqual(["10"]);
       expect(await ids({ q: "%" })).toEqual([]);
       expect((await audit.getMemberAuditStats(100, required, params({ q: "bravo", filter: "esi" }))).matched).toBe(2);
+    });
+
+    it("limits the view to one account's characters, not every name that contains its main", async () => {
+      expect(await ids({ account: userB })).toEqual(["2", "3"]);
+      expect(await ids({ account: userB, filter: "esi" })).toEqual(["2", "3"]);
+      // Alpha's account has no ESI trouble even though a search for its name could match other characters.
+      expect(await ids({ account: userA, filter: "esi" })).toEqual([]);
+      const stats = await audit.getMemberAuditStats(100, required, params({ account: userB }));
+      expect(stats).toMatchObject({ matched: 2, accountName: "Bravo", roster: 4 });
     });
 
     it("counts every registered character while the roster is unknown", async () => {

@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { CopyField } from "@/components/ui/copy-button";
@@ -27,6 +28,23 @@ import { cn } from "@/lib/utils";
 export async function generateMetadata() {
   const { t } = await getI18n();
   return { title: t.admin.members.metaTitle };
+}
+
+/** Previous/next; at either end it is plain text, so it can't be focused or followed. */
+function PageLink({ href, children }: { href: string | null; children: ReactNode }) {
+  const className = "glass-chip inline-flex h-8 items-center gap-1 rounded-lg px-3 text-xs";
+  if (!href) {
+    return (
+      <span aria-disabled="true" className={cn(className, "opacity-40")}>
+        {children}
+      </span>
+    );
+  }
+  return (
+    <Link href={href} scroll={false} className={className}>
+      {children}
+    </Link>
+  );
 }
 
 export default async function MemberAuditPage({ searchParams }: PageProps<"/admin/members">) {
@@ -64,7 +82,7 @@ export default async function MemberAuditPage({ searchParams }: PageProps<"/admi
     };
   };
   const pageLink = (page: number) => memberAuditHref(params, { page });
-  const filtered = params.filter !== "all" || params.q !== "";
+  const filtered = params.filter !== "all" || params.q !== "" || params.account !== null;
 
   return (
     <PendingProvider>
@@ -105,7 +123,10 @@ export default async function MemberAuditPage({ searchParams }: PageProps<"/admi
             <div className="space-y-3 px-5 pt-4 pb-2">
               <SearchField
                 value={params.q}
-                keep={params.filter === "all" ? {} : { filter: params.filter }}
+                keep={{
+                  ...(params.filter === "all" ? {} : { filter: params.filter }),
+                  ...(params.account ? { account: params.account } : {}),
+                }}
                 label={tm.search.label}
                 placeholder={tm.search.placeholder}
                 clearLabel={tm.search.clear}
@@ -116,11 +137,12 @@ export default async function MemberAuditPage({ searchParams }: PageProps<"/admi
                     stats.matched,
                     params.filter === "all" ? null : tm.filter.labels[params.filter],
                     params.q || null,
+                    params.account ? tm.ofAccount(stats.accountName) : null,
                   )}
                   {filtered && (
                     <>
                       <span aria-hidden>·</span>
-                      <Link href={memberAuditHref(params, { q: "", filter: "all" })} scroll={false} className="text-accent hover:underline">
+                      <Link href={memberAuditHref(params, { q: "", filter: "all", account: null })} scroll={false} className="text-accent hover:underline">
                         {tm.clearAll}
                       </Link>
                     </>
@@ -188,28 +210,12 @@ export default async function MemberAuditPage({ searchParams }: PageProps<"/admi
             </PendingFrame>
             {pages > 1 && (
               <nav className="flex items-center justify-end gap-2 border-t border-white/6 px-5 py-3" aria-label={tm.pagination}>
-                <Link
-                  href={pageLink(Math.max(1, params.page - 1))}
-                  scroll={false}
-                  aria-disabled={params.page <= 1}
-                  className={cn(
-                    "glass-chip inline-flex h-8 items-center gap-1 rounded-lg px-3 text-xs",
-                    params.page <= 1 && "pointer-events-none opacity-40",
-                  )}
-                >
+                <PageLink href={params.page > 1 ? pageLink(params.page - 1) : null}>
                   <ChevronLeft className="size-4" aria-hidden /> {tm.previous}
-                </Link>
-                <Link
-                  href={pageLink(Math.min(pages, params.page + 1))}
-                  scroll={false}
-                  aria-disabled={params.page >= pages}
-                  className={cn(
-                    "glass-chip inline-flex h-8 items-center gap-1 rounded-lg px-3 text-xs",
-                    params.page >= pages && "pointer-events-none opacity-40",
-                  )}
-                >
+                </PageLink>
+                <PageLink href={params.page < pages ? pageLink(params.page + 1) : null}>
                   {tm.next} <ChevronRight className="size-4" aria-hidden />
-                </Link>
+                </PageLink>
               </nav>
             )}
           </Glass>

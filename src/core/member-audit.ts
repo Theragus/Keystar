@@ -12,6 +12,8 @@ export interface MemberAuditStats {
   esiTrouble: number;
   /** Rows matching the current search and filter. */
   matched: number;
+  /** Main character of the account the view is limited to, if any. */
+  accountName: string | null;
 }
 
 export interface MemberAuditRow {
@@ -46,7 +48,7 @@ function auditCte(home: number, requiredScopes: readonly string[]) {
              COALESCE(c.name, e.name) AS name,
              (r.character_id IS NOT NULL) AS in_roster,
              (c.character_id IS NOT NULL) AS registered,
-             mc.name AS main_name, t.status, t.scopes,
+             c.user_id, mc.name AS main_name, t.status, t.scopes,
              (c.character_id IS NOT NULL AND (t.status IS DISTINCT FROM 'active'
                OR NOT (COALESCE(t.scopes, '{}') @> ${pgTextArray(requiredScopes)}))) AS esi_trouble
       FROM roster r
@@ -68,10 +70,11 @@ const FILTERS: Record<MemberFilter, SQL> = {
 };
 
 function matchWhere(params: MemberAuditParams): SQL {
-  if (!params.q) return FILTERS[params.filter];
+  const account = params.account ? sql` AND a.user_id = ${params.account}::uuid` : sql``;
+  if (!params.q) return sql`${FILTERS[params.filter]}${account}`;
   const like = likePattern(params.q);
   const byId = /^\d{1,19}$/.test(params.q) ? sql` OR a.id::text = ${params.q}` : sql``;
-  return sql`${FILTERS[params.filter]} AND (a.name ILIKE ${like} OR a.main_name ILIKE ${like}${byId})`;
+  return sql`${FILTERS[params.filter]}${account} AND (a.name ILIKE ${like} OR a.main_name ILIKE ${like}${byId})`;
 }
 
 export async function getMemberAuditStats(
@@ -86,7 +89,13 @@ export async function getMemberAuditStats(
            COUNT(a.id) FILTER (WHERE ${FILTERS.registered})::int AS registered,
            COUNT(a.id) FILTER (WHERE ${FILTERS.unregistered})::int AS unregistered,
            COUNT(a.id) FILTER (WHERE ${FILTERS.esi})::int AS esi_trouble,
-           COUNT(a.id) FILTER (WHERE ${matchWhere(params)})::int AS matched
+           COUNT(a.id) FILTER (WHERE ${matchWhere(params)})::int AS matched,
+           ${
+             params.account
+               ? sql`(SELECT mc.name FROM users u JOIN characters mc ON mc.character_id = u.main_character_id
+                      WHERE u.id = ${params.account}::uuid)`
+               : sql`NULL`
+           } AS account_name
     FROM known k LEFT JOIN audit a ON TRUE
     GROUP BY k.roster_known`);
   return {
@@ -96,6 +105,7 @@ export async function getMemberAuditStats(
     unregistered: Number(row?.unregistered ?? 0),
     esiTrouble: Number(row?.esi_trouble ?? 0),
     matched: Number(row?.matched ?? 0),
+    accountName: row?.account_name == null ? null : String(row.account_name),
   };
 }
 

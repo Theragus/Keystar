@@ -10,6 +10,7 @@ import { requirePermission } from "@/core/auth/dal";
 import { getDb } from "@/core/db";
 import { memberAuditHref } from "@/core/member-audit-filters";
 import { characterScopes } from "@/core/modules/registry";
+import { getSetting } from "@/core/settings";
 import { assignableRoles, canManageRole, isRole, ROLES, type Role } from "@/core/rbac/roles";
 import { getI18n } from "@/i18n/server";
 import { zkillCharacter } from "@/modules/killboard/links";
@@ -29,7 +30,7 @@ interface UserRow {
   main_id: string | null;
   main_name: string | null;
   corp_ticker: string | null;
-  characters: { id: number; name: string; status: string | null; scopes: string[] | null }[];
+  characters: { id: number; name: string; corporation_id: number | null; status: string | null; scopes: string[] | null }[];
 }
 
 export default async function UsersPage({ searchParams }: PageProps<"/admin/users">) {
@@ -41,11 +42,13 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
   const roleParam = (await searchParams).role;
   const roleFilter = isRole(roleParam) ? roleParam : null;
   const required = characterScopes();
+  const home = await getSetting("corp.homeCorporationId");
 
   const rows = await getDb().execute<Record<string, unknown>>(sql`
     SELECT u.id, u.role, u.is_disabled, u.last_login_at, u.created_at,
            mc.character_id::text AS main_id, mc.name AS main_name, co.ticker AS corp_ticker,
-           COALESCE(json_agg(json_build_object('id', c.character_id, 'name', c.name, 'status', t.status, 'scopes', t.scopes)
+           COALESCE(json_agg(json_build_object('id', c.character_id, 'name', c.name, 'corporation_id', c.corporation_id,
+             'status', t.status, 'scopes', t.scopes)
              ORDER BY c.name) FILTER (WHERE c.character_id IS NOT NULL), '[]') AS characters
     FROM users u
     LEFT JOIN characters mc ON mc.character_id = u.main_character_id
@@ -170,8 +173,12 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                 </tr>
               )}
               {shown.map((u) => {
+                const tokenProblem = (c: UserRow["characters"][number]) =>
+                  c.status === "invalid" || !c.scopes || required.some((s) => !c.scopes!.includes(s));
                 const invalid = u.characters.filter((c) => c.status === "invalid").length;
                 const missing = u.characters.filter((c) => !c.scopes || required.some((s) => !c.scopes!.includes(s))).length;
+                // The member audit only lists home corporation characters.
+                const auditable = home !== null && u.characters.some((c) => c.corporation_id === home && tokenProblem(c));
                 const own = u.id === actor.id;
                 const canChange = manageable(u);
                 const tokenTrouble = !u.is_disabled && (invalid > 0 || missing > 0);
@@ -180,8 +187,8 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                   ? null
                   : own
                     ? "/characters"
-                    : canAudit
-                      ? memberAuditHref(undefined, { filter: "esi", q: u.main_name ?? "" })
+                    : canAudit && auditable
+                      ? memberAuditHref(undefined, { filter: "esi", account: u.id })
                       : null;
                 const health = u.is_disabled ? (
                   <StatusBadge status="error" label={tu.health.disabled} />

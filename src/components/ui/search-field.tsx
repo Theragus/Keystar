@@ -31,10 +31,17 @@ export function SearchField({
   maxLength?: number;
 }) {
   const { navigate, isPending } = usePendingNavigation();
+  const keepQuery = new URLSearchParams(keep).toString();
   const [text, setText] = useState(value);
   const [sent, setSent] = useState(value);
   const [rendered, setRendered] = useState(value);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // The debounced search runs after later renders; it reads the page state from
+  // here, so a filter clicked while typing is kept instead of being undone.
+  const latest = useRef({ keepQuery, sent, text });
+  useEffect(() => {
+    latest.current = { keepQuery, sent, text };
+  }, [keepQuery, sent, text]);
 
   // Follow the URL when it changes from elsewhere (back button, a link), but
   // not when it is just catching up with what was typed.
@@ -48,18 +55,47 @@ export function SearchField({
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  // A link clicked while a search is still waiting (a filter tile, say) would
+  // be overridden by that search firing with the old state. Hold the search
+  // back instead, and apply it on top of the state the link lands on.
+  const resend = useRef(false);
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (timer.current === undefined || !(e.target instanceof Element)) return;
+      const link = e.target.closest("a[href]");
+      if (!link || form.current?.contains(link)) return;
+      clearTimeout(timer.current);
+      timer.current = undefined;
+      resend.current = true;
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
   const search = (term: string) => {
     clearTimeout(timer.current);
+    timer.current = undefined;
     const q = term.trim();
-    if (q === sent) return;
+    if (q === latest.current.sent) return;
+    latest.current.sent = q;
     setSent(q);
-    const params = new URLSearchParams(keep);
+    const params = new URLSearchParams(latest.current.keepQuery);
     if (q) params.set(param, q);
     navigate(params.toString(), { replace: true });
   };
 
+  useEffect(() => {
+    if (!resend.current) return;
+    resend.current = false;
+    search(latest.current.text);
+    // Runs once the clicked link's page state has rendered; `search` reads everything else from `latest`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keepQuery, value]);
+
   return (
     <form
+      ref={form}
       role="search"
       className="flex items-center gap-2"
       onSubmit={(e) => {
@@ -82,7 +118,8 @@ export function SearchField({
             const next = e.target.value;
             setText(next);
             clearTimeout(timer.current);
-            timer.current = setTimeout(() => search(next), DEBOUNCE_MS);
+            // Dropped if the box was overwritten meanwhile (back button, a link).
+            timer.current = setTimeout(() => latest.current.text === next && search(next), DEBOUNCE_MS);
           }}
           placeholder={placeholder}
           maxLength={maxLength}
