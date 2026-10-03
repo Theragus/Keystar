@@ -93,11 +93,14 @@ const permissionListeners = new Set<() => void>();
 function subscribePermission(listener: () => void) {
   permissionListeners.add(listener);
   // Site settings can change the permission while the page is open; re-read when the user comes back.
-  const onFocus = () => {
+  const onReturn = () => {
+    if (document.visibilityState !== "visible") return;
     refused = false;
     listener();
   };
-  window.addEventListener("focus", onFocus);
+  // Switching back from another tab may only make the document visible, without a window focus event.
+  window.addEventListener("focus", onReturn);
+  document.addEventListener("visibilitychange", onReturn);
   let status: PermissionStatus | null = null;
   let unsubscribed = false;
   navigator.permissions
@@ -111,7 +114,8 @@ function subscribePermission(listener: () => void) {
   return () => {
     unsubscribed = true;
     permissionListeners.delete(listener);
-    window.removeEventListener("focus", onFocus);
+    window.removeEventListener("focus", onReturn);
+    document.removeEventListener("visibilitychange", onReturn);
     status?.removeEventListener("change", listener);
   };
 }
