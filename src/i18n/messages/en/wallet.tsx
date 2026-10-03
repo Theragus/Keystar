@@ -31,7 +31,7 @@ export const wallet = {
     navSection: "Finances",
     nav: {
       corporationWallet: "Corporation wallet",
-      journal: "Wallet journal",
+      journal: "Corp wallet journal",
     },
   },
 
@@ -40,7 +40,7 @@ export const wallet = {
       division === 1 ? "Master wallet" : `${ordinal(division)} wallet division`,
     metaTitle: {
       overview: "Corporation wallet",
-      journal: "Wallet journal",
+      journal: "Corp wallet journal",
     },
     categories: {
       bounties: "Bounties & ESS",
@@ -103,7 +103,7 @@ export const wallet = {
     overview: {
       description:
         "Balances, income and expenses of every wallet division. Keystar keeps the journal for good; ESI only returns the last 30 days.",
-      journalLink: "Wallet journal",
+      journalLink: "Corp wallet journal",
       tiles: {
         balance: "Balance",
         balanceHint: (when: string) => `as of ${when}`,
