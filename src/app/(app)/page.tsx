@@ -31,8 +31,9 @@ import { esiTokens, getDb, workerHeartbeats } from "@/core/db";
 import { getCorporation } from "@/core/corp";
 import { characterScopes } from "@/core/modules/registry";
 import { getSettings } from "@/core/settings";
+import { getI18n } from "@/i18n/server";
 import { addDays } from "@/lib/dates";
-import { compact, delta, integer, isRecent, percent } from "@/lib/format";
+import { delta, isRecent } from "@/lib/format";
 import { WeekDelta } from "@/components/ui/deltas";
 import { KillsChart } from "@/modules/killboard/components/kills-chart";
 import { RecentActivity } from "@/modules/killboard/components/recent-activity";
@@ -47,17 +48,22 @@ import { DATE_PRESETS, isoDate, parseMiningFilters } from "@/modules/mining/filt
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { getDailySeries, getMiningSummary, miningScope } from "@/modules/mining/queries";
 
-export const metadata = { title: "Dashboard" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.dashboard.metaTitle };
+}
 
 const ROADMAP = [
-  { icon: BookOpen, title: "Skills & skill plans", text: "Corp skill plans and who can fly what." },
-  { icon: Boxes, title: "Assets", text: "Find items across members and corp hangars." },
-  { icon: Wallet, title: "Wallets", text: "Corporation divisions and personal wallets." },
-  { icon: Radar, title: "Live fleet", text: "Fleet composition from shared fleet ESI." },
-];
+  { id: "skills", icon: BookOpen },
+  { id: "assets", icon: Boxes },
+  { id: "wallets", icon: Wallet },
+  { id: "fleet", icon: Radar },
+] as const;
 
 export default async function OverviewPage() {
   const user = await requireUser();
+  const { t, f } = await getI18n();
+  const d = t.dashboard;
   const settings = await getSettings();
   const today = isoDate(new Date());
   const canMining = user.canAny(MINING_PERMISSIONS.viewOwn, MINING_PERMISSIONS.viewCorp);
@@ -112,8 +118,8 @@ export default async function OverviewPage() {
 
   const required = characterScopes();
   const healthy = user.characters.filter((c) => {
-    const t = tokens.find((x) => x.characterId === c.characterId);
-    return t?.status === "active" && required.every((s) => t.scopes.includes(s));
+    const token = tokens.find((x) => x.characterId === c.characterId);
+    return token?.status === "active" && required.every((s) => token.scopes.includes(s));
   }).length;
 
   // Tiles open the killboard on the same 30 days rather than its 90-day default.
@@ -123,43 +129,44 @@ export default async function OverviewPage() {
     <div className="space-y-6">
       <div>
         <PageHeader
-          eyebrow="Overview"
-          title={`Welcome back, ${user.main?.name ?? "capsuleer"}`}
-          description="Here is what your corporation has been up to over the last 30 days."
+          eyebrow={d.header.eyebrow}
+          title={d.header.welcome(user.main?.name ?? d.header.fallbackName)}
+          description={d.header.description}
         />
-        <div className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Content-sized columns so longer (German) values fit before they truncate. */}
+        <div className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2 2xl:grid-cols-[repeat(4,minmax(0,auto))] 2xl:justify-between">
           {homeCorp ? (
             <InfoItem
               media={<CorpLogo id={homeCorp.corporationId} size={44} className="rounded-lg ring-1 ring-white/10" />}
-              label="Home corporation"
+              label={d.info.homeCorp}
               href={zkillCorporation(homeCorp.corporationId)}
-              external
+              newTabLabel={t.common.opensInNewTab}
             >
               {homeCorp.name} <span className="text-ink-3">[{homeCorp.ticker}]</span>
             </InfoItem>
           ) : (
             <InfoItem
               icon={Building2}
-              label="Home corporation"
+              label={d.info.homeCorp}
               href={user.can("app.settings.manage") ? "/admin/settings" : undefined}
             >
-              Not configured
+              {d.info.notConfigured}
             </InfoItem>
           )}
           <InfoItem
             icon={Users}
-            label="Registered characters"
+            label={d.info.registered}
             href={user.can("members.audit") ? "/admin/members" : undefined}
           >
-            {members ? `${stats.registered} of ${members} members` : `${stats.registered} registered`}
+            {members ? d.info.registeredOfMembers(stats.registered, members) : d.info.registeredOnly(stats.registered)}
           </InfoItem>
-          <InfoItem icon={KeyRound} label="Your ESI access" href="/characters">
-            {healthy} of {user.characters.length} characters complete
+          <InfoItem icon={KeyRound} label={d.info.esiAccess} href="/characters">
+            {d.info.esiComplete(healthy, user.characters.length)}
           </InfoItem>
-          <InfoItem icon={Server} label="Sync worker" href={canSync ? "/admin/sync" : undefined}>
+          <InfoItem icon={Server} label={d.info.syncWorker} href={canSync ? "/admin/sync" : undefined}>
             <span className="inline-flex items-center gap-2">
               <span className={workerOnline ? "size-2 rounded-full bg-good" : "size-2 rounded-full bg-critical"} aria-hidden />
-              {workerOnline ? "Online" : "No heartbeat"}
+              {workerOnline ? d.info.workerOnline : d.info.workerOffline}
             </span>
           </InfoItem>
         </div>
@@ -170,32 +177,40 @@ export default async function OverviewPage() {
           <>
             <StatTile
               icon={Swords}
-              label="Kills · 30 days"
-              value={integer(killsNow.kills)}
-              delta={<WeekDelta change={killsNow.kills - killsBefore.kills} suffix="vs prior 30d" />}
-              hint={`${integer(killsNow.losses)} losses · ${activePilots} active ${activePilots === 1 ? "pilot" : "pilots"}`}
+              label={d.tiles.kills}
+              value={f.integer(killsNow.kills)}
+              delta={
+                <WeekDelta
+                  change={killsNow.kills - killsBefore.kills}
+                  format={f.integer}
+                  suffix={d.prior.suffix}
+                  emptyText={d.prior.empty}
+                />
+              }
+              hint={`${d.tiles.losses(killsNow.losses)} · ${d.tiles.activePilots(activePilots)}`}
               href={killboardHref}
             />
             <StatTile
               icon={Coins}
-              label="ISK destroyed · 30 days"
-              value={compact(killsNow.iskDestroyed)}
+              label={d.tiles.iskDestroyed}
+              value={f.compact(killsNow.iskDestroyed)}
               unit="ISK"
-              delta={<Delta value={delta(killsNow.iskDestroyed, killsBefore.iskDestroyed)} period="prior 30d" />}
+              delta={<Delta value={delta(killsNow.iskDestroyed, killsBefore.iskDestroyed)} period={d.prior.period} />}
               href={`${killboardHref}#isk`}
             />
             <StatTile
               icon={Target}
-              label="ISK efficiency · 30 days"
-              value={eff === null ? "—" : percent(eff, 1)}
+              label={d.tiles.efficiency}
+              value={eff === null ? "—" : f.percent(eff, 1)}
               delta={
                 <WeekDelta
                   change={eff !== null && effBefore !== null ? (eff - effBefore) * 100 : null}
-                  format={(n) => `${n.toFixed(1)} pts`}
-                  suffix="vs prior 30d"
+                  format={d.tiles.points}
+                  suffix={d.prior.suffix}
+                  emptyText={d.prior.empty}
                 />
               }
-              hint={`${compact(killsNow.iskLost)} ISK lost`}
+              hint={d.tiles.iskLost(f.compact(killsNow.iskLost))}
               href={`${killboardHref}#pilot-efficiency`}
             />
           </>
@@ -203,32 +218,32 @@ export default async function OverviewPage() {
         {corp ? (
           <StatTile
             icon={Gem}
-            label="Corporation mining · 30 days"
-            value={compact(corp.current.value)}
+            label={d.tiles.corpMining}
+            value={f.compact(corp.current.value)}
             unit="ISK"
-            delta={<Delta value={delta(corp.current.value, corp.previous.value)} period="prior 30d" />}
+            delta={<Delta value={delta(corp.current.value, corp.previous.value)} period={d.prior.period} />}
             href="/mining"
           />
         ) : own ? (
           <StatTile
             icon={Pickaxe}
-            label="Your mining · 30 days"
-            value={compact(own.current.value)}
+            label={d.tiles.ownMining}
+            value={f.compact(own.current.value)}
             unit="ISK"
-            delta={<Delta value={delta(own.current.value, own.previous.value)} period="prior 30d" />}
+            delta={<Delta value={delta(own.current.value, own.previous.value)} period={d.prior.period} />}
             href="/mining"
           />
         ) : null}
         {!combat && (
           <StatTile
             icon={Users}
-            label="Your characters"
-            value={String(user.characters.length)}
+            label={d.tiles.characters}
+            value={f.integer(user.characters.length)}
             delta={
               healthy === user.characters.length ? (
-                <StatusBadge status="ok" label="ESI complete" />
+                <StatusBadge status="ok" label={d.tiles.esiComplete} />
               ) : (
-                <StatusBadge status="warning" label={`${user.characters.length - healthy} need attention`} />
+                <StatusBadge status="warning" label={d.tiles.needAttention(user.characters.length - healthy)} />
               )
             }
             href="/characters"
@@ -237,13 +252,13 @@ export default async function OverviewPage() {
         {!combat && syncStats && (
           <StatTile
             icon={Activity}
-            label="Background sync"
-            value={`${syncStats[0]?.total ?? 0} jobs`}
+            label={d.tiles.backgroundSync}
+            value={d.tiles.jobs(syncStats[0]?.total ?? 0)}
             delta={
               syncStats[0]?.failing ? (
-                <StatusBadge status="error" label={`${syncStats[0].failing} failing`} />
+                <StatusBadge status="error" label={d.tiles.failing(syncStats[0].failing)} />
               ) : (
-                <StatusBadge status="ok" label="Healthy" />
+                <StatusBadge status="ok" label={d.tiles.healthy} />
               )
             }
             href="/admin/sync"
@@ -251,8 +266,8 @@ export default async function OverviewPage() {
         )}
         {!combat && !syncStats && pendingUsers && (
           <StatTile
-            label="Awaiting approval"
-            value={String(pendingUsers[0]?.n ?? 0)}
+            label={d.tiles.awaitingApproval}
+            value={f.integer(pendingUsers[0]?.n ?? 0)}
             href={user.can("users.view") ? "/admin/users?role=guest" : undefined}
           />
         )}
@@ -262,40 +277,38 @@ export default async function OverviewPage() {
         {combat ? (
           <div className="space-y-4 xl:col-span-8">
             <Panel
-              title="Kills over time · last 30 days"
-              subtitle="Kills and losses per day"
+              title={d.panels.killsChart}
+              subtitle={d.panels.killsChartSubtitle}
               actions={
                 <ButtonLink href="/killboard" size="sm">
-                  <Swords className="size-4" aria-hidden /> Killboard
+                  <Swords className="size-4" aria-hidden /> {t.killboard.module.nav.killboard}
                 </ButtonLink>
               }
             >
               <KillsChart rows={activity} />
             </Panel>
-            <Panel title="Latest kills and losses" subtitle="Opens on zKillboard">
+            <Panel title={d.panels.recent} subtitle={d.panels.recentSubtitle}>
               <RecentActivity rows={recent} />
             </Panel>
           </div>
         ) : canMining ? (
           <Panel
             className="xl:col-span-8"
-            title={corpScope ? "Corporation mining · last 30 days" : "Your mining · last 30 days"}
-            subtitle="Daily ISK by resource"
+            title={corpScope ? d.panels.corpMining : d.panels.ownMining}
+            subtitle={d.panels.miningSubtitle}
             actions={
               <ButtonLink href="/mining" size="sm">
-                <Pickaxe className="size-4" aria-hidden /> Mining overview
+                <Pickaxe className="size-4" aria-hidden /> {d.panels.miningOverview}
               </ButtonLink>
             }
           >
-            <DailyChart metric="value" rows={daily.map((d) => ({ date: d.date, total: d.total, values: toChartClasses(d.byClass) }))} />
+            <DailyChart metric="value" rows={daily.map((day) => ({ date: day.date, total: day.total, values: toChartClasses(day.byClass) }))} />
           </Panel>
         ) : (
-          <Panel className="xl:col-span-8" title="Getting started">
-            <p className="text-sm text-ink-2">
-              Link your characters and grant ESI access while a director approves your account.
-            </p>
+          <Panel className="xl:col-span-8" title={d.panels.gettingStarted}>
+            <p className="text-sm text-ink-2">{d.panels.gettingStartedBody}</p>
             <ButtonLink href="/characters" variant="primary" className="mt-4">
-              <Link2 className="size-4" aria-hidden /> Manage characters
+              <Link2 className="size-4" aria-hidden /> {d.panels.manageCharacters}
             </ButtonLink>
           </Panel>
         )}
@@ -303,14 +316,14 @@ export default async function OverviewPage() {
         <div className="space-y-4 xl:col-span-4">
           {ranked.length > 0 && (
             <Panel
-              title="MVP · last 30 days"
+              title={d.panels.mvp}
               actions={
                 <Link href="/killboard" className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
-                  All pilots <ArrowRight className="size-3" aria-hidden />
+                  {d.panels.allPilots} <ArrowRight className="size-3" aria-hidden />
                 </Link>
               }
             >
-              <MvpCard pilot={ranked[0]} period="30 days" size="md" />
+              <MvpCard pilot={ranked[0]} period={t.common.datePresets["30d"]} size="md" />
               {ranked.length > 1 && (
                 <div className="mt-3">
                   <RunnersUp pilots={ranked.slice(1, 5)} />
@@ -321,34 +334,34 @@ export default async function OverviewPage() {
           {combat && syncStats?.[0]?.failing ? (
             <Glass className="flex items-center gap-3 px-5 py-3.5 text-sm">
               <Crosshair className="size-4 text-critical-text" aria-hidden />
-              <span className="flex-1">{syncStats[0].failing} sync jobs failing</span>
+              <span className="flex-1">{d.panels.syncFailing(syncStats[0].failing)}</span>
               <Link href="/admin/sync" className="text-xs text-accent hover:underline">
-                Sync status
+                {d.panels.syncStatus}
               </Link>
             </Glass>
           ) : null}
           <Panel
-            title="Your characters"
+            title={d.panels.characters}
             actions={
               <Link href="/characters" className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
-                Manage <ArrowRight className="size-3" aria-hidden />
+                {d.panels.manage} <ArrowRight className="size-3" aria-hidden />
               </Link>
             }
           >
             <ul className="space-y-2">
               {user.characters.map((c) => {
-                const t = tokens.find((x) => x.characterId === c.characterId);
-                const ok = t?.status === "active" && required.every((s) => t.scopes.includes(s));
+                const token = tokens.find((x) => x.characterId === c.characterId);
+                const ok = token?.status === "active" && required.every((s) => token.scopes.includes(s));
                 return (
                   <li key={c.characterId} className="flex items-center gap-3 text-sm">
                     <Portrait id={c.characterId} size={28} />
                     <span className="min-w-0 flex-1 truncate">{c.name}</span>
                     {ok ? (
                       <StatusBadge status="ok" label="ESI" />
-                    ) : t?.status === "invalid" ? (
-                      <StatusBadge status="error" label="Revoked" />
+                    ) : token?.status === "invalid" ? (
+                      <StatusBadge status="error" label={d.panels.tokenRevoked} />
                     ) : (
-                      <StatusBadge status="warning" label="Scopes" />
+                      <StatusBadge status="warning" label={d.panels.tokenScopes} />
                     )}
                   </li>
                 );
@@ -359,16 +372,16 @@ export default async function OverviewPage() {
       </div>
 
       <div>
-        <div className="eve-label mb-3 text-xs text-ink-3">On the roadmap</div>
+        <div className="eve-label mb-3 text-xs text-ink-3">{d.roadmap.title}</div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {ROADMAP.map((r) => (
-            <Glass key={r.title} className="flex items-start gap-3 px-5 py-4 opacity-80">
+            <Glass key={r.id} className="flex items-start gap-3 px-5 py-4 opacity-80">
               <div className="grid size-9 shrink-0 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.025]">
                 <r.icon className="size-4 text-ink-2" aria-hidden />
               </div>
               <div>
-                <div className="text-sm font-medium">{r.title}</div>
-                <div className="mt-0.5 text-xs text-ink-3">{r.text}</div>
+                <div className="text-sm font-medium">{d.roadmap.items[r.id].title}</div>
+                <div className="mt-0.5 text-xs text-ink-3">{d.roadmap.items[r.id].text}</div>
               </div>
             </Glass>
           ))}

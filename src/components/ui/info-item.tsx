@@ -5,14 +5,15 @@ import type { ReactNode } from "react";
 
 /**
  * Icon tile + mono label + value, as used on the overview page. With `href` the
- * row links to the page behind the value (`external` opens it in a new tab).
+ * row links to the page behind the value; `newTabLabel` opens it in a new tab
+ * and is read to screen readers (pass `t.common.opensInNewTab`).
  */
 export function InfoItem({
   icon: Icon,
   media,
   label,
   href,
-  external = false,
+  newTabLabel,
   children,
 }: {
   icon?: LucideIcon;
@@ -20,10 +21,10 @@ export function InfoItem({
   media?: ReactNode;
   label: string;
   href?: string;
-  external?: boolean;
+  newTabLabel?: string;
   children: ReactNode;
 }) {
-  const Arrow = external ? ArrowUpRight : ArrowRight;
+  const Arrow = newTabLabel ? ArrowUpRight : ArrowRight;
   const body = (
     <>
       {media ??
@@ -45,10 +46,10 @@ export function InfoItem({
   if (!href) return <div className="flex items-center gap-3.5">{body}</div>;
   // Negative margin keeps linked and plain items aligned while the hover area gets some padding.
   const className = "group -m-2 flex items-center gap-3.5 rounded-xl p-2 transition-colors hover:bg-white/[0.04]";
-  return external ? (
+  return newTabLabel ? (
     <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
       {body}
-      <span className="sr-only">(opens in a new tab)</span>
+      <span className="sr-only">{newTabLabel}</span>
     </a>
   ) : (
     <Link href={href} className={className}>

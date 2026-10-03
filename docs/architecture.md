@@ -35,6 +35,7 @@ src/
     auth/              SSO login / callback / logout / demo routes
     setup/             first-start walkthrough for the first admin
     login/, join/      public pages
+  i18n/                UI languages: locale detection, typed en/de dictionaries, getI18n() / useI18n()
   core/                framework-level code shared by every module
     auth/              SSO (sso.ts), sessions, provisioning, role policy, data access layer (dal.ts)
     db/                Drizzle client and core schemas (core, eve, sync)
@@ -83,6 +84,26 @@ minimum role; admins can override the minimum per permission (Settings → Permi
 New users get a role from configuration: `ADMIN_CHARACTER_IDS` → admin; otherwise the first user ever → admin; home
 corporation (optionally alliance) members → member; everyone else → guest awaiting approval. Logging in never
 demotes anyone.
+
+## Languages
+
+The UI is available in English and German (`src/i18n`). The language is not part of the URL:
+
+- An explicit choice from the language switch (sidebar footer; sign-in, registration and setup pages) is stored in
+  the `ks_locale` cookie by the `setLocale` server action, which also revalidates the root layout.
+- Without that cookie, the browser's `Accept-Language` header decides (`negotiateLocale`, by quality then order).
+  Anything that doesn't ask for German — including no header at all — gets English.
+
+Texts live in dictionaries, one namespace per area: `src/i18n/messages/en/*` is the source and defines the
+`Messages` type; `src/i18n/messages/de/*` must match it exactly, so a missing or extra German key fails the
+typecheck. Dynamic text is a function (`selected: (count: number) => …`), text with embedded markup a function
+taking React nodes. Server code reads `{ t, f } = await getI18n()`, client components `useI18n()`; `f` is the
+locale-aware formatter from `src/lib/format.ts` (German: "9,87 Mio. ISK", "12,3 %", "vor 5 Minuten"). EVE times
+stay `YYYY-MM-DD HH:mm ET` in both languages. Module manifests and job definitions name their texts with `Msg`
+selectors (`label: (t) => t.mining.module.nav.ledger`) so they can be rendered in any language.
+
+Not translated: names from ESI (items, systems, pilots — ESI is queried in English), CSV exports, log output and the
+stored killboard situation reports.
 
 ## ESI client
 

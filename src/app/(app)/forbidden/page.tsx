@@ -2,19 +2,23 @@ import { ShieldX } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Glass } from "@/components/ui/glass";
+import { getI18n } from "@/i18n/server";
 
-export const metadata = { title: "Access denied" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.common.forbidden.metaTitle };
+}
 
-export default function ForbiddenPage() {
+export default async function ForbiddenPage() {
+  const { t } = await getI18n();
   return (
     <Glass className="mx-auto mt-10 max-w-xl">
       <EmptyState
         icon={ShieldX}
-        title="You don't have access to this page"
-        action={<ButtonLink href="/">Back to dashboard</ButtonLink>}
+        title={t.common.forbidden.title}
+        action={<ButtonLink href="/">{t.common.forbidden.back}</ButtonLink>}
       >
-        Your Keystar role doesn&apos;t include the permission this page needs. Ask a director or admin if you think this is a
-        mistake.
+        {t.common.forbidden.body}
       </EmptyState>
     </Glass>
   );

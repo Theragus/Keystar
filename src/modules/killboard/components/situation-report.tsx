@@ -1,7 +1,7 @@
 import { ChevronDown, Radio } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Glass } from "@/components/ui/glass";
-import { dateTime } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import { rangeLabel } from "../filters";
 import { parseMarkup, type Segment } from "../report/markup";
 import type { ReadinessLevel, StoredReport } from "../report/types";
@@ -52,7 +52,7 @@ function Rich({ text }: { text: string }) {
 }
 
 /** The weekly briefing, collapsible like the original dashboard (open by default). */
-export function SituationReportPanel({
+export async function SituationReportPanel({
   stored,
   canManage,
   claudeConfigured,
@@ -63,12 +63,13 @@ export function SituationReportPanel({
   claudeConfigured: boolean;
   actions?: ReactNode;
 }) {
-  const window = stored ? rangeLabel({ from: stored.periodFrom, to: stored.periodTo }) : null;
+  const { t, f } = await getI18n();
+  const window = stored ? rangeLabel({ from: stored.periodFrom, to: stored.periodTo }, f.locale) : null;
   return (
     <Glass as="details" open className="group">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
         <Radio className="size-4 text-accent" aria-hidden />
-        <span className="eve-label text-xs text-accent">Situation report</span>
+        <span className="eve-label text-xs text-accent">{t.killboard.report.title}</span>
         {window && <span className="text-xs text-ink-3">{window}</span>}
         {stored && (
           <Badge tone={READINESS_TONE[stored.report.readiness.level]} className="ml-1">
@@ -87,27 +88,23 @@ export function SituationReportPanel({
               </p>
             ))}
             <p className="text-sm leading-relaxed text-ink-2">
-              <span className="eve-label mr-2 text-2xs text-ink-3">Readiness</span>
+              <span className="eve-label mr-2 text-2xs text-ink-3">{t.killboard.report.readiness}</span>
               <Rich text={stored.report.readiness.assessment} />
             </p>
           </article>
         ) : (
-          <p className="text-sm text-ink-3">
-            The first report is written once a full week of killmails has been imported (shortly after 02:00 EVE time).
-          </p>
+          <p className="text-sm text-ink-3">{t.killboard.report.pending}</p>
         )}
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-ink-3">
           {stored && (
             <span>
-              {stored.source === "claude" ? `Written by Claude (${stored.model ?? "unknown model"})` : "Written from the weekly numbers"}
+              {stored.source === "claude" ? t.killboard.report.byClaude(stored.model) : t.killboard.report.byTemplate}
               {" · "}
-              {dateTime(stored.createdAt)}
+              {f.dateTime(stored.createdAt)}
             </span>
           )}
-          {canManage && stored?.error && <span className="text-warning">Claude failed: {stored.error}</span>}
-          {canManage && !claudeConfigured && (
-            <span>Set ANTHROPIC_API_KEY on the server to have Claude write these reports.</span>
-          )}
+          {canManage && stored?.error && <span className="text-warning">{t.killboard.report.claudeFailed(stored.error)}</span>}
+          {canManage && !claudeConfigured && <span>{t.killboard.report.claudeHint}</span>}
           {actions && <span className="ml-auto">{actions}</span>}
         </div>
       </div>

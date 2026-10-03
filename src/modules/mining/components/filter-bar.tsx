@@ -7,7 +7,8 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { usePendingNavigation } from "@/components/ui/pending";
 import { Segmented } from "@/components/ui/segmented";
 import { displaySecurity } from "@/core/eve/images";
-import { ORE_CLASS_META, ORE_CLASSES, type OreClass } from "@/core/eve/ore";
+import { ORE_CLASSES, type OreClass } from "@/core/eve/ore";
+import { useI18n } from "@/i18n/client";
 import { MINING_METRICS, MINING_SOURCES, miningQueryString, type MiningFilters } from "../filters";
 import type { FilterOptions } from "../queries";
 
@@ -24,7 +25,9 @@ export function MiningFilterBar({
   showMetric?: boolean;
   showSource?: boolean;
 }) {
+  const { t } = useI18n();
   const { navigate } = usePendingNavigation();
+  const all = t.common.multiSelect.all;
   const apply = (overrides: Partial<MiningFilters>) => navigate(miningQueryString(filters, { ...overrides, page: 1 }));
 
   const isFiltered =
@@ -36,45 +39,45 @@ export function MiningFilterBar({
       <DateRangePicker from={filters.from} to={filters.to} presets={presets} onChange={(r) => apply(r)} />
 
       <MultiSelect
-        label="Members"
-        allLabel="All"
+        label={t.mining.filters.members}
+        allLabel={all}
         icon={<Users className="size-3.5 text-accent" aria-hidden />}
         selected={filters.characters}
         onApply={(v) => apply({ characters: v.map(Number) })}
         options={options.characters.map((c) => ({
           value: c.id,
           label: c.name,
-          group: c.registered ? "Registered" : "Not registered",
+          group: c.registered ? t.mining.filters.registered : t.mining.filters.notRegistered,
           leading: <Portrait id={c.id} size={20} />,
         }))}
       />
 
       <MultiSelect
-        label="Class"
-        allLabel="All"
+        label={t.mining.filters.class}
+        allLabel={all}
         icon={<Layers className="size-3.5 text-accent" aria-hidden />}
         selected={filters.classes}
         onApply={(v) => apply({ classes: v as OreClass[] })}
-        options={ORE_CLASSES.filter((c) => c !== "other").map((c) => ({ value: c, label: ORE_CLASS_META[c].label }))}
+        options={ORE_CLASSES.filter((c) => c !== "other").map((c) => ({ value: c, label: t.eve.oreClasses[c].label }))}
       />
 
       <MultiSelect
-        label="Ore"
-        allLabel="All"
+        label={t.mining.filters.ore}
+        allLabel={all}
         icon={<Gem className="size-3.5 text-accent" aria-hidden />}
         selected={filters.types}
         onApply={(v) => apply({ types: v.map(Number) })}
-        options={options.types.map((t) => ({
-          value: t.id,
-          label: t.name,
-          group: ORE_CLASS_META[t.oreClass].label,
-          leading: <TypeIcon id={t.id} size={20} />,
+        options={options.types.map((type) => ({
+          value: type.id,
+          label: type.name,
+          group: t.eve.oreClasses[type.oreClass].label,
+          leading: <TypeIcon id={type.id} size={20} />,
         }))}
       />
 
       <MultiSelect
-        label="System"
-        allLabel="All"
+        label={t.mining.filters.system}
+        allLabel={all}
         icon={<MapPin className="size-3.5 text-accent" aria-hidden />}
         selected={filters.systems}
         onApply={(v) => apply({ systems: v.map(Number) })}
@@ -87,19 +90,19 @@ export function MiningFilterBar({
 
       {showSource && (
         <Segmented
-          label="Data source"
+          label={t.mining.filters.dataSource}
           value={filters.source}
           onChange={(source) => apply({ source })}
-          options={MINING_SOURCES.map((s) => ({ value: s.value, label: s.label, title: s.hint }))}
+          options={MINING_SOURCES.map((s) => ({ value: s, label: t.mining.sources[s].label, title: t.mining.sources[s].hint }))}
         />
       )}
 
       {showMetric && (
         <Segmented
-          label="Measure"
+          label={t.mining.filters.measure}
           value={filters.metric}
           onChange={(metric) => apply({ metric })}
-          options={MINING_METRICS.map((m) => ({ value: m.value, label: m.label }))}
+          options={MINING_METRICS.map((m) => ({ value: m, label: t.mining.metrics[m] }))}
         />
       )}
 
@@ -111,7 +114,7 @@ export function MiningFilterBar({
           }
           className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs text-ink-3 transition hover:bg-white/6 hover:text-ink"
         >
-          <RotateCcw className="size-3.5" aria-hidden /> Reset
+          <RotateCcw className="size-3.5" aria-hidden /> {t.mining.filters.reset}
         </button>
       )}
     </div>

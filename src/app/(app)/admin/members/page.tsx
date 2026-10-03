@@ -12,9 +12,12 @@ import { getDb } from "@/core/db";
 import { env } from "@/core/env";
 import { characterScopes } from "@/core/modules/registry";
 import { getSetting } from "@/core/settings";
-import { percent } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 
-export const metadata = { title: "Member audit" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.admin.members.metaTitle };
+}
 
 interface AuditRow {
   id: string;
@@ -28,12 +31,14 @@ interface AuditRow {
 
 export default async function MemberAuditPage() {
   await requirePermission("members.audit");
+  const { t, f } = await getI18n();
+  const tm = t.admin.members;
   const home = await getSetting("corp.homeCorporationId");
   if (!home) {
     return (
       <Glass className="mx-auto mt-10 max-w-xl">
-        <EmptyState icon={ShieldCheck} title="No home corporation configured">
-          Set the home corporation in Settings to audit its members.
+        <EmptyState icon={ShieldCheck} title={tm.noHome.title}>
+          {tm.noHome.body(t.shell.nav.settings)}
         </EmptyState>
       </Glass>
     );
@@ -67,20 +72,24 @@ export default async function MemberAuditPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Administration"
-        title="Member Audit"
-        description="Compare the in-game corporation roster with characters registered in Keystar, and chase missing ESI access."
+        eyebrow={t.shell.navSections.admin}
+        title={t.shell.nav.members}
+        description={tm.description}
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <StatTile label="In-game roster" value={rosterKnown ? String(roster) : "—"} hint={rosterKnown ? undefined : "Needs a roster token"} />
         <StatTile
-          label="Registered"
-          value={String(registered)}
-          hint={rosterKnown && roster ? `${percent(registered / roster, 0)} of roster` : undefined}
+          label={tm.stats.roster}
+          value={rosterKnown ? f.integer(roster) : "—"}
+          hint={rosterKnown ? undefined : tm.stats.rosterHint}
         />
-        <StatTile label="Not registered" value={rosterKnown ? String(unregistered) : "—"} />
-        <StatTile label="Missing or revoked ESI" value={String(missingScopes)} />
+        <StatTile
+          label={tm.stats.registered}
+          value={f.integer(registered)}
+          hint={rosterKnown && roster ? tm.stats.ofRoster(f.percent(registered / roster, 0)) : undefined}
+        />
+        <StatTile label={tm.stats.notRegistered} value={rosterKnown ? f.integer(unregistered) : "—"} />
+        <StatTile label={tm.stats.missingEsi} value={f.integer(missingScopes)} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
@@ -89,10 +98,10 @@ export default async function MemberAuditPage() {
             <table className="ks-table">
               <thead>
                 <tr>
-                  <th>Character</th>
-                  <th>Status</th>
-                  <th>Account</th>
-                  <th>ESI</th>
+                  <th>{tm.columns.character}</th>
+                  <th>{tm.columns.status}</th>
+                  <th>{tm.columns.account}</th>
+                  <th>{tm.columns.esi}</th>
                 </tr>
               </thead>
               <tbody>
@@ -103,16 +112,16 @@ export default async function MemberAuditPage() {
                       <td>
                         <div className="flex items-center gap-2.5">
                           <Portrait id={Number(r.id)} size={28} />
-                          <span className="font-medium">{r.name ?? `Character ${r.id}`}</span>
+                          <span className="font-medium">{r.name ?? tm.characterFallback(r.id)}</span>
                         </div>
                       </td>
                       <td>
                         {!r.registered ? (
-                          <StatusBadge status="warning" label="Not registered" />
+                          <StatusBadge status="warning" label={tm.status.notRegistered} />
                         ) : rosterKnown && !r.in_roster ? (
-                          <Badge>Not in roster</Badge>
+                          <Badge>{tm.status.notInRoster}</Badge>
                         ) : (
-                          <StatusBadge status="ok" label="Registered" />
+                          <StatusBadge status="ok" label={tm.status.registered} />
                         )}
                       </td>
                       <td className="text-ink-2">{r.main_name ?? "—"}</td>
@@ -120,13 +129,13 @@ export default async function MemberAuditPage() {
                         {!r.registered ? (
                           <span className="text-ink-3">—</span>
                         ) : r.status === "invalid" ? (
-                          <StatusBadge status="error" label="Token revoked" />
+                          <StatusBadge status="error" label={tm.esi.tokenRevoked} />
                         ) : !r.status ? (
-                          <StatusBadge status="warning" label="No token" />
+                          <StatusBadge status="warning" label={tm.esi.noToken} />
                         ) : missing.length ? (
-                          <StatusBadge status="warning" label={`${missing.length} missing`} />
+                          <StatusBadge status="warning" label={tm.esi.missing(missing.length)} />
                         ) : (
-                          <StatusBadge status="ok" label="Complete" />
+                          <StatusBadge status="ok" label={tm.esi.complete} />
                         )}
                       </td>
                     </tr>
@@ -137,18 +146,14 @@ export default async function MemberAuditPage() {
           </div>
         </Glass>
         <div className="space-y-4 xl:col-span-4">
-          <Panel title="Request ESI access" subtitle="Share this link with members">
+          <Panel title={tm.request.title} subtitle={tm.request.subtitle}>
             <CopyField value={`${env().APP_URL}/join`} />
-            <p className="mt-3 text-xs text-ink-2">
-              The page explains exactly which scopes are requested and why, then walks the member through EVE SSO. Alts can
-              be linked afterwards from My Characters.
-            </p>
+            <p className="mt-3 text-xs text-ink-2">{tm.request.body(t.shell.nav.characters)}</p>
           </Panel>
           {!rosterKnown && (
-            <Panel title="Roster unavailable" subtitle="Why some numbers are missing">
+            <Panel title={tm.rosterUnavailable.title} subtitle={tm.rosterUnavailable.subtitle}>
               <p className="text-xs text-ink-2">
-                The in-game roster comes from <code>esi-corporations.read_corporation_membership.v1</code>. Link a home
-                corporation character with corporation access (My Characters) and the roster appears after the next sync.
+                {tm.rosterUnavailable.body(<code>esi-corporations.read_corporation_membership.v1</code>, t.shell.nav.characters)}
               </p>
             </Panel>
           )}

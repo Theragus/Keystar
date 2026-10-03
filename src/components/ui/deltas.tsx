@@ -2,21 +2,26 @@ import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Week-over-week change. Colour encodes good/bad (kills up is good, losses up
- * is bad) and is always paired with an arrow and a sign, never colour alone.
+ * Period-over-period change. Colour encodes good/bad (kills up is good, losses
+ * up is bad) and is always paired with an arrow and a sign, never colour alone.
+ * Isomorphic, so the caller passes the translated texts.
  */
 export function WeekDelta({
   change,
   upIsGood = true,
   format = (n: number) => String(n),
-  suffix = "vs prev 7d",
+  suffix,
+  emptyText,
 }: {
   change: number | null;
   upIsGood?: boolean;
   format?: (n: number) => string;
-  suffix?: string;
+  /** e.g. "vs prior 30d". */
+  suffix: string;
+  /** Shown when there is no baseline to compare with. */
+  emptyText: string;
 }) {
-  if (change === null) return <span className="text-xs text-ink-3">No data for the previous 7 days</span>;
+  if (change === null) return <span className="text-xs text-ink-3">{emptyText}</span>;
   const flat = Math.abs(change) < 1e-9;
   const good = flat ? null : change > 0 === upIsGood;
   const Icon = flat ? Minus : change > 0 ? ArrowUpRight : ArrowDownRight;

@@ -9,12 +9,15 @@ import { Glass, Panel } from "@/components/ui/glass";
 import { requirePermission } from "@/core/auth/dal";
 import { getDb } from "@/core/db";
 import { characterScopes } from "@/core/modules/registry";
-import { assignableRoles, canManageRole, isRole, ROLE_META, ROLES, type Role } from "@/core/rbac/roles";
-import { relativeTime } from "@/lib/format";
+import { assignableRoles, canManageRole, isRole, ROLES, type Role } from "@/core/rbac/roles";
+import { getI18n } from "@/i18n/server";
 import { zkillCharacter } from "@/modules/killboard/links";
 import { approveUser, setUserDisabled, updateUserRole } from "../actions";
 
-export const metadata = { title: "Users & roles" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.admin.users.metaTitle };
+}
 
 interface UserRow {
   id: string;
@@ -30,6 +33,8 @@ interface UserRow {
 
 export default async function UsersPage({ searchParams }: PageProps<"/admin/users">) {
   const actor = await requirePermission("users.view");
+  const { t, f } = await getI18n();
+  const tu = t.admin.users;
   const canManage = actor.can("users.manage");
   const canAudit = actor.can("members.audit");
   const roleParam = (await searchParams).role;
@@ -59,13 +64,13 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Administration"
-        title="Users & Roles"
-        description="Keystar roles control what each account can see and change. They are independent of in-game corporation roles."
+        eyebrow={t.shell.navSections.admin}
+        title={t.shell.nav.users}
+        description={tu.description}
         actions={
           actor.can("app.settings.manage") ? (
             <ButtonLink href="/admin/settings#permissions" size="sm">
-              Role permissions <ArrowRight className="size-3.5" aria-hidden />
+              {tu.rolePermissions} <ArrowRight className="size-3.5" aria-hidden />
             </ButtonLink>
           ) : undefined
         }
@@ -79,9 +84,9 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
             <>
               <div className="flex items-center justify-between">
                 <RoleBadge role={r} />
-                <span className="text-lg font-semibold tabular-nums">{count}</span>
+                <span className="text-lg font-semibold tabular-nums">{f.integer(count)}</span>
               </div>
-              <p className="mt-2 text-2xs leading-snug text-ink-3">{ROLE_META[r].description}</p>
+              <p className="mt-2 text-2xs leading-snug text-ink-3">{t.common.roles[r].description}</p>
             </>
           );
           // An empty role has nothing to filter to.
@@ -99,7 +104,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
               href={active ? "/admin/users" : `/admin/users?role=${r}`}
               scroll={false}
               aria-current={active ? "true" : undefined}
-              title={active ? "Show all users" : `Show only ${ROLE_META[r].label.toLowerCase()}s`}
+              title={active ? tu.filter.allUsers : tu.filter.onlyRole}
               className="glass-link px-4 py-3.5"
             >
               {body}
@@ -109,20 +114,21 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
       </div>
 
       {pending.length > 0 && canManage && (
-        <Panel title={`Awaiting approval (${pending.length})`} subtitle="Signed in from outside the home corporation or before auto-approval">
+        <Panel title={tu.awaitingApproval(pending.length)} subtitle={tu.awaitingApprovalHint}>
           <ul className="divide-y divide-white/6">
             {pending.map((u) => (
               <li key={u.id} className="flex items-center gap-3 py-2.5">
                 {u.main_id && <Portrait id={Number(u.main_id)} size={32} />}
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{u.main_name ?? "Unknown"}</div>
+                  <div className="font-medium">{u.main_name ?? tu.unknown}</div>
                   <div className="text-xs text-ink-3">
-                    {u.corp_ticker ? `[${u.corp_ticker}] · ` : ""}registered {relativeTime(u.created_at)}
+                    {u.corp_ticker ? `[${u.corp_ticker}] · ` : ""}
+                    {tu.registered(f.relativeTime(u.created_at))}
                   </div>
                 </div>
                 <form action={approveUser.bind(null, u.id)}>
                   <Button size="sm" variant="primary" type="submit">
-                    <UserCheck className="size-3.5" aria-hidden /> Approve as member
+                    <UserCheck className="size-3.5" aria-hidden /> {tu.approve}
                   </Button>
                 </form>
               </li>
@@ -133,13 +139,10 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
 
       {roleFilter && (
         <div className="flex items-center gap-2 text-sm text-ink-2">
-          <span>
-            Showing {shown.length} {ROLE_META[roleFilter].label.toLowerCase()}
-            {shown.length === 1 ? "" : "s"}
-          </span>
+          <span>{tu.filter.showing(shown.length, t.common.roles[roleFilter].label)}</span>
           <span className="text-ink-3">·</span>
           <Link href="/admin/users" scroll={false} className="text-accent hover:underline">
-            Show all
+            {tu.filter.showAll}
           </Link>
         </div>
       )}
@@ -149,19 +152,19 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
           <table className="ks-table">
             <thead>
               <tr>
-                <th>Pilot</th>
-                <th>Characters</th>
-                <th>ESI health</th>
-                <th>Last login</th>
-                <th>Role</th>
-                {showActions && <th className="text-right">Actions</th>}
+                <th>{tu.columns.pilot}</th>
+                <th>{tu.columns.characters}</th>
+                <th>{tu.columns.esiHealth}</th>
+                <th>{tu.columns.lastLogin}</th>
+                <th>{tu.columns.role}</th>
+                {showActions && <th className="text-right">{tu.columns.actions}</th>}
               </tr>
             </thead>
             <tbody>
               {shown.length === 0 && (
                 <tr>
                   <td colSpan={showActions ? 6 : 5} className="py-6 text-center text-ink-3">
-                    No users with this role.
+                    {tu.filter.empty}
                   </td>
                 </tr>
               )}
@@ -174,13 +177,13 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                 // Where a token problem gets fixed: your own characters page, or the member audit for others.
                 const fixHref = !tokenTrouble ? null : own ? "/characters" : canAudit ? "/admin/members" : null;
                 const health = u.is_disabled ? (
-                  <StatusBadge status="error" label="Disabled" />
+                  <StatusBadge status="error" label={tu.health.disabled} />
                 ) : invalid ? (
-                  <StatusBadge status="error" label={`${invalid} revoked`} />
+                  <StatusBadge status="error" label={tu.health.revoked(invalid)} />
                 ) : missing ? (
-                  <StatusBadge status="warning" label={`${missing} char${missing > 1 ? "s" : ""} missing scopes`} />
+                  <StatusBadge status="warning" label={tu.health.missingScopes(missing)} />
                 ) : (
-                  <StatusBadge status="ok" label="All good" />
+                  <StatusBadge status="ok" label={tu.health.allGood} />
                 );
                 return (
                   <tr key={u.id} className={u.is_disabled ? "opacity-50" : undefined}>
@@ -189,7 +192,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                         {u.main_id && <Portrait id={Number(u.main_id)} size={30} />}
                         <div className="leading-tight">
                           <div className="font-medium">
-                            {u.main_name ?? "Unknown"} {own && <span className="text-xs text-ink-3">(you)</span>}
+                            {u.main_name ?? tu.unknown} {own && <span className="text-xs text-ink-3">{tu.you}</span>}
                           </div>
                           <div className="text-2xs text-ink-3">{u.corp_ticker ? `[${u.corp_ticker}]` : "—"}</div>
                         </div>
@@ -203,7 +206,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                             href={zkillCharacter(c.id)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            title={`${c.name} on zKillboard`}
+                            title={tu.zkill(c.name)}
                             className="rounded-full transition hover:brightness-150"
                           >
                             <Badge tone={c.status === "invalid" ? "critical" : "neutral"}>{c.name}</Badge>
@@ -215,7 +218,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                       {fixHref ? (
                         <Link
                           href={fixHref}
-                          title={own ? "Fix on My Characters" : "Open Member Audit"}
+                          title={own ? tu.health.fixOwn : tu.health.openAudit}
                           className="inline-flex rounded-full transition hover:brightness-150"
                         >
                           {health}
@@ -224,7 +227,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                         health
                       )}
                     </td>
-                    <td className="text-ink-2">{relativeTime(u.last_login_at)}</td>
+                    <td className="text-ink-2">{f.relativeTime(u.last_login_at)}</td>
                     <td>
                       {canChange ? (
                         <form action={updateUserRole.bind(null, u.id)} className="flex items-center gap-1.5">
@@ -232,15 +235,15 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                             name="role"
                             defaultValue={u.role}
                             className="glass-inset h-8 rounded-lg px-2.5 text-xs text-ink [color-scheme:dark]"
-                            aria-label={`Role for ${u.main_name ?? "user"}`}
+                            aria-label={tu.roleFor(u.main_name)}
                           >
                             {ROLES.filter((r) => assignable.includes(r) || r === u.role).map((r) => (
                               <option key={r} value={r} disabled={!assignable.includes(r)}>
-                                {ROLE_META[r].label}
+                                {t.common.roles[r].label}
                               </option>
                             ))}
                           </select>
-                          <Button size="sm" type="submit" title="Save role">
+                          <Button size="sm" type="submit" title={tu.saveRole}>
                             <CheckCircle2 className="size-3.5" aria-hidden />
                           </Button>
                         </form>
@@ -253,13 +256,13 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                         {canChange ? (
                           <form action={setUserDisabled.bind(null, u.id, !u.is_disabled)}>
                             <Button size="sm" variant={u.is_disabled ? "glass" : "danger"} type="submit">
-                              <Ban className="size-3.5" aria-hidden /> {u.is_disabled ? "Enable" : "Disable"}
+                              <Ban className="size-3.5" aria-hidden /> {u.is_disabled ? tu.enable : tu.disable}
                             </Button>
                           </form>
                         ) : (
                           <span
                             className="text-ink-3"
-                            title={own ? "You can't disable your own account" : "Only a higher role can change this account"}
+                            title={own ? tu.noAction.self : tu.noAction.higher}
                           >
                             —
                           </span>
