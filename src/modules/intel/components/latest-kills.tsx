@@ -1,3 +1,4 @@
+import { eventTargetHull } from "../evidence";
 import { TypeIcon } from "@/components/ui/eve-image";
 import { getI18n } from "@/i18n/server";
 import { KILL_COLOR, LOSS_COLOR } from "@/modules/killboard/colors";
@@ -5,7 +6,7 @@ import { zkillKill } from "@/modules/killboard/links";
 import type { DisplayNames } from "../names";
 import type { LatestEvent, PilotProfile } from "../types";
 
-/** The pilot's newest kills and losses, newest first: what they fly right now and where. */
+/** The pilot's newest kills and losses, newest first: historical observations, never current ship assignments. */
 export async function LatestKills({ events, names, limit = 5 }: { events: LatestEvent[]; names: DisplayNames; limit?: number }) {
   if (!events.length) return null;
   const { t, f } = await getI18n();
@@ -14,7 +15,8 @@ export async function LatestKills({ events, names, limit = 5 }: { events: Latest
     <ol className="flex flex-wrap gap-1.5">
       {events.slice(0, limit).map((e) => {
         const color = e.isLoss ? LOSS_COLOR : KILL_COLOR;
-        const other = e.otherShipTypeId ? (names.types.get(e.otherShipTypeId)?.name ?? null) : null;
+        const targetHull = eventTargetHull(e);
+        const other = targetHull ? (names.types.get(targetHull)?.name ?? null) : null;
         const system = names.systems.get(e.systemId)?.name ?? null;
         return (
           <li key={e.killmailId}>
