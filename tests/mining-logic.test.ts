@@ -78,6 +78,14 @@ describe("mining filters", () => {
     expect(lm).toEqual({ from: "2026-09-01", to: "2026-09-30" });
     expect(DATE_PRESETS.find((p) => p.id === "ytd")!.range(today).from).toBe("2026-01-01");
   });
+
+  it("computes single-day presets across month and year boundaries", () => {
+    const range = (id: string, t: string) => DATE_PRESETS.find((p) => p.id === id)!.range(t);
+    expect(range("today", "2026-03-01")).toEqual({ from: "2026-03-01", to: "2026-03-01" });
+    expect(range("yesterday", "2026-03-01")).toEqual({ from: "2026-02-28", to: "2026-02-28" });
+    expect(range("today", "2026-01-01")).toEqual({ from: "2026-01-01", to: "2026-01-01" });
+    expect(range("yesterday", "2026-01-01")).toEqual({ from: "2025-12-31", to: "2025-12-31" });
+  });
 });
 
 describe("ore classification", () => {

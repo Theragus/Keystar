@@ -25,6 +25,8 @@ export const common: typeof en = {
     admin: { label: "Admin", description: "Volle Kontrolle, einschließlich App-Einstellungen und Admin-Vergabe." },
   },
   datePresets: {
+    today: "Heute",
+    yesterday: "Gestern",
     "7d": "7 Tage",
     "30d": "30 Tage",
     "90d": "90 Tage",

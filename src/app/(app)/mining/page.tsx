@@ -11,7 +11,8 @@ import { memberAuditHref } from "@/core/member-audit-filters";
 import { getI18n } from "@/i18n/server";
 import { delta } from "@/lib/format";
 import { toChartClasses } from "@/modules/mining/class-colors";
-import { ClassComposition, MemberLeaderboard, OreTable, SystemTable } from "@/modules/mining/components/breakdowns";
+import { ClassComposition, MemberLeaderboard, SystemTable } from "@/modules/mining/components/breakdowns";
+import { OreBreakdown } from "@/modules/mining/components/ore-table";
 import { DailyChart } from "@/modules/mining/components/daily-chart";
 import { MiningFilterBar } from "@/modules/mining/components/filter-bar";
 import { GroupByToggle } from "@/modules/mining/components/group-toggle";
@@ -181,13 +182,14 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
                   <p className="py-8 text-center text-sm text-ink-3">{m.noMiners}</p>
                 )}
               </Panel>
-              <Panel className="xl:col-span-7" title={m.oreBreakdown} subtitle={ctx.valuationLabel}>
-                {types.length ? (
-                  <OreTable rows={types} filters={filters} metric={filters.metric} />
-                ) : (
-                  <p className="py-8 text-center text-sm text-ink-3">{m.noOre}</p>
-                )}
-              </Panel>
+              <OreBreakdown
+                className="xl:col-span-7"
+                title={m.oreBreakdown}
+                subtitle={ctx.valuationLabel}
+                rows={types}
+                filters={filters}
+                emptyText={m.noOre}
+              />
             </div>
 
             <div className="grid gap-4 xl:grid-cols-12">

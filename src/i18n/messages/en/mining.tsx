@@ -141,6 +141,10 @@ export const mining = {
     notRegistered: "not registered",
     moonByRarity: "Moon ore by rarity",
     unknownLocation: "Unknown location",
+    groupOres: "Group ore types",
+    groupOresHint: "Combine the grades and variants of each ore (Scordite II-Grade, Thick Blue Ice …) into one row",
+    variants: (count: number) => plural(count, "variant", "variants"),
+    averagePrice: "Average across the grades, weighted by units",
   },
 
   overview: {
