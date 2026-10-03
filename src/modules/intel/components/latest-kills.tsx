@@ -25,21 +25,17 @@ export async function LatestKills({ events, names, limit = 5, compact = false }:
               href={zkillKill(e.killmailId)}
               target="_blank"
               rel="noopener noreferrer"
-              className={compact ? "glass-chip relative flex min-h-36 min-w-0 items-end overflow-hidden rounded-md border-t-2 bg-cover bg-center text-center text-xs transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-accent" : "glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-surface-contrast/8"}
+              className={compact ? "glass-chip relative flex aspect-square min-w-0 items-end overflow-hidden rounded-md border-t-2 bg-cover bg-center text-center text-xs transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-accent" : "glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-surface-contrast/8"}
               style={compact ? { borderTopColor: color, backgroundImage: targetHull ? `url("${typeIcon(targetHull, 64)}")` : undefined } : { borderLeftColor: color }}
-              title={l.title({ isLoss: e.isLoss, ship: other, system, isk: f.compact(e.value), attackers: e.attackerCount })}
+              title={`${l.title({ isLoss: e.isLoss, ship: other, system, isk: f.compact(e.value), attackers: e.attackerCount })} · ${f.relativeTime(e.time)}`}
             >
               {!compact && targetHull ? <TypeIcon id={targetHull} size={22} className="rounded" /> : null}
-              <span className={compact ? "relative w-full min-w-0 bg-white/80 px-1.5 py-1.5 text-slate-950 backdrop-blur-sm" : "min-w-0"}>
+              <span className={compact ? "relative w-full min-w-0 bg-white/40 px-1.5 py-1.5 text-slate-950 backdrop-blur-sm" : "min-w-0"}>
                 <span className={compact ? "block truncate font-medium" : "block max-w-36 truncate text-ink"}>
                   <span className="sr-only">{l.srKind(e.isLoss)}</span>
                   {other ?? t.intel.pilot.unknownHull}
                 </span>
-                {compact ? <span className="mt-0.5 block space-y-0.5 text-xs text-slate-800">
-                  <span className="block">{f.relativeTime(e.time)}</span>
-                  <span className="block">{system ?? t.intel.evidence.unknown}</span>
-                  <span className="block">{l.pilots(e.attackerCount)}</span>
-                </span> : <span className="block text-3xs text-ink-3">
+                {!compact && <span className="block text-3xs text-ink-3">
                   {f.relativeTime(e.time)} · {system ?? "?"} · {e.solo ? l.solo : l.pilots(e.attackerCount)}
                 </span>}
               </span>

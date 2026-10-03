@@ -10,7 +10,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - Move KeyStar branding to the top bar and the sidebar toggle into the left navigation.
 
-- Threat Intel shows the latest observed group fight's destroyed hull, recorded attackers, victim, time and value. Pilot summaries use compact responsive tiles with visible evidence, direct pilot killboard links and larger image-filled previews of the three latest killed and lost ships with light overlays showing time, system and recorded attacker counts, and recent kills and losses are ordered newest first without redundant Killed/Lost labels.
+- Threat Intel shows the latest observed group fight's destroyed hull, recorded attackers, victim, time and value. Pilot summaries use compact responsive tiles with visible evidence, direct pilot killboard links and larger image-filled previews of the three latest killed and lost ships with transparent ship-name overlays and hover details for time, system and recorded attacker counts, and recent kills and losses are ordered newest first without redundant Killed/Lost labels.
 
 
 ### Added
