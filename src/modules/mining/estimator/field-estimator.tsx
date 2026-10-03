@@ -64,7 +64,7 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
   const [maxDistance, setMaxDistance] = useState("");
   const [fleetYield, setFleetYield] = useState("");
   const [prices, setPrices] = useState<Record<string, SurveyPrice>>({});
-  const [priceError, setPriceError] = useState(false);
+  const [priceError, setPriceError] = useState<"failed" | "esi" | null>(null);
   const [pricing, startPricing] = useTransition();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -88,10 +88,10 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
       startPricing(async () => {
         try {
           const result = await priceSurveyTypes(names);
-          setPrices((p) => ({ ...p, ...result }));
-          setPriceError(false);
+          setPrices((p) => ({ ...p, ...result.prices }));
+          setPriceError(result.esiUnavailable ? "esi" : null);
         } catch {
-          setPriceError(true);
+          setPriceError("failed");
         }
       });
     }, 300);
@@ -247,7 +247,7 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
 
         {priceError && (
           <p className="flex items-center gap-1.5 text-xs text-warning">
-            <TriangleAlert className="size-3.5" aria-hidden /> {m.priceError}
+            <TriangleAlert className="size-3.5" aria-hidden /> {priceError === "esi" ? m.esiUnavailable : m.priceError}
           </p>
         )}
 

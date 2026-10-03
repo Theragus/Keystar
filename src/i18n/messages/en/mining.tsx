@@ -278,6 +278,7 @@ export const mining = {
     asteroidCount: (count: number) => plural(count, "asteroid", "asteroids"),
     oreTypes: (count: number) => plural(count, "ore type", "ore types"),
     priceError: "Could not load Keystar prices — showing scanner values only.",
+    esiUnavailable: "EVE's ESI is unavailable right now, so some ores couldn't be priced — showing scanner values for them.",
     empty: "Paste a survey scan to see the field broken down by ore and grade.",
     grades: (count: number) => plural(count, "grade", "grades"),
     baseGrade: "Base",

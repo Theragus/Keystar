@@ -23,6 +23,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - The mining CSV export no longer turns negative security status (`-0.45`) into text, so null-sec and wormhole rows
   stay numeric in spreadsheets. Names starting with `=`, `+`, `-` or `@` are still neutralised.
   ([#18](https://github.com/Theragus/Keystar/issues/18))
+- When EVE's ESI is down or rate limiting, the appraisal no longer saves real items as unrecognised lines or with
+  missing or stale prices: it shows "ESI unavailable, try again" and saves nothing. The ore field estimator says
+  which ores couldn't be priced and tries them again, and both log the ESI error so admins can tell an outage from bad
+  input. ([#17](https://github.com/Theragus/Keystar/issues/17))
 
 ## [0.6.0] - 2026-10-03
 

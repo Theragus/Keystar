@@ -14,7 +14,7 @@ describe.skipIf(!enabled)("integration", async () => {
   const q = await import("@/modules/mining/queries");
   const { parseMiningFilters } = await import("@/modules/mining/filters");
   const scheduler = await import("@/core/sync/scheduler");
-  const { EsiClient } = await import("@/core/esi/client");
+  const { EsiClient, EsiError } = await import("@/core/esi/client");
 
   const db = () => getDb();
   const filters = (extra: Record<string, string> = {}) =>
@@ -453,6 +453,61 @@ describe.skipIf(!enabled)("integration", async () => {
         expect((row.items as unknown[]).length).toBe(2);
       } finally {
         fetchSpy.mockRestore();
+      }
+    });
+  });
+
+  describe("ESI failures in appraisal and field estimator", () => {
+    const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+    const outage = () => new EsiError("ESI POST /universe/ids failed: 503", 503, "/universe/ids");
+
+    it("refuses an appraisal when names can't be resolved, and never sends names ESI would reject", async () => {
+      const { appraise, AppraisalUnavailableError } = await import("@/modules/trade/appraisal/appraise");
+      const { getEsi } = await import("@/core/esi");
+      const postSpy = vi.spyOn(getEsi(), "post").mockRejectedValue(outage());
+      try {
+        await expect(appraise("Veldspar x 10\nScordite x 5")).rejects.toBeInstanceOf(AppraisalUnavailableError);
+        // A line too long to be any item name is skipped rather than failing the whole batch.
+        postSpy.mockResolvedValue(reply({}));
+        await appraise(`Scordite x 5\n${"x".repeat(101)}`);
+        const sent = postSpy.mock.lastCall?.[1] as string[];
+        expect(sent).toContain("Scordite");
+        expect(sent.every((n) => n.length <= 100)).toBe(true);
+      } finally {
+        postSpy.mockRestore();
+      }
+    });
+
+    it("refuses an appraisal when stale items can't be priced", async () => {
+      const { appraise, AppraisalUnavailableError } = await import("@/modules/trade/appraisal/appraise");
+      const { getEsi } = await import("@/core/esi");
+      // Veldspar has no recent jita_sell value, so it must be priced live.
+      const getSpy = vi.spyOn(getEsi(), "get").mockRejectedValue(outage()) as unknown as { mockRestore: () => void };
+      try {
+        await expect(appraise("Veldspar x 10")).rejects.toBeInstanceOf(AppraisalUnavailableError);
+      } finally {
+        getSpy.mockRestore();
+      }
+    });
+
+    it("prices what it can in the field estimator and flags the rest", async () => {
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userA }) }));
+      const { priceSurveyTypes } = await import("@/modules/mining/estimator/actions");
+      const { getEsi } = await import("@/core/esi");
+      await db().insert(schema.eveTypes).values({ typeId: 1228, name: "Scordite", groupId: 462, volume: 0.15, portionSize: 100 });
+      const postSpy = vi.spyOn(getEsi(), "post").mockRejectedValue(outage());
+      const getSpy = vi.spyOn(getEsi(), "get").mockRejectedValue(outage()) as unknown as { mockRestore: () => void };
+      try {
+        const result = await priceSurveyTypes(["Veldspar", "Scordite", "Pyroxeres"]);
+        expect(result.esiUnavailable).toBe(true);
+        // Veldspar had a value; Scordite couldn't be priced and Pyroxeres couldn't be resolved, so
+        // both are left out for the next request to try again rather than cached as unpriced.
+        expect(Object.keys(result.prices)).toEqual(["veldspar"]);
+        expect(result.prices.veldspar.unitPrice).toBe(10);
+      } finally {
+        postSpy.mockRestore();
+        getSpy.mockRestore();
+        vi.doUnmock("@/core/auth/dal");
       }
     });
   });
