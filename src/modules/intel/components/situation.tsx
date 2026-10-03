@@ -5,6 +5,7 @@ import { Radio } from "lucide-react";
 import { TIER_COLOR } from "../colors";
 import type { PilotScore } from "../types";
 import { IntelLoadingOverlay } from "./scan-progress";
+import { EngagementPager } from "./engagement-pager";
 import { EngagementShips } from "./engagement-ships";
 import { PilotTags } from "./pilot-tags";
 import { Panel } from "@/components/ui/glass";
@@ -112,8 +113,7 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
           <IntelLoadingOverlay />
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{e.engagementWithUs}</h3>
           {!view.home ? <p className="text-xs text-ink-3">{t.intel.scan.noHome}</p> : !view.engagements.length ? <p className="text-xs text-ink-3">{t.intel.scan.noFights}</p> : <>
-            <ol className="space-y-3">
-              {view.engagements.slice(0, 1).map(fight => <li key={fight.key} className="border-t border-surface-contrast/6 pt-2 text-xs">
+            <EngagementPager pages={view.engagements.map(fight => ({ id: fight.key, label: `${view.names.systems.get(fight.systemId)?.name ?? e.unknown} · ${f.relativeTime(fight.start)}`, content: <div className="border-t border-surface-contrast/6 pt-2 text-xs">
                 <a href={zkillRelated(fight.systemId, fight.start)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">{view.names.systems.get(fight.systemId)?.name ?? e.unknown} · {f.relativeTime(fight.start)}</a>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {[{ key: "ours" as const, label: e.ourTeam, losses: fight.ourLosses, isk: fight.iskLost }, { key: "theirs" as const, label: e.theirTeam, losses: fight.ourKills, isk: fight.iskKilled }].map(team => <div key={team.key} className="min-w-0">
@@ -135,8 +135,7 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
                   </div>)}
                 </div>
                 <p className="mt-2 text-3xs text-ink-3">{e.battleCoverage}</p>
-              </li>)}
-            </ol>
+              </div> }))} />
             <p className="mt-2 text-3xs text-ink-3">{e.historyHint}</p>
           </>}
         </div>

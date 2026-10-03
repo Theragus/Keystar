@@ -323,6 +323,8 @@ export const intel: typeof en = {
     theirTeam: "Ihre Schiffe",
     shipsLost: (count: number) => `${count} verloren`,
     battleCoverage: "Nur erfasste Schiffe; nicht erfasste Teilnehmer und deren ISK sind unbekannt.",
+    engagementPages: "Gefechtsseiten",
+    engagementPage: "Gefecht",
     engagementWithUs: "Gefecht mit uns",
     allianceLegend: "Allianzen / Unternehmen",
     noAlliance: "Keine Allianz / Zugehörigkeit unbekannt",

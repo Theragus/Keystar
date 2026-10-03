@@ -328,6 +328,8 @@ export const intel = {
     theirTeam: "Their ships",
     shipsLost: (count: number) => `${count} lost`,
     battleCoverage: "Recorded ships only; unrecorded participants and their ISK are unknown.",
+    engagementPages: "Engagement pages",
+    engagementPage: "Engagement",
     engagementWithUs: "Engagement with us",
     allianceLegend: "Alliances / corporations",
     noAlliance: "No alliance / affiliation unknown",
