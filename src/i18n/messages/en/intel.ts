@@ -16,7 +16,7 @@ type ReasonOf<K extends ReasonKey> = Extract<Reason, { key: K }>;
 
 const TIERS: Record<Tier | "unknown", string> = {
   low: "Low",
-  moderate: "Moderate",
+  moderate: "Medium",
   high: "High",
   extreme: "Extreme",
   unknown: "Unknown",

@@ -8,7 +8,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
-- Threat Intel separates combat capability, local relevance and evidence confidence; discounts large fleets and ISK, removes character heuristics, and keeps escalation history separate. Compact 0–10 corner badges explain the score on hover without progress bars.
+- Threat Intel separates combat capability, local relevance and evidence confidence; discounts large fleets and ISK, removes character heuristics, and keeps escalation history separate. Compact 0–10 corner badges explain the score on hover without progress bars. Danger bands are Low below 5 (green), Medium from 5 to below 8 (orange), and High from 8 (red).
 
 - Move KeyStar branding to the top bar and the sidebar toggle into the left navigation.
 

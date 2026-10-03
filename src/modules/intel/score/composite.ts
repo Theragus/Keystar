@@ -66,9 +66,8 @@ export interface ScoreContext {
 }
 
 export function tierOf(composite: number): Tier {
-  if (composite >= 75) return "extreme";
-  if (composite >= 50) return "high";
-  if (composite >= 25) return "moderate";
+  if (composite >= 80) return "high";
+  if (composite >= 50) return "moderate";
   return "low";
 }
 

@@ -16,7 +16,7 @@ type Role = keyof typeof en.roles;
 
 const TIERS: Record<Tier | "unknown", string> = {
   low: "Niedrig",
-  moderate: "Mäßig",
+  moderate: "Mittel",
   high: "Hoch",
   extreme: "Extrem",
   unknown: "Unbekannt",

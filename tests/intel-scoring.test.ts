@@ -199,7 +199,7 @@ describe("threat score", () => {
   it("marks friendlies and pilots without data", () => {
     const own = { cls: "own", value: null, source: null, via: null } as const;
     expect(scorePilot(null, ctx({ standing: own }))).toMatchObject({ tier: "unknown", excluded: "own" });
-    expect([0, 24, 25, 49, 50, 74, 75, 100].map(tierOf)).toEqual(["low", "low", "moderate", "moderate", "high", "high", "extreme", "extreme"]);
+    expect([0, 49, 50, 79, 80, 100].map(tierOf)).toEqual(["low", "low", "moderate", "moderate", "high", "high"]);
   });
 
   it("adds history with us when they fought us", () => {
