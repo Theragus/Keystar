@@ -1,0 +1,22 @@
+name: Question or help
+description: Ask about setting up, running or using Keystar.
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [docs/deployment.md](https://github.com/Theragus/Keystar/blob/main/docs/deployment.md) first;
+        its troubleshooting table covers the most common setup problems.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What are you trying to do, and what have you tried?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Keystar version
+      description: Shown at the bottom of the sidebar and at `/api/health`.
+      placeholder: "0.8.0"
