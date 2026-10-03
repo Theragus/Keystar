@@ -288,7 +288,7 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
 
 ## Corporation wallets
 
-Finances → Corporation wallet and Wallet journal show the home corporation's wallet divisions (`wallet.corp.view`,
+Finances → Corporation wallet and Corp wallet journal show the home corporation's wallet divisions (`wallet.corp.view`,
 default Director). ESI returns only about 30 days per division — the journal at most 10 pages of 1,000 entries
 (CCP won't change this, esi/esi-issues#1172) — so `wallet.corporation-wallets` builds a long-term archive:
 
