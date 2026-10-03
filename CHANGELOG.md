@@ -12,6 +12,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - Local Situation replaces Pilots to review with the latest observed group, retaining fight evidence and links and removing the separate group panel.
 
+- Keep navigation icons at their vertical positions when collapsing the sidebar and remove the fade flicker.
+
 - Move KeyStar branding to the top bar and the sidebar toggle into the left navigation.
 
 - Threat Intel shows the latest observed group fight's destroyed hull, recorded attackers, victim, time and value. Pilot summaries use compact responsive tiles with visible evidence, direct pilot killboard links and small image-only previews of the three latest killed and lost ships arranged side by side, with hover details for ship, time, system and recorded attacker counts, latest kill/loss summaries include the system and recorded attacker count, and recent kills and losses are ordered newest first without redundant Killed/Lost labels.

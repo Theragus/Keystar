@@ -46,16 +46,16 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
       id="app-sidebar"
       className="relative z-30 w-[232px] shrink-0 self-stretch border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl transition-[width] duration-150 ease-out group-data-[sidebar=collapsed]/shell:w-14 motion-reduce:transition-none"
     >
-      {/* Hidden while the width changes (SidebarProvider), so labels never show squeezed. */}
-      <div className="sticky top-0 flex h-dvh flex-col transition-opacity duration-100 group-data-[sidebar-fading]/shell:opacity-0 motion-reduce:transition-none">
+      {/* Preserve heading space so collapsed icons keep their vertical positions. */}
+      <div className="sticky top-0 flex h-dvh flex-col ">
         <div className="flex h-14 shrink-0 items-center border-b border-surface-contrast/[0.07] px-4 group-data-[sidebar=collapsed]/shell:justify-center group-data-[sidebar=collapsed]/shell:px-0">
           <SidebarToggle />
         </div>
         <nav
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 group-data-[sidebar=collapsed]/shell:space-y-3"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4"
           aria-label={t.shell.mainNav}
         >
-          {sections.map((section, i) => (
+          {sections.map((section) => (
             <RailFlyout
               key={section.id}
               className="group"
@@ -78,12 +78,9 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
                 </>
               }
             >
-              <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))] group-data-[sidebar=collapsed]/shell:sr-only">
+              <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))] group-data-[sidebar=collapsed]/shell:invisible">
                 {section.label(t)}
               </div>
-              {i > 0 && (
-                <div className="mx-1.5 mb-3 hidden h-px bg-surface-contrast/[0.07] group-data-[sidebar=collapsed]/shell:block" aria-hidden />
-              )}
               <ul className="space-y-0.5" data-flyout-anchor>
                 {section.items.map((item) => (
                   <li key={item.href}>
