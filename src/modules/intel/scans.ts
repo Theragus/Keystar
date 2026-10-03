@@ -289,6 +289,7 @@ export interface ScanProgress {
   version: string;
   /** Profiled pilots still waiting for statistics, their newest killmails, or older pages. */
   pending: { stats: number; newest: number; deeper: number };
+  browserStats?: number[];
 }
 
 export async function scanProgress(scan: ScanRow, db: Db = getDb()): Promise<ScanProgress> {

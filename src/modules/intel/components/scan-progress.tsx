@@ -2,34 +2,38 @@
 
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
-import type { Messages } from "@/i18n/messages";
 import type { ScanProgress } from "../scans";
 
 const MAX_POLL_MS = 20 * 60_000;
 
 const busy = (p: ScanProgress["pending"]) => p.stats + p.newest + p.deeper > 0;
 
-function describe(p: ScanProgress["pending"], t: Messages): string | null {
-  if (p.stats) return t.intel.progress.stats(p.stats);
-  if (p.newest) return t.intel.progress.newest(p.newest);
-  if (p.deeper) return t.intel.progress.deeper(p.deeper);
-  return null;
-}
-
 /**
  * Keeps a scan page current while the worker reads zKillboard: polls a small
  * progress endpoint (faster while statistics are pending) and refreshes the
  * server-rendered page only when something changed.
  */
-export function ScanProgressPoller({ scanId, initial }: { scanId: string; initial: ScanProgress }) {
+const LoadingContext = createContext(false);
+
+export function IntelLoadingOverlay() {
+  const loading = useContext(LoadingContext);
   const { t } = useI18n();
+  if (!loading) return null;
+  return <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-space-900/60 backdrop-blur-[1px]" role="status">
+    <LoaderCircle className="size-5 animate-spin text-accent motion-reduce:animate-none" aria-hidden />
+    <span className="sr-only">{t.intel.pilotPage.loading}</span>
+  </div>;
+}
+
+export function ScanProgressPoller({ scanId, initial, children }: { scanId: string; initial: ScanProgress; children: ReactNode }) {
   const router = useRouter();
   const [progress, setProgress] = useState(initial);
   const [, startTransition] = useTransition();
   const version = useRef(initial.version);
   const pending = useRef(initial.pending);
+  const browserAttempted = useRef(new Set<number>());
   const done = initial.status === "ready" && !busy(initial.pending);
   const [stopped, setStopped] = useState(done);
 
@@ -38,6 +42,29 @@ export function ScanProgressPoller({ scanId, initial }: { scanId: string; initia
     const started = Date.now();
     let timer: ReturnType<typeof setTimeout>;
     let cancelled = false;
+    const controller = new AbortController();
+    const browserQueue: number[] = [];
+    let active = 0;
+    let pausedUntil = 0;
+    const browserTimer = setInterval(() => {
+      if (cancelled || document.visibilityState !== "visible" || active >= 4 || Date.now() < pausedUntil) return;
+      const characterId = browserQueue.shift();
+      if (!characterId) return;
+      active++;
+      fetch(`https://zkillboard.com/api/stats/characterID/${characterId}/kills/`, { signal: controller.signal })
+        .then(async response => {
+          if (response.status === 429 || response.status >= 500) {
+            const seconds = Number(response.headers.get("Retry-After"));
+            pausedUntil = Date.now() + Math.max(30_000, Number.isFinite(seconds) ? seconds * 1000 : 0);
+            return;
+          }
+          if (!response.ok) return;
+          const stats = await response.json();
+          if (cancelled) return;
+          await fetch(`/api/intel/scans/${scanId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ characterId, stats }), signal: controller.signal });
+        }).catch(() => { /* Worker remains the fallback for blocked CORS or failed requests. */ })
+        .finally(() => { active--; });
+    }, 100);
     const tick = async () => {
       if (cancelled) return;
       if (document.visibilityState === "visible") {
@@ -45,6 +72,9 @@ export function ScanProgressPoller({ scanId, initial }: { scanId: string; initia
           const res = await fetch(`/api/intel/scans/${scanId}`, { cache: "no-store" });
           if (res.ok) {
             const next = (await res.json()) as ScanProgress;
+            for (const id of next.browserStats ?? []) {
+              if (!browserAttempted.current.has(id)) { browserAttempted.current.add(id); browserQueue.push(id); }
+            }
             pending.current = next.pending;
             setProgress(next);
             if (next.version !== version.current) {
@@ -71,15 +101,10 @@ export function ScanProgressPoller({ scanId, initial }: { scanId: string; initia
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      clearInterval(browserTimer);
+      controller.abort();
     };
   }, [scanId, stopped, router]);
 
-  const text = describe(progress.pending, t);
-  if (!text || stopped) return null;
-  return (
-    <p className="flex items-center gap-2 text-sm text-ink-2" role="status">
-      <LoaderCircle className="size-4 animate-spin text-accent" aria-hidden />
-      {text}
-    </p>
-  );
+  return <LoadingContext.Provider value={busy(progress.pending)}>{children}</LoadingContext.Provider>;
 }

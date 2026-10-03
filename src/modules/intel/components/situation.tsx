@@ -4,6 +4,7 @@ import { CHART_CLASSES } from "@/modules/mining/class-colors";
 import { Radio } from "lucide-react";
 import { TIER_COLOR } from "../colors";
 import type { PilotScore } from "../types";
+import { IntelLoadingOverlay } from "./scan-progress";
 import { PilotTags } from "./pilot-tags";
 import { Panel } from "@/components/ui/glass";
 import { getI18n } from "@/i18n/server";
@@ -52,7 +53,8 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
       </div>
     }>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="glass-inset rounded-lg p-3 sm:col-span-2">
+        <div className="glass-inset relative rounded-lg p-3 sm:col-span-2">
+          <IntelLoadingOverlay />
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{t.intel.scan.pilotsTitle}</h3>
           <PilotTags legend={groupedPilots.map(({ id, name, color }) => ({ id, name, color }))} legendLabel={e.allianceLegend} items={sortedPilots.map(({ pilot, profile }) => {
             const score = pilot.scoreDetail as PilotScore | null;
@@ -71,12 +73,13 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
           })} />
         </div>
         <div className="space-y-3">
-        <div className="glass-inset rounded-lg p-3">
+        <div className="glass-inset relative rounded-lg p-3">
+          <IntelLoadingOverlay />
           <h3 className="eve-label mb-2 text-2xs text-ink-3" title={e.groupsHint}>{e.groups}</h3>
           {group ? (
             <div className="space-y-1 text-xs">
               <p className="font-medium text-ink">{view.names.systems.get(group.systemId)?.name ?? e.unknown} · {f.relativeTime(group.time)}</p>
-              <p className="text-ink-3">{e.groupCount(group.members.length, group.killmailIds.length)} · {now.getTime() - Date.parse(group.time) <= 2 * 60 * 60_000 ? e.recent : e.fallback}</p>
+              <p className="text-ink-3">{e.groupCount(group.members.length, group.killmailIds.length)}</p>
               <p className="text-ink">{e.destroyedHull(group.events[0].otherShipTypeId ? (view.names.types.get(group.events[0].otherShipTypeId)?.name ?? e.unknown) : e.unknown)}</p>
               <p className="text-ink-2">{e.attackers(group.events[0].attackerCount)} · {e.oneVictim}</p>
               <p className="text-ink-3">{f.compact(group.events[0].value)} ISK</p>
@@ -89,7 +92,8 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
             </div>
           ) : <p className="text-xs text-ink-3">{e.noGroup}</p>}
         </div>
-        <div className="glass-inset rounded-lg p-3">
+        <div className="glass-inset relative rounded-lg p-3">
+          <IntelLoadingOverlay />
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{e.newest}</h3>
           {newest ? (
             <div className="text-xs">
@@ -103,7 +107,8 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
           )}
         </div>
         </div>
-        <div className="glass-inset rounded-lg p-3">
+        <div className="glass-inset relative rounded-lg p-3">
+          <IntelLoadingOverlay />
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{e.engagementWithUs}</h3>
           {!view.home ? <p className="text-xs text-ink-3">{t.intel.scan.noHome}</p> : !view.engagements.length ? <p className="text-xs text-ink-3">{t.intel.scan.noFights}</p> : <>
             <ol className="space-y-3">

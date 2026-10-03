@@ -91,9 +91,9 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
         }
       />
 
-      <SituationPanel view={view} scannedAt={scan.createdAt} dscanAt={scan.dscanAt} />
-
-      <ScanProgressPoller scanId={scan.id} initial={progress} />
+      <ScanProgressPoller scanId={scan.id} initial={progress}>
+        <SituationPanel view={view} scannedAt={scan.createdAt} dscanAt={scan.dscanAt} />
+      </ScanProgressPoller>
 
       {summary.hostiles > 0 && (
         <Panel title={text.groupTitle} subtitle={text.nonFriendly(summary.hostiles)}>
