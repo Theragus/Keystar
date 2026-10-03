@@ -52,7 +52,7 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
           <SidebarToggle />
         </div>
         <nav
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 group-data-[sidebar=collapsed]/shell:overflow-clip"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 group-data-[sidebar=collapsed]/shell:overflow-clip"
           aria-label={t.shell.mainNav}
         >
           {sections.map((section) => (
