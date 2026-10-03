@@ -2,6 +2,7 @@ import type { Db } from "@/core/db";
 import type { SyncOwnerType } from "@/core/db/schema/sync";
 import type { EsiClient } from "@/core/esi/client";
 import type { Logger } from "@/core/logger";
+import type { Msg } from "@/i18n/messages";
 
 export interface JobContext {
   jobId: number;
@@ -34,7 +35,8 @@ export interface JobResult {
  */
 export interface JobDefinition {
   key: string;
-  label: string;
+  /** Shown on the sync status and character pages. */
+  label: Msg;
   module: string;
   owner: SyncOwnerType;
   requiredScopes?: string[];

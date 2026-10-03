@@ -10,39 +10,45 @@ import { env, ssoCallbackUrl, ssoConfigured } from "@/core/env";
 import { VALUATION_SOURCES } from "@/core/eve/prices";
 import { allPermissions } from "@/core/modules/registry";
 import { effectiveMinRole } from "@/core/rbac/permissions";
-import { ROLE_META, ROLES } from "@/core/rbac/roles";
+import { ROLES } from "@/core/rbac/roles";
 import { getSettings } from "@/core/settings";
+import { getI18n } from "@/i18n/server";
 import { saveSettings } from "../actions";
 
-export const metadata = { title: "Settings" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.admin.settings.metaTitle };
+}
 
 const selectClass = "glass-inset h-9 rounded-lg px-3 text-sm text-ink [color-scheme:dark]";
 
 export default async function SettingsPage() {
   await requirePermission("app.settings.manage");
+  const { t } = await getI18n();
+  const ts = t.admin.settings;
   const settings = await getSettings();
   const home = await getCorporation(settings["corp.homeCorporationId"]);
   const knownCorps = await getDb().select().from(eveCorporations).orderBy(eveCorporations.name);
   const perms = allPermissions();
-  const groups = [...new Set(perms.map((p) => p.group))];
+  const groups = [...new Set(perms.map((p) => p.group(t)))];
   const overrides = settings["permissions.overrides"];
   const e = env();
 
   return (
     <form action={saveSettings} className="space-y-6">
       <PageHeader
-        eyebrow="Administration"
-        title="Settings"
-        description="Application-wide configuration. Changes apply immediately and are recorded in the audit log."
+        eyebrow={t.shell.navSections.admin}
+        title={t.shell.nav.settings}
+        description={ts.description}
         actions={
           <Button type="submit" variant="primary">
-            <Save className="size-4" aria-hidden /> Save settings
+            <Save className="size-4" aria-hidden /> {ts.save}
           </Button>
         }
       />
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <Panel title="Home corporation" subtitle="Whose members, roster and refineries Keystar tracks">
+        <Panel title={ts.home.title} subtitle={ts.home.subtitle}>
           <div className="space-y-4">
             {home && (
               <div className="flex items-center gap-3 rounded-2xl glass-inset px-4 py-3">
@@ -56,14 +62,14 @@ export default async function SettingsPage() {
               </div>
             )}
             <label className="block text-sm">
-              <span className="text-ink-2">Corporation ID</span>
+              <span className="text-ink-2">{ts.home.corporationId}</span>
               <input
                 name="homeCorporationId"
                 defaultValue={settings["corp.homeCorporationId"] ?? ""}
                 list="known-corps"
                 inputMode="numeric"
                 className="glass-inset mt-1.5 h-9 w-full rounded-lg px-3 text-sm text-ink"
-                placeholder="e.g. 98765432"
+                placeholder={ts.home.placeholder}
               />
               <datalist id="known-corps">
                 {knownCorps.map((c) => (
@@ -73,13 +79,11 @@ export default async function SettingsPage() {
                 ))}
               </datalist>
             </label>
-            <p className="text-xs text-ink-3">
-              Pick from corporations of linked characters or paste an ID (from zKillboard or EVE Who).
-            </p>
+            <p className="text-xs text-ink-3">{ts.home.hint}</p>
           </div>
         </Panel>
 
-        <Panel title="Access" subtitle="Who gets in without manual approval">
+        <Panel title={ts.access.title} subtitle={ts.access.subtitle}>
           <div className="space-y-3 text-sm">
             <label className="flex items-start gap-3 rounded-2xl glass-inset px-4 py-3">
               <input
@@ -89,8 +93,10 @@ export default async function SettingsPage() {
                 className="mt-0.5 size-4 accent-[#5cc8ff]"
               />
               <span>
-                <span className="font-medium">Auto-approve home corporation members</span>
-                <span className="block text-xs text-ink-3">They start as Member; everyone else starts as Guest.</span>
+                <span className="font-medium">{ts.access.autoCorp}</span>
+                <span className="block text-xs text-ink-3">
+                  {ts.access.autoCorpHint(t.common.roles.member.label, t.common.roles.guest.label)}
+                </span>
               </span>
             </label>
             <label className="flex items-start gap-3 rounded-2xl glass-inset px-4 py-3">
@@ -101,59 +107,53 @@ export default async function SettingsPage() {
                 className="mt-0.5 size-4 accent-[#5cc8ff]"
               />
               <span>
-                <span className="font-medium">Auto-approve alliance members</span>
-                <span className="block text-xs text-ink-3">Characters in the home corporation&apos;s alliance.</span>
+                <span className="font-medium">{ts.access.autoAlliance}</span>
+                <span className="block text-xs text-ink-3">{ts.access.autoAllianceHint}</span>
               </span>
             </label>
             <div className="rounded-2xl glass-inset px-4 py-3 text-xs text-ink-2">
               <div className="mb-1 font-medium text-ink">EVE SSO</div>
-              {ssoConfigured() ? "Configured" : "Not configured — set EVE_CLIENT_ID and EVE_CLIENT_SECRET."}
+              {ssoConfigured() ? ts.access.ssoConfigured : ts.access.ssoNotConfigured}
               <div className="mt-1 text-ink-3">
-                Callback URL for developers.eveonline.com: <code className="text-ink-2">{ssoCallbackUrl()}</code>
+                {ts.access.callbackUrl(<code className="text-ink-2">{ssoCallbackUrl()}</code>)}
               </div>
-              <div className="mt-1 text-ink-3">ESI compatibility date: {e.ESI_COMPATIBILITY_DATE}</div>
+              <div className="mt-1 text-ink-3">{ts.access.compatibilityDate(e.ESI_COMPATIBILITY_DATE)}</div>
             </div>
           </div>
         </Panel>
 
-        <Panel title="Mining valuation" subtitle="How ISK values are calculated">
+        <Panel title={ts.valuation.title} subtitle={ts.valuation.subtitle}>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm">
-              <span className="text-ink-2">Price source</span>
+              <span className="text-ink-2">{ts.valuation.source}</span>
               <select name="valuationSource" defaultValue={settings["mining.valuationSource"]} className={`${selectClass} mt-1.5 w-full`}>
-                {VALUATION_SOURCES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
+                {VALUATION_SOURCES.map((source) => (
+                  <option key={source} value={source}>
+                    {t.eve.valuationSources[source]}
                   </option>
                 ))}
               </select>
             </label>
             <label className="block text-sm">
-              <span className="text-ink-2">Price date</span>
+              <span className="text-ink-2">{ts.valuation.mode}</span>
               <select name="valuationMode" defaultValue={settings["mining.valuationMode"]} className={`${selectClass} mt-1.5 w-full`}>
-                <option value="current">Current prices</option>
-                <option value="historical">Price on the day mined</option>
+                <option value="current">{ts.valuation.modes.current}</option>
+                <option value="historical">{ts.valuation.modes.historical}</option>
               </select>
             </label>
           </div>
-          <p className="mt-3 text-xs text-ink-3">
-            Raw ore without its own market falls back to its compressed variant, then the ESI average price. Historical
-            prices are recorded daily from the moment Keystar runs.
-          </p>
+          <p className="mt-3 text-xs text-ink-3">{ts.valuation.hint}</p>
         </Panel>
       </div>
 
-      <Panel
-        title="Permissions"
-        subtitle="Minimum Keystar role per permission. Roles are hierarchical: higher roles include everything below."
-      >
+      <Panel title={ts.permissions.title} subtitle={ts.permissions.subtitle}>
         <div className="overflow-x-auto">
           <table className="ks-table">
             <thead>
               <tr>
-                <th>Permission</th>
-                <th>Description</th>
-                <th>Minimum role</th>
+                <th>{ts.permissions.columns.permission}</th>
+                <th>{ts.permissions.columns.description}</th>
+                <th>{ts.permissions.columns.minRole}</th>
               </tr>
             </thead>
             <tbody>
@@ -164,25 +164,26 @@ export default async function SettingsPage() {
                   </td>
                 </tr>,
                 ...perms
-                  .filter((p) => p.group === g)
+                  .filter((p) => p.group(t) === g)
                   .map((p) => (
                     <tr key={p.key}>
                       <td>
-                        <div className="font-medium">{p.label}</div>
+                        <div className="font-medium">{p.label(t)}</div>
                         <code className="text-2xs text-ink-3">{p.key}</code>
                       </td>
-                      <td className="text-ink-2">{p.description}</td>
+                      <td className="text-ink-2">{p.description(t)}</td>
                       <td>
                         {p.locked ? (
                           <span className="inline-flex items-center gap-1.5 text-xs text-ink-3">
-                            <Lock className="size-3.5" aria-hidden /> {ROLE_META[p.defaultMinRole].label} (fixed)
+                            <Lock className="size-3.5" aria-hidden /> {ts.permissions.fixed(t.common.roles[p.defaultMinRole].label)}
                           </span>
                         ) : (
                           <select name={`perm:${p.key}`} defaultValue={effectiveMinRole(p, overrides)} className={selectClass}>
                             {ROLES.map((r) => (
                               <option key={r} value={r}>
-                                {ROLE_META[r].label}
-                                {r === p.defaultMinRole ? " (default)" : ""}
+                                {r === p.defaultMinRole
+                                  ? ts.permissions.withDefault(t.common.roles[r].label)
+                                  : t.common.roles[r].label}
                               </option>
                             ))}
                           </select>

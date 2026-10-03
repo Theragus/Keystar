@@ -3,6 +3,22 @@
 All notable changes to Keystar. Versions follow [Semantic Versioning](https://semver.org/); while Keystar is below
 1.0, new features bump the patch version. Releasing is described in [docs/releasing.md](docs/releasing.md).
 
+## [0.1.3] - 2026-10-02
+
+### Added
+
+- **German interface.** Keystar now speaks English and German. The language follows the browser's preferred
+  language on the first visit (anything other than German gets English) and can be changed with the language
+  switch in the sidebar footer, next to your pilot, or at the bottom of the sign-in, registration and setup pages.
+  The choice is remembered in a cookie.
+- Numbers and dates follow the chosen language: in German, "9,87 Mio. ISK", "1.234.567", "12,3 %", "vor 5 Minuten",
+  "02. Okt.". EVE times stay in `YYYY-MM-DD HH:mm ET`.
+
+### Changed
+
+- Module manifests and sync jobs name their texts with dictionary selectors instead of English strings (see
+  docs/modules.md). Item, system and pilot names, CSV exports and stored situation reports remain in English.
+
 ## [0.1.2] - 2026-10-02
 
 ### Changed

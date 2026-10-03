@@ -6,6 +6,7 @@ import { requireUser } from "@/core/auth/dal";
 import { getCorporation } from "@/core/corp";
 import { env } from "@/core/env";
 import { getSettings } from "@/core/settings";
+import { getI18n } from "@/i18n/server";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
@@ -14,9 +15,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   if (!settings["setup.completedAt"] && user.can("app.settings.manage")) redirect("/setup");
   const homeCorp = await getCorporation(settings["corp.homeCorporationId"]);
   const userCorp = user.main ? await getCorporation(user.main.corporationId) : null;
+  const { t } = await getI18n();
   const { sections, hasNested } = visibleNav(user);
   const crumbs = sections.flatMap((s) =>
-    s.items.map((i) => ({ href: i.href, label: i.label, exact: hasNested(i.href) })),
+    s.items.map((i) => ({ href: i.href, label: i.label(t), exact: hasNested(i.href) })),
   );
 
   return (
@@ -34,11 +36,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <div className="glass mb-6 flex items-center gap-3 px-5 py-3.5 text-sm">
               <Hourglass className="size-4 text-warning" aria-hidden />
               <span>
-                <span className="font-semibold">Awaiting approval.</span>{" "}
-                <span className="text-ink-2">
-                  A director has to approve your account before you can see corporation data. You can already link your
-                  characters and grant ESI access.
-                </span>
+                <span className="font-semibold">{t.shell.awaitingApproval.title}</span>{" "}
+                <span className="text-ink-2">{t.shell.awaitingApproval.body}</span>
               </span>
             </div>
           )}

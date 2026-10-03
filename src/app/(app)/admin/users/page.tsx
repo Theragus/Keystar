@@ -8,11 +8,14 @@ import { Glass, Panel } from "@/components/ui/glass";
 import { requirePermission } from "@/core/auth/dal";
 import { getDb } from "@/core/db";
 import { characterScopes } from "@/core/modules/registry";
-import { assignableRoles, canManageRole, ROLE_META, ROLES, type Role } from "@/core/rbac/roles";
-import { relativeTime } from "@/lib/format";
+import { assignableRoles, canManageRole, ROLES, type Role } from "@/core/rbac/roles";
+import { getI18n } from "@/i18n/server";
 import { approveUser, setUserDisabled, updateUserRole } from "../actions";
 
-export const metadata = { title: "Users & roles" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.admin.users.metaTitle };
+}
 
 interface UserRow {
   id: string;
@@ -28,6 +31,8 @@ interface UserRow {
 
 export default async function UsersPage() {
   const actor = await requirePermission("users.view");
+  const { t, f } = await getI18n();
+  const tu = t.admin.users;
   const canManage = actor.can("users.manage");
   const required = characterScopes();
 
@@ -50,9 +55,9 @@ export default async function UsersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Administration"
-        title="Users & Roles"
-        description="Keystar roles control what each account can see and change. They are independent of in-game corporation roles."
+        eyebrow={t.shell.navSections.admin}
+        title={t.shell.nav.users}
+        description={tu.description}
       />
 
       <div className="grid gap-4 lg:grid-cols-3 xl:grid-cols-6">
@@ -60,28 +65,29 @@ export default async function UsersPage() {
           <Glass key={r} className="px-4 py-3.5">
             <div className="flex items-center justify-between">
               <RoleBadge role={r} />
-              <span className="text-lg font-semibold tabular-nums">{users.filter((u) => u.role === r).length}</span>
+              <span className="text-lg font-semibold tabular-nums">{f.integer(users.filter((u) => u.role === r).length)}</span>
             </div>
-            <p className="mt-2 text-2xs leading-snug text-ink-3">{ROLE_META[r].description}</p>
+            <p className="mt-2 text-2xs leading-snug text-ink-3">{t.common.roles[r].description}</p>
           </Glass>
         ))}
       </div>
 
       {pending.length > 0 && canManage && (
-        <Panel title={`Awaiting approval (${pending.length})`} subtitle="Signed in from outside the home corporation or before auto-approval">
+        <Panel title={tu.awaitingApproval(pending.length)} subtitle={tu.awaitingApprovalHint}>
           <ul className="divide-y divide-white/6">
             {pending.map((u) => (
               <li key={u.id} className="flex items-center gap-3 py-2.5">
                 {u.main_id && <Portrait id={Number(u.main_id)} size={32} />}
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{u.main_name ?? "Unknown"}</div>
+                  <div className="font-medium">{u.main_name ?? tu.unknown}</div>
                   <div className="text-xs text-ink-3">
-                    {u.corp_ticker ? `[${u.corp_ticker}] · ` : ""}registered {relativeTime(u.created_at)}
+                    {u.corp_ticker ? `[${u.corp_ticker}] · ` : ""}
+                    {tu.registered(f.relativeTime(u.created_at))}
                   </div>
                 </div>
                 <form action={approveUser.bind(null, u.id)}>
                   <Button size="sm" variant="primary" type="submit">
-                    <UserCheck className="size-3.5" aria-hidden /> Approve as member
+                    <UserCheck className="size-3.5" aria-hidden /> {tu.approve}
                   </Button>
                 </form>
               </li>
@@ -95,12 +101,12 @@ export default async function UsersPage() {
           <table className="ks-table">
             <thead>
               <tr>
-                <th>Pilot</th>
-                <th>Characters</th>
-                <th>ESI health</th>
-                <th>Last login</th>
-                <th>Role</th>
-                {canManage && <th className="text-right">Actions</th>}
+                <th>{tu.columns.pilot}</th>
+                <th>{tu.columns.characters}</th>
+                <th>{tu.columns.esiHealth}</th>
+                <th>{tu.columns.lastLogin}</th>
+                <th>{tu.columns.role}</th>
+                {canManage && <th className="text-right">{tu.columns.actions}</th>}
               </tr>
             </thead>
             <tbody>
@@ -115,7 +121,7 @@ export default async function UsersPage() {
                         {u.main_id && <Portrait id={Number(u.main_id)} size={30} />}
                         <div className="leading-tight">
                           <div className="font-medium">
-                            {u.main_name ?? "Unknown"} {u.id === actor.id && <span className="text-xs text-ink-3">(you)</span>}
+                            {u.main_name ?? tu.unknown} {u.id === actor.id && <span className="text-xs text-ink-3">{tu.you}</span>}
                           </div>
                           <div className="text-2xs text-ink-3">{u.corp_ticker ? `[${u.corp_ticker}]` : "—"}</div>
                         </div>
@@ -132,16 +138,16 @@ export default async function UsersPage() {
                     </td>
                     <td>
                       {u.is_disabled ? (
-                        <StatusBadge status="error" label="Disabled" />
+                        <StatusBadge status="error" label={tu.health.disabled} />
                       ) : invalid ? (
-                        <StatusBadge status="error" label={`${invalid} revoked`} />
+                        <StatusBadge status="error" label={tu.health.revoked(invalid)} />
                       ) : missing ? (
-                        <StatusBadge status="warning" label={`${missing} char${missing > 1 ? "s" : ""} missing scopes`} />
+                        <StatusBadge status="warning" label={tu.health.missingScopes(missing)} />
                       ) : (
-                        <StatusBadge status="ok" label="All good" />
+                        <StatusBadge status="ok" label={tu.health.allGood} />
                       )}
                     </td>
-                    <td className="text-ink-2">{relativeTime(u.last_login_at)}</td>
+                    <td className="text-ink-2">{f.relativeTime(u.last_login_at)}</td>
                     <td>
                       {manageable ? (
                         <form action={updateUserRole.bind(null, u.id)} className="flex items-center gap-1.5">
@@ -149,15 +155,15 @@ export default async function UsersPage() {
                             name="role"
                             defaultValue={u.role}
                             className="glass-inset h-8 rounded-lg px-2.5 text-xs text-ink [color-scheme:dark]"
-                            aria-label={`Role for ${u.main_name ?? "user"}`}
+                            aria-label={tu.roleFor(u.main_name)}
                           >
                             {ROLES.filter((r) => assignable.includes(r) || r === u.role).map((r) => (
                               <option key={r} value={r} disabled={!assignable.includes(r)}>
-                                {ROLE_META[r].label}
+                                {t.common.roles[r].label}
                               </option>
                             ))}
                           </select>
-                          <Button size="sm" type="submit" title="Save role">
+                          <Button size="sm" type="submit" title={tu.saveRole}>
                             <CheckCircle2 className="size-3.5" aria-hidden />
                           </Button>
                         </form>
@@ -170,7 +176,7 @@ export default async function UsersPage() {
                         {manageable && (
                           <form action={setUserDisabled.bind(null, u.id, !u.is_disabled)}>
                             <Button size="sm" variant={u.is_disabled ? "glass" : "danger"} type="submit">
-                              <Ban className="size-3.5" aria-hidden /> {u.is_disabled ? "Enable" : "Disable"}
+                              <Ban className="size-3.5" aria-hidden /> {u.is_disabled ? tu.enable : tu.disable}
                             </Button>
                           </form>
                         )}

@@ -25,25 +25,26 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
 }
 
+export type DatePresetId = "7d" | "30d" | "90d" | "mtd" | "lm" | "ytd";
+
+/** Quick ranges for date pickers; labels live in the dictionaries (`t.common.datePresets`). */
 export interface DatePreset {
-  id: string;
-  label: string;
+  id: DatePresetId;
   range: (today: string) => { from: string; to: string };
 }
 
 export const DATE_PRESETS: DatePreset[] = [
-  { id: "7d", label: "7 days", range: (t) => ({ from: addDays(t, -6), to: t }) },
-  { id: "30d", label: "30 days", range: (t) => ({ from: addDays(t, -29), to: t }) },
-  { id: "90d", label: "90 days", range: (t) => ({ from: addDays(t, -89), to: t }) },
-  { id: "mtd", label: "This month", range: (t) => ({ from: `${t.slice(0, 7)}-01`, to: t }) },
+  { id: "7d", range: (t) => ({ from: addDays(t, -6), to: t }) },
+  { id: "30d", range: (t) => ({ from: addDays(t, -29), to: t }) },
+  { id: "90d", range: (t) => ({ from: addDays(t, -89), to: t }) },
+  { id: "mtd", range: (t) => ({ from: `${t.slice(0, 7)}-01`, to: t }) },
   {
     id: "lm",
-    label: "Last month",
     range: (t) => {
       const firstThis = `${t.slice(0, 7)}-01`;
       const lastPrev = addDays(firstThis, -1);
       return { from: `${lastPrev.slice(0, 7)}-01`, to: lastPrev };
     },
   },
-  { id: "ytd", label: "Year to date", range: (t) => ({ from: `${t.slice(0, 4)}-01-01`, to: t }) },
+  { id: "ytd", range: (t) => ({ from: `${t.slice(0, 4)}-01-01`, to: t }) },
 ];

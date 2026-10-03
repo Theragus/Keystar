@@ -15,7 +15,7 @@ import type { JobDefinition, PriceInterestProvider } from "./types";
 
 export const serverStatusJob: JobDefinition = {
   key: "core.server-status",
-  label: "Tranquility status",
+  label: (t) => t.core.jobs.serverStatus,
   module: "core",
   owner: "global",
   intervalSeconds: 300,
@@ -33,7 +33,7 @@ export const serverStatusJob: JobDefinition = {
 
 export const affiliationsJob: JobDefinition = {
   key: "core.affiliations",
-  label: "Character affiliations",
+  label: (t) => t.core.jobs.affiliations,
   module: "core",
   owner: "global",
   intervalSeconds: 3600,
@@ -74,7 +74,7 @@ export const affiliationsJob: JobDefinition = {
 
 export const characterRolesJob: JobDefinition = {
   key: "core.character-roles",
-  label: "In-game corporation roles",
+  label: (t) => t.core.jobs.characterRoles,
   module: "core",
   owner: "character",
   requiredScopes: ["esi-characters.read_corporation_roles.v1"],
@@ -92,7 +92,7 @@ export const characterRolesJob: JobDefinition = {
 
 export const corporationMembersJob: JobDefinition = {
   key: "core.corporation-members",
-  label: "Corporation roster",
+  label: (t) => t.core.jobs.corporationMembers,
   module: "core",
   owner: "corporation",
   requiredScopes: ["esi-corporations.read_corporation_membership.v1"],
@@ -117,7 +117,7 @@ export const corporationMembersJob: JobDefinition = {
 export function marketPricesJob(providers: PriceInterestProvider[]): JobDefinition {
   return {
     key: "core.market-prices",
-    label: "Market prices",
+    label: (t) => t.core.jobs.marketPrices,
     module: "core",
     owner: "global",
     intervalSeconds: 3600,
@@ -134,7 +134,7 @@ export function marketPricesJob(providers: PriceInterestProvider[]): JobDefiniti
 
 export const housekeepingJob: JobDefinition = {
   key: "core.housekeeping",
-  label: "Housekeeping",
+  label: (t) => t.core.jobs.housekeeping,
   module: "core",
   owner: "global",
   intervalSeconds: 6 * 3600,
