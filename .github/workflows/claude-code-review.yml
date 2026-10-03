@@ -12,6 +12,8 @@ on:
 
 jobs:
   claude-review:
+    # Dependabot-triggered runs can't read Actions secrets (CLAUDE_CODE_OAUTH_TOKEN).
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
