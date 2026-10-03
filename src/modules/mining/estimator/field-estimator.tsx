@@ -43,7 +43,7 @@ function NumberField({
   return (
     <label className="block min-w-0 flex-1">
       <span className="eve-label text-2xs text-ink-3">{label}</span>
-      <span className="glass-inset mt-1.5 flex h-9 items-center rounded-lg pr-3">
+      <span className="glass-inset field-focus mt-1.5 flex h-9 items-center rounded-lg pr-3">
         <input
           inputMode="decimal"
           value={value}
@@ -161,7 +161,7 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
           onChange={(e) => setText(e.target.value)}
           spellCheck={false}
           placeholder={m.scan.placeholder}
-          className="glass-inset h-[360px] w-full resize-y rounded-lg p-3 font-mono text-2xs leading-relaxed whitespace-pre text-ink outline-none placeholder:text-ink-3"
+          className="glass-inset h-[360px] w-full resize-y rounded-lg p-3 font-mono text-2xs leading-relaxed whitespace-pre text-ink placeholder:text-ink-3"
           aria-label={m.scan.input}
         />
         {parsed.skipped.length > 0 && (
