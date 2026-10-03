@@ -30,6 +30,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   ledger only show the Combined / Member ledgers / Moon drills choice when the corporation has moon drills on record,
   since without them all three show the same entries.
 
+### Fixed
+
+- Page content no longer shifts a few pixels sideways between pages that scroll and pages that don't (with
+  scrollbars that take up space, such as macOS "Show scroll bars: Always" or Windows).
+
 ## [0.10.0] - 2026-10-03
 
 ### Added
