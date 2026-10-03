@@ -68,6 +68,7 @@ export function pnlLedgerFilters(range: { from: string; to: string }, characters
     source: "all",
     metric: "value",
     groupBy: "character",
+    view: "own",
     page: 1,
   };
 }

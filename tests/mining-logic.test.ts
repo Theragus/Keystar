@@ -4,19 +4,36 @@ import { classifyOre, oreClassSqlCase } from "@/core/eve/ore";
 import { compact } from "@/lib/format";
 import { chartClassOf, toChartClasses } from "@/modules/mining/class-colors";
 import { DATE_PRESETS, daysBetween, isValidIsoDate, miningQueryString, parseMiningFilters } from "@/modules/mining/filters";
+import { miningScope } from "@/modules/mining/queries";
 
 describe("mining filters", () => {
   const today = "2026-10-02";
 
   it("defaults to the last 30 days, combined source, ISK", () => {
     const f = parseMiningFilters({}, today);
-    expect(f).toMatchObject({ from: "2026-09-03", to: today, source: "all", metric: "value", groupBy: "user", page: 1 });
+    expect(f).toMatchObject({
+      from: "2026-09-03",
+      to: today,
+      source: "all",
+      metric: "value",
+      groupBy: "user",
+      view: "corp",
+      page: 1,
+    });
     expect(daysBetween(f.from, f.to)).toBe(30);
   });
 
   it("parses lists, swaps reversed ranges and drops junk", () => {
     const f = parseMiningFilters(
-      { from: "2026-09-30", to: "2026-09-01", chars: "1,2,x,2", classes: "moon_r4,bogus", source: "observer", page: "-3" },
+      {
+        from: "2026-09-30",
+        to: "2026-09-01",
+        chars: "1,2,x,2",
+        classes: "moon_r4,bogus",
+        source: "observer",
+        view: "everyone",
+        page: "-3",
+      },
       today,
     );
     expect(f.from).toBe("2026-09-01");
@@ -24,6 +41,7 @@ describe("mining filters", () => {
     expect(f.characters).toEqual([1, 2]);
     expect(f.classes).toEqual(["moon_r4"]);
     expect(f.source).toBe("observer");
+    expect(f.view).toBe("corp");
     expect(f.page).toBe(1);
   });
 
@@ -37,9 +55,21 @@ describe("mining filters", () => {
   });
 
   it("round-trips through the query string", () => {
-    const f = parseMiningFilters({ chars: "5", types: "1230", systems: "30000180", metric: "volume", by: "character" }, today);
+    const f = parseMiningFilters(
+      { chars: "5", types: "1230", systems: "30000180", metric: "volume", by: "character", view: "own" },
+      today,
+    );
     const again = parseMiningFilters(Object.fromEntries(new URLSearchParams(miningQueryString(f))), today);
     expect(again).toEqual(f);
+  });
+
+  it("narrows corporation access to the viewer's characters in the own view", () => {
+    const viewer = { can: (perm: string) => perm === "mining.view.corp", characterIds: [1, 4] };
+    expect(miningScope(viewer, 100)).toEqual({ corp: true, ownCharacterIds: [1, 4], homeCorporationId: 100 });
+    expect(miningScope(viewer, 100, "own").corp).toBe(false);
+    expect(miningScope(viewer, null, "corp").corp).toBe(false);
+    const member = { can: () => false, characterIds: [2] };
+    expect(miningScope(member, 100, "corp").corp).toBe(false);
   });
 
   it("computes presets in EVE (UTC) days", () => {

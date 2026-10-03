@@ -14,7 +14,7 @@ import { MiningFilterBar } from "@/modules/mining/components/filter-bar";
 import { miningQueryString } from "@/modules/mining/filters";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { miningPageContext } from "@/modules/mining/page-context";
-import { getFilterOptions, getObserverSummaries } from "@/modules/mining/queries";
+import { getFilterOptions, getObserverSummaries, miningScope } from "@/modules/mining/queries";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -29,7 +29,8 @@ export default async function ObserversPage({ searchParams }: PageProps<"/mining
   const { filters, valuation } = ctx;
   const [observers, options] = await Promise.all([
     getObserverSummaries(filters, valuation, ctx.homeCorporationId),
-    getFilterOptions(ctx.scope),
+    // Refineries are corporation-wide whatever view the overview was left in.
+    getFilterOptions(miningScope(ctx.user, ctx.homeCorporationId)),
   ]);
 
   return (
@@ -74,7 +75,7 @@ export default async function ObserversPage({ searchParams }: PageProps<"/mining
                       </div>
                     </div>
                     <Link
-                      href={`/mining/ledger?${miningQueryString(filters, { source: "observer", page: 1 })}`}
+                      href={`/mining/ledger?${miningQueryString(filters, { source: "observer", view: "corp", page: 1 })}`}
                       className="shrink-0 text-xs text-accent hover:underline"
                     >
                       {text.ledgerLink}

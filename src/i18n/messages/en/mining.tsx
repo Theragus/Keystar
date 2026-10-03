@@ -112,6 +112,14 @@ export const mining = {
     reset: "Reset",
   },
 
+  view: {
+    label: "Show mining of",
+    corp: "Corporation",
+    corpHint: "Characters in the home corporation and the corporation's refineries",
+    own: "My characters",
+    ownHint: "All your linked characters, including alts in other corporations",
+  },
+
   groupBy: {
     label: "Group miners by",
     pilots: "Pilots",
@@ -142,6 +150,7 @@ export const mining = {
       noHomeCorp:
         "Mining of your own characters. Corporation-wide views appear once an admin sets the home corporation.",
       own: "Mining of your own characters. Ask a director for corporation-wide access.",
+      ownView: "Mining of all your linked characters, including alts in other corporations.",
     },
     ledger: "Ledger",
     empty: {
