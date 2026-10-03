@@ -10,7 +10,8 @@ version in `package.json` alone.
 
 When an entry fixes or implements a GitHub issue, end it with the issue number in parentheses, as a link so it is
 clickable both in CHANGELOG.md and in the release notes. Several issues share one pair of parentheses:
-`([#14](…/issues/14), [#18](…/issues/18))`. Entries without an issue carry no reference.
+`([#14](https://github.com/Theragus/Keystar/issues/14), [#18](https://github.com/Theragus/Keystar/issues/18))`.
+Entries without an issue carry no reference.
 
 ```markdown
 ## [Unreleased]
