@@ -4,7 +4,7 @@ import { useI18n } from "@/i18n/client";
 import { type MapSystem } from "./model";
 import { createMapRenderer } from "./renderer";
 import { MapPlanning } from "./planning";
-import { distanceLy, EMPTY_OVERLAY } from "./travel";
+import { EMPTY_OVERLAY } from "./travel";
 import { Panel } from "@/components/ui/glass";
 
 export function UniverseMap({initialSystemId=null}:{initialSystemId?:number|null}) {
@@ -15,9 +15,8 @@ export function UniverseMap({initialSystemId=null}:{initialSystemId?:number|null
  const [selected, setSelected] = useState<MapSystem | null>(null); const [labels, setLabels] = useState(true);
  const camera = useRef({ yaw: 0, pitch: .6, zoom: 1.4 });
  const redraw = useRef<() => void>(() => {});
- const [listTop, setListTop] = useState(0);
- const [listRows, setListRows] = useState(24);
- const list = useRef<HTMLDivElement>(null);
+ const rotationFrame = useRef(0);
+ const stopRotation = () => { cancelAnimationFrame(rotationFrame.current); rotationFrame.current = 0; };
  const setCamera = (update: typeof camera.current | ((c: typeof camera.current) => typeof camera.current)) => {
   camera.current = typeof update === "function" ? update(camera.current) : update;
   redraw.current();
@@ -26,6 +25,20 @@ export function UniverseMap({initialSystemId=null}:{initialSystemId?:number|null
  const overlayRef = useRef(EMPTY_OVERLAY);
  useEffect(() => { overlayRef.current = overlay; redraw.current(); }, [overlay]);
  const canvas = useRef<HTMLCanvasElement>(null);
+ useEffect(() => {
+  const element = canvas.current;
+  if (!element) return;
+  const zoom = (event: WheelEvent) => {
+   event.preventDefault();
+   cancelAnimationFrame(rotationFrame.current);
+   rotationFrame.current = 0;
+   const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientHeight : 1);
+   camera.current.zoom = Math.max(.3, Math.min(100, camera.current.zoom * Math.exp(-delta * .001)));
+   redraw.current();
+  };
+  element.addEventListener("wheel", zoom, { passive: false });
+  return () => element.removeEventListener("wheel", zoom);
+ }, []);
  const hits = useRef<{system: MapSystem; x: number; y: number}[]>([]);
  const drag = useRef<{x: number; y: number; moved: boolean} | null>(null);
  useEffect(() => {
@@ -34,16 +47,6 @@ export function UniverseMap({initialSystemId=null}:{initialSystemId?:number|null
   return () => controller.abort();
  }, [attempt, initialSystemId]);
  const visible = useMemo(() => systems.filter(s => space === "all" || (space === "wormholes" ? s[0] >= 31000000 && s[0] < 32000000 : s[0] < 31000000)), [systems, space]);
- useEffect(() => {
-  const el = list.current; if (!el) return;
-  const observer = new ResizeObserver(() => setListRows(Math.ceil(el.clientHeight / 32) + 2));
-  observer.observe(el); return () => observer.disconnect();
- }, []);
- const rangeOrigin=useMemo(()=>systems.find(s=>s[0]===overlay.originId),[systems,overlay.originId]);
- const matches = useMemo(() => {
-  const inRange=new Set(overlay.inRange);
-  return visible.filter(s => s[1].toLowerCase().includes(query.trim().toLowerCase()) && (!overlay.range || inRange.has(s[0]) || s[0]===overlay.originId));
- }, [visible, query, overlay]);
  useEffect(() => {
   const el = canvas.current; if (!el || !visible.length) return;
   const renderer = createMapRenderer(el, visible, {
@@ -55,32 +58,40 @@ export function UniverseMap({initialSystemId=null}:{initialSystemId?:number|null
   renderer.schedule();
   return () => { renderer.destroy(); redraw.current = () => {}; };
  }, [visible, selected, query, labels, f, m.lightYears]);
+ useEffect(() => {
+  if (!selected || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const start = performance.now(), yaw = camera.current.yaw;
+  const rotate = (now: number) => {
+   const elapsed = Math.min((now - start) / 1000, 4);
+   camera.current.yaw = yaw + .3 * (1 - Math.exp(-elapsed));
+   redraw.current();
+   if (elapsed < 4) rotationFrame.current = requestAnimationFrame(rotate);
+   else rotationFrame.current = 0;
+  };
+  rotationFrame.current = requestAnimationFrame(rotate);
+  return () => { cancelAnimationFrame(rotationFrame.current); rotationFrame.current = 0; };
+ }, [selected]);
  const button = "glass-chip rounded-md px-3 py-1.5 text-xs text-ink-2 hover:text-ink transition-colors";
- const choose = (s: MapSystem) => { setSelected(s); setCamera(c => ({...c,zoom:Math.max(c.zoom,5)})); };
+ const choose = (s: MapSystem) => { stopRotation(); setSpace(s[0]>=31000000?"wormholes":"known"); setSelected(s); setCamera(c => ({...c,zoom:Math.max(c.zoom,5)})); };
  return <div className="space-y-3"><Panel title={m.universe} subtitle={m.controls} actions={<span className="text-xs font-semibold tabular-nums text-ink-2">{f.integer(visible.length)} {m.systems}</span>} bodyClassName="px-3 pb-3">
   <div className="mb-3 flex flex-wrap items-center gap-2">
-   <input aria-label={m.search} placeholder={m.search} value={query} onChange={e => {setQuery(e.target.value);setListTop(0);if(list.current)list.current.scrollTop=0;}} className="glass-inset min-w-48 rounded-md px-3 py-2 text-xs text-ink"/>
-   <select aria-label={m.systems} value={space} onChange={e => {setSpace(e.target.value);setSelected(null);setListTop(0);if(list.current)list.current.scrollTop=0;setCamera({yaw:0,pitch:.6,zoom:1.4});}} className="glass-inset rounded-md px-3 py-2 text-xs text-ink"><option value="known">{m.known}</option><option value="wormholes">{m.wormholes}</option><option value="all">{m.all}</option></select>
-   <button className={button} onClick={() => {setSelected(null);setCamera({yaw:0,pitch:.6,zoom:1.4});}}>{m.reset}</button>
+   <input aria-label={m.search} placeholder={m.search} value={query} list="map-system-search" onChange={e => {setQuery(e.target.value);const match=systems.find(s=>s[1].toLowerCase()===e.target.value.trim().toLowerCase());if(match)choose(match);}} onKeyDown={e=>{if(e.key==="Enter"){const match=visible.find(s=>s[1].toLowerCase().startsWith(query.trim().toLowerCase()));if(query.trim()&&match){setQuery(match[1]);choose(match);}}}} className="glass-inset min-w-48 rounded-md px-3 py-2 text-xs text-ink"/>
+   <datalist id="map-system-search">{query.trim()&&systems.filter(s=>s[1].toLowerCase().includes(query.trim().toLowerCase())).slice(0,20).map(s=><option key={s[0]} value={s[1]}/>)}</datalist>
+   <select aria-label={m.systems} value={space} onChange={e => {stopRotation();setSpace(e.target.value);setSelected(null);setCamera({yaw:0,pitch:.6,zoom:1.4});}} className="glass-inset rounded-md px-3 py-2 text-xs text-ink"><option value="known">{m.known}</option><option value="wormholes">{m.wormholes}</option><option value="all">{m.all}</option></select>
+   <button className={button} onClick={() => {stopRotation();setSelected(null);setCamera({yaw:0,pitch:.6,zoom:1.4});}}>{m.reset}</button>
    <button className={button} aria-label={m.zoomIn} onClick={() => setCamera(c => ({...c,zoom:Math.min(100,c.zoom*1.4)}))}>+</button>
    <button className={button} aria-label={m.zoomOut} onClick={() => setCamera(c => ({...c,zoom:Math.max(.3,c.zoom/1.4)}))}>−</button>
    <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)}/>{m.labels}</label>
   </div>
-  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+  <div className="grid gap-3">
    <div className="glass-inset relative min-w-0 overflow-hidden rounded-lg">
     <canvas ref={canvas} aria-label={m.canvas} className="h-[65vh] min-h-96 w-full text-ink touch-none cursor-grab"
-     onPointerDown={e => {drag.current={x:e.clientX,y:e.clientY,moved:false};e.currentTarget.setPointerCapture(e.pointerId);}}
+     onPointerDown={e => {stopRotation();drag.current={x:e.clientX,y:e.clientY,moved:false};e.currentTarget.setPointerCapture(e.pointerId);}}
      onPointerMove={e => {const d=drag.current;if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.abs(dx)+Math.abs(dy)>2)d.moved=true;setCamera(c => ({...c,yaw:c.yaw+dx*.006,pitch:Math.max(-Math.PI/2,Math.min(Math.PI/2,c.pitch+dy*.006))}));d.x=e.clientX;d.y=e.clientY;}}
      onPointerCancel={() => {drag.current=null;redraw.current();}}
-     onPointerUp={e => {if(drag.current && !drag.current.moved){const rect=e.currentTarget.getBoundingClientRect();const x=e.clientX-rect.left,y=e.clientY-rect.top;const p=hits.current.reduce<{system:MapSystem;x:number;y:number}|null>((best,p) => Math.hypot(p.x-x,p.y-y)<Math.min(12,best?Math.hypot(best.x-x,best.y-y):12)?p:best,null);if(p)choose(p.system);}drag.current=null;redraw.current();}}
-     onWheel={e => setCamera(c => ({...c,zoom:Math.max(.3,Math.min(100,c.zoom*Math.exp(-e.deltaY*.001)))}))}/>
+     onPointerUp={e => {if(drag.current && !drag.current.moved){const rect=e.currentTarget.getBoundingClientRect();const x=e.clientX-rect.left,y=e.clientY-rect.top;const p=hits.current.reduce<{system:MapSystem;x:number;y:number}|null>((best,p) => Math.hypot(p.x-x,p.y-y)<Math.min(12,best?Math.hypot(best.x-x,best.y-y):12)?p:best,null);if(p)choose(p.system);}drag.current=null;redraw.current();}}/>
     {!systems.length && <div role="status" className="absolute inset-0 flex items-center justify-center text-sm text-ink-2">{error ? <button onClick={() => {setError(false);setAttempt(a=>a+1);}}>{m.error} · {m.retry}</button> : m.loading}</div>}
    </div>
-   <aside className="glass-inset flex min-h-0 flex-col rounded-lg p-3">
-    {selected && <div className="mb-3 border-b border-surface-contrast/10 pb-3"><div className="font-semibold text-ink">{selected[1]}</div><div className="mt-1 text-sm text-ink-2">{m.security}: {f.number(selected[2],1)}</div></div>}
-    <div className="eve-label mb-2 text-2xs text-ink-3">{m.systems} · {f.number(matches.length)}</div>
-    <div ref={list} onScroll={e => setListTop(e.currentTarget.scrollTop)} className="h-72 overflow-y-auto lg:h-[55vh]">{matches.length===0 && systems.length>0 && <p className="p-3 text-xs text-ink-2">{m.empty}</p>}<div className="relative" style={{height:matches.length*32}}>{matches.slice(Math.floor(listTop/32), Math.floor(listTop/32)+listRows).map((s,i) => <button style={{position:"absolute",top:(Math.floor(listTop/32)+i)*32,height:32}} aria-pressed={selected?.[0]===s[0]} key={s[0]} onClick={() => choose(s)} className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-surface-contrast/5 ${selected?.[0]===s[0]?"bg-surface-contrast/5 text-accent":"text-ink-2"}`}><span>{s[1]}</span><span className="font-mono">{rangeOrigin&&overlay.range?`${f.number(distanceLy(rangeOrigin,s),2)} ${m.lightYears}`:f.number(s[2],1)}</span></button>)}</div></div>
-   </aside>
   </div>
   <div className="flex flex-wrap justify-between gap-3 border-t border-surface-contrast/10 p-3 text-xs text-ink-2"><div className="flex gap-4">{(["high","low","null"] as const).map((key,i) => <span key={key} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{background:`var(--series-${["ice","gas","ore"][i]})`}}/>{m[key]}</span>)}</div></div>
  </Panel><MapPlanning initialOriginId={initialSystemId} systems={systems} selected={selected} onFocus={choose} onOverlay={setOverlay}/></div>;

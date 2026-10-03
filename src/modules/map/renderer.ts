@@ -71,7 +71,7 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
    path.rect(x-size/2,y-size/2,size,size);
   }
   for(const [key,path] of Object.entries(paths)) {
-   const [group,match]=key.split(":");ctx.fillStyle=colors[group]||ink;ctx.globalAlpha=match==="true"?.85:.12;ctx.fill(path);
+   const [group,match]=key.split(":");ctx.fillStyle=colors[group]||ink;ctx.globalAlpha=match==="true"?.85:.35;ctx.fill(path);
   }
   options.onHits(hits);ctx.globalAlpha=1;
   if(overlay?.route.length) {
