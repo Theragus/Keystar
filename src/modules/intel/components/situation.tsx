@@ -107,15 +107,10 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
         </div>
         </div>
         <div className="glass-inset rounded-lg p-3">
-          <h3 className="eve-label mb-2 text-2xs text-ink-3">{t.intel.scan.historyTitle}</h3>
+          <h3 className="eve-label mb-2 text-2xs text-ink-3">{e.engagementWithUs}</h3>
           {!view.home ? <p className="text-xs text-ink-3">{t.intel.scan.noHome}</p> : !view.engagements.length ? <p className="text-xs text-ink-3">{t.intel.scan.noFights}</p> : <>
-            <p className="mb-2 text-xs text-ink-2">{t.intel.scan.engagements(view.totals.engagements)}</p>
-            <div className="mb-3 space-y-1 text-xs text-ink-2">
-              <p>{t.intel.engagements.killed(view.totals.ourKills, f.compact(view.totals.iskKilled))}</p>
-              <p>{t.intel.engagements.lost(view.totals.ourLosses, f.compact(view.totals.iskLost))}</p>
-            </div>
             <ol className="space-y-3">
-              {view.engagements.slice(0, 3).map(fight => <li key={fight.key} className="border-t border-surface-contrast/6 pt-2 text-xs">
+              {view.engagements.slice(0, 1).map(fight => <li key={fight.key} className="border-t border-surface-contrast/6 pt-2 text-xs">
                 <a href={zkillRelated(fight.systemId, fight.start)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">{view.names.systems.get(fight.systemId)?.name ?? e.unknown} · {f.relativeTime(fight.start)}</a>
                 <p className="mt-1 text-ink-2">{t.intel.engagements.killed(fight.ourKills, f.compact(fight.iskKilled))}</p>
                 <p className="text-ink-2">{t.intel.engagements.lost(fight.ourLosses, f.compact(fight.iskLost))}</p>
