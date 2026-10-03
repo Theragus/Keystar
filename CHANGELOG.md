@@ -11,6 +11,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **Desktop notifications switch in Safari.** When the browser turns the request down without asking (Safari, with
   websites not allowed to ask in its settings), the switch now shows it as blocked instead of doing nothing. The
   blocked hint also mentions system settings, since macOS can block notifications for the whole browser.
+  ([#90](https://github.com/Theragus/Keystar/issues/90))
 
 ## [0.11.0] - 2026-10-03
 
