@@ -6,6 +6,16 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-03
+
+**When updating:** Live fleet needs the new character scope `esi-fleets.read_fleet.v1`.
+
+1. Add `esi-fleets.read_fleet.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>.
+2. Update as usual (`KEYSTAR_VERSION=0.2.0`, `docker compose pull`, `docker compose up -d`); the database
+   migrations run on start.
+3. Members who run fleets re-authorise their characters under My Characters, which shows the missing scope.
+
 ### Added
 
 - **Live fleet** (Combat → Live fleet): a fleet boss clicks "Track fleet" on one of their characters and the worker
