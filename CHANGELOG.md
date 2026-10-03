@@ -6,6 +6,44 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+**When updating:** Threat intel reads blues and reds from the corporation's and alliance's contacts, which needs two
+corporation scopes.
+
+1. Add `esi-corporations.read_contacts.v1` and `esi-alliances.read_contacts.v1` to the scopes of your EVE
+   application at <https://developers.eveonline.com/applications>.
+2. Update as usual; the database migrations run on start.
+3. One member of the corporation re-authorises a character under My Characters. Without the scopes, only your own
+   corporation and alliance count as friendly.
+4. Optional: `INTEL_MODEL` picks the Claude model for intel briefings, dossiers and d-scan reads (default
+   `claude-sonnet-5-5`); Claude is only used when `ANTHROPIC_API_KEY` is set.
+
+### Added
+
+- **Threat intel** (Combat → Threat Intel): paste local, a fleet composition, chat lines or names, optionally with a
+  d-scan, and get:
+  - corporations, standings and **history with us** at once: kills on us, losses to us, the hulls they flew against
+    us, and the fights from our killboard with what they brought, who else was there and how it went;
+  - a **threat score** per pilot from zKillboard, filled in live: statistics for everyone first, then each pilot's
+    newest killmails (most dangerous first). Scores are weighted toward recent activity, explained in eight
+    dimensions and damped for pilots who are not active now; tags such as cyno (from loss fits), hunter, tackle,
+    capital, gate camper and ganker; the latest kills and losses and "last seen flying …" for every pilot;
+  - a group view (tiers, likely composition, roles, pilots who fly together), d-scan matching, a pilot page
+    (latest kills, ships, activity heatmap, fights with us, wingmen, corporation history);
+  - a **briefing** per scan, pilot **dossiers** and **d-scan reads** written by Claude when `ANTHROPIC_API_KEY` is
+    set (model `INTEL_MODEL`, default `claude-sonnet-5-5`; capped at 20 calls per user and 120 per instance an
+    hour), otherwise from templates;
+  - shareable scan links and a corp-wide **recently seen hostiles** feed;
+  - in English and German: scores, tags and template notes follow the reader's language, and Claude writes in the
+    language of whoever asks for a note (the scan's creator for automatic briefings).
+- New permissions **Use threat intel**, **Use Claude for intel** (both members by default) and **Manage threat
+  intel** (directors).
+
+### Fixed
+
+- The ESI client no longer pauses for a second after responses without error-limit headers.
+- A sync job triggered while it is running now runs again right after instead of waiting for its next interval.
+- Looking up ship or module types no longer fetches every type of their group (only ores, ice and gas need that).
+
 ## [0.2.0] - 2026-10-03
 
 **When updating:** Live fleet needs the new character scope `esi-fleets.read_fleet.v1`.

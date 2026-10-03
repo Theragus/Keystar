@@ -29,6 +29,13 @@
       "when": 1790989900532,
       "tag": "0003_fleet",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790991030308,
+      "tag": "0004_intel",
+      "breakpoints": true
     }
   ]
 }

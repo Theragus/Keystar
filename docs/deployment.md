@@ -82,7 +82,9 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
 4. Select these scopes:
 
    ```
+   esi-alliances.read_contacts.v1
    esi-characters.read_corporation_roles.v1
+   esi-corporations.read_contacts.v1
    esi-corporations.read_corporation_membership.v1
    esi-corporations.read_structures.v1
    esi-fleets.read_fleet.v1
@@ -126,8 +128,9 @@ Edit `.env` (`nano .env`) and set at least:
 | `ESI_CONTACT`                     | your email or EVE character name (sent to CCP in the User-Agent)       |
 | `ADMIN_CHARACTER_IDS`             | optional: your character ID(s). If empty, the **first** pilot to sign in becomes admin |
 | `KEYSTAR_VERSION`                 | release to run, e.g. `0.1.1`, or `latest` (default) — see [releases](https://github.com/theragus/keystar/releases). `main` follows unreleased, possibly unstable changes |
-| `ANTHROPIC_API_KEY`               | optional: a [Claude API key](https://console.anthropic.com) so Claude writes the killboard's weekly situation report (≈ one call a day, one to two US cents each with the default model). Without it the report is written from a template |
+| `ANTHROPIC_API_KEY`               | optional: a [Claude API key](https://console.anthropic.com) so Claude writes the killboard's weekly situation report (≈ one call a day, one to two US cents each with the default model) and threat intel briefings. Without it both are written from templates |
 | `KILLBOARD_REPORT_MODEL`          | optional: Claude model for the report, default `claude-sonnet-5-5` (`claude-haiku-4-5-20251001` is about half the cost) |
+| `INTEL_MODEL`                     | optional: Claude model for threat intel briefings, dossiers and d-scan reads, default `claude-sonnet-5-5`. Uses the same `ANTHROPIC_API_KEY`; a briefing of a 30-pilot local costs a few US cents. Calls are capped at 20 per user and 120 per instance per hour, and only roles with **Use Claude for intel** can trigger them |
 
 ## 7. Start it
 
@@ -265,3 +268,5 @@ signing in without EVE SSO. `demo-seed` refuses to run if real users exist.
 | App container restarts with "Invalid Keystar configuration" | A required `.env` value is missing or malformed; the log lists which.                       |
 | Killboard sync: "zKillboard responded 403"           | zKillboard blocks requests without a proper User-Agent or from IPs that send too many requests. Set `ESI_CONTACT` (it is part of the User-Agent) and make sure nothing else on the server hammers zKillboard. |
 | Situation report says "Claude failed: …"             | Check `ANTHROPIC_API_KEY` and `KILLBOARD_REPORT_MODEL`; the template report is used meanwhile. Directors can **Rewrite report** on the killboard once fixed. |
+| Threat intel scores stay "queued…"                   | The worker reads zKillboard (about one request a second); check that the worker runs and **Sync status** shows `intel.scan-worker` without errors. A `403` means zKillboard blocked the User-Agent or IP: set `ESI_CONTACT`. |
+| Threat intel shows no blues or reds                  | Standings need a member who linked a character **with corporation access** after the contact scopes were added (`esi-corporations.read_contacts.v1`, `esi-alliances.read_contacts.v1`). |

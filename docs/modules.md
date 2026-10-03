@@ -93,7 +93,12 @@ export const skillsJob: JobDefinition = {
 
 Add the jobs to `src/modules/jobs.ts`. The scheduler creates one row per eligible owner and keeps it in sync with
 tokens. For corporation jobs set `preferredCorpRoles` so the scheduler tries the right members' tokens first; a `403`
-moves on to the next candidate automatically.
+moves on to the next candidate automatically. If the endpoint needs no in-game role (corporation contacts, for
+example), set `anyCorpMember: true` so any member with the scopes can serve it.
+
+A global job with a short `intervalSeconds` can work through a queue: return `nextRunAt` to wait longer, and call
+`triggerJobs({ jobKey })` from a server action to wake it immediately (a trigger that arrives while the job runs is
+kept, so the job runs again right after).
 
 If the module needs item prices, add a `PriceInterestProvider` to `PRICE_INTEREST` in `src/modules/jobs.ts`.
 

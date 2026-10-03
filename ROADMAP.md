@@ -52,6 +52,25 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - 💡 Doctrine tags for hulls and per-doctrine performance
 - 💡 Track additional corporations or the alliance alongside the home corporation
 
+## Threat intelligence
+
+- ✅ **Scans**: paste local, a fleet composition, chat lines or names (up to 500 pilots); names and affiliations from
+  ESI, shareable scan links, rescans, a corp-wide "recently seen hostiles" feed
+- ✅ **Friend or foe** from the home corporation/alliance and their ESI contacts (optional contact scopes)
+- ✅ **History with us** from the killboard: kills on us, losses to us, hulls flown against us, and fights grouped by
+  system and time with what they brought, who else came and how it went
+- ✅ **Threat scores** from zKillboard statistics and each pilot's newest killmails, weighted toward recent activity:
+  eight explained dimensions, a recency gate, role tags (cyno from loss fits, hunter, tackle, capital, gate camper,
+  ganker, logi, FC …), timezone heatmap, wingmen, corporation history, latest kills strip and "last seen flying"
+- ✅ **Group view**: tiers, likely composition, roles, pilots who fly together
+- ✅ **D-scan matching**: which scanned pilot probably flies which hull on scan
+- ✅ **Claude** (optional API key, reused from the killboard): a briefing per scan, dossiers and d-scan reads on
+  request, from computed facts only; templates otherwise
+- 💡 Live watch: zKillboard's R2Z2 feed to flag kills by recently seen hostiles near the home systems
+- 💡 History with alliance mates, not only the home corporation (needs the alliance killboard)
+- 💡 Manual red/blue lists and notes per pilot, shared in the corporation
+- 💡 Ask Claude follow-up questions about a scan
+
 ## Trade
 
 - ✅ **Appraisal**: paste cargo, contracts, fits, d-scans or lists; Jita 4-4 buy/sell/split, volume, percentage
@@ -60,25 +79,6 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - 💡 Corp buyback: a configured percentage per item group, contract instructions for members
 
 ## Planned modules
-
-### 📝 Threat intelligence (own branch, major feature)
-
-Paste one pilot name or a whole list (local, d-scan names, fleet) and get a
-**threat score per pilot**. Existing tools felt unreliable and too shallow for
-experienced PvP pilots, so this should dig much deeper into zKillboard:
-
-- Resolve names → character IDs via ESI `/universe/ids`, then pull zKillboard history (kills *and* losses), with caching and polite rate limiting.
-- Score dimensions instead of one opaque number, each explained:
-  - recent activity (last 7/30/90 days) vs. lifetime
-  - solo vs. small-gang vs. blob behaviour (attackers per kill, final blows)
-  - ship classes and fits actually flown (cyno, tackle, recon, logi, capital/blops usage)
-  - where and when they fight (region/system, timezone heatmap)
-  - danger ratio, ISK efficiency, average kill value
-  - known associates / fleet-mates (who they fly with), corporation/alliance history (ESI)
-- Group view: aggregate threat for a list, likely fleet composition, shared associates.
-- Show the evidence (recent notable kills with links), not just the score, so a veteran can sanity-check it.
-- Requires no ESI scopes (public data). Reuse the killboard's zKillboard client and killmail tables
-  (`src/modules/killboard/zkill.ts`, `killmails`, `killmail_attackers`).
 
 ### 📝 Skills & corporation skill plans
 

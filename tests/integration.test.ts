@@ -37,7 +37,8 @@ describe.skipIf(!enabled)("integration", async () => {
     await db().execute(sql`TRUNCATE users, characters, esi_tokens, sessions, eve_types, eve_groups, eve_systems,
       eve_entities, type_values, type_value_history, mining_character_ledger, mining_observer_ledger, mining_observers,
       sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, esi_cache,
-      fleets, fleet_members, fleet_trackers
+      fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
+      intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes
       RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
@@ -609,6 +610,38 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(row.lastError).toBe("boom");
       expect(row.consecutiveFailures).toBe(1);
       expect(row.nextRunAt.getTime()).toBeGreaterThan(Date.now() + 50_000);
+    });
+
+    it("keeps a trigger that arrives while the job runs", async () => {
+      let triggered = false;
+      const def = job(async () => {
+        await scheduler.triggerJobs({ jobKey: "test.job" });
+        triggered = true;
+      });
+      await scheduler.planJobs([def]);
+      const [claimed] = await scheduler.claimDueJobs("w1", [def.key], 10);
+      await scheduler.executeJob(claimed, def, { esi });
+      expect(triggered).toBe(true);
+      const [row] = await db().select().from(schema.syncJobs);
+      expect(row.lastStatus).toBe("ok");
+      expect(row.nextRunAt.getTime()).toBeLessThan(Date.now() + 5_000);
+
+      // Without a trigger the interval applies again.
+      const [again] = await scheduler.claimDueJobs("w1", [def.key], 10);
+      await scheduler.executeJob(again, job(async () => {}), { esi });
+      const [after] = await db().select().from(schema.syncJobs);
+      expect(after.nextRunAt.getTime()).toBeGreaterThan(Date.now() + 590_000);
+    });
+
+    it("lets any corporation member serve role-less corporation jobs, role holders first", async () => {
+      await db().insert(schema.characterCorpRoles).values([
+        { characterId: 1, roles: [] },
+        { characterId: 2, roles: ["Director"] },
+      ]);
+      await db().execute(sql`UPDATE esi_tokens SET scopes = ARRAY['scope.a'], status = 'active'`);
+      const base = { ...job(async () => {}), owner: "corporation" as const };
+      expect(await scheduler.corporationCandidates(db(), 100, base)).toEqual([2, 3]);
+      expect(await scheduler.corporationCandidates(db(), 100, { ...base, anyCorpMember: true })).toEqual([2, 1, 3]);
     });
   });
 });

@@ -15,6 +15,8 @@
  * name resolution picks the first one that is a real item.
  */
 
+import { parseDscanLine } from "@/core/eve/dscan";
+
 export interface Candidate {
   name: string;
   quantity: number;
@@ -96,9 +98,8 @@ function freeText(text: string): Candidate[] {
 function tabbed(cols: string[]): Candidate[] {
   const cells = cols.map((c) => c.trim());
   // D-scan: "<type id>\t<name>\t<type>\t<distance>" → one of that type.
-  if (/^\d+$/.test(cells[0]) && cells.length >= 3 && cells[2]) {
-    return [{ name: cleanName(cells[2]), quantity: 1 }];
-  }
+  const dscan = parseDscanLine(cols.join("\t"));
+  if (dscan) return [{ name: cleanName(dscan.typeName), quantity: 1 }];
   const name = cleanName(cells[0]);
   if (!name) return [];
   // Inventory, contract, survey scanner, multibuy: the quantity is the next
