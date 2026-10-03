@@ -52,7 +52,8 @@ src/
     intel/             threat intel: paste parser, scans, zKillboard worker, scoring, standings, history with us,
                        d-scan matching, briefings and dossiers (Claude or template), UI
     trade/             appraisal: paste parser, name resolution, Jita pricing, saved shareable snapshots
-    wallet/            opt-in character wallet transactions (raw data used by the mining P&L)
+    wallet/            opt-in character wallet transactions (raw data used by the mining P&L); corp/: corporation
+                       wallet archive (balances, journal, transactions), classification, finances pages' queries
     social/            opt-in EVE mail (read-only): mail sync, EVE HTML parser, link resolution, mail UI
     jobs.ts            registry of background jobs (worker only)
   worker/index.ts      worker entry point
@@ -174,6 +175,8 @@ Current jobs:
 | `intel.corporation-contacts`     | 15 min   | Home corporation contacts (standings), any member's token  |
 | `intel.alliance-contacts`        | 15 min   | Home alliance contacts (standings), any member's token     |
 | `wallet.character-transactions`  | 1 h      | Market transactions of characters that opted in to wallets |
+| `wallet.corporation-wallets`     | 1 h      | Corporation balances, journal and transactions, all divisions (Accountant / Junior Accountant) |
+| `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
 | `social.character-mail`          | 5 min    | EVE mail, labels and mailing lists of characters that opted in to mail |
 
 ## EVE mail
@@ -258,6 +261,34 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   wall-clock across characters, and per character and activity. ISK/h values the measured growth itself, so it only
   covers mining since the feature was deployed. Expenses are split across activities by active hours when measured
   activity covers ≥ 90% of income, otherwise by m³.
+
+## Corporation wallets
+
+Finances → Corporation wallet and Wallet journal show the home corporation's wallet divisions (`wallet.corp.view`,
+default Director). ESI returns only about 30 days per division — the journal at most 10 pages of 1,000 entries
+(CCP won't change this, esi/esi-issues#1172) — so `wallet.corporation-wallets` builds a long-term archive:
+
+- Every hour it reads the balances (`corp_wallet_divisions`, plus the day's closing balance in
+  `corp_wallet_balance_history`), then per division the journal (`page`/`X-Pages`, newest first) and market
+  transactions (`from_id`). Paging stops at the first page that reaches stored ids, so a normal run makes two
+  requests per division; all routes share the `corp-wallet` rate-limit group (300 tokens per 15 minutes). Responses
+  bypass the ESI response cache: the archive is the copy that matters.
+- `corp_wallet_journal` and `corp_wallet_transactions` are insert-only and never deleted. They are keyed by
+  corporation and division with no foreign keys to characters, so the history survives members leaving and tokens
+  being revoked. `ref_type` is stored as text: CCP adds values without a new compatibility date.
+- `corp_wallet_sync_state` records per division and stream where the archive starts and its **gaps**: when an import
+  no longer reaches stored data (no Accountant token for over a month, or more than 10,000 entries since the last
+  run), the uncovered stretch is stored and shown on both pages instead of being silently lost.
+- **Income and expenses** are positive and negative journal amounts, except **transfers between the corporation's own
+  divisions** (`corporation_account_withdrawal` from the corporation to itself), which appear in both divisions'
+  journals and are reported separately. Ref types are grouped into categories in
+  `src/modules/wallet/corp/classify.ts` (with an SQL twin; a test checks the map against the ESI enum).
+- Division names come from `/corporations/{id}/divisions` (Director only, renamed divisions only); others use the
+  default names from the dictionaries.
+
+The archive is meant to grow into spending and income breakdowns (by category, counterparty and item via the
+transactions), trends from the balance history and office rent tracking (`office_rental_fee` by `context_id`)
+without schema changes.
 
 ## Killboard
 

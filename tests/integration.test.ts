@@ -40,7 +40,8 @@ describe.skipIf(!enabled)("integration", async () => {
       fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
       intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, mining_activity,
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
-      mining_pnl_tx_overrides, mining_pnl_entries, mail_messages, mail_labels, mail_lists
+      mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
+      corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists
       RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
@@ -945,6 +946,134 @@ describe.skipIf(!enabled)("integration", async () => {
       const rows = await db().select().from(schema.mailMessages);
       expect(rows.every((r) => r.characterId === 2)).toBe(true);
       expect(await db().select().from(schema.mailLabels).where(sql`character_id = 3`)).toEqual([]);
+    });
+  });
+
+  describe("corporation wallets", async () => {
+    const { corporationWalletsJob, corporationDivisionsJob } = await import("@/modules/wallet/corp/sync");
+    const walletQ = await import("@/modules/wallet/corp/queries");
+    const { parseCorpWalletFilters } = await import("@/modules/wallet/corp/filters");
+    const DAY = 86_400_000;
+    const NOW = Math.floor(Date.now() / 1000) * 1000;
+    const iso = (daysAgo: number) => new Date(NOW - daysAgo * DAY).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+    /** Fake ESI for corporation 100: journal and transactions per division, routed by path. */
+    function corpEsi(data: {
+      journal?: Record<number, Record<string, unknown>[]>;
+      transactions?: Record<number, Record<string, unknown>[]>;
+      divisions?: { division: number; name?: string }[];
+    }) {
+      const calls: string[] = [];
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async (url: string) => {
+          const u = new URL(String(url));
+          calls.push(u.pathname + u.search);
+          const m = u.pathname.match(/\/wallets\/(\d)\/(journal|transactions)$/);
+          let body: unknown = [];
+          if (u.pathname.endsWith("/wallets")) body = [1, 2, 3, 4, 5, 6, 7].map((division) => ({ division, balance: division * 1e6 }));
+          else if (u.pathname.endsWith("/divisions")) body = { hangar: [], wallet: data.divisions ?? [] };
+          else if (m && m[2] === "journal") body = data.journal?.[Number(m[1])] ?? [];
+          else if (m && !u.searchParams.has("from_id")) body = data.transactions?.[Number(m[1])] ?? [];
+          return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json", "x-pages": "1" } });
+        }) as unknown as typeof fetch,
+      });
+      return { esi, calls };
+    }
+    const ctx = (esi: InstanceType<typeof EsiClient>) => ({
+      jobId: 1, ownerType: "corporation" as const, ownerId: 100, characterId: 1, esi, db: db(), log: undefined as never, meta: {},
+    });
+    const j = (id: number, daysAgo: number, amount: number, extra: Record<string, unknown> = {}) => ({
+      id, date: iso(daysAgo), ref_type: "bounty_prizes", description: "", amount, first_party_id: 1000125, second_party_id: 100, ...extra,
+    });
+    const filters = parseCorpWalletFilters({}, new Date().toISOString().slice(0, 10));
+
+    beforeEach(async () => {
+      // Known names and types, so the resolver has nothing to ask ESI for.
+      await db().insert(schema.eveEntities).values([
+        { id: 100, name: "Home Corp", category: "corporation" },
+        { id: 1000125, name: "CONCORD", category: "corporation" },
+        { id: 1, name: "Alpha", category: "character" },
+      ]);
+      await db().insert(schema.eveTypes).values({ typeId: 34, name: "Tritanium", groupId: 18, volume: 0.01, portionSize: 1 });
+    });
+
+    it("archives balances, journal and transactions without duplicates", async () => {
+      const { esi } = corpEsi({
+        journal: {
+          1: [
+            j(3, 1, 5e6),
+            j(2, 2, -2e6, { ref_type: "corporation_account_withdrawal", first_party_id: 100, second_party_id: 100 }),
+            j(1, 3, -1e6, { ref_type: "office_rental_fee", second_party_id: 1000125, first_party_id: 100 }),
+          ],
+          2: [j(10, 2, 2e6, { ref_type: "corporation_account_withdrawal", first_party_id: 100, second_party_id: 100 })],
+        },
+        transactions: {
+          1: [{ transaction_id: 77, date: iso(1), type_id: 34, quantity: 1000, unit_price: 4, is_buy: true, client_id: 1,
+            location_id: 60003760, journal_ref_id: 3 }],
+        },
+      });
+      expect(corporationWalletsJob.preferredCorpRoles).toEqual(["Accountant", "Junior_Accountant"]);
+      const first = await corporationWalletsJob.run(ctx(esi));
+      expect(first?.summary).toBe("7 divisions, 4 new journal entries, 1 new transaction");
+      const second = await corporationWalletsJob.run(ctx(esi));
+      expect(second?.summary).toBe("7 divisions, 0 new journal entries, 0 new transactions");
+      expect(await db().select().from(schema.corpWalletJournal)).toHaveLength(4);
+      expect(await db().select().from(schema.corpWalletTransactions)).toHaveLength(1);
+      expect((await walletQ.getDivisions(100)).map((d) => d.balance)).toEqual([1e6, 2e6, 3e6, 4e6, 5e6, 6e6, 7e6]);
+      const state = await walletQ.getSyncState(100);
+      expect(state).toHaveLength(14);
+      expect(state.every((s) => s.gaps.length === 0 && s.lastSyncedAt)).toBe(true);
+      expect(state.find((s) => s.division === 1 && s.stream === "journal")?.historyStartsAt?.toISOString()).toBe(
+        new Date(iso(3)).toISOString(),
+      );
+
+      // Income and expenses leave the transfer out; it shows up as moved between divisions.
+      const flows = await walletQ.getDailyFlows(100, filters);
+      const sum = (k: "income" | "expenses" | "transfersIn" | "transfersOut") => flows.reduce((s, r) => s + r[k], 0);
+      expect([sum("income"), sum("expenses"), sum("transfersIn"), sum("transfersOut")]).toEqual([5e6, 1e6, 2e6, 2e6]);
+
+      const all = await walletQ.getJournal(100, filters, { limit: 50, offset: 0 });
+      expect(all.total).toBe(4);
+      expect(all.rows[0]).toMatchObject({ id: 3, category: "bounties", firstPartyName: "CONCORD", transfer: false });
+      const rent = await walletQ.getJournal(100, { ...filters, categories: ["structures"] }, { limit: 50, offset: 0 });
+      expect(rent.rows.map((r) => r.id)).toEqual([1]);
+      const transfers = await walletQ.getJournal(100, { ...filters, flow: "transfer" }, { limit: 50, offset: 0 });
+      expect(transfers.rows.map((r) => r.id).sort()).toEqual([10, 2]);
+      const expenses = await walletQ.getJournal(100, { ...filters, flow: "expense", divisions: [1] }, { limit: 50, offset: 0 });
+      expect(expenses.rows.map((r) => r.id)).toEqual([1]);
+    });
+
+    it("keeps history ESI no longer returns and records the hole when imports stopped too long", async () => {
+      await db().insert(schema.corpWalletJournal).values({
+        corporationId: 100, division: 1, id: 1, date: new Date(iso(60)), refType: "bounty_prizes", amount: 1e6, description: "",
+      });
+      await db().insert(schema.corpWalletSyncState).values({
+        corporationId: 100, division: 1, stream: "journal", historyStartsAt: new Date(iso(90)), lastSyncedAt: new Date(iso(60)),
+      });
+      const { esi } = corpEsi({ journal: { 1: [j(500, 10, 3e6), j(499, 20, 3e6)] } });
+      const result = await corporationWalletsJob.run(ctx(esi));
+      expect(result?.summary).toContain("history gap in division 1");
+      expect((await db().select().from(schema.corpWalletJournal)).map((r) => r.id).sort((a, b) => a - b)).toEqual([1, 499, 500]);
+      const state = (await walletQ.getSyncState(100)).find((s) => s.division === 1 && s.stream === "journal")!;
+      expect(state.historyStartsAt?.toISOString()).toBe(new Date(iso(90)).toISOString());
+      expect(state.gaps).toHaveLength(1);
+      expect(new Date(state.gaps[0].from).getTime()).toBeLessThan(new Date(state.gaps[0].to).getTime());
+
+      // The next hourly import overlaps: no new gap.
+      await corporationWalletsJob.run(ctx(esi));
+      const again = (await walletQ.getSyncState(100)).find((s) => s.division === 1 && s.stream === "journal")!;
+      expect(again.gaps).toHaveLength(1);
+    });
+
+    it("stores custom division names and clears renamed-back ones", async () => {
+      await corporationDivisionsJob.run(ctx(corpEsi({ divisions: [{ division: 2, name: "SRP" }, { division: 7, name: " " }] }).esi));
+      expect((await walletQ.getDivisions(100)).map((d) => d.name)).toEqual([null, "SRP", null, null, null, null, null]);
+      await corporationDivisionsJob.run(ctx(corpEsi({ divisions: [] }).esi));
+      expect((await walletQ.getDivisions(100)).every((d) => d.name === null)).toBe(true);
     });
   });
 

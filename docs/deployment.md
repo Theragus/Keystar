@@ -86,12 +86,14 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    esi-characters.read_corporation_roles.v1
    esi-corporations.read_contacts.v1
    esi-corporations.read_corporation_membership.v1
+   esi-corporations.read_divisions.v1
    esi-corporations.read_structures.v1
    esi-fleets.read_fleet.v1
    esi-industry.read_character_mining.v1
    esi-industry.read_corporation_mining.v1
    esi-mail.read_mail.v1
    esi-wallet.read_character_wallet.v1
+   esi-wallet.read_corporation_wallets.v1
    ```
 
    Keystar only ever asks members for the scopes its enabled modules need; corporation scopes are requested only when
@@ -109,6 +111,11 @@ When future modules (skills, assets) are added, add their scopes to the applicat
 > **Upgrading to the release with the mining P&L (see the CHANGELOG):** add `esi-wallet.read_character_wallet.v1` to the EVE application. Without it,
 > "Enable wallet import" in the mining P&L fails at the EVE login with `invalid_scope`. Nobody is asked for the scope
 > unless they enable wallet import themselves.
+
+> **Upgrading to the release with corporation wallets (see the CHANGELOG):** add `esi-wallet.read_corporation_wallets.v1`
+> and `esi-corporations.read_divisions.v1` to the EVE application, then have a member with the in-game Accountant or
+> Junior Accountant role (a Director also brings the division names) re-link their character with corporation access.
+> ESI only keeps about 30 days of corporation wallet history, so the archive starts from there.
 
 ## 6. Get Keystar and configure it
 
@@ -163,7 +170,7 @@ Then open `https://keystar.example.com`. To build from the checkout instead of u
    1. **Home corporation** — pre-selected from your character; confirm or enter another corporation ID.
    2. **Who gets in** — auto-approve corp (and optionally alliance) members, and pick the ore price source.
    3. **Corporation data** — link a character that has the in-game **Accountant** (or Director) role with corporation
-      access, so Keystar can read refinery observers and the roster. Skippable.
+      access, so Keystar can read refinery observers, the corporation wallets and the roster. Skippable.
    4. **Invite** — copy the `/join` link for your members.
 3. Link your alts under **My Characters → Link a character**.
 
@@ -280,4 +287,5 @@ signing in without EVE SSO. `demo-seed` refuses to run if real users exist.
 | Killboard sync: "zKillboard responded 403"           | zKillboard blocks requests without a proper User-Agent or from IPs that send too many requests. Set `ESI_CONTACT` (it is part of the User-Agent) and make sure nothing else on the server hammers zKillboard. |
 | Situation report says "Claude failed: …"             | Check `ANTHROPIC_API_KEY` and `KILLBOARD_REPORT_MODEL`; the template report is used meanwhile. Directors can **Rewrite report** on the killboard once fixed. |
 | Threat intel scores stay "queued…"                   | The worker reads zKillboard (about one request a second); check that the worker runs and **Sync status** shows `intel.scan-worker` without errors. A `403` means zKillboard blocked the User-Agent or IP: set `ESI_CONTACT`. |
+| Finances: "No wallet data yet"                      | Link a character with corporation access that holds the Accountant or Junior Accountant role in game (Director for division names). The wallet job runs hourly. |
 | Threat intel shows no blues or reds                  | Standings need a member who linked a character **with corporation access** after the contact scopes were added (`esi-corporations.read_contacts.v1`, `esi-alliances.read_contacts.v1`). |
