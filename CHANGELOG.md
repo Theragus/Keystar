@@ -14,6 +14,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- Kill, loss and mail notifications in the corner no longer run out while you're looking elsewhere: their countdown
+  only runs while the Keystar tab is visible and its window has focus, so a kill that came in while you were in game
+  is still there when you switch back.
 - Scrolling the sidebar navigation or the system and multi-select picker lists past their top or bottom no longer
   scrolls the page behind them.
 - **Desktop notifications switch that did nothing.** When the browser or an extension turns the request down without
