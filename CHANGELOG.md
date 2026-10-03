@@ -6,6 +6,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **"Today" and "Yesterday" date ranges.** The date-range picker on the mining, P&L, finances and killboard pages
+  offers single-day presets for the current and the previous EVE day, above "7 days".
+
 ### Changed
 
 - **Main character listed first.** The Characters page, the dashboard's character panel, fleet tracking, the mail
