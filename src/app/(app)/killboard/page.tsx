@@ -370,7 +370,7 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
         <p className="text-xs text-ink-3">
           {tk.page.footer({
             synced: status.lastSyncAt ? f.relativeTime(status.lastSyncAt) : null,
-            since: status.since ? status.since.slice(0, 10) : null,
+            since: status.since ? f.date(status.since) : null,
             week: weekLabel,
             prevWeek: rangeLabel(w.prevWeek, f.locale),
           })}

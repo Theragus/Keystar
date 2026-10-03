@@ -113,8 +113,8 @@ Texts live in dictionaries, one namespace per area: `src/i18n/messages/en/*` is 
 `Messages` type; `src/i18n/messages/de/*` must match it exactly, so a missing or extra German key fails the
 typecheck. Dynamic text is a function (`selected: (count: number) => …`), text with embedded markup a function
 taking React nodes. Server code reads `{ t, f } = await getI18n()`, client components `useI18n()`; `f` is the
-locale-aware formatter from `src/lib/format.ts` (German: "9,87 Mio. ISK", "12,3 %", "vor 5 Minuten"). EVE times
-stay `YYYY-MM-DD HH:mm ET` in both languages. Module manifests and job definitions name their texts with `Msg`
+locale-aware formatter from `src/lib/format.ts` (German: "9,87 Mio. ISK", "12,3 %", "vor 5 Minuten"). Dates and
+times are in EVE time (UTC): `f.date` gives "02 Oct 2026" / "02.10.2026", `f.dateTime` adds "18:00 ET". Module manifests and job definitions name their texts with `Msg`
 selectors (`label: (t) => t.mining.module.nav.ledger`) so they can be rendered in any language.
 
 Not translated: names from ESI (items, systems, pilots — ESI is queried in English), CSV exports, log output and the

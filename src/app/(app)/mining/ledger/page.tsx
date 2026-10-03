@@ -123,7 +123,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
                       span={4}
                       label={
                         <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                          <span className="font-semibold text-ink tabular-nums">{day.date}</span>
+                          <span className="font-semibold text-ink tabular-nums">{f.date(day.date)}</span>
                           <span className="text-ink-2">{f.weekday(day.date)}</span>
                           <span className="text-xs text-ink-3">
                             {l.dayMeta(day.totals.entries, day.totals.characters)}
