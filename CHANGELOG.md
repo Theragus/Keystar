@@ -8,7 +8,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
-- Threat Intel shows the latest observed group fight's destroyed hull, recorded attackers, victim, time and value. Pilot summaries use compact responsive tiles with expandable evidence, and recent kills and losses are ordered newest first without redundant Killed/Lost labels.
+- Threat Intel shows the latest observed group fight's destroyed hull, recorded attackers, victim, time and value. Pilot summaries use compact responsive tiles with expandable evidence and icon previews of the three latest killed and lost ships, and recent kills and losses are ordered newest first without redundant Killed/Lost labels.
 
 
 ### Added

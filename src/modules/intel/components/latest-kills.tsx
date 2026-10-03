@@ -7,12 +7,12 @@ import type { DisplayNames } from "../names";
 import type { LatestEvent, PilotProfile } from "../types";
 
 /** The pilot's newest kills and losses, newest first: historical observations, never current ship assignments. */
-export async function LatestKills({ events, names, limit = 5 }: { events: LatestEvent[]; names: DisplayNames; limit?: number }) {
+export async function LatestKills({ events, names, limit = 5, compact = false }: { events: LatestEvent[]; names: DisplayNames; limit?: number; compact?: boolean }) {
   if (!events.length) return null;
   const { t, f } = await getI18n();
   const l = t.intel.latest;
   return (
-    <ol className="flex flex-wrap gap-1.5">
+    <ol className={compact ? "grid grid-cols-3 gap-1.5" : "flex flex-wrap gap-1.5"}>
       {newestEvents(events).slice(0, limit).map((e) => {
         const color = e.isLoss ? LOSS_COLOR : KILL_COLOR;
         const targetHull = eventTargetHull(e);
@@ -24,19 +24,19 @@ export async function LatestKills({ events, names, limit = 5 }: { events: Latest
               href={zkillKill(e.killmailId)}
               target="_blank"
               rel="noopener noreferrer"
-              className="glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-surface-contrast/8"
-              style={{ borderLeftColor: color }}
+              className={compact ? "glass-chip flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-md border-t-2 p-1 text-center text-3xs hover:bg-surface-contrast/8" : "glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-surface-contrast/8"}
+              style={compact ? { borderTopColor: color } : { borderLeftColor: color }}
               title={l.title({ isLoss: e.isLoss, ship: other, system, isk: f.compact(e.value), attackers: e.attackerCount })}
             >
-              {e.shipTypeId ? <TypeIcon id={e.shipTypeId} size={22} className="rounded" /> : null}
-              <span className="min-w-0">
+              {targetHull ? <TypeIcon id={targetHull} size={compact ? 28 : 22} className="rounded" /> : null}
+              <span className={compact ? "min-w-0 w-full" : "min-w-0"}>
                 <span className="block max-w-36 truncate text-ink">
                   <span className="sr-only">{l.srKind(e.isLoss)}</span>
                   {other ?? t.intel.pilot.unknownHull}
                 </span>
-                <span className="block text-3xs text-ink-3">
+                {!compact && <span className="block text-3xs text-ink-3">
                   {f.relativeTime(e.time)} · {system ?? "?"} · {e.solo ? l.solo : l.pilots(e.attackerCount)}
-                </span>
+                </span>}
               </span>
             </a>
           </li>

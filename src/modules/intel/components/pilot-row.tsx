@@ -61,9 +61,9 @@ export async function PilotRow({
   const flyingWith = (profile?.associates ?? []).filter((a) => pilotNames.has(a.characterId) && a.characterId !== pilot.characterId);
   return (
     <details className="group glass-inset min-w-0 rounded-xl open:md:col-span-2 open:xl:col-span-3">
-      <summary className="flex aspect-[5/4] min-h-56 cursor-pointer list-none flex-col gap-3 p-3 group-open:aspect-auto group-open:min-h-0 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none flex-col gap-3 p-3 [&::-webkit-details-marker]:hidden">
         <div className="flex w-full items-start gap-2">
-          <Portrait id={pilot.characterId} size={32} />
+          <Portrait id={pilot.characterId} size={40} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-ink" title={pilot.name}>{pilot.name}</div>
             <div className="mt-0.5 truncate text-xs text-ink-3" title={pilot.corporationName ?? undefined}>
@@ -78,7 +78,20 @@ export async function PilotRow({
           <HistoryChip history={history} />
           <ProfileStatus pilot={pilot} />
         </div>
-        <PilotEvidence profile={profile} names={names} associates={flyingWith.length} />
+        <div className="w-full border-y border-surface-contrast/6 py-3">
+          <PilotEvidence profile={profile} names={names} associates={flyingWith.length} />
+        </div>
+        <div className="grid w-full grid-cols-2 gap-3">
+          {[{ label: t.intel.evidence.recentKills, loss: false }, { label: t.intel.evidence.recentLosses, loss: true }].map(({ label, loss }) => {
+            const events = profile?.recent.latest.filter(event => event.isLoss === loss) ?? [];
+            return (
+              <div key={label} className="min-w-0">
+                <h5 className="mb-1.5 text-3xs text-ink-3">{label}</h5>
+                {events.length ? <LatestKills events={events} names={names} limit={3} compact /> : <p className="text-3xs text-ink-3">{t.intel.evidence.noEvent}</p>}
+              </div>
+            );
+          })}
+        </div>
         <div className="mt-auto flex items-center gap-1 text-xs text-accent">
           <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden />
           {p.latestTitle}
