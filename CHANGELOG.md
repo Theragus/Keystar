@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Show three-character section headings in the collapsed navigation rail without shifting icons.
+
 - Use narrower four-column pilot cards on wide screens and three vertical rows of recent kills and losses.
 
 - Disable navigation scrolling in the collapsed sidebar while retaining expanded navigation scrolling.

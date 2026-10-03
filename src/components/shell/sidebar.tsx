@@ -78,8 +78,9 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
                 </>
               }
             >
-              <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))] group-data-[sidebar=collapsed]/shell:invisible">
-                {section.label(t)}
+              <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))] group-data-[sidebar=collapsed]/shell:px-0 group-data-[sidebar=collapsed]/shell:text-center" title={section.label(t)}>
+                <span className="group-data-[sidebar=collapsed]/shell:hidden">{section.label(t)}</span>
+                <span aria-hidden className="hidden group-data-[sidebar=collapsed]/shell:inline">{Array.from(section.label(t)).slice(0, 3).join("")}</span>
               </div>
               <ul className="space-y-0.5" data-flyout-anchor>
                 {section.items.map((item) => (
