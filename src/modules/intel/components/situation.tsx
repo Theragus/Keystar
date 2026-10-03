@@ -18,6 +18,12 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
     .flatMap((r) => (r.profile?.recent.latest ?? []).map((event) => ({ event, name: r.pilot.name })))
     .sort((a, b) => Date.parse(b.event.time) - Date.parse(a.event.time));
   const newest = events[0];
+  const sortedPilots = [...view.rows].sort((a, b) => {
+    const aScore = a.pilot.scoreDetail as PilotScore | null;
+    const bScore = b.pilot.scoreDetail as PilotScore | null;
+    const danger = (bScore && bScore.tier !== "unknown" ? bScore.composite : -1) - (aScore && aScore.tier !== "unknown" ? aScore.composite : -1);
+    return danger || Number(cynoEvidence(b.profile).length > 0) - Number(cynoEvidence(a.profile).length > 0) || a.pilot.name.localeCompare(b.pilot.name);
+  });
   const now = new Date();
   const group = observedGroups(others.map(r => ({ characterId: r.pilot.characterId, profile: r.profile })), now)[0];
   const checks = view.pilots
@@ -66,7 +72,7 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
         <div className="glass-inset rounded-lg p-3">
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{t.intel.scan.pilotsTitle}</h3>
           <div className="flex flex-wrap gap-1.5">
-            {view.rows.map(({ pilot, profile }) => {
+            {sortedPilots.map(({ pilot, profile }) => {
               const score = pilot.scoreDetail as PilotScore | null;
               const fits = cynoEvidence(profile);
               const fitDetails = fits.map(fit => `${e.cynoKinds[fit.kind]}: ${f.integer(fit.count)} · ${f.relativeTime(fit.lastAt)}`).join("; ");
