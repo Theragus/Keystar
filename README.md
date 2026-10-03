@@ -13,17 +13,24 @@
 
 Keystar signs pilots in with **EVE SSO**, collects their **ESI tokens** with exactly the scopes its modules need,
 syncs data in the background and turns it into dashboards. Modules so far: **mining** (personal and moon-refinery
-ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export and an ore field
-estimator for survey scans), a **killboard** with the corporation's PvP performance from zKillboard and a weekly
-situation report, and an **appraisal** tool for Jita prices.
+ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export, an ore field estimator
+for survey scans and a personal **mining P&L** with opt-in wallet import), a **killboard** with the corporation's PvP
+performance from zKillboard and a weekly situation report, **live fleet** tracking, **threat intel** for pasted
+local, fleets and d-scans, and an **appraisal** tool for Jita prices.
 
 ![Mining overview](docs/screenshots/mining.png)
 
 ![Killboard](docs/screenshots/killboard.png)
 
+![Threat intel](docs/screenshots/intel.png)
+
 <table>
   <tr>
     <td><img src="docs/screenshots/overview.png" alt="Dashboard" /></td>
+    <td><img src="docs/screenshots/pnl.png" alt="Mining P&amp;L" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fleet.png" alt="Live fleet" /></td>
     <td><img src="docs/screenshots/appraisal.png" alt="Appraisal" /></td>
   </tr>
   <tr>
@@ -97,7 +104,7 @@ how releases are cut: [docs/releasing.md](docs/releasing.md).
 
 ## Develop
 
-Requirements: Node.js 22+, pnpm 10, PostgreSQL 16+.
+Requirements: Node.js 22+, pnpm 10, PostgreSQL 17 (16 should work; Docker Compose and CI use 17).
 
 ```bash
 pnpm install
@@ -107,32 +114,38 @@ pnpm dev                      # web app on http://localhost:3000
 pnpm dev:worker               # background sync worker (second terminal)
 ```
 
-Try it without EVE credentials using demo data (fake corporation, every role, ~120 days of mining):
+Try it without EVE credentials using demo data (fake corporation, every role, ~120 days of mining, two moon
+refineries, a killboard, past fleets, threat-intel scans and a mining P&L):
 
 ```bash
 KEYSTAR_DEMO_MODE=true pnpm demo:seed
 KEYSTAR_DEMO_MODE=true pnpm dev
 ```
 
-| Command              | Purpose                                                        |
-| -------------------- | -------------------------------------------------------------- |
-| `pnpm test`          | Unit tests (+ integration tests when `TEST_DATABASE_URL` is set) |
-| `pnpm lint`          | ESLint                                                         |
-| `pnpm typecheck`     | TypeScript                                                     |
-| `pnpm db:generate`   | Create a migration after changing a Drizzle schema             |
-| `pnpm build`         | Production build (Next.js standalone + bundled worker)         |
+| Command                 | Purpose                                                          |
+| ----------------------- | ---------------------------------------------------------------- |
+| `pnpm test`             | Unit tests (+ integration tests when `TEST_DATABASE_URL` is set) |
+| `pnpm lint`             | ESLint                                                           |
+| `pnpm typecheck`        | TypeScript                                                       |
+| `pnpm db:migrate`       | Apply database migrations                                        |
+| `pnpm db:generate`      | Create a migration after changing a Drizzle schema               |
+| `pnpm db:studio`        | Browse the database with Drizzle Studio                          |
+| `pnpm demo:seed`        | Seed the demo corporation (needs `KEYSTAR_DEMO_MODE=true`)       |
+| `pnpm build`            | Production build (Next.js standalone + bundled worker)           |
+| `pnpm release:prepare`  | Pick the next version for a release ([docs/releasing.md](docs/releasing.md)) |
 
 ## Documentation
 
 - [docs/deployment.md](docs/deployment.md) — VPS setup, backups, updates, troubleshooting
 - [docs/architecture.md](docs/architecture.md) — how the pieces fit together
 - [docs/modules.md](docs/modules.md) — adding a feature module (skills, assets, …)
+- [docs/releasing.md](docs/releasing.md) — versioning and how releases are cut
 - [ROADMAP.md](ROADMAP.md) — planned features
 
 ## Tech stack
 
-Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · PostgreSQL + Drizzle ORM · jose · Recharts ·
-Vitest · Docker Compose + Caddy.
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · PostgreSQL + Drizzle ORM · jose · zod ·
+Recharts · lucide · Anthropic SDK (optional Claude reports) · Vitest · Docker Compose + Caddy.
 
 ## License
 
