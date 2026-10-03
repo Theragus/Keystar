@@ -109,6 +109,8 @@ export interface PriceSyncResult {
   summary: string;
   /** Requested types left unvalued because their (or their compressed variant's) Jita orders couldn't be fetched. */
   failed: number[];
+  /** Set when ESI rate-limited the run: it stopped fetching, so the rest of the types are in `failed`. */
+  rateLimited: EsiRateLimitedError | null;
 }
 
 /**
@@ -116,11 +118,11 @@ export interface PriceSyncResult {
  * recomputes their valuations, snapshotting today's values for history.
  *
  * A type whose Jita orders can't be fetched keeps its previous values and is
- * reported in `failed`; the rest are still written. Throws when every order
- * request failed, and after writing what it has when ESI rate-limits it.
+ * reported in `failed`; the rest are still written. On a rate limit it stops
+ * fetching and reports it in `rateLimited`. Throws when every order request failed.
  */
 export async function syncPrices(db: Db, esi: EsiClient, interestTypeIds: number[]): Promise<PriceSyncResult> {
-  if (!interestTypeIds.length) return { summary: "No priced types yet", failed: [] };
+  if (!interestTypeIds.length) return { summary: "No priced types yet", failed: [], rateLimited: null };
 
   const types = await db
     .select({ typeId: eveTypes.typeId, portionSize: eveTypes.portionSize, compressedTypeId: eveTypes.compressedTypeId })
@@ -229,10 +231,9 @@ export async function syncPrices(db: Db, esi: EsiClient, interestTypeIds: number
         set: { unitPrice: sql`excluded.unit_price` },
       });
   }
-  if (rateLimited) throw rateLimited;
   if (firstError) {
     log.warn("Could not fetch Jita orders", { types: unfetched.size, error: errorMessage(firstError) });
   }
   const summary = `Priced ${types.length - failed.length} types (${allIds.length - unfetched.size} incl. compressed)`;
-  return { summary: failed.length ? `${summary}, ${failed.length} failed` : summary, failed };
+  return { summary: failed.length ? `${summary}, ${failed.length} failed` : summary, failed, rateLimited };
 }

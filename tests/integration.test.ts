@@ -667,6 +667,30 @@ describe.skipIf(!enabled)("integration", async () => {
         vi.doUnmock("@/core/auth/dal");
       }
     });
+
+    it("keeps the ores it priced when ESI rate-limits the rest", async () => {
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userA }) }));
+      const { priceSurveyTypes } = await import("@/modules/mining/estimator/actions");
+      const { getEsi } = await import("@/core/esi");
+      const { EsiRateLimitedError } = await import("@/core/esi/client");
+      await db().insert(schema.eveTypes).values({ typeId: 1228, name: "Scordite", groupId: 462, volume: 0.15, portionSize: 100 });
+      await db().execute(sql`UPDATE type_values SET updated_at = now() - interval '3 hours' WHERE type_id = 1230`);
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi.spyOn(getEsi(), "get").mockImplementation(async (path: string, opts?: { query?: Record<string, unknown> }) => {
+        if (!path.includes("/orders")) return reply([]);
+        if (opts?.query?.type_id === 1228) throw new EsiRateLimitedError(path, 420, new Date(Date.now() + 60_000));
+        return reply([{ is_buy_order: true, location_id: 60003760, price: 12 }]);
+      }) as unknown as { mockRestore: () => void };
+      try {
+        const result = await priceSurveyTypes(["Veldspar", "Scordite"]);
+        expect(result.esiUnavailable).toBe(true);
+        expect(Object.keys(result.prices)).toEqual(["veldspar"]);
+        expect(result.prices.veldspar.unitPrice).toBe(12);
+      } finally {
+        getSpy.mockRestore();
+        vi.doUnmock("@/core/auth/dal");
+      }
+    });
   });
 
   describe("market price job", async () => {

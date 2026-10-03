@@ -121,7 +121,10 @@ export function marketPricesJob(providers: PriceInterestProvider[]): JobDefiniti
       for (const provider of providers) for (const id of await provider(db)) ids.add(id);
       // Types appraised or estimated recently stay fresh too; older ones are priced again on demand.
       for (const id of await recentPriceInterest(db)) ids.add(id);
-      return { summary: (await syncPrices(db, esi, [...ids])).summary };
+      const result = await syncPrices(db, esi, [...ids]);
+      // What was priced is written; failing the run makes the scheduler wait for the limit to lift.
+      if (result.rateLimited) throw result.rateLimited;
+      return { summary: result.summary };
     },
   };
 }
