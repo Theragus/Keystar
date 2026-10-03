@@ -5,6 +5,13 @@ All notable changes to Keystar. Versions follow [Semantic Versioning](https://se
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-03
+
+### Fixed
+
+- German: changes in killboard tables and the top-systems lists (e.g. "+1.234") now use German digit grouping.
+- The ore field estimator's example placeholder uses the number format of the EVE client in the chosen language.
+
 ## [0.1.3] - 2026-10-02
 
 ### Added
