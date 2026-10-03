@@ -198,7 +198,7 @@ export default async function PilotPage({ params }: PageProps<"/intel/[id]/pilot
                 {pilot.corpHistory.slice(0, 10).map((c) => (
                   <li key={`${c.corporationId}-${c.startDate}`} className="flex justify-between gap-3">
                     <span className="truncate text-ink-2">{names.entities.get(c.corporationId) ?? t.intel.pilot.corporation(c.corporationId)}</span>
-                    <span className="text-xs text-ink-3">{text.since(`${f.shortDate(c.startDate.slice(0, 10))} ${c.startDate.slice(0, 4)}`)}</span>
+                    <span className="text-xs text-ink-3">{text.since(f.date(c.startDate))}</span>
                   </li>
                 ))}
               </ul>
