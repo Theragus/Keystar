@@ -214,6 +214,7 @@ export const wormholes: typeof en = {
     notOnMap: "Dieses System ist nicht mehr auf der Karte.",
     alreadyConnected: "Diese Systeme sind schon verbunden.",
     sameSystem: "Ein System kann sich nicht mit sich selbst verbinden.",
+    invalidType: "Dieser Wurmlochtyp kann in diesem System nicht auftauchen.",
     cannotRemoveHome: "Das Heimatsystem kann nicht entfernt werden.",
     homeRequired: "Wähle zuerst ein Heimatsystem.",
     notFound: "Diese Verbindung gibt es nicht mehr; die Karte wurde neu geladen.",

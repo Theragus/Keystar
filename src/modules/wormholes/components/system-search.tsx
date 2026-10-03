@@ -47,16 +47,20 @@ export function SystemSearch({
     if (q.length < 2) return;
     const controller = new AbortController();
     abort.current = controller;
+    const settle = (systems: SystemSummary[]) => {
+      // A response that resolved after the query changed belongs to the old query.
+      if (controller.signal.aborted) return;
+      setResults(systems);
+      setActive(0);
+      setSearched(true);
+    };
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/wormholes/systems?q=${encodeURIComponent(q)}`, { signal: controller.signal });
-        if (!res.ok) return;
-        const body = (await res.json()) as { systems: SystemSummary[] };
-        setResults(body.systems);
-        setActive(0);
-        setSearched(true);
+        settle(res.ok ? ((await res.json()) as { systems: SystemSummary[] }).systems : []);
       } catch {
-        // Aborted or offline: the next keystroke tries again.
+        // Offline: show nothing rather than the previous query's results; the next keystroke tries again.
+        settle([]);
       }
     }, DEBOUNCE_MS);
     return () => {
@@ -95,6 +99,8 @@ export function SystemSearch({
           className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-3"
           onChange={(e) => {
             setQuery(e.target.value);
+            // Results belong to the previous text until the new search answers.
+            setResults([]);
             setSearched(false);
             setOpen(true);
           }}

@@ -92,6 +92,10 @@ describe.skipIf(!enabled)("wormholes integration", async () => {
     expect(c).toMatchObject({ type: "N766", typeSide: "a", life: "lt4h", mass: "reduced" });
     expect(c.expiresBy).toBe(new Date(t0.getTime() + 6 * H).toISOString());
     await expect(maps.updateConnection(db(), mapId, actor, uuid(1), { typeOn: JITA })).rejects.toMatchObject({ code: "failed" });
+    // B274 leads from C2 space to high-sec; it never spawns in a C4.
+    await expect(maps.updateConnection(db(), mapId, actor, uuid(1), { type: "B274", typeOn: HOME })).rejects.toMatchObject({
+      code: "invalidType",
+    });
     await expect(maps.updateConnection(db(), mapId, actor, uuid(9), { life: "lt1h" })).rejects.toMatchObject({ code: "notFound" });
   });
 

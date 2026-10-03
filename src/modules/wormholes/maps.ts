@@ -280,6 +280,13 @@ export async function updateConnection(
       throw new MapError("failed");
     }
     const next = patchConnection(toConnection(row), patch, WH.types, now, actor.name);
+    // Actions can be called directly, so check here what the type picker offers: types that spawn in that system.
+    if (next.type) {
+      const side = WH.system(next.typeSide === "b" ? row.bSystemId : row.aSystemId);
+      if (!side || !WH.typesFor(side.cls, side.statics).some((t) => t.code === next.type)) {
+        throw new MapError("invalidType");
+      }
+    }
     await tx
       .update(whConnections)
       .set({

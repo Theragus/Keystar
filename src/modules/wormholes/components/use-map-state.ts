@@ -22,6 +22,11 @@ export function useMapState(initial: MapState, types: Record<string, WormholeTyp
   const [sync, setSync] = useState<SyncStatus>({ kind: "live", at: Date.parse(initial.serverNow) });
   const revision = useRef(initial.revision);
   const seq = useRef(0);
+  // Server clock minus browser clock: expiry times come from the database, the browser's clock may be off.
+  const offset = useRef(0);
+  useEffect(() => {
+    offset.current = Date.parse(initial.serverNow) - Date.now();
+  }, [initial.serverNow]);
 
   const accept = useCallback((next: MapState) => {
     if (next.revision < revision.current) return;
@@ -41,7 +46,7 @@ export function useMapState(initial: MapState, types: Record<string, WormholeTyp
       if (!res.ok) return "error";
       const body = (await res.json()) as { changed: false; revision: number } | { changed: true; state: MapState };
       if (body.changed) accept(body.state);
-      setSync({ kind: "live", at: Date.now() });
+      setSync({ kind: "live", at: Date.now() + offset.current });
       return "ok";
     } catch {
       return "error";
@@ -86,7 +91,7 @@ export function useMapState(initial: MapState, types: Record<string, WormholeTyp
   const dispatch = useCallback(
     (op: Op, save: () => Promise<MapActionResult>) => {
       const id = ++seq.current;
-      setPending((p) => [...p, { seq: id, op, at: Date.now() }]);
+      setPending((p) => [...p, { seq: id, op, at: Date.now() + offset.current }]);
       setError(null);
       save()
         .then((result) => {
@@ -105,16 +110,18 @@ export function useMapState(initial: MapState, types: Record<string, WormholeTyp
   return { view, dispatch, error, clearError: () => setError(null), sync, saving: pending.length > 0 };
 }
 
-/** The current time, ticking every `ms`, starting from the server's clock. */
+/** The server's current time (from `start`, the server clock at render), ticking every `ms`. */
 export function useNow(start: string, ms: number): number {
   const [now, setNow] = useState(() => Date.parse(start));
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), ms);
-    const first = setTimeout(() => setNow(Date.now()), 0);
+    const offset = Date.parse(start) - Date.now();
+    const tick = () => setNow(Date.now() + offset);
+    const id = setInterval(tick, ms);
+    const first = setTimeout(tick, 0);
     return () => {
       clearInterval(id);
       clearTimeout(first);
     };
-  }, [ms]);
+  }, [start, ms]);
   return now;
 }

@@ -215,6 +215,7 @@ export const wormholes = {
     notOnMap: "That system is not on the map any more.",
     alreadyConnected: "These systems are already connected.",
     sameSystem: "A system can't connect to itself.",
+    invalidType: "That wormhole type can't appear in that system.",
     cannotRemoveHome: "The home system can't be removed.",
     homeRequired: "Choose a home system first.",
     notFound: "That connection is gone; the map was refreshed.",

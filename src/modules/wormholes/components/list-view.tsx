@@ -54,16 +54,31 @@ export function ListView({
                 key={c.id}
                 onClick={() => onSelect({ kind: "connection", id: c.id })}
                 className={cn("cursor-pointer", selected && "bg-white/6", look.collapsed && "opacity-50")}
-                aria-selected={selected}
               >
                 {[from, to].map((s, i) => (
                   <td key={i}>
-                    {s && (
-                      <span className="flex items-center gap-2">
-                        <ClassBadge cls={s.cls} sec={s.sec} />
-                        <span className="text-ink">{s.name}</span>
-                      </span>
-                    )}
+                    {s &&
+                      (i === 0 ? (
+                        // The row is clickable for the mouse; this button makes it reachable by keyboard and screen readers.
+                        <button
+                          type="button"
+                          aria-pressed={selected}
+                          aria-label={`${s.name} ↔ ${to?.name ?? ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelect({ kind: "connection", id: c.id });
+                          }}
+                          className="flex items-center gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-accent"
+                        >
+                          <ClassBadge cls={s.cls} sec={s.sec} />
+                          <span className="text-ink">{s.name}</span>
+                        </button>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <ClassBadge cls={s.cls} sec={s.sec} />
+                          <span className="text-ink">{s.name}</span>
+                        </span>
+                      ))}
                   </td>
                 ))}
                 <td className="font-mono">{c.type ?? "?"}</td>
