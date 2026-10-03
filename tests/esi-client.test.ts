@@ -142,6 +142,24 @@ describe("EsiClient", () => {
     expect(sleeps[0]).toBeGreaterThan(9_000);
   });
 
+  it("pauses a rate-limit group only when ESI reports its remaining tokens", async () => {
+    const sleeps: number[] = [];
+    const sleep = async (ms: number) => void sleeps.push(ms);
+    const quiet = client(() => json({ ok: 1 }, { headers: { "x-ratelimit-group": "market-order" } }), { sleep });
+    await quiet.esi.get("/markets/10000002/orders");
+    await quiet.esi.get("/markets/10000002/orders", { noCache: true });
+    expect(sleeps).toEqual([]);
+
+    const drained = client(
+      () => json({ ok: 1 }, { headers: { "x-ratelimit-group": "market-order", "x-ratelimit-remaining": "3" } }),
+      { sleep },
+    );
+    await drained.esi.get("/markets/10000002/orders");
+    await drained.esi.get("/markets/10000002/orders", { noCache: true });
+    expect(sleeps).toHaveLength(1);
+    expect(sleeps[0]).toBeGreaterThan(14_000);
+  });
+
   it("retries transient 5xx errors", async () => {
     let calls = 0;
     const { esi } = client(() => (++calls < 3 ? json({ error: "bad gateway" }, { status: 502 }) : json({ ok: 1 })));

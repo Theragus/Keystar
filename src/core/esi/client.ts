@@ -274,21 +274,25 @@ export class EsiClient {
     const group = res.headers.get("x-ratelimit-group");
     if (group) this.patternGroup.set(pattern, group);
 
-    // Number(null) is 0: only a response that actually reports the error limit may pause the client.
-    const remainHeader = res.headers.get("x-esi-error-limit-remain");
-    const resetHeader = res.headers.get("x-esi-error-limit-reset");
-    const remain = remainHeader === null ? NaN : Number(remainHeader);
-    const reset = resetHeader === null ? NaN : Number(resetHeader);
+    // Only a response that actually reports the error limit may pause the client.
+    const remain = numericHeader(res, "x-esi-error-limit-remain");
+    const reset = numericHeader(res, "x-esi-error-limit-reset");
     if (Number.isFinite(remain) && Number.isFinite(reset) && remain < (this.opts.errorLimitFloor ?? 20)) {
       this.errorLimitPauseUntil = this.now() + (reset + 1) * 1000;
     }
 
-    const rlRemaining = Number(res.headers.get("x-ratelimit-remaining"));
+    const rlRemaining = numericHeader(res, "x-ratelimit-remaining");
     if (group && Number.isFinite(rlRemaining) && rlRemaining <= 5) {
       // Nearly drained: give the floating window a moment to return tokens.
       this.groupPauseUntil.set(group, this.now() + 15_000);
     }
   }
+}
+
+/** Reads a numeric header; NaN when it is absent or blank (Number(null) and Number("") would be 0). */
+function numericHeader(res: Response, name: string): number {
+  const value = res.headers.get(name)?.trim();
+  return value ? Number(value) : NaN;
 }
 
 /** Parses an HTTP date header (Expires, Last-Modified). */
