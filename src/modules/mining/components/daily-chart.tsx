@@ -168,7 +168,7 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
             <tbody>
               {[...rows].reverse().map((r) => (
                 <tr key={r.date}>
-                  <td className="tabular-nums text-ink-2">{r.date}</td>
+                  <td className="tabular-nums text-ink-2">{f.date(r.date)}</td>
                   {present.map((c) => (
                     <td key={c.id} className="num">
                       {r.values[c.id] ? f.formatMetric(metric, r.values[c.id]) : "—"}

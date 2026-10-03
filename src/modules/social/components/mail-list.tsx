@@ -16,8 +16,7 @@ const DAY = 86400_000;
 /** Recent mail by relative time, older mail by date (with the year once it isn't this year). */
 export function listDate(date: Date, now: Date, f: Formatter): string {
   if (now.getTime() - date.getTime() < 7 * DAY) return f.relativeTime(date, now);
-  const iso = date.toISOString().slice(0, 10);
-  return date.getUTCFullYear() === now.getUTCFullYear() ? f.shortDate(iso) : iso;
+  return date.getUTCFullYear() === now.getUTCFullYear() ? f.shortDate(date.toISOString().slice(0, 10)) : f.date(date);
 }
 
 export function MailSearch({ params, t }: { params: MailParams; t: T }) {
@@ -25,7 +24,7 @@ export function MailSearch({ params, t }: { params: MailParams; t: T }) {
     <form action="/mail" className="flex items-center gap-2" role="search">
       {params.characterId && <input type="hidden" name="character" value={params.characterId} />}
       {params.folder.kind !== "all" && <input type="hidden" name="folder" value={folderKey(params.folder)} />}
-      <label className="glass-inset flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-3">
+      <label className="glass-inset field-focus flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-3">
         <Search className="size-4 shrink-0 text-ink-3" aria-hidden />
         <span className="sr-only">{t.list.searchLabel}</span>
         <input
@@ -34,7 +33,7 @@ export function MailSearch({ params, t }: { params: MailParams; t: T }) {
           defaultValue={params.q}
           placeholder={t.list.search}
           maxLength={100}
-          className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-3 focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-3 outline-none"
         />
       </label>
       {params.q && (

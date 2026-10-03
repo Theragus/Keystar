@@ -1,21 +1,45 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { audit } from "@/core/audit";
 import { assertPermission } from "@/core/auth/dal";
-import { changeUserAccess } from "@/core/auth/manage-users";
+import { changeUserAccess, UserAccessError, type UserAccessErrorCode } from "@/core/auth/manage-users";
 import { refreshCorporations } from "@/core/eve/resolver";
 import { allPermissions } from "@/core/modules/registry";
 import { isRole, type Role } from "@/core/rbac/roles";
 import { getSettings, setSetting, type Settings } from "@/core/settings";
 import { triggerJobs } from "@/core/sync/scheduler";
 
-export async function updateUserRole(userId: string, formData: FormData) {
-  const actor = await assertPermission("users.manage");
-  const role = formData.get("role");
-  if (!isRole(role)) throw new Error("Unknown role");
-  if (actor.id === userId) throw new Error("You can't change your own role");
-  const { from } = await changeUserAccess(actor.id, userId, { role });
+export type RoleChangeResult = { ok: true; from: Role } | { ok: false; error: UserAccessErrorCode | "changed" };
+
+/**
+ * Returns a result instead of throwing so the role picker can show a translated
+ * message and put the previous role back. The lockout guards live in `changeUserAccess`.
+ * `expected` is the role the page showed: if someone changed it since (or an old
+ * Undo comes in late), nothing is overwritten. Every refusal refreshes the page,
+ * since it usually means the page is out of date.
+ */
+export async function updateUserRole(userId: string, role: Role, expected: Role): Promise<RoleChangeResult> {
+  const actor = await assertPermission("users.manage").catch(() => null);
+  if (!actor) {
+    refresh();
+    return { ok: false, error: "forbidden" };
+  }
+  if (!isRole(role) || !isRole(expected)) throw new Error("Unknown role");
+  if (actor.id === userId) return { ok: false, error: "self" };
+  let from: Role;
+  try {
+    const result = await changeUserAccess(actor.id, userId, { role }, { onlyFromRole: expected });
+    if (!result.changed) {
+      refresh();
+      return { ok: false, error: "changed" };
+    }
+    from = result.from;
+  } catch (err) {
+    if (!(err instanceof UserAccessError)) throw err;
+    refresh();
+    return { ok: false, error: err.code };
+  }
   await audit({
     actorUserId: actor.id,
     actorName: actor.main?.name,
@@ -25,6 +49,7 @@ export async function updateUserRole(userId: string, formData: FormData) {
     details: { from, to: role },
   });
   revalidatePath("/admin/users");
+  return { ok: true, from };
 }
 
 export async function approveUser(userId: string) {
@@ -85,14 +110,23 @@ export async function setSyncPaused(paused: boolean) {
   revalidatePath("/admin/sync");
 }
 
-export async function saveSettings(formData: FormData) {
-  const actor = await assertPermission("app.settings.manage");
+export type SettingsSaveResult =
+  | { ok: true; homeChanged: boolean }
+  | { ok: false; error: "forbidden" | "invalidCorporation" };
+
+/** Returns a result instead of throwing so the settings page can confirm or explain in a toast. */
+export async function saveSettings(formData: FormData): Promise<SettingsSaveResult> {
+  const actor = await assertPermission("app.settings.manage").catch(() => null);
+  if (!actor) {
+    refresh();
+    return { ok: false, error: "forbidden" };
+  }
   const before = await getSettings();
 
   const corpRaw = String(formData.get("homeCorporationId") ?? "").trim();
   const homeCorporationId = corpRaw ? Number(corpRaw) : null;
   if (homeCorporationId !== null && (!Number.isSafeInteger(homeCorporationId) || homeCorporationId <= 0)) {
-    throw new Error("Home corporation must be a numeric corporation ID");
+    return { ok: false, error: "invalidCorporation" };
   }
 
   const valuationSource = String(formData.get("valuationSource")) as Settings["mining.valuationSource"];
@@ -111,7 +145,8 @@ export async function saveSettings(formData: FormData) {
   await setSetting("mining.valuationSource", valuationSource, actor.id);
   await setSetting("mining.valuationMode", valuationMode, actor.id);
   await setSetting("permissions.overrides", overrides, actor.id);
-  if (homeCorporationId && homeCorporationId !== before["corp.homeCorporationId"]) {
+  const homeChanged = homeCorporationId !== null && homeCorporationId !== before["corp.homeCorporationId"];
+  if (homeChanged) {
     await refreshCorporations([homeCorporationId]);
     // Import the new home corporation's killboard now instead of at the next hourly run.
     await triggerJobs({ jobKey: "killboard.zkill-sync" });
@@ -129,4 +164,5 @@ export async function saveSettings(formData: FormData) {
     },
   });
   revalidatePath("/", "layout");
+  return { ok: true, homeChanged };
 }

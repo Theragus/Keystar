@@ -34,6 +34,21 @@ export const admin: typeof en = {
     },
     roleFor: (name: string | null) => `Rolle für ${name ?? "Benutzer"}`,
     saveRole: "Rolle speichern",
+    roleChange: {
+      changed: (name: string, role: string) => `${name} ist jetzt ${role}`,
+      from: (role: string) => `Vorher ${role}`,
+      restored: (name: string, role: string) => `${name} ist wieder ${role}`,
+      failed: (name: string) => `Die Rolle von ${name} konnte nicht geändert werden`,
+      errors: {
+        self: "Du kannst deine eigene Rolle nicht ändern.",
+        forbidden: "Du darfst keine Benutzer mehr verwalten.",
+        notFound: "Dieses Konto existiert nicht mehr.",
+        higherRole: "Nur eine höhere Rolle kann dieses Konto ändern.",
+        unassignable: "Diese Rolle kannst du nicht vergeben.",
+        changed: "Jemand hat diese Rolle inzwischen geändert. Die Tabelle zeigt jetzt die aktuelle Rolle.",
+        unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+      },
+    },
     enable: "Aktivieren",
     disable: "Deaktivieren",
     noAction: {
@@ -182,6 +197,14 @@ export const admin: typeof en = {
     metaTitle: "Einstellungen",
     description: "Anwendungsweite Konfiguration. Änderungen gelten sofort und werden im Audit-Log festgehalten.",
     save: "Einstellungen speichern",
+    saved: "Einstellungen gespeichert",
+    savedHomeChanged: "Das Killboard der neuen Heimat-Corporation wird im Hintergrund importiert.",
+    saveFailed: "Einstellungen nicht gespeichert",
+    errors: {
+      forbidden: "Du darfst die Einstellungen nicht mehr ändern.",
+      invalidCorporation: "Die Heimat-Corporation muss eine numerische Corporation-ID sein, z. B. 98765432.",
+      unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und prüfe, welche Änderungen übernommen wurden.",
+    },
     home: {
       title: "Heimat-Corporation",
       subtitle: "Die Corporation, deren Mitglieder, Mitgliederliste und Raffinerien Keystar verfolgt",

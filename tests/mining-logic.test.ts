@@ -4,7 +4,8 @@ import { classifyOre, oreClassSqlCase } from "@/core/eve/ore";
 import { compact } from "@/lib/format";
 import { chartClassOf, toChartClasses } from "@/modules/mining/class-colors";
 import { DATE_PRESETS, daysBetween, isValidIsoDate, miningQueryString, parseMiningFilters } from "@/modules/mining/filters";
-import { miningScope } from "@/modules/mining/queries";
+import { groupLedgerByDay } from "@/modules/mining/ledger-groups";
+import { miningScope, type LedgerRow } from "@/modules/mining/queries";
 
 describe("mining filters", () => {
   const today = "2026-10-02";
@@ -77,6 +78,14 @@ describe("mining filters", () => {
     expect(lm).toEqual({ from: "2026-09-01", to: "2026-09-30" });
     expect(DATE_PRESETS.find((p) => p.id === "ytd")!.range(today).from).toBe("2026-01-01");
   });
+
+  it("computes single-day presets across month and year boundaries", () => {
+    const range = (id: string, t: string) => DATE_PRESETS.find((p) => p.id === id)!.range(t);
+    expect(range("today", "2026-03-01")).toEqual({ from: "2026-03-01", to: "2026-03-01" });
+    expect(range("yesterday", "2026-03-01")).toEqual({ from: "2026-02-28", to: "2026-02-28" });
+    expect(range("today", "2026-01-01")).toEqual({ from: "2026-01-01", to: "2026-01-01" });
+    expect(range("yesterday", "2026-01-01")).toEqual({ from: "2025-12-31", to: "2025-12-31" });
+  });
 });
 
 describe("ore classification", () => {
@@ -145,5 +154,46 @@ describe("formatting", () => {
     expect(compact(32_400_000)).toBe("32.4M");
     expect(compact(149_000_000)).toBe("149M");
     expect(compact(999)).toBe("999");
+  });
+});
+
+describe("ledger day groups", () => {
+  const row = (date: string, characterId: number, value: number): LedgerRow => ({
+    date,
+    source: "personal",
+    characterId,
+    characterName: `C${characterId}`,
+    ownerName: null,
+    typeId: 1230,
+    typeName: "Veldspar",
+    oreClass: "ore",
+    systemId: 30000142,
+    systemName: "Jita",
+    security: 0.9,
+    observerName: null,
+    quantity: value,
+    volume: value / 10,
+    unitPrice: 1,
+    value,
+  });
+
+  it("groups contiguous days in order and keeps whole-day totals for a day split across pages", () => {
+    const rows = [row("2026-10-02", 1, 30), row("2026-10-02", 2, 20), row("2026-10-01", 1, 10)];
+    const dayTotals = [
+      { date: "2026-10-02", entries: 2, characters: 2, quantity: 50, volume: 5, value: 50 },
+      { date: "2026-10-01", entries: 5, characters: 3, quantity: 90, volume: 9, value: 90 },
+    ];
+    const groups = groupLedgerByDay(rows, dayTotals);
+    expect(groups.map((g) => [g.date, g.rows.length])).toEqual([
+      ["2026-10-02", 2],
+      ["2026-10-01", 1],
+    ]);
+    expect(groups[1].totals.entries).toBe(5);
+    expect(groups[1].totals.value).toBe(90);
+  });
+
+  it("falls back to the page's rows when a day's totals are missing or stale", () => {
+    const groups = groupLedgerByDay([row("2026-10-02", 1, 30), row("2026-10-02", 1, 20)], []);
+    expect(groups[0].totals).toEqual({ date: "2026-10-02", entries: 2, characters: 1, quantity: 50, volume: 5, value: 50 });
   });
 });

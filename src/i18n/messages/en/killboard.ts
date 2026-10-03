@@ -22,6 +22,7 @@ export const killboard = {
     },
     jobs: {
       zkillSync: "Killboard (zKillboard)",
+      liveFeed: "Killboard live feed (zKillboard)",
       situationReport: "Killboard situation report",
     },
   },
@@ -134,6 +135,26 @@ export const killboard = {
     empty: "No kills or losses in this period.",
     kind: { kill: "Kill", loss: "Loss" } satisfies Record<"kill" | "loss", string>,
     solo: "solo",
+  },
+  live: {
+    api: { unauthorized: "Not signed in", forbidden: "Forbidden" },
+    region: "Live kill notifications",
+    kind: { kill: "Kill", loss: "Loss" } satisfies Record<"kill" | "loss", string>,
+    /** Kill: the corp pilot who scored it; loss: who killed the corp pilot. */
+    finalBlow: "Final blow",
+    topDamage: "Top damage",
+    killedBy: "Killed by",
+    others: (n: number) => `+${n} more`,
+    npc: "NPC",
+    noPilot: "No pilot",
+    open: "Open this killmail on zKillboard",
+    dismiss: "Dismiss",
+    toggle: {
+      on: "Kill alerts on",
+      off: "Kill alerts off",
+      enable: "Show a notification when a corporation member gets a kill or loss",
+      disable: "Stop showing kill and loss notifications",
+    },
   },
   ships: {
     entity: "Ship",

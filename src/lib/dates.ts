@@ -25,7 +25,7 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
 }
 
-export type DatePresetId = "7d" | "30d" | "90d" | "mtd" | "lm" | "ytd";
+export type DatePresetId = "today" | "yesterday" | "7d" | "30d" | "90d" | "mtd" | "lm" | "ytd";
 
 /** Quick ranges for date pickers; labels live in the dictionaries (`t.common.datePresets`). */
 export interface DatePreset {
@@ -34,6 +34,14 @@ export interface DatePreset {
 }
 
 export const DATE_PRESETS: DatePreset[] = [
+  { id: "today", range: (t) => ({ from: t, to: t }) },
+  {
+    id: "yesterday",
+    range: (t) => {
+      const y = addDays(t, -1);
+      return { from: y, to: y };
+    },
+  },
   { id: "7d", range: (t) => ({ from: addDays(t, -6), to: t }) },
   { id: "30d", range: (t) => ({ from: addDays(t, -29), to: t }) },
   { id: "90d", range: (t) => ({ from: addDays(t, -89), to: t }) },

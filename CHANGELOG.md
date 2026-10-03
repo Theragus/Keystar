@@ -8,46 +8,49 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
-- Assist Threat Intel statistics collection from the scan creator’s browser at 100 ms intervals (up to four concurrent requests), with rate-limit backoff and worker fallback; space server zKillboard requests by 200 ms.
-- Replace Threat Intel loading prose with overlays on Local Situation evidence areas and individual pilot tags/cards.
+- Reorganize Threat Intel Local Situation around wrapping pilot affiliation tags, last combat evidence, recent observed co-attacks, and the latest engagement with us. Pilot and legend selection highlights matching alliance members, falling back to corporation membership.
+- Show both sides of the latest engagement with observed ships, loss counts and ISK lost; highlight destroyed hulls in red and identify incomplete evidence.
+- Use compact equal-height pilot cards, direct character/corporation/alliance killboard links, and the three latest kills and losses as ship tags with detailed tooltips.
+- Calculate danger from combat capability and local relevance, with confidence and escalation evidence kept separate. Show explanatory 0–10 badges (green below 5, orange from 5 to below 8, red from 8); no recent sample is unknown.
+- Move D-scan input and matching results into a header dropdown and generate optional written briefings from the blue Briefing button in a dialog.
+- Replace loading prose with evidence overlays and independent loading indicators for each pending pilot tag/card.
+- Fetch pending statistics from the scan creator’s browser at 100 ms intervals with at most four concurrent requests, validation, cache reuse, rate-limit backoff and worker fallback. Server zKillboard calls are spaced by 200 ms; statistics requests avoid a redirect.
+- Keep sidebar icons and abbreviated headings stationary when collapsing; move branding to the top bar and the toggle into the sidebar, remove fade flicker, disable collapsed scrolling, and use a 300 ms width transition.
 
-- Show a two-sided latest engagement report in Local Situation, with observed hulls, per-side loss counts and ISK lost, and red highlighting for destroyed hulls.
 
-- Stack observed group and last combat evidence beside Pilots, and add a compact History with us overview with totals and the latest three encounters.
-
-- Group Local Situation pilot tags by alliance with matching colored backgrounds and a numbered alliance legend; retain danger/cyno sorting within each group.
-
-- Anchor navigation headings at the centered rail abbreviation, revealing the rest to the right on expansion.
-
-- Local Situation shows compact pilot name/score tags in place of the cyno card, with fitted-cyno history icons and tooltips separating fitting evidence from unknown activation and fight association.
-
-- Keep navigation and menu-toggle icons at the same horizontal position when collapsing the sidebar.
-
-- Show three-character section headings in the collapsed navigation rail without shifting icons.
-
-- Use narrower four-column pilot cards on wide screens and three vertical rows of recent kills and losses.
-
-- Disable navigation scrolling in the collapsed sidebar while retaining expanded navigation scrolling.
-
-- Link pilot corporation and alliance labels to their respective zKillboard pages.
-
-- Pilot recent kills and losses use wrapping icon-and-name ship tags matching History with Us, in side-by-side columns.
-
-- Move Threat Intel D-scan input and matching results into a top-right dropdown, freeing report space.
-
-- Threat Intel separates combat capability, local relevance and evidence confidence; discounts large fleets and ISK, removes character heuristics, and keeps escalation history separate. Compact 0–10 corner badges explain the score on hover without progress bars. Danger bands are Low below 5 (green), Medium from 5 to below 8 (orange), and High from 8 (red).
-
-- Local Situation replaces Pilots to review with the latest observed group, retaining fight evidence and links and removing the separate group panel.
-
-- Keep navigation icons at their vertical positions when collapsing the sidebar and remove the fade flicker.
-
-- Move KeyStar branding to the top bar and the sidebar toggle into the left navigation.
-
-- Threat Intel shows the latest observed group fight's destroyed hull, recorded attackers, victim, time and value. Pilot summaries use compact responsive tiles with visible evidence, direct pilot killboard links and small image-only previews of the three latest killed and lost ships arranged side by side, with hover details for ship, time, system and recorded attacker counts, latest kill/loss summaries include the system and recorded attacker count, and recent kills and losses are ordered newest first without redundant Killed/Lost labels.
-
+## [0.10.0] - 2026-10-03
 
 ### Added
 
+- **"Today" and "Yesterday" date ranges.** The date-range picker on the mining, P&L, finances and killboard pages
+  offers single-day presets for the current and the previous EVE day, above "7 days".
+
+### Changed
+
+- **Main character listed first.** The Characters page, the dashboard's character panel, fleet tracking, the mail
+  character list and the P&L wallet status show your main character at the top, followed by the others
+  alphabetically.
+- **Dates in your language's format.** Dates read "02 Oct 2026" in English and "02.10.2026" in German instead of
+  2026-10-02: in the mining ledger's day headers, the daily mining and kill tables, timestamps (journal, audit log,
+  mail, fleets, reports), and the killboard, wallet archive, mail and pilot history notes. Times are still EVE time
+  (ET).
+
+## [0.9.0] - 2026-10-03
+
+### Added
+
+- **Mining ledger grouped by day.** Ledger entries sit under a header for each day showing its date, weekday,
+  entry and character counts, and the day's units, volume and value. The totals cover the whole day even when its
+  entries run onto the next page; the header then says how many of them the current page shows. Days start
+  expanded; click one to collapse it, or use "Collapse all" for a day-by-day summary of the page.
+- **Live kill notifications.** When a corporation member gets a kill or loses a ship, a notification appears in the
+  top-right corner, usually 10–30 seconds after zKillboard posts it, for everyone who can view the killboard. It
+  shows the destroyed ship (the one you lost, or the one you killed) with your pilot's portrait, the victim, who
+  landed the final blow (on kills your pilot, or your top-damage pilot when someone else landed it), the system with
+  its security and region, and the ISK value. It stays for 30 seconds with a countdown bar (paused while you hover
+  it) and opens the killmail on zKillboard when clicked; with several tabs open, only one of them shows it. A bell in
+  the top bar mutes them for your browser. The worker reads zKillboard's R2Z2 live feed every 10 seconds (not in demo
+  mode), so these killmails also reach the killboard right away instead of with the hourly sync.
 - **Light mode.** Switch between light and dark beside the language selector in the sidebar or on sign-in, join,
   and setup pages. The preference is remembered for a year and applied before rendering, with matching glass
   surfaces, readable status colours, controls, tables, chart chrome, and keyboard focus. Charts get their own
@@ -57,9 +60,16 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   and back with a short slide and fade (instant when reduced motion is requested). On the rail, hovering or focusing
   an icon opens its section as a menu beside it, and hovering the portrait shows the pilot's name, role and corp.
   The choice is remembered for a year and applied before rendering.
+- **Notifications for your own actions.** Short toasts confirm actions, in the same stack and style as the live
+  kill notifications, closing after six seconds unless hovered or focused. Changing a user's role now
+  confirms the new role and offers Undo, and a refused change says why. Saving Settings confirms the save, or
+  says why it was refused and keeps what you entered.
 
 ### Changed
 
+- **Dropdowns match the theme.** In Chrome, Edge and Safari 27+, the open list of every dropdown is a glass panel
+  in the current theme with an accent check mark, instead of the system's list. Other browsers keep their native
+  list. On Users & Roles the save button only appears once a different role is picked.
 - **Sync status is grouped by who a job syncs for.** Corporation jobs, character jobs and app-wide system jobs now
   sit in their own sections. Character jobs collapse to one row per character (portrait, account, job count, worst
   status, next run) and open automatically when one of them fails. Long results such as a character's in-game roles
@@ -75,8 +85,14 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- **Mining class filter lists only mined classes.** Like the ore, system and member pickers, the class picker now
+  offers only ore classes that appear in the ledgers you can see, instead of every class.
 - Extend the sidebar surface to the bottom of long pages while keeping navigation and footer controls in the viewport.
 - Preserve the original dark-mode table separators and scrollbar colours when adding light mode.
+- Search boxes with an icon (filter pickers, page searches, mail search, field estimator inputs) draw the focus
+  ring around the whole rounded box instead of a square outline around the text area inside it.
+- After a role change on Users & Roles, the dropdown no longer jumps back to the old role. After saving
+  Settings, the valuation and permission dropdowns no longer show the old values.
 
 ## [0.8.0] - 2026-10-03
 

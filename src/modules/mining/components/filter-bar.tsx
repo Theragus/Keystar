@@ -33,6 +33,10 @@ export function MiningFilterBar({
   const all = t.common.multiSelect.all;
   const apply = (overrides: Partial<MiningFilters>) => navigate(miningQueryString(filters, { ...overrides, page: 1 }));
 
+  // Like the other pickers, offer only classes that appear in the visible ledgers (plus any still selected).
+  const mined = new Set<OreClass>([...options.types.map((type) => type.oreClass), ...filters.classes]);
+  const classes = ORE_CLASSES.filter((c) => c !== "other" && mined.has(c));
+
   const isFiltered =
     filters.characters.length + filters.types.length + filters.classes.length + filters.systems.length > 0 ||
     (showSource && filters.source !== "all");
@@ -74,7 +78,7 @@ export function MiningFilterBar({
         icon={<Layers className="size-3.5 text-accent" aria-hidden />}
         selected={filters.classes}
         onApply={(v) => apply({ classes: v as OreClass[] })}
-        options={ORE_CLASSES.filter((c) => c !== "other").map((c) => ({ value: c, label: t.eve.oreClasses[c].label }))}
+        options={classes.map((c) => ({ value: c, label: t.eve.oreClasses[c].label }))}
       />
 
       <MultiSelect
