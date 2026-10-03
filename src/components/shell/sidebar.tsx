@@ -11,6 +11,7 @@ import { ThemeSwitcher } from "./theme-switcher";
 import { LanguageSwitcher } from "./language-switcher";
 import { KeystarMark } from "./logo";
 import { NavLink } from "./nav-link";
+import { RailFlyout } from "./rail-flyout";
 
 export function visibleNav(user: CurrentUser) {
   const sections = navSections()
@@ -24,12 +25,21 @@ export function visibleNav(user: CurrentUser) {
 /**
  * Docked, full-height sidebar with a translucent glass surface and a hairline edge.
  * Collapses to an icon rail via `data-sidebar` on the shell root (see SectionScope);
- * hidden labels stay in the accessibility tree as `sr-only`.
+ * hidden labels stay in the accessibility tree as `sr-only`, and hovering a section
+ * or the portrait shows what the rail hides in a card beside it (RailFlyout).
  */
 export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: string | null }) {
   const { sections, hasNested } = visibleNav(user);
   const { t } = await getI18n();
-  const pilotName = user.main?.name ?? t.shell.unknownPilot;
+  const pilotInfo = (
+    <>
+      <div className="truncate text-[0.82rem] font-medium">{user.main?.name ?? t.shell.unknownPilot}</div>
+      <div className="mt-0.5 flex items-center gap-1.5">
+        <RoleBadge role={user.role} />
+        {corpTicker && <span className="font-mono text-3xs text-ink-3">[{corpTicker}]</span>}
+      </div>
+    </>
+  );
 
   return (
     <aside
@@ -52,24 +62,43 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
           aria-label={t.shell.mainNav}
         >
           {sections.map((section, i) => (
-            <div key={section.id} className="group">
+            <RailFlyout
+              key={section.id}
+              className="group"
+              tone={section.tone}
+              card={
+                <>
+                  <div className="eve-label px-2.5 pt-1.5 pb-1 text-2xs text-ink-3">{section.label(t)}</div>
+                  <ul className="space-y-0.5" data-flyout-anchor>
+                    {section.items.map((item) => (
+                      <li key={item.href}>
+                        <NavLink href={item.href} exact={hasNested(item.href)} inFlyout>
+                          <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
+                          <span className="truncate">{item.label(t)}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              }
+            >
               <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))] group-data-[sidebar=collapsed]/shell:sr-only">
                 {section.label(t)}
               </div>
               {i > 0 && (
                 <div className="mx-1.5 mb-3 hidden h-px bg-surface-contrast/[0.07] group-data-[sidebar=collapsed]/shell:block" aria-hidden />
               )}
-              <ul className="space-y-0.5">
+              <ul className="space-y-0.5" data-flyout-anchor>
                 {section.items.map((item) => (
                   <li key={item.href}>
-                    <NavLink href={item.href} exact={hasNested(item.href)} title={item.label(t)}>
+                    <NavLink href={item.href} exact={hasNested(item.href)}>
                       <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
                       <span className="truncate group-data-[sidebar=collapsed]/shell:sr-only">{item.label(t)}</span>
                     </NavLink>
                   </li>
                 ))}
               </ul>
-            </div>
+            </RailFlyout>
           ))}
         </nav>
         <div className="shrink-0 space-y-1 px-3 pb-2 group-data-[sidebar=collapsed]/shell:px-2">
@@ -89,16 +118,19 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
         </div>
         <div className="shrink-0 border-t border-surface-contrast/[0.07] p-3 group-data-[sidebar=collapsed]/shell:px-0">
           <div className="flex items-center gap-2.5 group-data-[sidebar=collapsed]/shell:flex-col group-data-[sidebar=collapsed]/shell:gap-2">
-            <div className="shrink-0" title={pilotName}>
-              {user.main ? <Portrait id={user.main.characterId} size={32} /> : <div className="size-8 rounded-full bg-space-700" />}
-            </div>
-            <div className="min-w-0 flex-1 group-data-[sidebar=collapsed]/shell:sr-only">
-              <div className="truncate text-[0.82rem] font-medium">{pilotName}</div>
-              <div className="mt-0.5 flex items-center gap-1.5">
-                <RoleBadge role={user.role} />
-                {corpTicker && <span className="font-mono text-3xs text-ink-3">[{corpTicker}]</span>}
+            <RailFlyout
+              className="shrink-0"
+              card={
+                <div className="px-2.5 py-1.5" data-flyout-anchor>
+                  {pilotInfo}
+                </div>
+              }
+            >
+              <div data-flyout-anchor>
+                {user.main ? <Portrait id={user.main.characterId} size={32} /> : <div className="size-8 rounded-full bg-space-700" />}
               </div>
-            </div>
+            </RailFlyout>
+            <div className="min-w-0 flex-1 group-data-[sidebar=collapsed]/shell:sr-only">{pilotInfo}</div>
             <form action="/auth/logout" method="post">
               <button
                 type="submit"

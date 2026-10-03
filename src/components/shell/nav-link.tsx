@@ -10,17 +10,18 @@ import { useSidebar } from "./sidebar-state";
 /**
  * Sidebar link. `exact` is set when another nav item is nested below this one
  * (e.g. /mining vs /mining/ledger) so only the most specific item lights up.
- * `title` becomes the tooltip while the sidebar is collapsed to its icon rail.
+ * `inFlyout` renders it in the collapsed rail's hover card (RailFlyout): full
+ * width, no side marker, out of the tab order.
  */
 export function NavLink({
   href,
   exact,
-  title,
+  inFlyout,
   children,
 }: {
   href: string;
   exact?: boolean;
-  title?: string;
+  inFlyout?: boolean;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -30,16 +31,18 @@ export function NavLink({
     <Link
       href={href}
       aria-current={isActive ? "page" : undefined}
-      title={collapsed ? title : undefined}
+      tabIndex={inFlyout ? -1 : undefined}
       className={cn(
         "relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[0.84rem] transition-colors",
-        collapsed && "justify-center px-0",
+        collapsed && !inFlyout && "justify-center px-0",
         isActive
           ? "bg-surface-contrast/[0.07] text-ink [&_svg]:text-(--section) [&_svg]:opacity-100"
           : "text-ink-2 hover:bg-surface-contrast/[0.04] hover:text-ink",
       )}
     >
-      {isActive && <span className="absolute top-1.5 bottom-1.5 -left-3 w-[2px] rounded-full bg-(--section)" aria-hidden />}
+      {isActive && !inFlyout && (
+        <span className="absolute top-1.5 bottom-1.5 -left-3 w-[2px] rounded-full bg-(--section)" aria-hidden />
+      )}
       {children}
     </Link>
   );

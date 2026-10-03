@@ -14,8 +14,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   colour-vision-checked series and rarity/threat colours for the light surface, and EVE mail colours that would be too
   pale on it are darkened. Dark remains the default.
 - **Collapsible sidebar.** The menu button at the left of the top bar shrinks the sidebar to a narrow icon rail
-  and back with a short slide and fade (instant when reduced motion is requested); hover an icon for its label. The
-  choice is remembered for a year and applied before rendering.
+  and back with a short slide and fade (instant when reduced motion is requested). On the rail, hovering or focusing
+  an icon opens its section as a menu beside it, and hovering the portrait shows the pilot's name, role and corp.
+  The choice is remembered for a year and applied before rendering.
 
 ### Changed
 
