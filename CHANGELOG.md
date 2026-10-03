@@ -12,6 +12,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   or link a character: only the fleet boss's character can read a fleet's members, so pilots who run fleets turn it on
   for that character with "Enable fleet access" on the Live fleet page (and can revoke it there). Characters that already
   granted the scope keep it.
+- **Member audit** lists registered characters first, and sorts names without regard to upper and lower case.
 
 ### Fixed
 
