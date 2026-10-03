@@ -17,9 +17,16 @@ version in `package.json` alone.
 
 ## Cutting a release
 
-1. On `main` (directly or in a small release pull request), bump `"version"` in `package.json` (while below 1.0:
-   features and fixes bump the patch number, e.g. 0.1.1 → 0.1.2), rename `## [Unreleased]` to the version and date,
-   and add a fresh empty `## [Unreleased]` above it:
+1. Prepare the release on `main` (directly or in a small release pull request):
+
+   ```bash
+   pnpm release:prepare          # patch: 0.1.1 → 0.1.2 (features and fixes while below 1.0)
+   pnpm release:prepare minor    # or major, or an exact version such as 0.2.0
+   ```
+
+   This bumps `"version"` in `package.json`, renames `## [Unreleased]` to the version and today's date, and adds a
+   fresh empty `## [Unreleased]` above it. It refuses to run when the Unreleased section is empty. It commits nothing;
+   review the diff, commit and push. (The same edits by hand work too.)
 
    ```markdown
    ## [Unreleased]
