@@ -54,7 +54,7 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="glass-inset rounded-lg p-3 sm:col-span-2">
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{t.intel.scan.pilotsTitle}</h3>
-          <PilotTags items={sortedPilots.map(({ pilot, profile }) => {
+          <PilotTags legend={groupedPilots.map(({ id, name, color }) => ({ id, name, color }))} legendLabel={e.allianceLegend} items={sortedPilots.map(({ pilot, profile }) => {
             const score = pilot.scoreDetail as PilotScore | null;
             const fits = cynoEvidence(profile);
             const fitDetails = fits.map(fit => `${e.cynoKinds[fit.kind]}: ${f.integer(fit.count)} · ${f.relativeTime(fit.lastAt)}`).join("; ");
@@ -69,9 +69,6 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
               </>,
             };
           })} />
-          <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t border-surface-contrast/6 pt-2 text-3xs text-ink-2" aria-label={e.allianceLegend}>
-            {groupedPilots.map(alliance => <li key={alliance.id ?? "none"} className="flex items-center gap-1.5"><span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: alliance.color }} aria-hidden /><span>{alliance.name}</span></li>)}
-          </ul>
         </div>
         <div className="space-y-3">
         <div className="glass-inset rounded-lg p-3">
