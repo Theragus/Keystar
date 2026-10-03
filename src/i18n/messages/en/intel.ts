@@ -456,6 +456,8 @@ export const intel = {
     dossierTemplateHint: "Without ANTHROPIC_API_KEY the dossier comes from a template.",
   },
   dscan: {
+    add: "Add d-scan",
+    manage: "View / replace d-scan",
     title: "D-scan",
     subtitle: (ships: number) => `${count(ships, "ship", "ships")} in the pasted scan; historical hull correlations below.`,
     empty: "No directional scan supplied. Paste one to compare observed ships with historical activity.",

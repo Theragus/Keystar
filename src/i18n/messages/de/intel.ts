@@ -445,6 +445,8 @@ export const intel: typeof en = {
     dossierTemplateHint: "Ohne ANTHROPIC_API_KEY kommt das Dossier aus einer Vorlage.",
   },
   dscan: {
+    add: "D-Scan hinzufügen",
+    manage: "D-Scan ansehen / ersetzen",
     title: "D-Scan",
     subtitle: (ships) => `${count(ships, "Schiff", "Schiffe")} im eingefügten Scan; historische Schiffskorrelationen folgen.`,
     empty: "Kein Richtungsscan bereitgestellt. Zum Vergleich beobachteter Schiffe mit historischer Aktivität einfügen.",

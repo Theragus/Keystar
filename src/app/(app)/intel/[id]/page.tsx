@@ -10,7 +10,7 @@ import { env } from "@/core/env";
 import { getI18n } from "@/i18n/server";
 import { SHARE_ID_PATTERN } from "@/lib/share-id";
 import { claudeConfigured, latestNote } from "@/modules/intel/ai/generate";
-import { DscanForm, ReadDscanButton } from "@/modules/intel/components/dscan-form";
+import { DscanDropdown, DscanForm, ReadDscanButton } from "@/modules/intel/components/dscan-form";
 import { DscanPanel } from "@/modules/intel/components/dscan-panel";
 import { matchDscan } from "@/modules/intel/dscan";
 import { RewriteBriefingButton } from "@/modules/intel/components/ai-buttons";
@@ -66,16 +66,7 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
       rows={dscanRows}
       read={dscanRead}
       pilotNames={pilotNames}
-      form={
-        <details open={!dscanRows}>
-          <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">
-            {dscanRows ? text.replaceDscan : text.pasteDscan}
-          </summary>
-          <div className="mt-2">
-            <DscanForm scanId={scan.id} action={setDscan} replace={!!scan.dscan} />
-          </div>
-        </details>
-      }
+      form={<DscanForm scanId={scan.id} action={setDscan} replace={!!scan.dscan} />}
       actions={canAi && dscanRows?.length ? <ReadDscanButton scanId={scan.id} action={readDscan} claude={claudeConfigured()} /> : undefined}
     />
   );
@@ -93,12 +84,12 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
             </ButtonLink>
             <RescanButton scanId={scan.id} action={rescan} />
             {canDelete && <DeleteScanButton scanId={scan.id} action={deleteScan} />}
+            <DscanDropdown supplied={!!scan.dscan}>{dscanPanel}</DscanDropdown>
           </>
         }
       />
 
       <SituationPanel view={view} scannedAt={scan.createdAt} dscanAt={scan.dscanAt} />
-      {dscanPanel}
 
       <ScanProgressPoller scanId={scan.id} initial={progress} />
 
