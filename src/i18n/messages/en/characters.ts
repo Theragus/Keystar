@@ -46,6 +46,8 @@ export const characters = {
   disabledScopes: {
     title: (what: string) => `Switched off in Keystar: ${what}`,
     body: "Keystar no longer uses this access, but the character's EVE token still includes it. Re-authorise the character to remove it from the token for good.",
+    /** EVE lists every character of the account; picking another one re-authorises that one instead. */
+    pickCharacter: (name: string) => `Please make sure you log in with ${name} on the EVE login.`,
     action: "Re-authorise",
   },
   /** Toasts for the buttons on a character card. */

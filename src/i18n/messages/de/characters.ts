@@ -46,6 +46,7 @@ export const characters: typeof en = {
   disabledScopes: {
     title: (what: string) => `In Keystar abgeschaltet: ${what}`,
     body: "Keystar nutzt diesen Zugriff nicht mehr, aber der EVE-Token des Charakters enthält ihn noch. Autorisiere den Charakter neu, um ihn endgültig aus dem Token zu entfernen.",
+    pickCharacter: (name: string) => `Bitte achte darauf, dich beim EVE-Login mit ${name} anzumelden.`,
     action: "Neu autorisieren",
   },
   toast: {

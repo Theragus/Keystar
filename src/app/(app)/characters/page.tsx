@@ -201,6 +201,7 @@ export default async function CharactersPage({ searchParams }: PageProps<"/chara
                         {m.disabledScopes.title(switchedOff.map((s) => scopeLabels[s] ?? s).join(", "))}
                       </p>
                       <p className="mt-0.5">{m.disabledScopes.body}</p>
+                      <p className="mt-0.5 font-medium text-ink">{m.disabledScopes.pickCharacter(c.name)}</p>
                     </div>
                     <ButtonLink href={reauthorizeHref(granted)} size="sm">
                       <KeyRound className="size-3.5" aria-hidden /> {m.disabledScopes.action}
