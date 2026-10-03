@@ -23,7 +23,8 @@ function ThemeButton() {
       className="flex h-7 items-center gap-1.5 rounded-md px-2 text-2xs text-ink-3 transition hover:bg-surface-contrast/6 hover:text-ink disabled:opacity-60"
     >
       <Icon className="size-3.5" aria-hidden />
-      {light ? t.shell.theme.light : t.shell.theme.dark}
+      {/* Icon only on the collapsed sidebar rail; the label stays the accessible name. */}
+      <span className="group-data-[sidebar=collapsed]/shell:sr-only">{light ? t.shell.theme.light : t.shell.theme.dark}</span>
     </button>
   );
 }

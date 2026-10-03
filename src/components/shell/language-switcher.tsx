@@ -37,8 +37,8 @@ export function LanguageSwitcher() {
           )}
         >
           <Languages className="size-3.5" aria-hidden />
-          {LOCALE_META[locale].label}
-          <ChevronUp className="size-3" aria-hidden />
+          <span className="group-data-[sidebar=collapsed]/shell:hidden">{LOCALE_META[locale].label}</span>
+          <ChevronUp className="size-3 group-data-[sidebar=collapsed]/shell:hidden" aria-hidden />
         </button>
       }
     >
