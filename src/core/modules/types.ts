@@ -30,6 +30,10 @@ export interface ScopeRequirement {
   optional?: boolean;
   /** For an optional scope: the page where users turn it on or off per character. */
   manageHref?: string;
+  /** For an optional scope: the permission needed to turn it on or off (checked by `setOptionalScope`). */
+  managePermission?: string;
+  /** For an optional scope: a short name for toasts and notes ("Fleet access"). */
+  label?: Msg;
 }
 
 export interface NavItem {

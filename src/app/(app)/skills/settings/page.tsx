@@ -1,5 +1,6 @@
 import { GraduationCap, KeyRound, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
+import { ActionForm } from "@/components/ui/action-form";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Portrait } from "@/components/ui/eve-image";
@@ -8,10 +9,9 @@ import { requirePermission } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { reauthorizeHref } from "@/core/modules/registry";
 import { getI18n } from "@/i18n/server";
-import { SubmitButton } from "@/modules/mining/pnl/components/form-controls";
 import { SKILLS_MANAGE_HREF, SKILLS_PERMISSIONS, SKILLS_SCOPES } from "@/modules/skills/module";
 import { getSkillsAccess } from "@/modules/skills/queries";
-import { deleteSkillData } from "../actions";
+import { deleteSkillData, setSkillsSharing } from "../actions";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -23,6 +23,7 @@ export default async function SkillsSettingsPage() {
   const { t, f } = await getI18n();
   const s = t.skills;
   const m = s.settings;
+  const sw = t.characters.scopeSwitch;
   const demo = env().KEYSTAR_DEMO_MODE;
   const access = await getSkillsAccess(user.id);
 
@@ -34,8 +35,11 @@ export default async function SkillsSettingsPage() {
         <div className="space-y-3">
           {access.map((a) => {
             const partial = !a.granted && SKILLS_SCOPES.some((scope) => a.grantedScopes.includes(scope));
-            const enable = reauthorizeHref(a.grantedScopes, { add: SKILLS_SCOPES, returnTo: SKILLS_MANAGE_HREF });
-            const stop = reauthorizeHref(a.grantedScopes, { remove: SKILLS_SCOPES, returnTo: SKILLS_MANAGE_HREF });
+            const enable = reauthorizeHref(a.grantedScopes, {
+              add: SKILLS_SCOPES,
+              returnTo: SKILLS_MANAGE_HREF,
+              characterId: a.characterId,
+            });
             const anyGranted = a.granted || partial;
             return (
               <Glass key={a.characterId} className="flex flex-wrap items-center gap-4 rounded-2xl px-4 py-3">
@@ -65,30 +69,50 @@ export default async function SkillsSettingsPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  {demo ? (
+                  {anyGranted || a.switchedOff ? (
+                    // In Keystar only: the token keeps the scopes until the character is re-authorised.
+                    <ActionForm
+                      action={setSkillsSharing.bind(null, a.characterId, !anyGranted)}
+                      success={anyGranted ? sw.off(m.sharingLabel, a.name) : sw.on(m.sharingLabel, a.name)}
+                      successDetail={anyGranted ? sw.offDetail : undefined}
+                      failed={sw.failed(m.sharingLabel, a.name)}
+                      errors={sw.errors}
+                    >
+                      {anyGranted ? (
+                        <Button type="submit" size="sm" variant="ghost">
+                          {m.stop}
+                        </Button>
+                      ) : (
+                        <Button type="submit" size="sm" variant="primary">
+                          <GraduationCap className="size-3.5" aria-hidden /> {m.enable}
+                        </Button>
+                      )}
+                    </ActionForm>
+                  ) : demo ? (
                     <Button size="sm" disabled title={m.demo}>
-                      <KeyRound className="size-3.5" aria-hidden /> {a.granted ? m.stop : m.enable}
+                      <KeyRound className="size-3.5" aria-hidden /> {m.enable}
                     </Button>
                   ) : (
-                    <>
-                      {anyGranted && (
-                        <ButtonLink href={stop} size="sm" variant="ghost">
-                          {m.stop}
-                        </ButtonLink>
-                      )}
-                      {(!a.granted || a.tokenStatus === "invalid") && (
-                        <ButtonLink href={enable} size="sm" variant="primary">
-                          <GraduationCap className="size-3.5" aria-hidden /> {a.granted ? m.reauthorize : m.enable}
-                        </ButtonLink>
-                      )}
-                    </>
+                    <ButtonLink href={enable} size="sm" variant="primary">
+                      <GraduationCap className="size-3.5" aria-hidden /> {m.enable}
+                    </ButtonLink>
+                  )}
+                  {anyGranted && a.tokenStatus === "invalid" && !demo && (
+                    <ButtonLink href={enable} size="sm" variant="primary">
+                      <KeyRound className="size-3.5" aria-hidden /> {m.reauthorize}
+                    </ButtonLink>
                   )}
                   {!anyGranted && a.hasData && (
-                    <form action={deleteSkillData.bind(null, a.characterId)}>
-                      <SubmitButton variant="danger" title={m.deleteDataHint}>
+                    <ActionForm
+                      action={deleteSkillData.bind(null, a.characterId)}
+                      success={m.toast.deleted(a.name)}
+                      failed={m.toast.failed(a.name)}
+                      errors={m.toast.errors}
+                    >
+                      <Button type="submit" size="sm" variant="danger" title={m.deleteDataHint}>
                         <Trash2 className="size-3.5" aria-hidden /> {m.deleteData}
-                      </SubmitButton>
-                    </form>
+                      </Button>
+                    </ActionForm>
                   )}
                 </div>
               </Glass>

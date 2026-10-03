@@ -90,6 +90,22 @@ can't keep them: provisioning reports opt-in scopes the character lost, and unle
 (`drop=` in the sealed OAuth state) the callback sends them to My Characters with a "turn it back on" warning.
 Imported history is kept either way.
 
+Switching an optional scope off happens in Keystar, because EVE can't remove a single scope without a new login.
+`src/core/auth/scope-switch.ts` moves it from `esi_tokens.scopes` (what Keystar uses, and what every query and the
+job planner read) to `esi_tokens.disabled_scopes` (still in the token, unused). Token refreshes keep it off, and
+switching it back on needs no login while the token holds it. My Characters notes such scopes. Re-authorising
+requests only the scopes in use, so the new token drops them, and every SSO consent clears `disabled_scopes`.
+
+After an SSO round trip the callback confirms the outcome (character linked, re-authorised, access changed) or
+explains a failed link with a one-shot `ks_flash` cookie (`src/core/flash.ts`), which `FlashToasts` in the app
+layout shows as a toast. A signed-in user whose link fails goes back to the page they came from instead of `/login`.
+
+Re-authorise links name their character (`reauthorizeHref(granted, { characterId })` → `&character=`, kept in the
+sealed OAuth state). EVE lets the user pick any character of their account, and storing that token would give the
+picked character the scope set meant for the other one (dropping, for example, its corporation scopes and with
+them the corporation jobs). So the callback refuses a login with any other character: it stores nothing and says
+which character to pick. "Link a character" and the corporation-access link still accept any character.
+
 ## Roles and permissions
 
 Roles are hierarchical: `guest < member < viewer < contributor < director < admin`. Every permission has a default

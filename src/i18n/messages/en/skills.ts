@@ -9,6 +9,8 @@ export const skills = {
     scopes: {
       queue: "Reads the skill queue so Keystar can show what is training and when it finishes (opt-in).",
       skills: "Reads trained skills, skill points and attributes for the skills pages (opt-in).",
+      queueLabel: "Skill queue access",
+      skillsLabel: "Skill access",
     },
     jobs: {
       queue: "Skill queue",
@@ -135,9 +137,20 @@ export const skills = {
     kept: "Skill data from earlier is still stored.",
     deleteData: "Delete skill data",
     deleteDataHint: "Removes the stored queue, skills and attributes of this character from Keystar.",
+    sharingLabel: "Skill sharing",
+    toast: {
+      deleted: (name: string) => `Stored skills of ${name} deleted`,
+      failed: (name: string) => `Couldn't delete the skills of ${name}`,
+      errors: {
+        forbidden: "You no longer have access to skills in Keystar.",
+        notOwned: "That character isn't linked to your account any more.",
+        stillSharing: "Stop sharing skills for this character first.",
+        unknown: "Something went wrong. Reload the page and try again.",
+      },
+    },
     notes: {
       corp: "Directors and anyone else allowed to view corporation skills can see the queues of shared characters in your home corporation.",
-      stop: "Stopping hides the queue at once; stored data stays until you delete it.",
+      stop: "Stopping switches sharing off in Keystar at once; stored data stays until you delete it. Re-authorise the character on My Characters to remove the scopes from its EVE token too.",
     },
   },
 };

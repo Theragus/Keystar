@@ -187,6 +187,8 @@ export interface SkillsAccessStatus {
   grantedScopes: string[];
   /** Both skills scopes are granted. */
   granted: boolean;
+  /** Switched off in Keystar while the active token still holds both scopes: can be switched back on without a login. */
+  switchedOff: boolean;
   tokenStatus: "active" | "invalid" | null;
   lastSuccessAt: Date | null;
   lastStatus: string | null;
@@ -198,7 +200,7 @@ export interface SkillsAccessStatus {
 /** The viewer's characters with their skills access, for the settings page. */
 export async function getSkillsAccess(userId: string): Promise<SkillsAccessStatus[]> {
   const rows = await getDb().execute<Record<string, unknown>>(sql`
-    SELECT c.character_id, c.name, t.scopes, t.status AS token_status,
+    SELECT c.character_id, c.name, t.scopes, t.disabled_scopes, t.status AS token_status,
            j.last_success_at, j.last_status, j.last_error,
            (EXISTS (SELECT 1 FROM skills_character s WHERE s.character_id = c.character_id)
              OR EXISTS (SELECT 1 FROM skills_queue q WHERE q.character_id = c.character_id)) AS has_data
@@ -210,11 +212,19 @@ export async function getSkillsAccess(userId: string): Promise<SkillsAccessStatu
     ORDER BY c.character_id IS NOT DISTINCT FROM u.main_character_id DESC, c.name`);
   return rows.map((r) => {
     const scopes = Array.isArray(r.scopes) ? (r.scopes as string[]) : [];
+    const disabled = Array.isArray(r.disabled_scopes) ? (r.disabled_scopes as string[]) : [];
+    const granted = scopes.includes(SKILLQUEUE_SCOPE) && scopes.includes(SKILLS_SCOPE);
     return {
       characterId: num(r.character_id),
       name: String(r.name),
       grantedScopes: scopes,
-      granted: scopes.includes(SKILLQUEUE_SCOPE) && scopes.includes(SKILLS_SCOPE),
+      granted,
+      // A revoked token can't be switched back on in Keystar; it needs the EVE login.
+      switchedOff:
+        !granted &&
+        r.token_status === "active" &&
+        [SKILLQUEUE_SCOPE, SKILLS_SCOPE].every((s) => scopes.includes(s) || disabled.includes(s)) &&
+        [SKILLQUEUE_SCOPE, SKILLS_SCOPE].some((s) => disabled.includes(s)),
       tokenStatus: r.token_status === "active" || r.token_status === "invalid" ? r.token_status : null,
       lastSuccessAt: toDate(r.last_success_at),
       lastStatus: str(r.last_status),

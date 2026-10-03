@@ -1,6 +1,6 @@
 {
-  "id": "dbb3b0a1-8e2c-4466-a3b5-d77883469d6c",
-  "prevId": "d3892e0e-b418-4031-a0c3-9ed88a15e82a",
+  "id": "6d7fcb58-8ebf-4724-81ff-68c2cd9e8c28",
+  "prevId": "dbb3b0a1-8e2c-4466-a3b5-d77883469d6c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3840,6 +3840,303 @@
           ]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.skills_character": {
+      "name": "skills_character",
+      "schema": "",
+      "columns": {
+        "character_id": {
+          "name": "character_id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "total_sp": {
+          "name": "total_sp",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unallocated_sp": {
+          "name": "unallocated_sp",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "charisma": {
+          "name": "charisma",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "intelligence": {
+          "name": "intelligence",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory": {
+          "name": "memory",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "perception": {
+          "name": "perception",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "willpower": {
+          "name": "willpower",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bonus_remaps": {
+          "name": "bonus_remaps",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_remap_date": {
+          "name": "last_remap_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accrued_remap_cooldown_date": {
+          "name": "accrued_remap_cooldown_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "queue_synced_at": {
+          "name": "queue_synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "skills_synced_at": {
+          "name": "skills_synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.skills_character_skills": {
+      "name": "skills_character_skills",
+      "schema": "",
+      "columns": {
+        "character_id": {
+          "name": "character_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skill_id": {
+          "name": "skill_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trained_level": {
+          "name": "trained_level",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active_level": {
+          "name": "active_level",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skillpoints": {
+          "name": "skillpoints",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "skills_character_skills_skill_idx": {
+          "name": "skills_character_skills_skill_idx",
+          "columns": [
+            {
+              "expression": "skill_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trained_level",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "skills_character_skills_character_id_skill_id_pk": {
+          "name": "skills_character_skills_character_id_skill_id_pk",
+          "columns": [
+            "character_id",
+            "skill_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.skills_queue": {
+      "name": "skills_queue",
+      "schema": "",
+      "columns": {
+        "character_id": {
+          "name": "character_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "queue_position": {
+          "name": "queue_position",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skill_id": {
+          "name": "skill_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "finished_level": {
+          "name": "finished_level",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finish_date": {
+          "name": "finish_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "training_start_sp": {
+          "name": "training_start_sp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "level_start_sp": {
+          "name": "level_start_sp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "level_end_sp": {
+          "name": "level_end_sp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "skills_queue_character_id_queue_position_pk": {
+          "name": "skills_queue_character_id_queue_position_pk",
+          "columns": [
+            "character_id",
+            "queue_position"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.skills_type_attributes": {
+      "name": "skills_type_attributes",
+      "schema": "",
+      "columns": {
+        "type_id": {
+          "name": "type_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "primary_attribute": {
+          "name": "primary_attribute",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "secondary_attribute": {
+          "name": "secondary_attribute",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rank": {
+          "name": "rank",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},

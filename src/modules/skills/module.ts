@@ -27,14 +27,18 @@ export const skillsModule: KeystarModule = {
       level: "character",
       optional: true,
       manageHref: SKILLS_MANAGE_HREF,
+      managePermission: SKILLS_PERMISSIONS.viewOwn,
       reason: (t) => t.skills.module.scopes.queue,
+      label: (t) => t.skills.module.scopes.queueLabel,
     },
     {
       scope: SKILLS_SCOPE,
       level: "character",
       optional: true,
       manageHref: SKILLS_MANAGE_HREF,
+      managePermission: SKILLS_PERMISSIONS.viewOwn,
       reason: (t) => t.skills.module.scopes.skills,
+      label: (t) => t.skills.module.scopes.skillsLabel,
     },
   ],
   permissions: [

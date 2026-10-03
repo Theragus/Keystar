@@ -9,6 +9,8 @@ export const skills: typeof en = {
     scopes: {
       queue: "Liest die Skill-Queue, damit Keystar zeigen kann, was trainiert wird und wann es fertig ist (optional).",
       skills: "Liest trainierte Skills, Skillpunkte und Attribute für die Skill-Seiten (optional).",
+      queueLabel: "Zugriff auf die Skill-Queue",
+      skillsLabel: "Zugriff auf Skills",
     },
     jobs: {
       queue: "Skill-Queue",
@@ -135,9 +137,20 @@ export const skills: typeof en = {
     kept: "Skill-Daten von früher sind noch gespeichert.",
     deleteData: "Skill-Daten löschen",
     deleteDataHint: "Entfernt die gespeicherte Queue, Skills und Attribute dieses Charakters aus Keystar.",
+    sharingLabel: "Skill-Freigabe",
+    toast: {
+      deleted: (name: string) => `Gespeicherte Skills von ${name} gelöscht`,
+      failed: (name: string) => `Skills von ${name} konnten nicht gelöscht werden`,
+      errors: {
+        forbidden: "Du hast keinen Zugriff mehr auf Skills in Keystar.",
+        notOwned: "Dieser Charakter ist nicht mehr mit deinem Konto verknüpft.",
+        stillSharing: "Beende zuerst das Teilen der Skills für diesen Charakter.",
+        unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+      },
+    },
     notes: {
       corp: "Direktoren und alle anderen, die Corporation-Skills sehen dürfen, sehen die Queues geteilter Charaktere deiner Heimat-Corporation.",
-      stop: "Beim Beenden wird die Queue sofort ausgeblendet; gespeicherte Daten bleiben, bis du sie löschst.",
+      stop: "Beenden schaltet das Teilen in Keystar sofort ab; gespeicherte Daten bleiben, bis du sie löschst. Autorisiere den Charakter unter Meine Charaktere neu, um die Scopes auch aus seinem EVE-Token zu entfernen.",
     },
   },
 };
