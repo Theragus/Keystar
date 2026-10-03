@@ -42,7 +42,8 @@ describe.skipIf(!enabled)("integration", async () => {
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
       mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
       corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists,
-      corporation_members RESTART IDENTITY CASCADE`);
+      corporation_members, skills_queue, skills_character_skills, skills_character, skills_type_attributes
+      RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
     userA = a.id;
@@ -1578,6 +1579,122 @@ describe.skipIf(!enabled)("integration", async () => {
       const [tracker] = await db().select().from(schema.fleetTrackers);
       expect(tracker).toMatchObject({ status: "not_boss", fleetId: 77 });
       expect(await db().select().from(schema.fleets)).toEqual([]);
+    });
+  });
+
+  describe("skills", async () => {
+    const { skillQueueJob, characterSkillsJob } = await import("@/modules/skills/jobs");
+    const { SKILLQUEUE_SCOPE, SKILLS_SCOPE } = await import("@/modules/skills/module");
+    const skills = await import("@/modules/skills/queries");
+
+    type QueueItem = { queue_position: number; skill_id: number; finished_level: number; start_date?: string; finish_date?: string;
+      training_start_sp?: number; level_start_sp?: number; level_end_sp?: number };
+    let queues: Record<number, QueueItem[]> = {};
+    let trained: Record<number, { skill_id: number; trained_skill_level: number; active_skill_level: number; skillpoints_in_skill: number }[]> = {};
+    let typeRequests: number[] = [];
+    const esi = new EsiClient({
+      baseUrl: "https://esi.test",
+      userAgent: "t",
+      compatibilityDate: "2026-08-18",
+      tokenProvider: async () => "token",
+      maxRetries: 0,
+      fetchImpl: (async (url: string) => {
+        const path = new URL(String(url)).pathname;
+        const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+        const type = /^\/universe\/types\/(\d+)$/.exec(path);
+        if (type) {
+          typeRequests.push(Number(type[1]));
+          return reply({ type_id: Number(type[1]), name: "Skill", group_id: 255, published: true,
+            dogma_attributes: [{ attribute_id: 180, value: 165 }, { attribute_id: 181, value: 168 }, { attribute_id: 275, value: 2 }] });
+        }
+        const m = /^\/characters\/(\d+)\/(skillqueue|skills|attributes)$/.exec(path)!;
+        const id = Number(m[1]);
+        if (m[2] === "skillqueue") return reply(queues[id] ?? []);
+        if (m[2] === "skills") return reply({ skills: trained[id] ?? [], total_sp: 5_000_000, unallocated_sp: 1000 });
+        return reply({ charisma: 19, intelligence: 27, memory: 21, perception: 20, willpower: 20, bonus_remaps: 1,
+          accrued_remap_cooldown_date: "2027-01-01T00:00:00Z" });
+      }) as unknown as typeof fetch,
+    });
+    const ctx = (characterId: number) => ({ jobId: 1, ownerType: "character" as const, ownerId: characterId, characterId, esi, db: db(),
+      log: undefined as never, meta: {} });
+    const future = (h: number) => new Date(Date.now() + h * 3600_000).toISOString();
+
+    beforeEach(async () => {
+      typeRequests = [];
+      queues = {
+        2: [
+          { queue_position: 0, skill_id: 3300, finished_level: 4, start_date: future(-1), finish_date: future(10),
+            training_start_sp: 50_000, level_start_sp: 45_255, level_end_sp: 256_000 },
+          { queue_position: 1, skill_id: 3301, finished_level: 5, start_date: future(10), finish_date: future(100),
+            training_start_sp: 256_000, level_start_sp: 256_000, level_end_sp: 1_280_000 },
+        ],
+      };
+      trained = { 2: [{ skill_id: 3300, trained_skill_level: 3, active_skill_level: 3, skillpoints_in_skill: 50_000 },
+        { skill_id: 3302, trained_skill_level: 5, active_skill_level: 5, skillpoints_in_skill: 256_000 }] };
+      // Names are already known, so ensureTypes stays off the network.
+      await db().insert(schema.eveGroups).values({ groupId: 255, name: "Gunnery", categoryId: 16 });
+      await db().insert(schema.eveTypes).values([3300, 3301, 3302].map((typeId) => ({ typeId, name: `Skill ${typeId}`, groupId: 255 })));
+      await db().insert(schema.characters).values({ characterId: 4, userId: userA, name: "Alpha Abroad", corporationId: 200, ownerHash: "h4" });
+      await db().insert(schema.esiTokens).values([
+        { characterId: 1, refreshTokenEnc: "x", scopes: [] },
+        { characterId: 2, refreshTokenEnc: "x", scopes: [SKILLQUEUE_SCOPE, SKILLS_SCOPE] },
+        { characterId: 3, refreshTokenEnc: "x", scopes: [] },
+        { characterId: 4, refreshTokenEnc: "x", scopes: [SKILLQUEUE_SCOPE, SKILLS_SCOPE] },
+      ]);
+    });
+
+    it("replaces the queue snapshot and learns each skill's attributes once", async () => {
+      expect((await skillQueueJob.run(ctx(2)))?.summary).toBe("2 queued skills");
+      expect(await db().select().from(schema.skillsTypeAttributes)).toEqual(
+        expect.arrayContaining([expect.objectContaining({ typeId: 3300, primaryAttribute: 165, secondaryAttribute: 168, rank: 2 })]),
+      );
+      expect(typeRequests.sort()).toEqual([3300, 3301]);
+
+      queues[2] = queues[2].slice(1).map((e) => ({ ...e, queue_position: 0 }));
+      await db().execute(sql`DELETE FROM esi_cache`);
+      expect((await skillQueueJob.run(ctx(2)))?.summary).toBe("1 queued skill");
+      const rows = await db().select().from(schema.skillsQueue);
+      expect(rows.map((r) => [r.queuePosition, r.skillId])).toEqual([[0, 3301]]);
+      expect(typeRequests).toHaveLength(2);
+    });
+
+    it("stores trained skills and attributes, dropping skills ESI no longer lists", async () => {
+      await characterSkillsJob.run(ctx(2));
+      trained[2] = trained[2].slice(0, 1).map((s) => ({ ...s, trained_skill_level: 4 }));
+      await db().execute(sql`DELETE FROM esi_cache`);
+      expect((await characterSkillsJob.run(ctx(2)))?.summary).toBe("1 trained skills");
+      const rows = await db().select().from(schema.skillsCharacterSkills);
+      expect(rows.map((r) => [r.skillId, r.trainedLevel])).toEqual([[3300, 4]]);
+      const [c] = await db().select().from(schema.skillsCharacter);
+      expect(c).toMatchObject({ characterId: 2, totalSp: 5_000_000, unallocatedSp: 1000, intelligence: 27, bonusRemaps: 1 });
+    });
+
+    it("shows own characters, and in the corporation view only home members who share their queue", async () => {
+      await skillQueueJob.run(ctx(2));
+      await characterSkillsJob.run(ctx(2));
+      const user = (id: string, perms: string[]) => ({ id, can: (p: string) => perms.includes(p) });
+
+      const ownA = await skills.getSkillsOverview(skills.skillsScope(user(userA, ["skills.view.own"]), 100, "corp"));
+      expect(ownA.characters.map((c) => c.characterId)).toEqual([1, 4]);
+      expect(ownA.characters.find((c) => c.characterId === 1)?.queueEnabled).toBe(false);
+
+      const director = user(userA, ["skills.view.own", "skills.view.corp"]);
+      const corp = await skills.getSkillsOverview(skills.skillsScope(director, 100, "corp"));
+      // Bravo shares; Bravo Alt doesn't; Alpha Abroad shares but is in another corporation.
+      expect(corp.characters.map((c) => [c.characterId, c.ownerName, c.isOwn])).toEqual([[2, "Bravo", false]]);
+      const queue = corp.queues.get(2)!;
+      expect(queue.map((e) => [e.skillName, e.groupName, e.trainedLevel])).toEqual([["Skill 3300", "Gunnery", 3], ["Skill 3301", "Gunnery", null]]);
+      expect(corp.characters[0]).toMatchObject({ totalSp: 5_000_000, attributes: { intelligence: 27 } });
+
+      // Without a home corporation the corporation view falls back to the viewer's own characters.
+      expect(skills.skillsScope(director, null, "corp").corp).toBe(false);
+
+      // Turning sharing off hides the stored queue at once.
+      await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+      const ownB = await skills.getSkillsOverview(skills.skillsScope(user(userB, ["skills.view.own"]), 100, "own"));
+      expect(ownB.characters.map((c) => [c.characterId, c.queueEnabled])).toEqual([[2, false], [3, false]]);
+      expect(ownB.queues.size).toBe(0);
+      expect((await skills.getSkillsAccess(userB)).map((a) => [a.characterId, a.granted, a.hasData])).toEqual([[2, false, true], [3, false, false]]);
     });
   });
 

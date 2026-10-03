@@ -1,7 +1,7 @@
 /**
  * Seeds a self-contained demo corporation (users of every role, ~120 days of
  * mining, two moon refineries, prices, a killboard, past fleets, threat-intel
- * scans and a mining P&L) so Keystar can be explored without EVE SSO
+ * scans, a mining P&L and skill queues) so Keystar can be explored without EVE SSO
  * credentials. Requires KEYSTAR_DEMO_MODE=true to log in as demo users.
  *
  *   pnpm demo:seed            # refuses if real (non-demo) users exist
@@ -47,6 +47,7 @@ import { seedFleets } from "./demo-data/fleet";
 import { seedIntel } from "./demo-data/intel";
 import { seedKillboard } from "./demo-data/killboard";
 import { seedMiningPnl } from "./demo-data/pnl";
+import { seedSkills } from "./demo-data/skills";
 import { seedMail } from "./demo-data/social";
 
 const DEMO_CHARACTER_BASE = 2_120_000_000;
@@ -195,7 +196,8 @@ async function main() {
     intel_ai_notes, wallet_transactions, mining_activity, mining_activity_coverage, mining_pnl_settings,
     mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions,
     corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages,
-    mail_labels, mail_lists RESTART IDENTITY CASCADE`);
+    mail_labels, mail_lists, skills_queue, skills_character_skills, skills_character, skills_type_attributes
+    RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
   await db.insert(eveGroups).values(staticData.groups);
@@ -515,6 +517,9 @@ async function main() {
     now: new Date(),
   });
 
+  // --- Skill queues (opt-in on some characters) ------------------------------
+  const queued = await seedSkills(db, { characters: allChars, now: new Date() });
+
   await setSetting("corp.homeCorporationId", HOME_CORP.corporationId);
   await setSetting("demo.users", demoUserIds);
   await setSetting("setup.completedAt", new Date().toISOString());
@@ -537,7 +542,7 @@ async function main() {
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
       `${killboard.killmails} killmails, ${fleetCount} fleets, ${pnl.transactions} wallet transactions, ${pnl.windows} ` +
-      `activity windows, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
+      `activity windows, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, ${queued} queued skills, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");
   await closeDb();

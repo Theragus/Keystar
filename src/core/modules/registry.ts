@@ -2,6 +2,7 @@ import { fleetModule } from "@/modules/fleet/module";
 import { intelModule } from "@/modules/intel/module";
 import { killboardModule } from "@/modules/killboard/module";
 import { miningModule } from "@/modules/mining/module";
+import { skillsModule } from "@/modules/skills/module";
 import { socialModule } from "@/modules/social/module";
 import { tradeModule } from "@/modules/trade/module";
 import { walletModule } from "@/modules/wallet/module";
@@ -16,6 +17,7 @@ import type { KeystarModule, NavSection, ScopeRequirement } from "./types";
  */
 export const MODULES: KeystarModule[] = [
   coreModule,
+  skillsModule,
   miningModule,
   killboardModule,
   fleetModule,

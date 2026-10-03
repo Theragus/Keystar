@@ -180,6 +180,8 @@ Current jobs:
 | `wallet.corporation-wallets`     | 1 h      | Corporation balances, journal and transactions, all divisions (Accountant / Junior Accountant) |
 | `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
 | `social.character-mail`          | 5 min    | EVE mail, labels and mailing lists of characters that opted in to mail |
+| `skills.queue`                   | 15 min   | Skill queue of characters that share their skills; static skill attributes and ranks |
+| `skills.character`               | 1 h      | Trained skills, skill points and attributes of characters that share their skills |
 
 ## EVE mail
 
@@ -297,6 +299,28 @@ default Director). ESI returns only about 30 days per division — the journal a
 The archive is meant to grow into spending and income breakdowns (by category, counterparty and item via the
 transactions), trends from the balance history and office rent tracking (`office_rental_fee` by `context_id`)
 without schema changes.
+
+## Skills
+
+Pilots → Skill queues shows, per character, the skill in training, when it and the whole queue finish, every queued
+skill with its finish time, and the character's attributes and remap availability. Both skills scopes
+(`esi-skills.read_skillqueue.v1`, `esi-skills.read_skills.v1`) are opt-in per character and are turned on and off
+together on the Skills access page (`/skills/settings`). `skills.view.own` (default member) shows the viewer's own
+characters; `skills.view.corp` (default director) adds a corporation view of home-corporation characters that share
+their queue. Turning sharing off hides the queue at once, also from the corporation view; the stored rows stay until
+the owner deletes them.
+
+- **Sync**: `skills.queue` replaces `skills_queue` with what ESI returns. ESI only refreshes the queue when the
+  character logs in, so the pages hide entries whose finish time has passed; a queue without dates is paused.
+  `skills.character` upserts `skills_character_skills` (dropping skills ESI no longer lists) and `skills_character`
+  (total and unallocated SP, the five attributes, bonus remaps and the yearly remap date).
+- **Static data**: `skills_type_attributes` holds each queued skill's primary and secondary attribute (dogma
+  attribute ids 164–168) and rank, read from the `dogma_attributes` of `/universe/types/{id}`.
+- **Planned on top of it**: a remap optimiser (a skill trains at primary + secondary / 2 SP per minute and a level
+  needs rank × that level's base SP, so queue, attributes and `skills_type_attributes` are all it needs; implants
+  would add `esi-clones.read_implants.v1`), and corporation skill plans checked against `skills_character_skills`.
+  ESI has no skill-plan endpoint, so plans would be pasted from the in-game "copy to clipboard" text and resolved
+  with `/universe/ids`.
 
 ## Killboard
 

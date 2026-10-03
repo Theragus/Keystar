@@ -16,6 +16,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   types" in the panel header switches back to one row per type.
 - **Survey scanner groups ice and anomaly ore variants.** The field estimator now counts Thick Blue Ice, Pristine
   White Glaze, Hadal Talassonite and similar variants under their base ore.
+- **Skill queues.** A new Pilots section shows, for each character, the skill in training with its progress, when
+  every queued skill and the whole queue finish, paused, empty and ending-soon queues, and the character's attributes
+  and remap availability. Sharing is opt-in per character on the new Skills access page. Directors also get a
+  corporation view of every home-corporation member who shares. Add `esi-skills.read_skillqueue.v1` and
+  `esi-skills.read_skills.v1` to your EVE application (see docs/deployment.md).
 
 ### Changed
 
