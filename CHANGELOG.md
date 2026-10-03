@@ -8,8 +8,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
-- **Main character listed first.** The Characters page, the dashboard's character panel and fleet tracking show your
-  main character at the top, followed by the others alphabetically.
+- **Main character listed first.** The Characters page, the dashboard's character panel, fleet tracking, the mail
+  character list and the P&L wallet status show your main character at the top, followed by the others
+  alphabetically.
 
 ## [0.9.0] - 2026-10-03
 
