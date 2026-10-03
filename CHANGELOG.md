@@ -15,6 +15,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - The unregistered-members count on Mining Overview and the token warnings on Users & Roles now open the member audit
   already filtered to the characters concerned.
 
+### Fixed
+
+- The mining CSV export no longer turns negative security status (`-0.45`) into text, so null-sec and wormhole rows
+  stay numeric in spreadsheets. Names starting with `=`, `+`, `-` or `@` are still neutralised.
+
 ## [0.6.0] - 2026-10-03
 
 ### Changed
