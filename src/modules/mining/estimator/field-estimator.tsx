@@ -160,7 +160,7 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           spellCheck={false}
-          placeholder={"Scordite III-Grade\t8.904\t1.335 m3\t168.000,00 ISK\t25 km\n…"}
+          placeholder={m.scan.placeholder}
           className="glass-inset h-[360px] w-full resize-y rounded-lg p-3 font-mono text-2xs leading-relaxed whitespace-pre text-ink outline-none placeholder:text-ink-3"
           aria-label={m.scan.input}
         />

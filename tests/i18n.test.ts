@@ -3,6 +3,7 @@ import { MODULES } from "@/core/modules/registry";
 import { DEFAULT_LOCALE, LOCALES, negotiateLocale, resolveLocale } from "@/i18n/config";
 import { MESSAGES } from "@/i18n/messages";
 import { FORMATTERS } from "@/lib/format";
+import { parseSurveyScan } from "@/modules/mining/estimator/parse";
 import { JOBS, jobLabel } from "@/modules/jobs";
 
 describe("locale detection", () => {
@@ -75,6 +76,14 @@ describe("dictionaries", () => {
       for (const text of texts) expect(typeof text === "string" && text.trim().length > 0).toBe(true);
     }
     expect(jobLabel("removed.job", MESSAGES.de)).toBe("removed.job");
+  });
+
+  it("show a survey scan placeholder the parser accepts, in each client's number format", () => {
+    for (const l of LOCALES) {
+      const { rocks, skipped } = parseSurveyScan(MESSAGES[l].mining.estimator.scan.placeholder.replace("…", ""));
+      expect(skipped).toEqual([]);
+      expect(rocks).toEqual([{ name: "Scordite III-Grade", quantity: 8904, volume: 1335, value: 168_000, distanceKm: 25 }]);
+    }
   });
 });
 

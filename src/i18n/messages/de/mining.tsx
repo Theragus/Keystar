@@ -250,6 +250,7 @@ export const mining: typeof en = {
       example: "Beispiel",
       clear: "Leeren",
       input: "Ergebnis des Survey-Scanners",
+      placeholder: "Scordite III-Grade\t8.904\t1.335 m3\t168.000,00 ISK\t25 km\n…",
     },
     skipped: (count: number, lines: string) =>
       count === 1

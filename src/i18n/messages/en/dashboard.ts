@@ -2,7 +2,7 @@ import { FORMATTERS } from "@/lib/format";
 
 const n = FORMATTERS.en.integer;
 
-/** The main dashboard ("/"): corp summary, 30-day kill and mining tiles, characters, roadmap. */
+/** The main dashboard ("/"): corp info row, 30-day kill and mining tiles, characters, roadmap. */
 export const dashboard = {
   metaTitle: "Dashboard",
   header: {
@@ -24,18 +24,10 @@ export const dashboard = {
     workerOnline: "Online",
     workerOffline: "No heartbeat",
   },
-  corpCard: {
-    activePilots: (count: number) => `${n(count)} active ${count === 1 ? "pilot" : "pilots"} · 30 days`,
-    homeCorp: "Home corporation",
-    members: (count: number) => `${n(count)} members`,
-    kills: "Kills 30d",
-    losses: "Losses 30d",
-    efficiency: "Efficiency",
-    noHomeCorp: "Set a home corporation in Settings.",
-  },
   tiles: {
     kills: "Kills · 30 days",
     losses: (count: number) => `${n(count)} ${count === 1 ? "loss" : "losses"}`,
+    activePilots: (count: number) => `${n(count)} active ${count === 1 ? "pilot" : "pilots"}`,
     iskDestroyed: "ISK destroyed · 30 days",
     efficiency: "ISK efficiency · 30 days",
     /** Change in percentage points, e.g. "1.5 pts". */
