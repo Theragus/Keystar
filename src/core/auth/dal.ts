@@ -25,6 +25,7 @@ export interface CurrentUser {
   id: string;
   role: Role;
   main: CurrentUserCharacter | null;
+  /** Main character first, then alphabetical. */
   characters: CurrentUserCharacter[];
   characterIds: number[];
   permissions: string[];
@@ -56,6 +57,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const settings = await getSettings();
   const granted = permissionsForRole(user.role, allPermissions(), settings["permissions.overrides"]);
   const main = chars.find((c) => c.characterId === user.mainCharacterId) ?? chars[0] ?? null;
+  // Main first, the rest by name.
+  if (main) chars.sort((a, b) => Number(b === main) - Number(a === main));
 
   return {
     id: user.id,
