@@ -20,7 +20,7 @@ export async function generateMetadata() {
   return { title: t.admin.settings.metaTitle };
 }
 
-const selectClass = "glass-inset h-9 rounded-lg px-3 text-sm text-ink [color-scheme:dark]";
+const selectClass = "glass-inset h-9 rounded-lg px-3 text-sm text-ink";
 
 export default async function SettingsPage() {
   await requirePermission("app.settings.manage");
