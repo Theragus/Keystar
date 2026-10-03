@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Disable navigation scrolling in the collapsed sidebar while retaining expanded navigation scrolling.
+
 - Link pilot corporation and alliance labels to their respective zKillboard pages.
 
 - Pilot recent kills and losses use wrapping icon-and-name ship tags matching History with Us, in side-by-side columns.
