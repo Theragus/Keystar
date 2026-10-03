@@ -19,7 +19,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   The choice is remembered for a year and applied before rendering.
 - **Notifications.** Short toasts in the top-right corner confirm actions. A bar along the bottom counts down
   the time left and pauses while the pointer or keyboard focus is on the toast. Changing a user's role now
-  confirms the new role and offers Undo, and a refused change says why.
+  confirms the new role and offers Undo, and a refused change says why. Saving Settings confirms the save, or
+  says why it was refused and keeps what you entered.
 
 ### Changed
 

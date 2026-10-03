@@ -100,14 +100,20 @@ export async function setSyncPaused(paused: boolean) {
   revalidatePath("/admin/sync");
 }
 
-export async function saveSettings(formData: FormData) {
-  const actor = await assertPermission("app.settings.manage");
+export type SettingsSaveResult =
+  | { ok: true; homeChanged: boolean }
+  | { ok: false; error: "forbidden" | "invalidCorporation" };
+
+/** Returns a result instead of throwing so the settings page can confirm or explain in a toast. */
+export async function saveSettings(formData: FormData): Promise<SettingsSaveResult> {
+  const actor = await assertPermission("app.settings.manage").catch(() => null);
+  if (!actor) return { ok: false, error: "forbidden" };
   const before = await getSettings();
 
   const corpRaw = String(formData.get("homeCorporationId") ?? "").trim();
   const homeCorporationId = corpRaw ? Number(corpRaw) : null;
   if (homeCorporationId !== null && (!Number.isSafeInteger(homeCorporationId) || homeCorporationId <= 0)) {
-    throw new Error("Home corporation must be a numeric corporation ID");
+    return { ok: false, error: "invalidCorporation" };
   }
 
   const valuationSource = String(formData.get("valuationSource")) as Settings["mining.valuationSource"];
@@ -126,7 +132,8 @@ export async function saveSettings(formData: FormData) {
   await setSetting("mining.valuationSource", valuationSource, actor.id);
   await setSetting("mining.valuationMode", valuationMode, actor.id);
   await setSetting("permissions.overrides", overrides, actor.id);
-  if (homeCorporationId && homeCorporationId !== before["corp.homeCorporationId"]) {
+  const homeChanged = homeCorporationId !== null && homeCorporationId !== before["corp.homeCorporationId"];
+  if (homeChanged) {
     await refreshCorporations([homeCorporationId]);
     // Import the new home corporation's killboard now instead of at the next hourly run.
     await triggerJobs({ jobKey: "killboard.zkill-sync" });
@@ -144,4 +151,5 @@ export async function saveSettings(formData: FormData) {
     },
   });
   revalidatePath("/", "layout");
+  return { ok: true, homeChanged };
 }

@@ -182,6 +182,14 @@ export const admin: typeof en = {
     metaTitle: "Einstellungen",
     description: "Anwendungsweite Konfiguration. Änderungen gelten sofort und werden im Audit-Log festgehalten.",
     save: "Einstellungen speichern",
+    saved: "Einstellungen gespeichert",
+    savedHomeChanged: "Das Killboard der neuen Heimat-Corporation wird im Hintergrund importiert.",
+    saveFailed: "Einstellungen nicht gespeichert",
+    errors: {
+      forbidden: "Du darfst die Einstellungen nicht mehr ändern.",
+      invalidCorporation: "Die Heimat-Corporation muss eine numerische Corporation-ID sein, z. B. 98765432.",
+      unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und prüfe, welche Änderungen übernommen wurden.",
+    },
     home: {
       title: "Heimat-Corporation",
       subtitle: "Die Corporation, deren Mitglieder, Mitgliederliste und Raffinerien Keystar verfolgt",

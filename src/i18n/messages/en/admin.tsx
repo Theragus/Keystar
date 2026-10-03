@@ -193,6 +193,15 @@ export const admin = {
     metaTitle: "Settings",
     description: "Application-wide configuration. Changes apply immediately and are recorded in the audit log.",
     save: "Save settings",
+    /** Toasts after saving. */
+    saved: "Settings saved",
+    savedHomeChanged: "Importing the new home corporation's killboard in the background.",
+    saveFailed: "Settings not saved",
+    errors: {
+      forbidden: "You no longer have permission to change settings.",
+      invalidCorporation: "The home corporation must be a numeric corporation ID, e.g. 98765432.",
+      unknown: "Something went wrong. Reload the page and check which changes were kept.",
+    },
     home: {
       title: "Home corporation",
       subtitle: "Whose members, roster and refineries Keystar tracks",

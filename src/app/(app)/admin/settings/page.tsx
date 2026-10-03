@@ -1,6 +1,5 @@
-import { Lock, Save } from "lucide-react";
+import { Lock } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
-import { Button } from "@/components/ui/button";
 import { CorpLogo } from "@/components/ui/eve-image";
 import { Panel } from "@/components/ui/glass";
 import { requirePermission } from "@/core/auth/dal";
@@ -13,7 +12,7 @@ import { effectiveMinRole } from "@/core/rbac/permissions";
 import { ROLES } from "@/core/rbac/roles";
 import { getSettings } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
-import { saveSettings } from "../actions";
+import { SaveSettingsButton, SettingsForm } from "./settings-form";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -33,21 +32,14 @@ export default async function SettingsPage() {
   const groups = [...new Set(perms.map((p) => p.group(t)))];
   const overrides = settings["permissions.overrides"];
   const e = env();
-  // React resets the form after saving, and a <select> resets to the value it was
-  // first rendered with. A key over the saved choices remounts it with the new ones.
-  const savedChoices = JSON.stringify([settings["mining.valuationSource"], settings["mining.valuationMode"], overrides]);
 
   return (
-    <form key={savedChoices} action={saveSettings} className="space-y-6">
+    <SettingsForm className="space-y-6">
       <PageHeader
         eyebrow={t.shell.navSections.admin}
         title={t.shell.nav.settings}
         description={ts.description}
-        actions={
-          <Button type="submit" variant="primary">
-            <Save className="size-4" aria-hidden /> {ts.save}
-          </Button>
-        }
+        actions={<SaveSettingsButton />}
       />
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -199,6 +191,6 @@ export default async function SettingsPage() {
           </table>
         </div>
       </Panel>
-    </form>
+    </SettingsForm>
   );
 }
