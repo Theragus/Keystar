@@ -6,6 +6,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-03
+
 **When updating:** corporation wallets need two corporation scopes, EVE Mail one optional character scope.
 
 1. Add `esi-wallet.read_corporation_wallets.v1`, `esi-corporations.read_divisions.v1` and `esi-mail.read_mail.v1` to
