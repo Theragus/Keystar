@@ -50,10 +50,15 @@
      Text on space-950/900 and under the glow: crimson >= 4.5:1, amber and teal >= 6.9:1.
      Colour-vision check (dark surface #101114): all pairs CVD ΔE >= 8.7, normal ΔE >= 20.
      Crimson stays near the critical status red (normal ΔE 7.4), so these are for
-     navigation chrome only, never for data marks or status. */
+     navigation chrome only, never for data marks or status.
+     Violet and pink (pilots, social) against every tone and the accent: CVD ΔE >= 8.0
+     (pink vs accent), normal ΔE >= 18; text >= 5.2:1 under the glow. Pink is normal
+     ΔE 12.6 from critical-text. There is no room for another hue: Finances shares trade. */
   --color-section-industry: #e0a43a;
   --color-section-combat: #e0566b;
   --color-section-trade: #2fbf9f;
+  --color-section-pilots: #a87bff;
+  --color-section-social: #fc98d4;
 
   --radius-glass: 12px;
 }
@@ -130,6 +135,12 @@
 }
 [data-section-tone="trade"] {
   --section: var(--color-section-trade);
+}
+[data-section-tone="pilots"] {
+  --section: var(--color-section-pilots);
+}
+[data-section-tone="social"] {
+  --section: var(--color-section-social);
 }
 
 /* Only <html> gets a background: a body background would paint over the
@@ -573,6 +584,10 @@ select option:disabled {
   --color-section-industry: #865600;
   --color-section-combat: #ae2847;
   --color-section-trade: #00705c;
+  /* On #ffffff/#f3f5f8 and under the glow >= 4.6:1; against every tone and the accent
+     CVD ΔE >= 8.6 (violet vs accent), normal ΔE >= 15.9. */
+  --color-section-pilots: #6b45d1;
+  --color-section-social: #75007f;
   --chart-surface: #ffffff;
   --hairline: rgba(24, 35, 50, 0.12);
   --hairline-strong: rgba(24, 35, 50, 0.2);

@@ -6,6 +6,12 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- **More sections have their own colour.** Pilots is violet and Social pink, checked for contrast and colour-vision
+  separation in both themes like the existing ones. Finances shares Trade's teal. Overview, Account and
+  Administration keep the cyan accent.
+
 ## [0.11.0] - 2026-10-03
 
 **When updating:** skill queues need two optional character scopes.
