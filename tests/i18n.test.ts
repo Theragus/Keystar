@@ -103,7 +103,8 @@ describe("formatting", () => {
     expect(en.percent(0.1234)).toBe("12.3%");
     expect(en.unitPrice(12.5)).toBe("12.50 ISK");
     expect(en.shortDate("2026-10-02")).toBe("02 Oct");
-    expect(en.dateTime("2026-10-02T18:05:00Z")).toBe("2026-10-02 18:05 ET");
+    expect(en.date("2026-10-02")).toBe("02 Oct 2026");
+    expect(en.dateTime("2026-10-02T18:05:00Z")).toBe("02 Oct 2026 18:05 ET");
     expect(en.relativeTime(null)).toBe("never");
   });
 
@@ -124,7 +125,8 @@ describe("formatting", () => {
     expect(de.percent(0.1234)).toBe("12,3 %");
     expect(de.unitPrice(12.5)).toBe("12,50 ISK");
     expect(de.shortDate("2026-10-02")).toBe("02. Okt.");
-    expect(de.dateTime("2026-10-02T18:05:00Z")).toBe("2026-10-02 18:05 ET");
+    expect(de.date("2026-10-02")).toBe("02.10.2026");
+    expect(de.dateTime("2026-10-02T18:05:00Z")).toBe("02.10.2026 18:05 ET");
   });
 
   it("names the weekday of the EVE (UTC) date in the viewer's language", () => {
@@ -139,6 +141,9 @@ describe("formatting", () => {
       expect(new Date("2026-10-02T00:00:00Z").getDay()).toBe(4);
       expect(en.weekday("2026-10-02")).toBe("Friday");
       expect(de.weekday("2026-10-02")).toBe("Freitag");
+      expect(de.date("2026-10-02")).toBe("02.10.2026");
+      // A timestamp late on the 2nd in EVE time is the 2nd, wherever the server runs.
+      expect(en.date(new Date("2026-10-02T23:30:00Z"))).toBe("02 Oct 2026");
     } finally {
       if (tz === undefined) delete process.env.TZ;
       else process.env.TZ = tz;
