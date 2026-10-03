@@ -48,11 +48,9 @@ export async function CynoEvidence({ profile }: { profile: PilotProfile | null }
 export async function PilotEvidence({
   profile,
   names,
-  associates,
 }: {
   profile: PilotProfile | null;
   names: DisplayNames;
-  associates: number;
 }) {
   const { t, f } = await getI18n();
   const e = t.intel.evidence;
@@ -76,7 +74,6 @@ export async function PilotEvidence({
       })}
       <span className="text-ink-3">{e.tileCyno}</span>
       <span className={cynoEvidence(profile).length ? "text-warning" : "text-ink-3"}>{cynoEvidence(profile).length ? cynoEvidence(profile).map(fit => <span key={fit.kind} className="block">{e.cynoKinds[fit.kind]} · {f.relativeTime(fit.lastAt)}</span>) : profile?.depth === "deep" ? e.tileNoCyno : e.unknown}</span>
-      <span className="text-ink-3">{e.tileAssociates}</span><span className="text-ink-2">{profile ? f.integer(associates) : e.unknown}</span>
     </div>
   );
 }

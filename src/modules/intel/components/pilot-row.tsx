@@ -42,7 +42,6 @@ export async function PilotRow({
   pilot,
   standing,
   names,
-  pilotNames,
 }: {
   pilot: ScanPilot;
   standing: Standing;
@@ -56,7 +55,6 @@ export async function PilotRow({
   const history = pilot.history;
   const score = (pilot.scoreDetail as PilotScore | null) ?? null;
   const profile = (pilot.profile as PilotProfile | null) ?? null;
-  const flyingWith = (profile?.associates ?? []).filter((a) => pilotNames.has(a.characterId) && a.characterId !== pilot.characterId);
   return (
     <article className="glass-inset min-w-0 rounded-xl">
       <div className="flex flex-col gap-3 p-3">
@@ -77,7 +75,7 @@ export async function PilotRow({
           <ProfileStatus pilot={pilot} />
         </div>
         <div className="w-full border-y border-surface-contrast/6 py-3">
-          <PilotEvidence profile={profile} names={names} associates={flyingWith.length} />
+          <PilotEvidence profile={profile} names={names} />
         </div>
         <div className="grid w-full grid-cols-2 gap-2">
           {[{ label: t.intel.evidence.recentKills, loss: false }, { label: t.intel.evidence.recentLosses, loss: true }].map(({ label, loss }) => {
