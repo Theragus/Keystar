@@ -14,7 +14,7 @@ const READINESS_TONE: Record<ReadinessLevel, "good" | "accent" | "critical" | "n
   quiet: "neutral",
 };
 
-/** The weekly briefing, collapsible like the original dashboard (open by default). */
+/** The weekly briefing, collapsible like the original dashboard (collapsed by default). */
 export async function SituationReportPanel({
   stored,
   canManage,
@@ -29,7 +29,7 @@ export async function SituationReportPanel({
   const { t, f } = await getI18n();
   const window = stored ? rangeLabel({ from: stored.periodFrom, to: stored.periodTo }, f.locale) : null;
   return (
-    <Glass as="details" open className="group">
+    <Glass as="details" className="group">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
         <Radio className="size-4 text-accent" aria-hidden />
         <span className="eve-label text-xs text-accent">{t.killboard.report.title}</span>

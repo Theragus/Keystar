@@ -6,6 +6,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- The situation report on the killboard starts collapsed; click its header to read it.
+
 ## [0.4.0] - 2026-10-03
 
 **When updating:** wallet import in the mining P&L needs one optional character scope.
