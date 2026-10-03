@@ -39,6 +39,22 @@ export const admin = {
     },
     roleFor: (name: string | null) => `Role for ${name ?? "user"}`,
     saveRole: "Save role",
+    /** Toasts after a role change from the table. */
+    roleChange: {
+      changed: (name: string, role: string) => `${name} is now ${role}`,
+      from: (role: string) => `Previously ${role}`,
+      restored: (name: string, role: string) => `${name} is back to ${role}`,
+      failed: (name: string) => `Couldn't change the role of ${name}`,
+      errors: {
+        self: "You can't change your own role.",
+        forbidden: "You no longer have permission to manage users.",
+        notFound: "This account no longer exists.",
+        higherRole: "Only a higher role can change this account.",
+        unassignable: "You can't assign that role.",
+        changed: "Someone changed this role in the meantime. The table now shows the current role.",
+        unknown: "Something went wrong. Reload the page and try again.",
+      },
+    },
     enable: "Enable",
     disable: "Disable",
     /** Why a row has no actions. */
@@ -192,6 +208,15 @@ export const admin = {
     metaTitle: "Settings",
     description: "Application-wide configuration. Changes apply immediately and are recorded in the audit log.",
     save: "Save settings",
+    /** Toasts after saving. */
+    saved: "Settings saved",
+    savedHomeChanged: "Importing the new home corporation's killboard in the background.",
+    saveFailed: "Settings not saved",
+    errors: {
+      forbidden: "You no longer have permission to change settings.",
+      invalidCorporation: "The home corporation must be a numeric corporation ID, e.g. 98765432.",
+      unknown: "Something went wrong. Reload the page and check which changes were kept.",
+    },
     home: {
       title: "Home corporation",
       subtitle: "Whose members, roster and refineries Keystar tracks",

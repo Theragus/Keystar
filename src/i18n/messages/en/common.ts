@@ -70,6 +70,12 @@ export const common = {
     selected: (count: number) => `${n(count)} selected`,
     apply: (count: number) => (count ? `Apply (${n(count)})` : "Apply"),
   },
+  /** Toast notifications in the top-right corner. */
+  toast: {
+    region: "Notifications",
+    close: "Dismiss notification",
+    undo: "Undo",
+  },
   delta: {
     vs: (period: string) => `vs ${period}`,
     noData: (period: string) => `No data for ${period}`,
