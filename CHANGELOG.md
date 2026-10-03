@@ -17,6 +17,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - Fetch pending statistics from the scan creator’s browser at 100 ms intervals with at most four concurrent requests, validation, cache reuse, rate-limit backoff and worker fallback. Server zKillboard calls are spaced by 200 ms; statistics requests avoid a redirect.
 - Keep sidebar icons and abbreviated headings stationary when collapsing; move branding to the top bar and the toggle into the sidebar, remove fade flicker, disable collapsed scrolling, and use a 300 ms width transition.
 
+- **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
+  dashboard's killboard button now read "Combat Report".
 
 ## [0.10.0] - 2026-10-03
 
