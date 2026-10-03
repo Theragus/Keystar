@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Local Situation shows compact pilot name/score tags in place of the cyno card, with fitted-cyno history icons and tooltips separating fitting evidence from unknown activation and fight association.
+
 - Keep navigation and menu-toggle icons at the same horizontal position when collapsing the sidebar.
 
 - Show three-character section headings in the collapsed navigation rail without shifting icons.

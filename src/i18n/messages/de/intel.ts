@@ -316,6 +316,8 @@ export const intel: typeof en = {
     noEvent: "Kein Eintrag in den geladenen Daten",
     noCyno: "Kein ausgerüstetes Cyno in den erfassten Verlusten gefunden",
     unknownCyno: "Unbekannt — Verlustausrüstung noch nicht geladen",
+    cynoTagCaution: "Nur ausgerüstete Module in erfassten Verlusten. Cyno-Aktivierung und Kampfzuordnung unbekannt. Gezählt werden Ausrüstungsbelege, keine geöffneten Cynos.",
+    cynoTagLegend: "Cyno-Symbol: Ausrüstungshistorie. Aktivierung und Kampfzuordnung unbekannt.",
     cynoHint: "Nur erfasste Verluste; keine garantierte Abdeckung von 365 Tagen. Aktuelle Ausrüstung unbekannt.",
     snapshot: "Local-Momentaufnahme",
     notProvided: "Nicht bereitgestellt",
