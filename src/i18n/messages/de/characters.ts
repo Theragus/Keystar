@@ -47,7 +47,7 @@ export const characters: typeof en = {
     title: "Corporation-Zugriff",
     subtitle: "Für Directors, Accountants und Station Manager",
     intro:
-      "Corporation-Daten wie Mond-Observer stammen aus dem Token eines Mitglieds mit der passenden Rolle im Spiel. Verknüpfe diesen Charakter mit den zusätzlichen Corporation-Scopes:",
+      "Corporation-Daten wie Mondbohrer-Ledger stammen aus dem Token eines Mitglieds mit der passenden Rolle im Spiel. Verknüpfe diesen Charakter mit den zusätzlichen Corporation-Scopes:",
     link: "Mit Corporation-Zugriff verknüpfen",
   },
   privacy: {

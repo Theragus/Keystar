@@ -46,7 +46,7 @@ export const characters = {
     title: "Corporation access",
     subtitle: "For directors, accountants and station managers",
     intro:
-      "Corporation data such as moon-mining observers comes from one member's token who holds the right in-game role. Link that character with the additional corporation scopes:",
+      "Corporation data such as moon-drill ledgers comes from one member's token who holds the right in-game role. Link that character with the additional corporation scopes:",
     link: "Link with corporation access",
   },
   privacy: {
