@@ -13,6 +13,7 @@ import { mining } from "./mining";
 import { pnl } from "./pnl";
 import { setup } from "./setup";
 import { shell } from "./shell";
+import { social } from "./social";
 import { trade } from "./trade";
 import { wallet } from "./wallet";
 import { wormholes } from "./wormholes";
@@ -35,5 +36,6 @@ export const de: Messages = {
   intel,
   trade,
   wallet,
+  social,
   wormholes,
 };

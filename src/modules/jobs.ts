@@ -12,6 +12,7 @@ import { fleetJobs } from "./fleet/jobs";
 import { intelJobs } from "./intel/jobs";
 import { killboardJobs } from "./killboard/jobs";
 import { miningJobs, miningPriceInterest } from "./mining/jobs";
+import { socialJobs } from "./social/jobs";
 import { walletJobs } from "./wallet/jobs";
 import { wormholesJobs } from "./wormholes/jobs";
 
@@ -33,6 +34,7 @@ export const JOBS: JobDefinition[] = [
   ...fleetJobs,
   ...intelJobs,
   ...walletJobs,
+  ...socialJobs,
   ...wormholesJobs,
 ];
 

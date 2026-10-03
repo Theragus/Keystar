@@ -40,7 +40,8 @@ describe.skipIf(!enabled)("integration", async () => {
       fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
       intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, mining_activity,
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
-      mining_pnl_tx_overrides, mining_pnl_entries
+      mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
+      corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists
       RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
@@ -799,6 +800,280 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(hints).toHaveLength(1);
       expect(hints[0]).toMatchObject({ typeId: 1230, rawUnits: 1500, isk: 17_000, sales: 2, baseUnitPrice: 10 });
       expect(hints[0].rawUnitPrice).toBeCloseTo(17_000 / 1500);
+    });
+  });
+
+  describe("EVE mail", async () => {
+    const { mailJob } = await import("@/modules/social/jobs");
+    const { MAIL_SCOPE } = await import("@/modules/social/module");
+    const mail = await import("@/modules/social/queries");
+
+    type Header = { mail_id: number; from: number; subject: string; timestamp: string; is_read: boolean; labels: number[];
+      recipients: { recipient_id: number; recipient_type: string }[] };
+    const h = (id: number, extra: Partial<Header> = {}): Header => ({
+      mail_id: id,
+      from: 9,
+      subject: `Mail ${id}`,
+      timestamp: `2026-09-${String(id % 28 + 1).padStart(2, "0")}T12:00:00Z`,
+      is_read: false,
+      labels: [1],
+      recipients: [{ recipient_id: 2, recipient_type: "character" }],
+      ...extra,
+    });
+    // Mailboxes by character; ESI answers per character token like the real routes.
+    let boxes: Record<number, Header[]> = {};
+    let bodyRequests: string[] = [];
+    const esi = new EsiClient({
+      baseUrl: "https://esi.test",
+      userAgent: "t",
+      compatibilityDate: "2026-08-18",
+      tokenProvider: async () => "token",
+      maxRetries: 0,
+      fetchImpl: (async (url: string) => {
+        const u = new URL(String(url));
+        const m = /^\/characters\/(\d+)\/mail(?:\/(labels|lists|\d+))?$/.exec(u.pathname)!;
+        const box = boxes[Number(m[1])] ?? [];
+        const reply = (body: unknown, status = 200) =>
+          new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+        if (m[2] === "labels") return reply({ labels: [{ label_id: 1, name: "Inbox", color: "#ffffff" }, { label_id: 256, name: "Ops", color: "#ff6600" }], total_unread_count: 1 });
+        if (m[2] === "lists") return reply([{ mailing_list_id: 145, name: "Keystar Ops" }]);
+        if (m[2]) {
+          bodyRequests.push(`${m[1]}:${m[2]}`);
+          const found = box.find((x) => x.mail_id === Number(m[2]));
+          if (!found) return reply({ error: "Mail not found" }, 404);
+          return reply({ ...found, read: found.is_read, body: `<font size=12 color=#bfffffff>Hello <a href="showinfo:1377//9">Outsider</a></font><br>Mail ${found.mail_id}` });
+        }
+        const below = Number(u.searchParams.get("last_mail_id") ?? Infinity);
+        return reply(box.filter((x) => x.mail_id < below).sort((a, b) => b.mail_id - a.mail_id).slice(0, 50));
+      }) as unknown as typeof fetch,
+    });
+    const run = (characterId: number) =>
+      mailJob.run({ jobId: 1, ownerType: "character", ownerId: characterId, characterId, esi, db: db(), log: undefined as never, meta: {} });
+    const all = { characterId: null, folder: { kind: "all" as const }, q: "", page: 1 };
+
+    beforeEach(async () => {
+      bodyRequests = [];
+      await db().insert(schema.eveEntities).values([
+        { id: 1, name: "Alpha", category: "character" },
+        { id: 2, name: "Bravo", category: "character" },
+        { id: 3, name: "Bravo Alt", category: "character" },
+        { id: 100, name: "Home Corp", category: "corporation" },
+      ]);
+      await db().insert(schema.eveGroups).values({ groupId: 1, name: "Character", categoryId: 1 });
+      await db().insert(schema.eveTypes).values({ typeId: 1377, name: "Character", groupId: 1, volume: 0 });
+      const corpMail = h(500, { labels: [4, 256], recipients: [{ recipient_id: 100, recipient_type: "corporation" }] });
+      boxes = {
+        2: [corpMail, h(501), h(503, { labels: [], recipients: [{ recipient_id: 145, recipient_type: "mailing_list" }] })],
+        3: [{ ...corpMail, is_read: true }, h(502, { from: 3, labels: [2], is_read: true })],
+      };
+    });
+
+    it("imports mailboxes for the owning account and shares bodies between its characters", async () => {
+      expect(mailJob.requiredScopes).toEqual([MAIL_SCOPE]);
+      expect((await run(2))?.summary).toBe("3 new mails, 3 bodies");
+      expect((await run(3))?.summary).toBe("2 new mails, 1 body");
+      // The corp mail's body was copied from Bravo's mailbox, not fetched again.
+      expect(bodyRequests).toEqual(["2:503", "2:501", "2:500", "3:502"]);
+      const rows = await db().select().from(schema.mailMessages);
+      expect(rows.every((r) => r.userId === userB && r.body !== null)).toBe(true);
+      expect(await db().select().from(schema.mailLists)).toHaveLength(2);
+
+      // Listed once with both receiving characters, unread because Bravo hasn't read it.
+      const list = await mail.getMailList(userB, all);
+      expect(list.total).toBe(4);
+      expect(list.items.find((i) => i.mailId === 500)).toMatchObject({ characterIds: [2, 3], unread: true, from: { name: "Outsider" } });
+      expect(list.items.find((i) => i.mailId === 502)).toMatchObject({ sent: true });
+      expect(list.items.find((i) => i.mailId === 501)?.preview).toBe("Hello Outsider Mail 501");
+
+      const counts = await mail.getFolderCounts(userB, null);
+      expect(counts.unread).toEqual({ all: 3, inbox: 1, sent: 0, corp: 1, alliance: 0, lists: 1 });
+      expect(counts.lists).toEqual([{ id: 145, name: "Keystar Ops", unread: 1 }]);
+      expect(counts.labels).toEqual([{ name: "Ops", color: "#ff6600", unread: 1 }]);
+      expect((await mail.getMailList(userB, { ...all, folder: { kind: "label", name: "Ops" } })).items.map((i) => i.mailId)).toEqual([500]);
+      expect((await mail.getMailList(userB, { ...all, folder: { kind: "list", id: 145 } })).items.map((i) => i.mailId)).toEqual([503]);
+      expect((await mail.getMailList(userB, { ...all, q: "outs" })).total).toBe(3);
+
+      const open = await mail.getMail(userB, 3, 500);
+      expect(open).toMatchObject({ characterIds: [2, 3], labels: [{ id: 4 }, { id: 256, name: "Ops", color: "#ff6600" }] });
+      expect(open?.names.get("entity:100")).toEqual({ name: "Home Corp", category: "corporation" });
+      expect(open?.links.types.get(1377)).toEqual({ name: "Character", groupId: 1, categoryId: 1 });
+    });
+
+    it("never shows one account's mail to another", async () => {
+      await run(2);
+      expect((await mail.getMailList(userA, all)).total).toBe(0);
+      expect(await mail.getMail(userA, 2, 500)).toBeNull();
+      expect((await mail.getFolderCounts(userA, null)).unread.all).toBe(0);
+    });
+
+    it("follows read state and deletions in game", async () => {
+      await run(2);
+      boxes[2] = [{ ...boxes[2][0], is_read: true }, boxes[2][2]]; // 500 read, 501 deleted
+      expect((await run(2))?.summary).toBe("0 new mails, 0 bodies, 1 deleted in game");
+      const rows = await db().select().from(schema.mailMessages);
+      expect(rows.map((r) => [r.mailId, r.isRead]).sort()).toEqual([[500, true], [503, false]]);
+    });
+
+    it("drops a mail whose body is gone", async () => {
+      // Listed in the headers, deleted in game before its body is read.
+      boxes[2] = boxes[2].slice(0, 1);
+      const fetchBody = esi.get.bind(esi);
+      const spy = vi.spyOn(esi, "get").mockImplementation(async (path, opts) => {
+        if (path.endsWith("/mail/500")) boxes[2] = [];
+        return fetchBody(path, opts);
+      });
+      expect((await run(2))?.summary).toBe("1 new mail, 0 bodies, 1 deleted in game");
+      spy.mockRestore();
+      expect(await db().select().from(schema.mailMessages)).toEqual([]);
+    });
+
+    it("never brings mail back for a character sold during the import", async () => {
+      const spy = vi.spyOn(esi, "get");
+      spy.mockImplementationOnce(async (...args) => {
+        await db().execute(sql`UPDATE characters SET user_id = ${userA} WHERE character_id = 2`);
+        spy.mockRestore();
+        return esi.get(...args);
+      });
+      expect((await run(2))?.summary).toBe("Character changed owner during the import");
+      expect(await db().select().from(schema.mailMessages)).toEqual([]);
+    });
+
+    it("drops the previous owner's mail when a character is transferred", async () => {
+      const { detachTransferredCharacter } = await import("@/core/auth/provision");
+      await run(2);
+      await run(3);
+      await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: true }));
+      const rows = await db().select().from(schema.mailMessages);
+      expect(rows.every((r) => r.characterId === 2)).toBe(true);
+      expect(await db().select().from(schema.mailLabels).where(sql`character_id = 3`)).toEqual([]);
+    });
+  });
+
+  describe("corporation wallets", async () => {
+    const { corporationWalletsJob, corporationDivisionsJob } = await import("@/modules/wallet/corp/sync");
+    const walletQ = await import("@/modules/wallet/corp/queries");
+    const { parseCorpWalletFilters } = await import("@/modules/wallet/corp/filters");
+    const DAY = 86_400_000;
+    const NOW = Math.floor(Date.now() / 1000) * 1000;
+    const iso = (daysAgo: number) => new Date(NOW - daysAgo * DAY).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+    /** Fake ESI for corporation 100: journal and transactions per division, routed by path. */
+    function corpEsi(data: {
+      journal?: Record<number, Record<string, unknown>[]>;
+      transactions?: Record<number, Record<string, unknown>[]>;
+      divisions?: { division: number; name?: string }[];
+    }) {
+      const calls: string[] = [];
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async (url: string) => {
+          const u = new URL(String(url));
+          calls.push(u.pathname + u.search);
+          const m = u.pathname.match(/\/wallets\/(\d)\/(journal|transactions)$/);
+          let body: unknown = [];
+          if (u.pathname.endsWith("/wallets")) body = [1, 2, 3, 4, 5, 6, 7].map((division) => ({ division, balance: division * 1e6 }));
+          else if (u.pathname.endsWith("/divisions")) body = { hangar: [], wallet: data.divisions ?? [] };
+          else if (m && m[2] === "journal") body = data.journal?.[Number(m[1])] ?? [];
+          else if (m && !u.searchParams.has("from_id")) body = data.transactions?.[Number(m[1])] ?? [];
+          return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json", "x-pages": "1" } });
+        }) as unknown as typeof fetch,
+      });
+      return { esi, calls };
+    }
+    const ctx = (esi: InstanceType<typeof EsiClient>) => ({
+      jobId: 1, ownerType: "corporation" as const, ownerId: 100, characterId: 1, esi, db: db(), log: undefined as never, meta: {},
+    });
+    const j = (id: number, daysAgo: number, amount: number, extra: Record<string, unknown> = {}) => ({
+      id, date: iso(daysAgo), ref_type: "bounty_prizes", description: "", amount, first_party_id: 1000125, second_party_id: 100, ...extra,
+    });
+    const filters = parseCorpWalletFilters({}, new Date().toISOString().slice(0, 10));
+
+    beforeEach(async () => {
+      // Known names and types, so the resolver has nothing to ask ESI for.
+      await db().insert(schema.eveEntities).values([
+        { id: 100, name: "Home Corp", category: "corporation" },
+        { id: 1000125, name: "CONCORD", category: "corporation" },
+        { id: 1, name: "Alpha", category: "character" },
+      ]);
+      await db().insert(schema.eveTypes).values({ typeId: 34, name: "Tritanium", groupId: 18, volume: 0.01, portionSize: 1 });
+    });
+
+    it("archives balances, journal and transactions without duplicates", async () => {
+      const { esi } = corpEsi({
+        journal: {
+          1: [
+            j(3, 1, 5e6),
+            j(2, 2, -2e6, { ref_type: "corporation_account_withdrawal", first_party_id: 100, second_party_id: 100 }),
+            j(1, 3, -1e6, { ref_type: "office_rental_fee", second_party_id: 1000125, first_party_id: 100 }),
+          ],
+          2: [j(10, 2, 2e6, { ref_type: "corporation_account_withdrawal", first_party_id: 100, second_party_id: 100 })],
+        },
+        transactions: {
+          1: [{ transaction_id: 77, date: iso(1), type_id: 34, quantity: 1000, unit_price: 4, is_buy: true, client_id: 1,
+            location_id: 60003760, journal_ref_id: 3 }],
+        },
+      });
+      expect(corporationWalletsJob.preferredCorpRoles).toEqual(["Accountant", "Junior_Accountant"]);
+      const first = await corporationWalletsJob.run(ctx(esi));
+      expect(first?.summary).toBe("7 divisions, 4 new journal entries, 1 new transaction");
+      const second = await corporationWalletsJob.run(ctx(esi));
+      expect(second?.summary).toBe("7 divisions, 0 new journal entries, 0 new transactions");
+      expect(await db().select().from(schema.corpWalletJournal)).toHaveLength(4);
+      expect(await db().select().from(schema.corpWalletTransactions)).toHaveLength(1);
+      expect((await walletQ.getDivisions(100)).map((d) => d.balance)).toEqual([1e6, 2e6, 3e6, 4e6, 5e6, 6e6, 7e6]);
+      const state = await walletQ.getSyncState(100);
+      expect(state).toHaveLength(14);
+      expect(state.every((s) => s.gaps.length === 0 && s.lastSyncedAt)).toBe(true);
+      expect(state.find((s) => s.division === 1 && s.stream === "journal")?.historyStartsAt?.toISOString()).toBe(
+        new Date(iso(3)).toISOString(),
+      );
+
+      // Income and expenses leave the transfer out; it shows up as moved between divisions.
+      const flows = await walletQ.getDailyFlows(100, filters);
+      const sum = (k: "income" | "expenses" | "transfersIn" | "transfersOut") => flows.reduce((s, r) => s + r[k], 0);
+      expect([sum("income"), sum("expenses"), sum("transfersIn"), sum("transfersOut")]).toEqual([5e6, 1e6, 2e6, 2e6]);
+
+      const all = await walletQ.getJournal(100, filters, { limit: 50, offset: 0 });
+      expect(all.total).toBe(4);
+      expect(all.rows[0]).toMatchObject({ id: 3, category: "bounties", firstPartyName: "CONCORD", transfer: false });
+      const rent = await walletQ.getJournal(100, { ...filters, categories: ["structures"] }, { limit: 50, offset: 0 });
+      expect(rent.rows.map((r) => r.id)).toEqual([1]);
+      const transfers = await walletQ.getJournal(100, { ...filters, flow: "transfer" }, { limit: 50, offset: 0 });
+      expect(transfers.rows.map((r) => r.id).sort()).toEqual([10, 2]);
+      const expenses = await walletQ.getJournal(100, { ...filters, flow: "expense", divisions: [1] }, { limit: 50, offset: 0 });
+      expect(expenses.rows.map((r) => r.id)).toEqual([1]);
+    });
+
+    it("keeps history ESI no longer returns and records the hole when imports stopped too long", async () => {
+      await db().insert(schema.corpWalletJournal).values({
+        corporationId: 100, division: 1, id: 1, date: new Date(iso(60)), refType: "bounty_prizes", amount: 1e6, description: "",
+      });
+      await db().insert(schema.corpWalletSyncState).values({
+        corporationId: 100, division: 1, stream: "journal", historyStartsAt: new Date(iso(90)), lastSyncedAt: new Date(iso(60)),
+      });
+      const { esi } = corpEsi({ journal: { 1: [j(500, 10, 3e6), j(499, 20, 3e6)] } });
+      const result = await corporationWalletsJob.run(ctx(esi));
+      expect(result?.summary).toContain("history gap in division 1");
+      expect((await db().select().from(schema.corpWalletJournal)).map((r) => r.id).sort((a, b) => a - b)).toEqual([1, 499, 500]);
+      const state = (await walletQ.getSyncState(100)).find((s) => s.division === 1 && s.stream === "journal")!;
+      expect(state.historyStartsAt?.toISOString()).toBe(new Date(iso(90)).toISOString());
+      expect(state.gaps).toHaveLength(1);
+      expect(new Date(state.gaps[0].from).getTime()).toBeLessThan(new Date(state.gaps[0].to).getTime());
+
+      // The next hourly import overlaps: no new gap.
+      await corporationWalletsJob.run(ctx(esi));
+      const again = (await walletQ.getSyncState(100)).find((s) => s.division === 1 && s.stream === "journal")!;
+      expect(again.gaps).toHaveLength(1);
+    });
+
+    it("stores custom division names and clears renamed-back ones", async () => {
+      await corporationDivisionsJob.run(ctx(corpEsi({ divisions: [{ division: 2, name: "SRP" }, { division: 7, name: " " }] }).esi));
+      expect((await walletQ.getDivisions(100)).map((d) => d.name)).toEqual([null, "SRP", null, null, null, null, null]);
+      await corporationDivisionsJob.run(ctx(corpEsi({ divisions: [] }).esi));
+      expect((await walletQ.getDivisions(100)).every((d) => d.name === null)).toBe(true);
     });
   });
 

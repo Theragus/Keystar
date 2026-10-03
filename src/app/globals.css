@@ -52,6 +52,15 @@
   --color-series-gas: #c98500;
   --color-series-other: #5d6878;
 
+  /* Section colours (NavSection.tone): page headings, sidebar marker, header glow.
+     Text on space-950/900 and under the glow: crimson >= 4.5:1, amber and teal >= 6.9:1.
+     Colour-vision check (dark surface #101114): all pairs CVD ΔE >= 8.7, normal ΔE >= 20.
+     Crimson stays near the critical status red (normal ΔE 7.4), so these are for
+     navigation chrome only, never for data marks or status. */
+  --color-section-industry: #e0a43a;
+  --color-section-combat: #e0566b;
+  --color-section-trade: #2fbf9f;
+
   --radius-glass: 12px;
 }
 
@@ -62,6 +71,18 @@
   --hairline-strong: rgba(255, 255, 255, 0.13);
   --grid: #23262c;
   --axis: #34383f;
+  /* Current section colour; the accent unless the route's section has a tone. */
+  --section: var(--color-accent);
+}
+
+[data-section-tone="industry"] {
+  --section: var(--color-section-industry);
+}
+[data-section-tone="combat"] {
+  --section: var(--color-section-combat);
+}
+[data-section-tone="trade"] {
+  --section: var(--color-section-trade);
 }
 
 /* Only <html> gets a background: a body background would paint over the
@@ -239,6 +260,26 @@ select option:disabled {
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+/* Faint glow in the current section colour across the top of the content column. */
+@utility section-glow {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 420px;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+      900px 340px at 18% -60px,
+      color-mix(in srgb, var(--section) 13%, transparent),
+      transparent 70%
+    );
+  }
 }
 
 /* Dotted grid texture for hero/feature surfaces. */

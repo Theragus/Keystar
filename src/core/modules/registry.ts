@@ -2,6 +2,7 @@ import { fleetModule } from "@/modules/fleet/module";
 import { intelModule } from "@/modules/intel/module";
 import { killboardModule } from "@/modules/killboard/module";
 import { miningModule } from "@/modules/mining/module";
+import { socialModule } from "@/modules/social/module";
 import { tradeModule } from "@/modules/trade/module";
 import { walletModule } from "@/modules/wallet/module";
 import { wormholesModule } from "@/modules/wormholes/module";
@@ -22,6 +23,7 @@ export const MODULES: KeystarModule[] = [
   intelModule,
   tradeModule,
   walletModule,
+  socialModule,
   wormholesModule,
 ];
 
@@ -107,8 +109,10 @@ export function navSections(): NavSection[] {
   for (const m of MODULES) {
     for (const section of m.nav) {
       const existing = byId.get(section.id);
-      if (existing) existing.items.push(...section.items);
-      else byId.set(section.id, { ...section, items: [...section.items] });
+      if (existing) {
+        existing.items.push(...section.items);
+        existing.tone ??= section.tone;
+      } else byId.set(section.id, { ...section, items: [...section.items] });
     }
   }
   return [...byId.values()].sort((a, b) => a.order - b.order);

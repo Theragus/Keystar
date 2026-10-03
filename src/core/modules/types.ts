@@ -37,11 +37,19 @@ export interface NavItem {
   anyPermission?: string[];
 }
 
+/** Section colours, defined as `--color-section-*` in globals.css. */
+export type SectionTone = "industry" | "combat" | "trade";
+
 export interface NavSection {
   id: string;
   /** Sections with the same id are merged; the first module's label wins. */
   label: Msg;
   order: number;
+  /**
+   * Colours the page headings, sidebar marker and header glow on this section's
+   * pages. Omit to keep the accent. When sections merge, the first tone set wins.
+   */
+  tone?: SectionTone;
   items: NavItem[];
 }
 

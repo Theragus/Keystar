@@ -1,7 +1,19 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { audit } from "@/core/audit";
 import { encryptToken } from "@/core/crypto";
-import { characters, esiTokens, eveCorporations, getDb, sessions, users, walletTransactions, type Db } from "@/core/db";
+import {
+  characters,
+  esiTokens,
+  eveCorporations,
+  getDb,
+  mailLabels,
+  mailLists,
+  mailMessages,
+  sessions,
+  users,
+  walletTransactions,
+  type Db,
+} from "@/core/db";
 import { env } from "@/core/env";
 import { getEsi } from "@/core/esi";
 import { ensureNames, refreshCorporations } from "@/core/eve/resolver";
@@ -39,10 +51,13 @@ export async function detachTransferredCharacter(
   opts: { keepAccount: boolean },
 ): Promise<{ retired: boolean }> {
   await tx.delete(characters).where(eq(characters.characterId, characterId));
-  // Wallet history imported for the previous owner is theirs, not the new owner's.
+  // Wallet history and mail imported for the previous owner are theirs, not the new owner's.
   await tx
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, previousUserId)));
+  await tx.delete(mailMessages).where(and(eq(mailMessages.characterId, characterId), eq(mailMessages.userId, previousUserId)));
+  await tx.delete(mailLabels).where(and(eq(mailLabels.characterId, characterId), eq(mailLabels.userId, previousUserId)));
+  await tx.delete(mailLists).where(and(eq(mailLists.characterId, characterId), eq(mailLists.userId, previousUserId)));
   const [next] = await tx
     .select({ characterId: characters.characterId })
     .from(characters)
