@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Show a two-sided latest engagement report in Local Situation, with observed hulls, per-side loss counts and ISK lost, and red highlighting for destroyed hulls.
+
 - Stack observed group and last combat evidence beside Pilots, and add a compact History with us overview with totals and the latest three encounters.
 
 - Group Local Situation pilot tags by alliance with matching colored backgrounds and a numbered alliance legend; retain danger/cyno sorting within each group.

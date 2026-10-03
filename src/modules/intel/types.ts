@@ -338,4 +338,5 @@ export interface Engagement {
   iskLost: number;
   /** Most valuable killmail of the fight, for a link. */
   topKillmailId: number;
+  battle?: { ours: { shipTypeId: number; count: number; lost: number }[]; theirs: { shipTypeId: number; count: number; lost: number }[] };
 }

@@ -109,10 +109,20 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
             <ol className="space-y-3">
               {view.engagements.slice(0, 1).map(fight => <li key={fight.key} className="border-t border-surface-contrast/6 pt-2 text-xs">
                 <a href={zkillRelated(fight.systemId, fight.start)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">{view.names.systems.get(fight.systemId)?.name ?? e.unknown} · {f.relativeTime(fight.start)}</a>
-                <p className="mt-1 text-ink-2">{t.intel.engagements.killed(fight.ourKills, f.compact(fight.iskKilled))}</p>
-                <p className="text-ink-2">{t.intel.engagements.lost(fight.ourLosses, f.compact(fight.iskLost))}</p>
-                <p className="mt-1 text-ink-3">{fight.pilots.map(pilot => view.pilotNames.get(pilot.characterId) ?? e.unknown).join(" · ")}</p>
-                {fight.brought.length > 0 && <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-ink-2"><span className="text-ink-3">{t.intel.engagements.brought}</span>{fight.brought.slice(0, 5).map(ship => <span key={ship.shipTypeId} className="inline-flex items-center gap-1"><TypeIcon id={ship.shipTypeId} size={16} className="rounded" />{ship.count > 1 && `${f.integer(ship.count)}× `}{view.names.types.get(ship.shipTypeId)?.name ?? e.unknown}</span>)}</div>}
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {[{ key: "ours" as const, label: e.ourTeam, losses: fight.ourLosses, isk: fight.iskLost }, { key: "theirs" as const, label: e.theirTeam, losses: fight.ourKills, isk: fight.iskKilled }].map(team => <div key={team.key} className="min-w-0">
+                    <h4 className="font-semibold text-ink">{team.label}</h4>
+                    <p className="mt-1 text-ink-3">{t.intel.engagements.lost(team.losses, f.compact(team.isk))} ISK</p>
+                    <ul className="mt-2 space-y-1">
+                      {(fight.battle?.[team.key] ?? []).map(ship => <li key={ship.shipTypeId} className={`flex flex-wrap items-center gap-1 rounded-md px-1.5 py-1 ${ship.lost ? "bg-critical/10" : "bg-surface-contrast/5"}`}>
+                        <TypeIcon id={ship.shipTypeId} size={18} className="rounded" />
+                        <span className="text-ink-2">{f.integer(ship.count)}× {view.names.types.get(ship.shipTypeId)?.name ?? e.unknown}</span>
+                        {ship.lost > 0 && <span className="text-3xs text-critical-text">{e.shipsLost(ship.lost)}</span>}
+                      </li>)}
+                    </ul>
+                  </div>)}
+                </div>
+                <p className="mt-2 text-3xs text-ink-3">{e.battleCoverage}</p>
               </li>)}
             </ol>
             <p className="mt-2 text-3xs text-ink-3">{e.historyHint}</p>
