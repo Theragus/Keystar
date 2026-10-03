@@ -15,10 +15,11 @@ const busy = (p: ScanProgress["pending"]) => p.stats + p.newest + p.deeper > 0;
  * progress endpoint (faster while statistics are pending) and refreshes the
  * server-rendered page only when something changed.
  */
-const LoadingContext = createContext(false);
+const LoadingContext = createContext<{ busy: boolean; pilots: number[] }>({ busy: false, pilots: [] });
 
-export function IntelLoadingOverlay() {
-  const loading = useContext(LoadingContext);
+export function IntelLoadingOverlay({ pilotId }: { pilotId?: number }) {
+  const progress = useContext(LoadingContext);
+  const loading = pilotId === undefined ? progress.busy : progress.pilots.includes(pilotId);
   const { t } = useI18n();
   if (!loading) return null;
   return <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-space-900/60 backdrop-blur-[1px]" role="status">
@@ -106,5 +107,5 @@ export function ScanProgressPoller({ scanId, initial, children }: { scanId: stri
     };
   }, [scanId, stopped, router]);
 
-  return <LoadingContext.Provider value={busy(progress.pending)}>{children}</LoadingContext.Provider>;
+  return <LoadingContext.Provider value={{ busy: busy(progress.pending), pilots: progress.pendingPilots }}>{children}</LoadingContext.Provider>;
 }

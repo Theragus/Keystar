@@ -54,7 +54,6 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
     }>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="glass-inset relative rounded-lg p-3 sm:col-span-2">
-          <IntelLoadingOverlay />
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{t.intel.scan.pilotsTitle}</h3>
           <PilotTags legend={groupedPilots.map(({ id, name, color }) => ({ id, name, color }))} legendLabel={e.allianceLegend} items={sortedPilots.map(({ pilot, profile }) => {
             const score = pilot.scoreDetail as PilotScore | null;

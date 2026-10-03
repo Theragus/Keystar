@@ -93,7 +93,6 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
 
       <ScanProgressPoller scanId={scan.id} initial={progress}>
         <SituationPanel view={view} scannedAt={scan.createdAt} dscanAt={scan.dscanAt} />
-      </ScanProgressPoller>
 
       {summary.hostiles > 0 && (
         <Panel title={text.groupTitle} subtitle={text.nonFriendly(summary.hostiles)}>
@@ -179,6 +178,7 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
         <CopyField value={`${env().APP_URL}/intel/${scan.id}`} />
         <p className="mt-2 text-xs text-ink-3">{text.shareHint}</p>
       </Panel>
+      </ScanProgressPoller>
     </div>
   );
 }

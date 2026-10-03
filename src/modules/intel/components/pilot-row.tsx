@@ -8,6 +8,7 @@ import type { ScanPilot } from "../scans";
 import type { PilotHistory, PilotProfile, PilotScore, Standing } from "../types";
 import { PilotEvidence } from "./pilot-evidence";
 import { LatestKills } from "./latest-kills";
+import { IntelLoadingOverlay } from "./scan-progress";
 import { ScoreBadge } from "./score";
 import { StandingBadge } from "./standing-badge";
 
@@ -56,7 +57,8 @@ export async function PilotRow({
   const score = (pilot.scoreDetail as PilotScore | null) ?? null;
   const profile = (pilot.profile as PilotProfile | null) ?? null;
   return (
-    <article className="glass-inset min-w-0 rounded-xl">
+    <article className="glass-inset relative min-w-0 rounded-xl">
+      <IntelLoadingOverlay pilotId={pilot.characterId} />
       <div className="flex flex-col gap-3 p-3">
         <div className="flex w-full items-start gap-2">
           <a href={zkillCharacter(pilot.characterId)} target="_blank" rel="noopener noreferrer" aria-label={pilot.name} className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-accent"><Portrait id={pilot.characterId} size={40} /></a>

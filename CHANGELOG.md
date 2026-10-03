@@ -9,7 +9,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 ### Changed
 
 - Assist Threat Intel statistics collection from the scan creator’s browser at 100 ms intervals (up to four concurrent requests), with rate-limit backoff and worker fallback; space server zKillboard requests by 200 ms.
-- Replace Threat Intel loading prose with overlays on Local Situation evidence areas.
+- Replace Threat Intel loading prose with overlays on Local Situation evidence areas and individual pilot tags/cards.
 
 - Show a two-sided latest engagement report in Local Situation, with observed hulls, per-side loss counts and ISK lost, and red highlighting for destroyed hulls.
 

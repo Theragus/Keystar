@@ -1,5 +1,6 @@
 "use client";
 
+import { IntelLoadingOverlay } from "./scan-progress";
 import { useState, type ReactNode } from "react";
 
 export function PilotTags({ items, legend, legendLabel }: { legend: { id: string; name: string; color: string }[]; legendLabel: string; items: { id: number; affiliationId: string; color: string; title: string; content: ReactNode }[] }) {
@@ -7,8 +8,9 @@ export function PilotTags({ items, legend, legendLabel }: { legend: { id: string
   return <><div className="flex flex-wrap gap-1.5">
     {items.map(item => {
       const highlighted = item.affiliationId === selected;
-      return <button key={item.id} type="button" aria-pressed={highlighted} title={item.title} onClick={() => setSelected(selected === item.affiliationId ? null : item.affiliationId)} style={{ backgroundColor: `color-mix(in srgb, ${item.color} ${highlighted ? 32 : 14}%, transparent)`, borderColor: highlighted ? item.color : "transparent", opacity: selected && !highlighted ? 0.45 : 1 }} className="inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-[opacity,background-color] focus-visible:outline-2 focus-visible:outline-accent">
+      return <button key={item.id} type="button" aria-pressed={highlighted} title={item.title} onClick={() => setSelected(selected === item.affiliationId ? null : item.affiliationId)} style={{ backgroundColor: `color-mix(in srgb, ${item.color} ${highlighted ? 32 : 14}%, transparent)`, borderColor: highlighted ? item.color : "transparent", opacity: selected && !highlighted ? 0.45 : 1 }} className="relative inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-[opacity,background-color] focus-visible:outline-2 focus-visible:outline-accent">
         {item.content}
+        <IntelLoadingOverlay pilotId={item.id} />
       </button>;
     })}
   </div>

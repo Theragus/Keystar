@@ -290,6 +290,7 @@ export interface ScanProgress {
   /** Profiled pilots still waiting for statistics, their newest killmails, or older pages. */
   pending: { stats: number; newest: number; deeper: number };
   browserStats?: number[];
+  pendingPilots: number[];
 }
 
 export async function scanProgress(scan: ScanRow, db: Db = getDb()): Promise<ScanProgress> {
@@ -299,7 +300,12 @@ export async function scanProgress(scan: ScanRow, db: Db = getDb()): Promise<Sca
     WHERE sp.scan_id = ${scan.id} AND sp.profiled
     GROUP BY q.stage`);
   const by = new Map(rows.map((r) => [Number(r.stage), Number(r.n)]));
+  const pendingRows = await db.execute<{ character_id: number }>(sql`
+    SELECT q.character_id FROM intel_queue q
+    JOIN intel_scan_pilots sp ON sp.character_id = q.character_id
+    WHERE sp.scan_id = ${scan.id} AND sp.profiled`);
   return {
+    pendingPilots: pendingRows.map(r => Number(r.character_id)),
     status: scan.status,
     version: scan.updatedAt.toISOString(),
     pending: { stats: by.get(1) ?? 0, newest: by.get(2) ?? 0, deeper: (by.get(3) ?? 0) + (by.get(4) ?? 0) },
