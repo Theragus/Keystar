@@ -65,13 +65,14 @@ Remember to enable new scopes on the EVE developer application, and tell members
 shows "missing scopes" automatically).
 
 Sensitive scopes, or scopes that only some users need, can be **optional**:
-`{ scope, level: "character", optional: true, manageHref: "/your-page", label, reason }`. They are left out of the
+`{ scope, level: "character", optional: true, manageHref: "/your-page", managePermission, label, reason }`. They are left out of the
 member and corporation scope sets and never reported as missing. Let users enable them per character on the
 `manageHref` page (My Characters links there) with `reauthorizeHref(grantedScopes, { add: [scope] })`. Switching one
 off happens in Keystar, without an EVE login: an `ActionForm` around `setOptionalScope(characterId, scope, false)`
 (`src/app/(app)/characters/actions.ts`). The same action with `true` switches it back on while the token still holds
 it (`esi_tokens.disabled_scopes`); see "Optional scopes" in `docs/architecture.md`. `label` names the access in
-toasts and notes ("Fleet access"). Jobs that require the scope are only planned for characters that use it. See the
+toasts and notes ("Fleet access"); `managePermission` is the permission `setOptionalScope` requires (the one
+the `manageHref` page checks). Jobs that require the scope are only planned for characters that use it. See the
 wallet, mail and fleet modules for examples.
 
 ## 2. Schema — `src/modules/<name>/schema.ts`

@@ -55,7 +55,9 @@ export async function getMailboxes(userId: string): Promise<Mailbox[]> {
       characterId: num(r.character_id),
       name: String(r.name),
       granted: scopes.includes(MAIL_SCOPE),
-      switchedOff: Array.isArray(r.disabled_scopes) && (r.disabled_scopes as string[]).includes(MAIL_SCOPE),
+      // A revoked token can't be switched back on in Keystar; it needs the EVE login.
+      switchedOff:
+        r.token_status === "active" && Array.isArray(r.disabled_scopes) && (r.disabled_scopes as string[]).includes(MAIL_SCOPE),
       grantedScopes: scopes,
       tokenStatus: r.token_status === "active" || r.token_status === "invalid" ? r.token_status : null,
       lastSuccessAt: toDate(r.last_success_at),

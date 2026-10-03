@@ -68,9 +68,10 @@ export const characters: typeof en = {
     on: (what: string, name: string) => `${what} für ${name} eingeschaltet`,
     failed: (what: string, name: string) => `${what} für ${name} konnte nicht geändert werden`,
     errors: {
+      forbidden: "Du darfst diesen Zugriff nicht ändern.",
       notOwned: "Dieser Charakter ist nicht mehr mit deinem Konto verknüpft.",
       unknownScope: "Keystar kennt diesen Zugriff nicht.",
-      notHeld: "Der EVE-Token des Charakters enthält ihn nicht mehr. Schalte ihn über den EVE-Login wieder ein.",
+      notHeld: "Der EVE-Token des Charakters enthält ihn nicht mehr oder wurde widerrufen. Schalte ihn über den EVE-Login wieder ein.",
       active: "Beende zuerst das Flotten-Tracking für diesen Charakter.",
       unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
     },

@@ -3,7 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { audit } from "@/core/audit";
-import { getCurrentUser, type CurrentUser } from "@/core/auth/dal";
+import { assertPermission, getCurrentUser, type CurrentUser } from "@/core/auth/dal";
 import { disableOptionalScope, enableOptionalScope } from "@/core/auth/scope-switch";
 import { revokeRefreshToken } from "@/core/auth/sso";
 import { decryptToken } from "@/core/crypto";
@@ -18,6 +18,7 @@ import {
   users,
   walletTransactions,
 } from "@/core/db";
+import { optionalScopePermission, optionalScopes } from "@/core/modules/registry";
 import { triggerJobs } from "@/core/sync/scheduler";
 import { ok, refused, type ActionResult } from "@/lib/action-result";
 import { FLEET_SCOPE } from "@/modules/fleet/logic";
@@ -28,7 +29,7 @@ import { FLEET_SCOPE } from "@/modules/fleet/logic";
  */
 
 export type CharacterActionError = "notOwned" | "onlyCharacter";
-export type ScopeSwitchError = "notOwned" | "unknownScope" | "notHeld" | "active";
+export type ScopeSwitchError = "forbidden" | "notOwned" | "unknownScope" | "notHeld" | "active";
 
 async function ownedCharacter(characterId: number): Promise<CurrentUser | null> {
   const user = await getCurrentUser();
@@ -100,18 +101,25 @@ export async function setOptionalScope(
   scope: string,
   enabled: boolean,
 ): Promise<ActionResult<ScopeSwitchError>> {
+  if (!optionalScopes().includes(scope)) return refused("unknownScope");
+  // The module's own permission, as on the page that offers the switch.
+  const permission = optionalScopePermission(scope);
+  if (permission && !(await assertPermission(permission).catch(() => null))) return refused("forbidden");
   const user = await ownedCharacter(characterId);
   if (!user) return refused("notOwned");
-  const db = getDb();
-  if (!enabled && scope === FLEET_SCOPE) {
-    // Stop sharing first, so a fleet isn't left open without anyone reading it.
-    const [tracker] = await db
-      .select({ status: fleetTrackers.status })
-      .from(fleetTrackers)
-      .where(eq(fleetTrackers.characterId, characterId));
-    if (tracker?.status === "tracking" || tracker?.status === "not_boss") return refused("active");
-  }
-  const outcome = enabled ? await enableOptionalScope(characterId, scope, db) : await disableOptionalScope(characterId, scope, db);
+  const outcome = await getDb().transaction(async (tx) => {
+    // Lock the token row: startFleetTracking takes the same lock, so tracking can't start between the check and the switch.
+    await tx.select({ id: esiTokens.characterId }).from(esiTokens).where(eq(esiTokens.characterId, characterId)).for("update");
+    if (!enabled && scope === FLEET_SCOPE) {
+      // Stop sharing first, so a fleet isn't left open without anyone reading it.
+      const [tracker] = await tx
+        .select({ status: fleetTrackers.status })
+        .from(fleetTrackers)
+        .where(eq(fleetTrackers.characterId, characterId));
+      if (tracker?.status === "tracking" || tracker?.status === "not_boss") return "active" as const;
+    }
+    return enabled ? enableOptionalScope(characterId, scope, tx) : disableOptionalScope(characterId, scope, tx);
+  });
   if (outcome !== "ok") return refused(outcome);
   // The worker's planner (every 30 seconds) starts or stops the scope's background jobs.
   await audit({

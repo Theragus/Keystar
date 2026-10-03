@@ -71,9 +71,10 @@ export const characters = {
     on: (what: string, name: string) => `${what} switched on for ${name}`,
     failed: (what: string, name: string) => `Couldn't change ${what} for ${name}`,
     errors: {
+      forbidden: "You don't have permission to change this access.",
       notOwned: "That character isn't linked to your account any more.",
       unknownScope: "Keystar doesn't know this access.",
-      notHeld: "The character's EVE token no longer includes it. Turn it on again through the EVE login.",
+      notHeld: "The character's EVE token no longer includes it or was revoked. Turn it on again through the EVE login.",
       active: "Stop fleet tracking for this character first.",
       unknown: "Something went wrong. Reload the page and try again.",
     },

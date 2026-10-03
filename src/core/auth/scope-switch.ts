@@ -14,8 +14,11 @@ import { optionalScopes } from "@/core/modules/registry";
 
 export type ScopeSwitchResult = "ok" | "unknownScope" | "notHeld";
 
+/** The database or a transaction, so callers can lock rows around a switch. */
+type DbOrTx = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
+
 /** Stops Keystar using an opt-in scope the character's token holds. Idempotent. */
-export async function disableOptionalScope(characterId: number, scope: string, db: Db = getDb()): Promise<ScopeSwitchResult> {
+export async function disableOptionalScope(characterId: number, scope: string, db: DbOrTx = getDb()): Promise<ScopeSwitchResult> {
   if (!optionalScopes().includes(scope)) return "unknownScope";
   const updated = await db
     .update(esiTokens)
@@ -30,8 +33,11 @@ export async function disableOptionalScope(characterId: number, scope: string, d
   return (await isDisabled(db, characterId, scope)) ? "ok" : "notHeld";
 }
 
-/** Turns a switched-off opt-in scope back on; only works while the token still holds it. Idempotent. */
-export async function enableOptionalScope(characterId: number, scope: string, db: Db = getDb()): Promise<ScopeSwitchResult> {
+/**
+ * Turns a switched-off opt-in scope back on; only works while the token still
+ * holds it and is valid (a revoked token needs the EVE login). Idempotent.
+ */
+export async function enableOptionalScope(characterId: number, scope: string, db: DbOrTx = getDb()): Promise<ScopeSwitchResult> {
   if (!optionalScopes().includes(scope)) return "unknownScope";
   const updated = await db
     .update(esiTokens)
@@ -40,14 +46,23 @@ export async function enableOptionalScope(characterId: number, scope: string, db
       scopes: sql`array_append(array_remove(${esiTokens.scopes}, ${scope}::text), ${scope}::text)`,
       updatedAt: new Date(),
     })
-    .where(and(eq(esiTokens.characterId, characterId), sql`${scope}::text = ANY(${esiTokens.disabledScopes})`))
+    .where(
+      and(
+        eq(esiTokens.characterId, characterId),
+        eq(esiTokens.status, "active"),
+        sql`${scope}::text = ANY(${esiTokens.disabledScopes})`,
+      ),
+    )
     .returning({ characterId: esiTokens.characterId });
   if (updated.length) return "ok";
-  const [token] = await db.select({ scopes: esiTokens.scopes }).from(esiTokens).where(eq(esiTokens.characterId, characterId));
-  return token?.scopes.includes(scope) ? "ok" : "notHeld";
+  const [token] = await db
+    .select({ scopes: esiTokens.scopes, status: esiTokens.status })
+    .from(esiTokens)
+    .where(eq(esiTokens.characterId, characterId));
+  return token?.status === "active" && token.scopes.includes(scope) ? "ok" : "notHeld";
 }
 
-async function isDisabled(db: Db, characterId: number, scope: string): Promise<boolean> {
+async function isDisabled(db: DbOrTx, characterId: number, scope: string): Promise<boolean> {
   const [token] = await db
     .select({ disabledScopes: esiTokens.disabledScopes })
     .from(esiTokens)

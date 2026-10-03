@@ -59,6 +59,11 @@ export function applicationScopes(): string[] {
   return [...new Set(allScopeRequirements().map((s) => s.scope))].sort();
 }
 
+/** The permission needed to switch an opt-in scope on or off (`managePermission`), if it declares one. */
+export function optionalScopePermission(scope: string): string | undefined {
+  return allScopeRequirements().find((s) => s.optional && s.scope === scope)?.managePermission;
+}
+
 /** Short names of the opt-in scopes ("Fleet access"), falling back to the scope id. */
 export function optionalScopeLabels(t: Messages): Record<string, string> {
   return Object.fromEntries(allScopeRequirements().flatMap((s) => (s.optional ? [[s.scope, s.label?.(t) ?? s.scope]] : [])));

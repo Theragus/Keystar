@@ -25,17 +25,25 @@ async function ownedCharacter(characterId: number) {
 export async function startFleetTracking(characterId: number): Promise<ActionResult<FleetActionError>> {
   const user = await ownedCharacter(characterId);
   if ("ok" in user) return user;
-  const db = getDb();
-  const [token] = await db.select({ scopes: esiTokens.scopes }).from(esiTokens).where(eq(esiTokens.characterId, characterId));
-  if (!token?.scopes.includes(FLEET_SCOPE)) return refused("noScope");
-  const now = new Date();
-  await db
-    .insert(fleetTrackers)
-    .values({ characterId, userId: user.id, status: "tracking", startedAt: now, checkedAt: null })
-    .onConflictDoUpdate({
-      target: fleetTrackers.characterId,
-      set: { userId: user.id, status: "tracking", fleetId: null, startedAt: now, checkedAt: null },
-    });
+  const started = await getDb().transaction(async (tx) => {
+    // Same row lock as setOptionalScope, so fleet access can't be switched off between this check and the insert.
+    const [token] = await tx
+      .select({ scopes: esiTokens.scopes })
+      .from(esiTokens)
+      .where(eq(esiTokens.characterId, characterId))
+      .for("update");
+    if (!token?.scopes.includes(FLEET_SCOPE)) return false;
+    const now = new Date();
+    await tx
+      .insert(fleetTrackers)
+      .values({ characterId, userId: user.id, status: "tracking", startedAt: now, checkedAt: null })
+      .onConflictDoUpdate({
+        target: fleetTrackers.characterId,
+        set: { userId: user.id, status: "tracking", fleetId: null, startedAt: now, checkedAt: null },
+      });
+    return true;
+  });
+  if (!started) return refused("noScope");
   await triggerJobs({ jobKey: FLEET_JOB_KEY, ownerType: "character", ownerId: characterId });
   await audit({
     actorUserId: user.id,

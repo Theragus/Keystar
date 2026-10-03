@@ -504,7 +504,9 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
       characterId: num(r.character_id),
       name: String(r.name),
       granted: scopes.includes(WALLET_SCOPE),
-      switchedOff: Array.isArray(r.disabled_scopes) && (r.disabled_scopes as string[]).includes(WALLET_SCOPE),
+      // A revoked token can't be switched back on in Keystar; it needs the EVE login.
+      switchedOff:
+        r.token_status === "active" && Array.isArray(r.disabled_scopes) && (r.disabled_scopes as string[]).includes(WALLET_SCOPE),
       grantedScopes: scopes,
       tokenStatus: r.token_status === "active" || r.token_status === "invalid" ? r.token_status : null,
       autoInclude: Boolean(r.auto_include),

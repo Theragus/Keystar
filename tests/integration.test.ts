@@ -1644,6 +1644,12 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await fleetJobEnabled()).toBe(true);
       expect(await enableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
       expect(await enableOptionalScope(2, FLEET_SCOPE)).toBe("notHeld");
+
+      // A revoked token can't be switched back on in Keystar: that needs the EVE login.
+      expect(await disableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
+      await db().execute(sql`UPDATE esi_tokens SET status = 'invalid' WHERE character_id = 1`);
+      expect(await enableOptionalScope(1, FLEET_SCOPE)).toBe("notHeld");
+      expect(await token()).toMatchObject({ scopes: [MINING], disabledScopes: [FLEET_SCOPE] });
     });
   });
 

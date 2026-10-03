@@ -43,7 +43,12 @@ export default async function FleetPage() {
     canTrack ? getTrackers(user.characterIds) : [],
     canTrack && user.characterIds.length
       ? getDb()
-          .select({ characterId: esiTokens.characterId, scopes: esiTokens.scopes, disabledScopes: esiTokens.disabledScopes })
+          .select({
+            characterId: esiTokens.characterId,
+            scopes: esiTokens.scopes,
+            disabledScopes: esiTokens.disabledScopes,
+            status: esiTokens.status,
+          })
           .from(esiTokens)
           .where(inArray(esiTokens.characterId, user.characterIds))
       : [],
@@ -78,8 +83,9 @@ export default async function FleetPage() {
                 const tracker = trackerOf.get(c.characterId);
                 const granted = tokenOf.get(c.characterId)?.scopes ?? [];
                 const hasScope = granted.includes(FLEET_SCOPE);
-                // Switched off in Keystar but still in the token: switching back on needs no EVE login.
-                const switchedOff = tokenOf.get(c.characterId)?.disabledScopes.includes(FLEET_SCOPE) ?? false;
+                // Switched off in Keystar but still in a valid token: switching back on needs no EVE login.
+                const token = tokenOf.get(c.characterId);
+                const switchedOff = token?.status === "active" && token.disabledScopes.includes(FLEET_SCOPE);
                 const tt = tf.tracking.toast;
                 const active = tracker?.status === "tracking" || tracker?.status === "not_boss";
                 const status = !tracker ? "idle" : tracker.status === "tracking" && !tracker.checkedAt ? "waiting" : tracker.status;
