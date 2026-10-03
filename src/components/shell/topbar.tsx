@@ -1,12 +1,14 @@
-import { ChevronsUpDown, Radio } from "lucide-react";
+import { Radio } from "lucide-react";
+import Link from "next/link";
 import { CorpLogo } from "@/components/ui/eve-image";
 import { isRecent } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import type { Settings } from "@/core/settings";
 import { EveClock } from "./eve-clock";
 import { CurrentPageCrumb } from "./nav-link";
 
 /** Docked top bar: breadcrumb on the left (corp / page), live EVE status on the right. */
-export function TopBar({
+export async function TopBar({
   homeCorp,
   serverStatus,
   demo,
@@ -17,27 +19,28 @@ export function TopBar({
   demo: boolean;
   crumbs: { href: string; label: string; exact?: boolean }[];
 }) {
+  const { t } = await getI18n();
   const fresh = serverStatus && isRecent(serverStatus.checkedAt, 15 * 60_000);
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-white/[0.07] bg-space-950/70 px-6 backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-2.5 text-[0.84rem]">
         {homeCorp ? (
-          <span className="flex min-w-0 items-center gap-2">
+          // Breadcrumb root: back to the dashboard.
+          <Link href="/" className="group flex min-w-0 items-center gap-2 rounded-md">
             <CorpLogo id={homeCorp.corporationId} size={20} className="rounded" />
-            <span className="truncate font-medium text-ink">{homeCorp.name}</span>
-            <span className="rounded border border-white/10 px-1.5 py-px font-mono text-[0.62rem] text-ink-2">
+            <span className="truncate font-medium text-ink transition-colors group-hover:text-accent">{homeCorp.name}</span>
+            <span className="rounded border border-white/10 px-1.5 py-px font-mono text-3xs text-ink-2">
               {homeCorp.ticker}
             </span>
-            <ChevronsUpDown className="size-3.5 text-ink-3" aria-hidden />
-          </span>
+          </Link>
         ) : (
-          <span className="text-ink-3">No home corporation</span>
+          <span className="text-ink-3">{t.shell.noHomeCorp}</span>
         )}
         <span className="text-ink-3">/</span>
         <CurrentPageCrumb items={crumbs} />
         {demo && (
-          <span className="ml-1 rounded border border-gold/40 bg-gold/10 px-1.5 py-px font-mono text-[0.62rem] tracking-wider text-gold uppercase">
-            Demo
+          <span className="ml-1 rounded border border-gold/40 bg-gold/10 px-1.5 py-px font-mono text-3xs tracking-wider text-gold uppercase">
+            {t.shell.demo}
           </span>
         )}
       </div>
@@ -46,7 +49,7 @@ export function TopBar({
           <Radio className={fresh ? "size-3.5 text-good-text" : "size-3.5 text-ink-3"} aria-hidden />
           <span className="text-ink-3">Tranquility</span>
           <span className="font-medium tabular-nums text-ink">
-            {serverStatus ? `${serverStatus.players.toLocaleString("en-US")} online` : "unknown"}
+            {serverStatus ? t.shell.serverOnline(serverStatus.players) : t.common.unknown}
           </span>
         </div>
         <EveClock />

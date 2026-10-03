@@ -66,6 +66,8 @@ situation report, and an **appraisal** tool for Jita prices.
   settings, audit log, and a short first-start setup walkthrough.
 - **Background worker** respecting ESI's 2025+ rules: `X-Compatibility-Date`, ETag/Expires caching, pagination,
   error-limit and per-group rate-limit back-off.
+- **English and German**: the language follows the browser (English for everything else) and can be switched in the
+  sidebar footer; numbers and dates use the language's conventions (e.g. "9,87 Mio. ISK").
 - **Design**: dark, EVE-flavoured "liquid glass" UI with Supabase-style docked navigation, made for large screens.
 
 See [ROADMAP.md](ROADMAP.md) for what's next (live fleet, skills, assets, wallets, mining P&L).

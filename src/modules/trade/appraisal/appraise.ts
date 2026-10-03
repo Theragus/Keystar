@@ -10,10 +10,16 @@ import { totalsOf, type AppraisalItem, type AppraisalTotals, type UnparsedLine }
 /** Distinct types per appraisal (each unknown type costs ESI requests). */
 export const MAX_TYPES = 500;
 
-/** A paste the appraisal refuses rather than truncating; the message is shown to the user. */
+/**
+ * A paste with more distinct types than MAX_TYPES, refused rather than truncated.
+ * The UI words it from `types` and `max` in the viewer's language; the message is for logs.
+ */
 export class AppraisalLimitError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(
+    readonly types: number,
+    readonly max: number = MAX_TYPES,
+  ) {
+    super(`That paste contains ${types} different items; appraise at most ${max} at a time.`);
     this.name = "AppraisalLimitError";
   }
 }
@@ -99,9 +105,7 @@ export async function appraise(input: string): Promise<AppraisalResult> {
   const typeIdsByName = await resolveTypeNames(candidateNames(lines));
   const { items: resolved, unparsed } = assignTypes(lines, (name) => typeIdsByName.get(name));
   if (resolved.length > MAX_TYPES) {
-    throw new AppraisalLimitError(
-      `That paste contains ${resolved.length.toLocaleString("en-US")} different items; appraise at most ${MAX_TYPES} at a time.`,
-    );
+    throw new AppraisalLimitError(resolved.length);
   }
   const kept = resolved;
   const typeIds = kept.map((i) => i.typeId);

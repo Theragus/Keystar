@@ -31,7 +31,7 @@ export function KeystarWordmark({ className }: { className?: string }) {
       <KeystarMark />
       <div className="leading-none">
         <div className="font-display text-[1.35rem] font-bold tracking-[0.18em] text-ink">KEYSTAR</div>
-        <div className="mt-0.5 text-[0.62rem] tracking-[0.22em] text-ink-3 uppercase">Corporation Command</div>
+        <div className="mt-0.5 text-3xs tracking-[0.22em] text-ink-3 uppercase">Corporation Command</div>
       </div>
     </div>
   );

@@ -2,9 +2,11 @@
 
 import { Clock3 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/i18n/client";
 
 /** EVE time is UTC. */
 export function EveClock() {
+  const { t } = useI18n();
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     // Set on the client only (avoids a server/client hydration mismatch).
@@ -20,10 +22,10 @@ export function EveClock() {
   return (
     <div
       className="flex h-8 items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-xs"
-      title="EVE time (UTC)"
+      title={t.shell.eveTime}
     >
       <Clock3 className="size-3.5 text-accent" aria-hidden />
-      <span className="eve-label text-[0.6rem] text-ink-3">EVE</span>
+      <span className="eve-label text-2xs text-ink-3">EVE</span>
       <span className="font-mono font-medium tabular-nums text-ink">{time}</span>
     </div>
   );

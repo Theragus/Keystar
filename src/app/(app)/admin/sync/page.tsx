@@ -7,17 +7,22 @@ import { Glass } from "@/components/ui/glass";
 import { StatTile } from "@/components/ui/stat-tile";
 import { requirePermission } from "@/core/auth/dal";
 import { getDb, workerHeartbeats } from "@/core/db";
+import type { SyncOwnerType } from "@/core/db/schema/sync";
 import { getSetting } from "@/core/settings";
-import { isRecent, relativeTime } from "@/lib/format";
-import { JOB_LABELS } from "@/modules/jobs";
+import { getI18n } from "@/i18n/server";
+import { isRecent } from "@/lib/format";
+import { jobLabel } from "@/modules/jobs";
 import { setSyncPaused, triggerAllSyncJobs, triggerSyncJob } from "../actions";
 
-export const metadata = { title: "Sync status" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.admin.sync.metaTitle };
+}
 
 interface JobRow {
   id: number;
   job_key: string;
-  owner_type: string;
+  owner_type: SyncOwnerType;
   owner_id: string;
   owner_name: string | null;
   enabled: boolean;
@@ -33,6 +38,8 @@ interface JobRow {
 
 export default async function SyncPage() {
   const user = await requirePermission("sync.view");
+  const { t, f } = await getI18n();
+  const ts = t.admin.sync;
   const canTrigger = user.can("sync.trigger");
   const canPause = user.can("app.settings.manage");
   const db = getDb();
@@ -60,23 +67,23 @@ export default async function SyncPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Administration"
-        title="Sync Status"
-        description="Background ESI jobs run by the worker. Each job respects ESI cache timers and rate limits."
+        eyebrow={t.shell.navSections.admin}
+        title={t.shell.nav.sync}
+        description={ts.description}
         actions={
           <>
             {canPause && (
               <form action={setSyncPaused.bind(null, !paused)}>
                 <Button size="sm" type="submit">
                   {paused ? <Play className="size-4" aria-hidden /> : <Pause className="size-4" aria-hidden />}
-                  {paused ? "Resume syncing" : "Pause syncing"}
+                  {paused ? ts.resume : ts.pause}
                 </Button>
               </form>
             )}
             {canTrigger && (
               <form action={triggerAllSyncJobs}>
                 <Button size="sm" type="submit" variant="primary">
-                  <RefreshCw className="size-4" aria-hidden /> Run all now
+                  <RefreshCw className="size-4" aria-hidden /> {ts.runAll}
                 </Button>
               </form>
             )}
@@ -86,26 +93,36 @@ export default async function SyncPage() {
 
       <div className="grid gap-4 md:grid-cols-4">
         <StatTile
-          label="Worker"
-          value={onlineWorkers.length ? `${onlineWorkers.length} online` : "Offline"}
+          label={ts.stats.worker}
+          value={onlineWorkers.length ? ts.stats.online(onlineWorkers.length) : ts.stats.offline}
           delta={
             onlineWorkers.length ? (
-              <StatusBadge status={paused ? "warning" : "ok"} label={paused ? "Paused" : "Running"} />
+              <StatusBadge status={paused ? "warning" : "ok"} label={paused ? ts.stats.paused : ts.stats.running} />
             ) : (
-              <StatusBadge status="error" label="No heartbeat" />
+              <StatusBadge status="error" label={ts.stats.noHeartbeat} />
             )
           }
-          hint={workers[0] ? `last beat ${relativeTime(workers[0].lastBeatAt)}` : undefined}
-        />
-        <StatTile label="Active jobs" value={String(active.length)} hint={`${rows.length - active.length} disabled`} />
-        <StatTile
-          label="Failing"
-          value={String(errors)}
-          delta={errors ? <StatusBadge status="error" label="Needs attention" /> : <StatusBadge status="ok" label="All healthy" />}
+          hint={workers[0] ? ts.stats.lastBeat(f.relativeTime(workers[0].lastBeatAt)) : undefined}
         />
         <StatTile
-          label="Next run"
-          value={active.length ? relativeTime(active.map((r) => r.next_run_at).sort()[0]) : "—"}
+          label={ts.stats.activeJobs}
+          value={f.integer(active.length)}
+          hint={ts.stats.disabled(rows.length - active.length)}
+        />
+        <StatTile
+          label={ts.stats.failing}
+          value={f.integer(errors)}
+          delta={
+            errors ? (
+              <StatusBadge status="error" label={ts.stats.needsAttention} />
+            ) : (
+              <StatusBadge status="ok" label={ts.stats.allHealthy} />
+            )
+          }
+        />
+        <StatTile
+          label={ts.stats.nextRun}
+          value={active.length ? f.relativeTime(active.map((r) => r.next_run_at).sort()[0]) : "—"}
         />
       </div>
 
@@ -113,8 +130,10 @@ export default async function SyncPage() {
         <Glass className="flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm">
           <Server className="size-4 text-warning" aria-hidden />
           <span className="text-ink-2">
-            No worker heartbeat in the last 2 minutes. Start it with <code className="text-ink">docker compose up -d worker</code>{" "}
-            (or <code className="text-ink">pnpm dev:worker</code> in development).
+            {ts.noWorker(
+              <code className="text-ink">docker compose up -d worker</code>,
+              <code className="text-ink">pnpm dev:worker</code>,
+            )}
           </span>
         </Glass>
       )}
@@ -124,12 +143,12 @@ export default async function SyncPage() {
           <table className="ks-table">
             <thead>
               <tr>
-                <th>Job</th>
-                <th>Owner</th>
-                <th>Status</th>
-                <th>Result</th>
-                <th>Last success</th>
-                <th>Next run</th>
+                <th>{ts.columns.job}</th>
+                <th>{ts.columns.owner}</th>
+                <th>{ts.columns.status}</th>
+                <th>{ts.columns.result}</th>
+                <th>{ts.columns.lastSuccess}</th>
+                <th>{ts.columns.nextRun}</th>
                 {canTrigger && <th />}
               </tr>
             </thead>
@@ -137,20 +156,20 @@ export default async function SyncPage() {
               {rows.map((r) => (
                 <tr key={r.id} className={r.enabled ? undefined : "opacity-45"}>
                   <td>
-                    <div className="font-medium">{JOB_LABELS[r.job_key] ?? r.job_key}</div>
-                    <code className="text-[0.68rem] text-ink-3">{r.job_key}</code>
+                    <div className="font-medium">{jobLabel(r.job_key, t)}</div>
+                    <code className="text-2xs text-ink-3">{r.job_key}</code>
                   </td>
                   <td>
-                    <div>{r.owner_name ?? r.owner_id}</div>
-                    <div className="text-[0.7rem] text-ink-3 capitalize">{r.owner_type}</div>
+                    <div>{r.owner_type === "global" ? ts.ownerTypes.global : (r.owner_name ?? r.owner_id)}</div>
+                    <div className="text-2xs text-ink-3">{ts.ownerTypes[r.owner_type]}</div>
                   </td>
                   <td>
                     {!r.enabled ? (
-                      <StatusBadge status="pending" label="Disabled" />
+                      <StatusBadge status="pending" label={ts.disabled} />
                     ) : (
                       <StatusBadge
                         status={r.last_status === "skipped" ? "pending" : r.last_status}
-                        label={r.last_status === "error" && r.consecutive_failures > 1 ? `Error ×${r.consecutive_failures}` : undefined}
+                        label={r.last_status === "error" && r.consecutive_failures > 1 ? ts.errorCount(r.consecutive_failures) : undefined}
                       />
                     )}
                   </td>
@@ -162,15 +181,15 @@ export default async function SyncPage() {
                     ) : (
                       <span className="text-xs text-ink-2">{r.last_summary ?? "—"}</span>
                     )}
-                    {r.last_duration_ms !== null && <div className="text-[0.68rem] text-ink-3">{r.last_duration_ms} ms</div>}
+                    {r.last_duration_ms !== null && <div className="text-2xs text-ink-3">{f.integer(r.last_duration_ms)} ms</div>}
                   </td>
-                  <td className="whitespace-nowrap text-ink-2">{relativeTime(r.last_success_at)}</td>
-                  <td className="whitespace-nowrap text-ink-2">{r.enabled ? relativeTime(r.next_run_at) : "—"}</td>
+                  <td className="whitespace-nowrap text-ink-2">{f.relativeTime(r.last_success_at)}</td>
+                  <td className="whitespace-nowrap text-ink-2">{r.enabled ? f.relativeTime(r.next_run_at) : "—"}</td>
                   {canTrigger && (
                     <td className="text-right">
                       {r.enabled && (
                         <form action={triggerSyncJob.bind(null, r.id)}>
-                          <Button size="sm" variant="ghost" type="submit" title="Run now">
+                          <Button size="sm" variant="ghost" type="submit" title={ts.runNow}>
                             <RefreshCw className="size-3.5" aria-hidden />
                           </Button>
                         </form>

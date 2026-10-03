@@ -2,6 +2,7 @@
 
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
+import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { Popover } from "./popover";
 
@@ -32,6 +33,7 @@ export function MultiSelect({
   onApply: (values: (number | string)[]) => void;
   icon?: ReactNode;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<Set<number | string>>(new Set(selected));
@@ -74,8 +76,8 @@ export function MultiSelect({
     selected.length === 0
       ? allLabel
       : selected.length === 1
-        ? (options.find((o) => o.value === selected[0])?.label ?? "1 selected")
-        : `${selected.length} selected`;
+        ? (options.find((o) => o.value === selected[0])?.label ?? t.common.multiSelect.selected(1))
+        : t.common.multiSelect.selected(selected.length);
 
   return (
     <Popover
@@ -106,23 +108,23 @@ export function MultiSelect({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Search ${label.toLowerCase()}…`}
+            placeholder={t.common.multiSelect.search(label)}
             className="h-8 w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-3"
           />
         </div>
-        <div className="mt-2 flex items-center justify-between px-1 text-[0.7rem]">
+        <div className="mt-2 flex items-center justify-between px-1 text-2xs">
           <button type="button" className="text-ink-3 hover:text-ink" onClick={() => setDraft(new Set(filtered.map((o) => o.value)))}>
-            Select {query ? "matches" : "all"}
+            {query ? t.common.multiSelect.selectMatches : t.common.multiSelect.selectAll}
           </button>
           <button type="button" className="inline-flex items-center gap-1 text-ink-3 hover:text-ink" onClick={() => setDraft(new Set())}>
-            <X className="size-3" aria-hidden /> Clear
+            <X className="size-3" aria-hidden /> {t.common.multiSelect.clear}
           </button>
         </div>
         <div className="mt-1 max-h-[320px] overflow-y-auto pr-1">
-          {groups.length === 0 && <div className="px-2 py-6 text-center text-xs text-ink-3">No matches</div>}
+          {groups.length === 0 && <div className="px-2 py-6 text-center text-xs text-ink-3">{t.common.multiSelect.noMatches}</div>}
           {groups.map(([group, items]) => (
             <div key={group} className="py-1">
-              {group && <div className="eve-label px-2 pt-2 pb-1 text-[0.62rem] text-ink-3">{group}</div>}
+              {group && <div className="eve-label px-2 pt-2 pb-1 text-2xs text-ink-3">{group}</div>}
               {items.map((o) => {
                 const checked = draft.has(o.value);
                 return (
@@ -144,7 +146,7 @@ export function MultiSelect({
                     </span>
                     {o.leading}
                     <span className="min-w-0 flex-1 truncate text-ink">{o.label}</span>
-                    {o.hint && <span className="shrink-0 text-[0.7rem] text-ink-3">{o.hint}</span>}
+                    {o.hint && <span className="shrink-0 text-2xs text-ink-3">{o.hint}</span>}
                   </button>
                 );
               })}
@@ -153,7 +155,7 @@ export function MultiSelect({
         </div>
         <div className="mt-2 flex justify-end border-t border-white/8 pt-2.5">
           <button type="button" onClick={close} className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-space-950">
-            Apply{draft.size ? ` (${draft.size})` : ""}
+            {t.common.multiSelect.apply(draft.size)}
           </button>
         </div>
       </div>

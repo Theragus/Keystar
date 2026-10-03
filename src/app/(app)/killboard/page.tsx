@@ -9,8 +9,10 @@ import { requirePermission } from "@/core/auth/dal";
 import { getCorporation } from "@/core/corp";
 import { env } from "@/core/env";
 import { getSettings } from "@/core/settings";
+import { getI18n } from "@/i18n/server";
+import type { Messages } from "@/i18n/messages";
 import { DATE_PRESETS, isoDate } from "@/lib/dates";
-import { compact, integer, percent, relativeTime } from "@/lib/format";
+import type { Formatter } from "@/lib/format";
 import { KILL_COLOR, LOSS_COLOR } from "@/modules/killboard/colors";
 import { WeekDelta } from "@/components/ui/deltas";
 import { IskDonut } from "@/modules/killboard/components/isk-donut";
@@ -36,52 +38,61 @@ import {
 import { getLatestReport } from "@/modules/killboard/report/generate";
 import { rewriteSituationReport } from "./actions";
 
-export const metadata = { title: "Killboard" };
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t.killboard.page.metaTitle };
+}
 
-const EFFECTIVE_COLUMNS: Column[] = [
-  { key: "kills", label: "K/D", format: "ratio", ratioKey: "losses", title: "Kills / losses" },
-  { key: "destroyed", label: "Destroyed", format: "isk" },
-  { key: "lost", label: "Lost", format: "isk" },
-  { key: "efficiency", label: "Eff", format: "pct", title: "ISK efficiency" },
-  { key: "net", label: "Net ISK", format: "signedIsk" },
-  { key: "killsDelta", label: "Δ7d", format: "delta", title: "Kills, last 7 days vs the 7 days before" },
-];
-const USED_COLUMNS: Column[] = [
-  { key: "kills", label: "Kills", format: "int" },
-  { key: "destroyed", label: "Destroyed", format: "isk" },
-  { key: "killsDelta", label: "Δ7d", format: "delta", title: "Kills, last 7 days vs the 7 days before" },
-];
-const LOST_COLUMNS: Column[] = [
-  { key: "losses", label: "Losses", format: "int" },
-  { key: "lost", label: "ISK lost", format: "isk" },
-  { key: "lossesDelta", label: "Δ7d", format: "deltaInverse", title: "Losses, last 7 days vs the 7 days before" },
-];
-const PILOT_COLUMNS: Column[] = [
-  { key: "kills", label: "Kills", format: "int" },
-  { key: "losses", label: "Losses", format: "int" },
-  { key: "finalBlows", label: "Final blows", format: "int" },
-  { key: "solo", label: "Solo", format: "int" },
-  { key: "destroyed", label: "Destroyed", format: "isk" },
-  { key: "lost", label: "Lost", format: "isk" },
-  { key: "efficiency", label: "Eff", format: "pct", title: "ISK efficiency" },
-  { key: "net", label: "Net ISK", format: "signedIsk" },
-  { key: "killsDelta", label: "Δ kills 7d", format: "delta" },
-  { key: "lossesDelta", label: "Δ losses 7d", format: "deltaInverse" },
-];
+/** Sortable-table columns, labelled in the viewer's language. */
+function tableColumns(t: Messages) {
+  const { terms, columns: c } = t.killboard;
+  const effective: Column[] = [
+    { key: "kills", label: c.kd, format: "ratio", ratioKey: "losses", title: c.kdTitle },
+    { key: "destroyed", label: terms.destroyed, format: "isk" },
+    { key: "lost", label: terms.lost, format: "isk" },
+    { key: "efficiency", label: c.eff, format: "pct", title: terms.iskEfficiency },
+    { key: "net", label: terms.netIsk, format: "signedIsk" },
+    { key: "killsDelta", label: c.delta7d, format: "delta", title: c.killsDeltaTitle },
+  ];
+  const used: Column[] = [
+    { key: "kills", label: terms.kills, format: "int" },
+    { key: "destroyed", label: terms.destroyed, format: "isk" },
+    { key: "killsDelta", label: c.delta7d, format: "delta", title: c.killsDeltaTitle },
+  ];
+  const lost: Column[] = [
+    { key: "losses", label: terms.losses, format: "int" },
+    { key: "lost", label: c.iskLost, format: "isk" },
+    { key: "lossesDelta", label: c.delta7d, format: "deltaInverse", title: c.lossesDeltaTitle },
+  ];
+  const pilots: Column[] = [
+    { key: "kills", label: terms.kills, format: "int" },
+    { key: "losses", label: terms.losses, format: "int" },
+    { key: "finalBlows", label: terms.finalBlows, format: "int" },
+    { key: "solo", label: terms.solo, format: "int" },
+    { key: "destroyed", label: terms.destroyed, format: "isk" },
+    { key: "lost", label: terms.lost, format: "isk" },
+    { key: "efficiency", label: c.eff, format: "pct", title: terms.iskEfficiency },
+    { key: "net", label: terms.netIsk, format: "signedIsk" },
+    { key: "killsDelta", label: c.killsDelta, format: "delta" },
+    { key: "lossesDelta", label: c.lossesDelta, format: "deltaInverse" },
+  ];
+  return { effective, used, lost, pilots };
+}
 
 export default async function KillboardPage({ searchParams }: PageProps<"/killboard">) {
   const user = await requirePermission(KILLBOARD_PERMISSIONS.view);
+  const { t, f } = await getI18n();
+  const tk = t.killboard;
   const settings = await getSettings();
   const corpId = settings["corp.homeCorporationId"];
 
   if (!corpId) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Combat" title="Killboard" />
+        <PageHeader eyebrow={tk.module.navSection} title={tk.module.nav.killboard} />
         <Glass>
-          <EmptyState icon={Swords} title="No home corporation set">
-            The killboard tracks the home corporation&apos;s kills and losses on zKillboard. An admin can set it under Admin →
-            Settings.
+          <EmptyState icon={Swords} title={tk.page.noCorp.title}>
+            {tk.page.noCorp.body}
           </EmptyState>
         </Glass>
       </div>
@@ -106,17 +117,19 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
   ]);
 
   const canManage = user.can(KILLBOARD_PERMISSIONS.manage);
-  const corpName = corp ? `${corp.name} [${corp.ticker}]` : `Corporation ${corpId}`;
-  const weekLabel = rangeLabel(w.week);
-  const periodLabel = rangeLabel(w.period);
+  const corpName = corp ? `${corp.name} [${corp.ticker}]` : tk.fallback.corporation(corpId);
+  const weekLabel = rangeLabel(w.week, f.locale);
+  const periodLabel = rangeLabel(w.period, f.locale);
   const eff = efficiency(totals.iskDestroyed, totals.iskLost);
   const weekEff = efficiency(week.iskDestroyed, week.iskLost);
   const prevEff = efficiency(prevWeek.iskDestroyed, prevWeek.iskLost);
-  const presets = DATE_PRESETS.map((p) => ({ id: p.id, label: p.label, ...p.range(today) }));
+  const presets = DATE_PRESETS.map((p) => ({ id: p.id, label: t.common.datePresets[p.id], ...p.range(today) }));
+  const columns = tableColumns(t);
+  const weekDelta = { suffix: tk.stats.vsPrevWeek, emptyText: tk.stats.noPrevWeek };
 
   const shipRow = (s: (typeof ships)[number]): EntityRow => ({
     id: s.typeId,
-    name: s.name ?? `Type ${s.typeId}`,
+    name: s.name ?? tk.fallback.type(s.typeId),
     image: "type",
     href: zkillShip(s.typeId),
     values: {
@@ -132,7 +145,7 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
   });
   const pilotRows: EntityRow[] = pilots.map((p) => ({
     id: p.characterId,
-    name: p.name ?? `Character ${p.characterId}`,
+    name: p.name ?? tk.fallback.character(p.characterId),
     image: "portrait",
     href: zkillCharacter(p.characterId),
     values: {
@@ -151,12 +164,12 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
 
   const header = (
     <PageHeader
-      eyebrow="Combat"
-      title="Killboard"
+      eyebrow={tk.module.navSection}
+      title={tk.module.nav.killboard}
       description={
         <span className="inline-flex items-center gap-2">
           <CorpLogo id={corpId} size={20} />
-          <span>{corpName} · combat performance from zKillboard</span>
+          <span>{tk.page.description(corpName)}</span>
         </span>
       }
       actions={
@@ -180,11 +193,9 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
       <div className="space-y-6">
         {header}
         <Glass>
-          <EmptyState icon={Swords} title={status.lastSyncAt ? "No kills or losses yet" : "Importing from zKillboard"}>
-            {status.lastSyncAt
-              ? `zKillboard has no killmails for ${corpName} in the last 90 days. New ones appear here within the hour.`
-              : `The worker imports the last 90 days of ${corpName}'s killmails from zKillboard, then checks hourly.`}
-            {status.lastError && <span className="mt-2 block text-critical-text">Last error: {status.lastError}</span>}
+          <EmptyState icon={Swords} title={status.lastSyncAt ? tk.page.empty.title : tk.page.importing.title}>
+            {status.lastSyncAt ? tk.page.empty.body(corpName) : tk.page.importing.body(corpName)}
+            {status.lastError && <span className="mt-2 block text-critical-text">{tk.page.lastError(status.lastError)}</span>}
           </EmptyState>
         </Glass>
       </div>
@@ -199,47 +210,55 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
         <PendingFrame className="space-y-6">
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
             <StatTile
-              label="Total kills"
-              value={integer(totals.kills)}
-              delta={<WeekDelta change={week.kills - prevWeek.kills} />}
-              hint={`7d: ${integer(week.kills)} · ${weekLabel}`}
+              label={tk.stats.totalKills}
+              value={f.integer(totals.kills)}
+              delta={<WeekDelta change={week.kills - prevWeek.kills} format={f.integer} {...weekDelta} />}
+              hint={tk.stats.weekInRange(f.integer(week.kills), weekLabel)}
             />
             <StatTile
-              label="Total losses"
-              value={integer(totals.losses)}
-              delta={<WeekDelta change={week.losses - prevWeek.losses} upIsGood={false} />}
-              hint={`7d: ${integer(week.losses)} · ${weekLabel}`}
+              label={tk.stats.totalLosses}
+              value={f.integer(totals.losses)}
+              delta={<WeekDelta change={week.losses - prevWeek.losses} upIsGood={false} format={f.integer} {...weekDelta} />}
+              hint={tk.stats.weekInRange(f.integer(week.losses), weekLabel)}
             />
             <StatTile
-              label="ISK destroyed"
-              value={compact(totals.iskDestroyed)}
+              label={tk.terms.iskDestroyed}
+              value={f.compact(totals.iskDestroyed)}
               unit="ISK"
-              delta={<WeekDelta change={week.iskDestroyed - prevWeek.iskDestroyed} format={compact} />}
-              hint={`7d: ${compact(week.iskDestroyed)}`}
+              delta={<WeekDelta change={week.iskDestroyed - prevWeek.iskDestroyed} format={(n) => f.compact(n)} {...weekDelta} />}
+              hint={tk.stats.week(f.compact(week.iskDestroyed))}
             />
             <StatTile
-              label="ISK lost"
-              value={compact(totals.iskLost)}
+              label={tk.terms.iskLost}
+              value={f.compact(totals.iskLost)}
               unit="ISK"
-              delta={<WeekDelta change={week.iskLost - prevWeek.iskLost} upIsGood={false} format={compact} />}
-              hint={`7d: ${compact(week.iskLost)}`}
+              delta={
+                <WeekDelta
+                  change={week.iskLost - prevWeek.iskLost}
+                  upIsGood={false}
+                  format={(n) => f.compact(n)}
+                  {...weekDelta}
+                />
+              }
+              hint={tk.stats.week(f.compact(week.iskLost))}
             />
             <StatTile
-              label="ISK efficiency"
-              value={eff === null ? "—" : percent(eff, 1)}
+              label={tk.terms.iskEfficiency}
+              value={eff === null ? "—" : f.percent(eff, 1)}
               className="col-span-2 lg:col-span-1"
               delta={
                 <WeekDelta
                   change={weekEff !== null && prevEff !== null ? (weekEff - prevEff) * 100 : null}
-                  format={(n) => `${n.toFixed(1)} pts`}
+                  format={tk.stats.points}
+                  {...weekDelta}
                 />
               }
-              hint={weekEff === null ? undefined : `7d: ${percent(weekEff, 1)}`}
+              hint={weekEff === null ? undefined : tk.stats.week(f.percent(weekEff, 1))}
             />
           </div>
 
           {pilots.some((p) => p.kills > 0) && (
-            <Panel title="Top pilots" subtitle={`Most kills · ${periodLabel}`}>
+            <Panel title={tk.topPilots.title} subtitle={tk.topPilots.mostKills(periodLabel)}>
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
                 <MvpCard pilot={pilots[0]} period={periodLabel} />
                 <RunnersUp pilots={pilots.slice(1, 5).filter((p) => p.kills > 0)} />
@@ -251,10 +270,17 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
           )}
 
           <Panel
-            title="Pilot efficiency"
-            subtitle={`${pilotRows.length} pilots flew for ${corp?.ticker ? `[${corp.ticker}]` : "the corporation"} in this period`}
+            id="pilot-efficiency"
+            title={tk.pilotTable.title}
+            subtitle={tk.pilotTable.subtitle(pilotRows.length, corp?.ticker || null)}
           >
-            <SortableTable entityLabel="Pilot" columns={PILOT_COLUMNS} rows={pilotRows} defaultSort="kills" initialRows={10} />
+            <SortableTable
+              entityLabel={tk.pilotTable.entity}
+              columns={columns.pilots}
+              rows={pilotRows}
+              defaultSort="kills"
+              initialRows={10}
+            />
           </Panel>
 
           <SituationReportPanel
@@ -271,61 +297,69 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
           />
 
           <div className="grid gap-4 xl:grid-cols-3">
-            <Panel title="Top systems by kills" subtitle={`7d: ${week.kills} kills (${signed(week.kills - prevWeek.kills)} vs prev 7d)`}>
+            <Panel
+              title={tk.systems.title.kills}
+              subtitle={tk.systems.subtitle("kills", week.kills, signed(week.kills - prevWeek.kills, f))}
+            >
               <SystemBars rows={killSystems} color={KILL_COLOR} unit="kills" upIsGood />
             </Panel>
-            <Panel title="Top systems by losses" subtitle={`7d: ${week.losses} losses (${signed(week.losses - prevWeek.losses)} vs prev 7d)`}>
+            <Panel
+              title={tk.systems.title.losses}
+              subtitle={tk.systems.subtitle("losses", week.losses, signed(week.losses - prevWeek.losses, f))}
+            >
               <SystemBars rows={lossSystems} color={LOSS_COLOR} unit="losses" upIsGood={false} />
             </Panel>
-            <Panel title="ISK breakdown">
+            <Panel id="isk" title={tk.breakdown.title}>
               <div className="grid items-center gap-5 sm:grid-cols-[13rem_1fr] xl:grid-cols-1 2xl:grid-cols-[11rem_1fr]">
                 <IskDonut destroyed={totals.iskDestroyed} lost={totals.iskLost} />
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm 2xl:grid-cols-1 2xl:gap-y-2">
-                  <Figure label="Destroyed" value={`${compact(totals.iskDestroyed)}`} swatch={KILL_COLOR} />
-                  <Figure label="Lost" value={`${compact(totals.iskLost)}`} swatch={LOSS_COLOR} />
+                  <Figure label={tk.terms.destroyed} value={f.compact(totals.iskDestroyed)} swatch={KILL_COLOR} />
+                  <Figure label={tk.terms.lost} value={f.compact(totals.iskLost)} swatch={LOSS_COLOR} />
                   <Figure
-                    label="Net ISK"
-                    value={`${totals.iskDestroyed >= totals.iskLost ? "+" : "−"}${compact(Math.abs(totals.iskDestroyed - totals.iskLost))}`}
+                    label={tk.terms.netIsk}
+                    value={`${totals.iskDestroyed >= totals.iskLost ? "+" : "−"}${f.compact(Math.abs(totals.iskDestroyed - totals.iskLost))}`}
                     tone={totals.iskDestroyed >= totals.iskLost ? "good" : "bad"}
                   />
                   <Figure
-                    label="K/D ratio"
-                    value={totals.losses ? (totals.kills / totals.losses).toFixed(2) : "—"}
-                    detail={`${integer(totals.kills)} / ${integer(totals.losses)}`}
+                    label={tk.breakdown.kdRatio}
+                    value={totals.losses ? f.number(totals.kills / totals.losses, 2) : "—"}
+                    detail={`${f.integer(totals.kills)} / ${f.integer(totals.losses)}`}
                   />
-                  <Figure label="Avg ISK / kill" value={totals.kills ? compact(totals.iskDestroyed / totals.kills) : "—"} />
-                  <Figure label="Avg ISK / loss" value={totals.losses ? compact(totals.iskLost / totals.losses) : "—"} />
+                  <Figure label={tk.breakdown.avgPerKill} value={totals.kills ? f.compact(totals.iskDestroyed / totals.kills) : "—"} />
+                  <Figure label={tk.breakdown.avgPerLoss} value={totals.losses ? f.compact(totals.iskLost / totals.losses) : "—"} />
                 </dl>
               </div>
             </Panel>
           </div>
 
           <div className="grid items-start gap-4 xl:grid-cols-12">
-            <Panel title="Recent activity" subtitle="10 latest kills and losses · opens on zKillboard" className="xl:col-span-5">
+            <Panel title={tk.recent.title} subtitle={tk.recent.subtitle} className="xl:col-span-5">
               <RecentActivity rows={recent} />
             </Panel>
-            <Panel
-              title="Most effective ships"
-              subtitle="By net ISK: value destroyed while flying the hull minus value lost in it"
-              className="xl:col-span-7"
-            >
-              <SortableTable entityLabel="Ship" columns={EFFECTIVE_COLUMNS} rows={ships.map(shipRow)} defaultSort="net" initialRows={10} />
+            <Panel title={tk.ships.effectiveTitle} subtitle={tk.ships.effectiveSubtitle} className="xl:col-span-7">
+              <SortableTable
+                entityLabel={tk.ships.entity}
+                columns={columns.effective}
+                rows={ships.map(shipRow)}
+                defaultSort="net"
+                initialRows={10}
+              />
             </Panel>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <Panel title="Most used ships" subtitle="Hulls flown on kills">
+            <Panel title={tk.ships.usedTitle} subtitle={tk.ships.usedSubtitle}>
               <SortableTable
-                entityLabel="Ship"
-                columns={USED_COLUMNS}
+                entityLabel={tk.ships.entity}
+                columns={columns.used}
                 rows={ships.filter((s) => s.kills > 0).map(shipRow)}
                 defaultSort="kills"
               />
             </Panel>
-            <Panel title="Most lost ships" subtitle="Hulls lost">
+            <Panel title={tk.ships.lostTitle} subtitle={tk.ships.lostSubtitle}>
               <SortableTable
-                entityLabel="Ship"
-                columns={LOST_COLUMNS}
+                entityLabel={tk.ships.entity}
+                columns={columns.lost}
                 rows={ships.filter((s) => s.losses > 0).map(shipRow)}
                 defaultSort="losses"
               />
@@ -334,19 +368,21 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
         </PendingFrame>
 
         <p className="text-xs text-ink-3">
-          Data: zKillboard{status.lastSyncAt ? `, synced ${relativeTime(status.lastSyncAt)}` : ""}
-          {status.since ? ` · history since ${status.since.slice(0, 10)}` : ""}. A kill counts when a corporation member is on the
-          killmail; ISK values are zKillboard estimates and count in full for every pilot and hull involved. Week-over-week
-          figures compare {weekLabel} with {rangeLabel(w.prevWeek)}.
-          {status.lastError && <span className="text-critical-text"> Last sync error: {status.lastError}</span>}
+          {tk.page.footer({
+            synced: status.lastSyncAt ? f.relativeTime(status.lastSyncAt) : null,
+            since: status.since ? status.since.slice(0, 10) : null,
+            week: weekLabel,
+            prevWeek: rangeLabel(w.prevWeek, f.locale),
+          })}
+          {status.lastError && <span className="text-critical-text"> {tk.page.lastSyncError(status.lastError)}</span>}
         </p>
       </div>
     </PendingProvider>
   );
 }
 
-function signed(n: number): string {
-  return n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "±0";
+function signed(n: number, f: Formatter): string {
+  return n > 0 ? `+${f.integer(n)}` : n < 0 ? `−${f.integer(Math.abs(n))}` : "±0";
 }
 
 function Figure({
@@ -364,7 +400,7 @@ function Figure({
 }) {
   return (
     <div className="2xl:flex 2xl:items-baseline 2xl:justify-between 2xl:gap-3">
-      <dt className="eve-label flex items-center gap-1.5 text-[0.62rem] whitespace-nowrap text-ink-3">
+      <dt className="eve-label flex items-center gap-1.5 text-2xs whitespace-nowrap text-ink-3">
         {swatch && <span className="inline-block size-2 rounded-sm" style={{ background: swatch }} aria-hidden />}
         {label}
       </dt>

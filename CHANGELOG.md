@@ -1,9 +1,20 @@
 # Changelog
 
 All notable changes to Keystar. Versions follow [Semantic Versioning](https://semver.org/); while Keystar is below
-1.0, new features bump the patch version. Releasing is described in [docs/releasing.md](docs/releasing.md).
+1.0, releases with new features bump the minor version (0.1.5 → 0.2.0) and releases with only fixes bump the patch
+version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/releasing.md).
 
-## [0.1.2] - 2026-10-03
+## [0.2.0] - 2026-10-03
+
+### Upgrading
+
+- Threat intel reads blues and reds from the corporation's and alliance's contacts. Add the scopes
+  `esi-corporations.read_contacts.v1` and `esi-alliances.read_contacts.v1` to your EVE application
+  (developers.eveonline.com), then re-link a character with corporation access on My Characters. Without them,
+  only your own corporation and alliance count as friendly.
+- Optional: `INTEL_MODEL` picks the Claude model for intel briefings, dossiers and d-scan reads (default
+  `claude-sonnet-5-5`). Claude is only used when `ANTHROPIC_API_KEY` is set.
+- The update adds database tables; they are created on start like every migration.
 
 ### Added
 
@@ -21,8 +32,6 @@ All notable changes to Keystar. Versions follow [Semantic Versioning](https://se
     set (model `INTEL_MODEL`, default `claude-sonnet-5-5`; capped at 20 calls per user and 120 per instance an
     hour), otherwise from templates;
   - shareable scan links and a corp-wide **recently seen hostiles** feed.
-- Optional corporation scopes `esi-corporations.read_contacts.v1` and `esi-alliances.read_contacts.v1` for blues and
-  reds in threat intel. Add them to the EVE application and re-link a character with corporation access.
 - New permissions **Use threat intel**, **Use Claude for intel** (both members by default) and **Manage threat
   intel** (directors).
 
@@ -31,6 +40,64 @@ All notable changes to Keystar. Versions follow [Semantic Versioning](https://se
 - The ESI client no longer pauses for a second after responses without error-limit headers.
 - A sync job triggered while it is running now runs again right after instead of waiting for its next interval.
 - Looking up ship or module types no longer fetches every type of their group (only ores, ice and gas need that).
+
+## [0.1.5] - 2026-10-03
+
+### Changed
+
+- Cards that looked clickable now are, or are gone. On the dashboard, the KPI tiles open the page behind the
+  number: the killboard tiles open the killboard on the same 30 days (ISK destroyed jumps to the ISK breakdown, ISK
+  efficiency to pilot efficiency), and the mining tile opens Mining. The info row links to the corporation on
+  zKillboard, Member Audit, My Characters and Sync Status. Links only appear for viewers who can open the target
+  page, and a hover state plus an arrow marks them.
+- Users & Roles: the role cards filter the user table (`?role=director`; click again to show everyone). Character
+  names open zKillboard. An ESI health warning links to where it can be fixed: My Characters for your own account,
+  Member Audit for others. Admins get a "Role permissions" shortcut to the permission matrix in Settings. The
+  Actions column is hidden when there is no account you can manage, and otherwise shows "—" with an explanation
+  where nothing can be done.
+- The corporation name in the top bar links back to the dashboard.
+- The new texts (filter line, tooltips, "Role permissions") are available in English and German.
+
+### Removed
+
+- The corporation card on the dashboard, which repeated the kills, losses and efficiency shown in the tiles below
+  it. The corporation logo and ticker moved into the "Home corporation" item, and the active pilot count into the
+  kills tile.
+- The up/down "switcher" icon next to the corporation name in the top bar. Keystar has one home corporation, so
+  there was nothing to switch.
+
+## [0.1.4] - 2026-10-03
+
+### Fixed
+
+- German: changes in killboard tables and the top-systems lists (e.g. "+1.234") now use German digit grouping.
+- The ore field estimator's example placeholder uses the number format of the EVE client in the chosen language.
+
+## [0.1.3] - 2026-10-02
+
+### Added
+
+- **German interface.** Keystar now speaks English and German. The language follows the browser's preferred
+  language on the first visit (anything other than German gets English) and can be changed with the language
+  switch in the sidebar footer, next to your pilot, or at the bottom of the sign-in, registration and setup pages.
+  The choice is remembered in a cookie.
+- Numbers and dates follow the chosen language: in German, "9,87 Mio. ISK", "1.234.567", "12,3 %", "vor 5 Minuten",
+  "02. Okt.". EVE times stay in `YYYY-MM-DD HH:mm ET`.
+
+### Changed
+
+- Module manifests and sync jobs name their texts with dictionary selectors instead of English strings (see
+  docs/modules.md). Item, system and pilot names, CSV exports and stored situation reports remain in English.
+
+## [0.1.2] - 2026-10-02
+
+### Changed
+
+- Larger small text across the app for readability at 100% zoom on large monitors: section titles (e.g. "Top
+  pilots") go from 11px to 13px, field labels and table headers from 9–11px to 12px, badges and chips to 11px, and
+  subtitles and hints from 12px to 13px. The sizes are now a shared scale (`text-3xs`, `text-2xs`, `text-xs`)
+  defined in `globals.css` instead of one-off values.
+- KPI tiles keep their values aligned across a row when a hint wraps onto a second line.
 
 ## [0.1.1] - 2026-10-02
 

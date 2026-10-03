@@ -18,6 +18,7 @@ export function Glass<T extends ElementType = "div">({ as, className, children, 
 }
 
 export function Panel({
+  id,
   title,
   subtitle,
   actions,
@@ -25,6 +26,8 @@ export function Panel({
   className,
   bodyClassName,
 }: {
+  /** Anchor for deep links (`/page#id`); scroll-margin clears the sticky top bar. */
+  id?: string;
   title?: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
@@ -33,11 +36,11 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <Glass as="section" className={cn("flex flex-col", className)}>
+    <Glass as="section" id={id} className={cn("flex flex-col", id && "scroll-mt-20", className)}>
       {(title || actions) && (
         <header className="flex items-start justify-between gap-4 px-5 pt-4 pb-3">
           <div className="min-w-0">
-            {title && <h2 className="eve-label text-[0.7rem] text-ink-2">{title}</h2>}
+            {title && <h2 className="eve-label text-xs text-ink-2">{title}</h2>}
             {subtitle && <p className="mt-0.5 text-xs text-ink-3">{subtitle}</p>}
           </div>
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

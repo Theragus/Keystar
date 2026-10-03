@@ -2,7 +2,7 @@
 
 import { CalendarRange, Check, ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { shortDate } from "@/lib/format";
+import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { Popover } from "./popover";
 
@@ -25,6 +25,7 @@ export function DateRangePicker({
   presets: RangePreset[];
   onChange: (range: { from: string; to: string }) => void;
 }) {
+  const { t, f } = useI18n();
   const [open, setOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState(from);
   const [customTo, setCustomTo] = useState(to);
@@ -52,10 +53,10 @@ export function DateRangePicker({
           className="glass-chip flex h-8 items-center gap-2 rounded-lg pr-3 pl-3.5 text-xs transition hover:bg-white/10"
         >
           <CalendarRange className="size-3.5 text-accent" aria-hidden />
-          <span className="font-medium text-ink">{active ? active.label : `${shortDate(from)} – ${shortDate(to)}`}</span>
+          <span className="font-medium text-ink">{active ? active.label : `${f.shortDate(from)} – ${f.shortDate(to)}`}</span>
           {active && (
             <span className="text-ink-3">
-              {shortDate(from)} – {shortDate(to)}
+              {f.shortDate(from)} – {f.shortDate(to)}
             </span>
           )}
           <ChevronDown className="size-3.5 text-ink-3" aria-hidden />
@@ -78,7 +79,7 @@ export function DateRangePicker({
           );
         })}
         <div className="mt-1 border-t border-white/8 px-2 pt-3 pb-1">
-          <div className="eve-label mb-2 text-[0.62rem] text-ink-3">Custom range (EVE time)</div>
+          <div className="eve-label mb-2 text-2xs text-ink-3">{t.common.dateRange.custom}</div>
           <div className="flex items-center gap-2">
             <input
               type="date"
@@ -86,7 +87,7 @@ export function DateRangePicker({
               max={customTo}
               onChange={(e) => setCustomFrom(e.target.value)}
               className="glass-inset h-8 min-w-0 flex-1 rounded-lg px-2 text-xs text-ink [color-scheme:dark]"
-              aria-label="From"
+              aria-label={t.common.dateRange.from}
             />
             <span className="text-ink-3">–</span>
             <input
@@ -95,7 +96,7 @@ export function DateRangePicker({
               min={customFrom}
               onChange={(e) => setCustomTo(e.target.value)}
               className="glass-inset h-8 min-w-0 flex-1 rounded-lg px-2 text-xs text-ink [color-scheme:dark]"
-              aria-label="To"
+              aria-label={t.common.dateRange.to}
             />
           </div>
           <button
@@ -104,7 +105,7 @@ export function DateRangePicker({
             onClick={() => choose({ from: customFrom, to: customTo })}
             className="mt-2.5 w-full rounded-md bg-accent py-1.5 text-xs font-semibold text-space-950 disabled:opacity-40"
           >
-            Apply range
+            {t.common.dateRange.apply}
           </button>
         </div>
       </div>

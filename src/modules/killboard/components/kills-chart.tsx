@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Segmented } from "@/components/ui/segmented";
-import { compact, integer, shortDate } from "@/lib/format";
+import { useI18n } from "@/i18n/client";
 import { KILL_COLOR, LOSS_COLOR } from "../colors";
 import type { DailyActivity } from "../queries";
 
@@ -44,20 +44,21 @@ const KillShape = makeShape("up");
 const LossShape = makeShape("down");
 
 function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: DailyActivity }[] }) {
+  const { t, f } = useI18n();
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   return (
     <div className="glass min-w-[190px] rounded-2xl bg-space-800/85 px-4 py-3 text-xs">
-      <div className="eve-label mb-2 text-[0.66rem] text-ink-3">{shortDate(row.date)}</div>
+      <div className="eve-label mb-2 text-2xs text-ink-3">{f.shortDate(row.date)}</div>
       {[
-        { label: "Kills", color: KILL_COLOR, n: row.kills, isk: row.destroyed },
-        { label: "Losses", color: LOSS_COLOR, n: row.losses, isk: row.lost },
+        { label: t.killboard.terms.kills, color: KILL_COLOR, n: row.kills, isk: row.destroyed },
+        { label: t.killboard.terms.losses, color: LOSS_COLOR, n: row.losses, isk: row.lost },
       ].map((s) => (
         <div key={s.label} className="flex items-center gap-2 py-0.5">
           <span className="size-2.5 rounded-[3px]" style={{ background: s.color }} aria-hidden />
-          <span className="font-semibold text-ink tabular-nums">{integer(s.n)}</span>
+          <span className="font-semibold text-ink tabular-nums">{f.integer(s.n)}</span>
           <span className="text-ink-3">{s.label}</span>
-          <span className="ml-auto text-ink-2 tabular-nums">{s.isk ? `${compact(s.isk)} ISK` : ""}</span>
+          <span className="ml-auto text-ink-2 tabular-nums">{s.isk ? `${f.compact(s.isk)} ISK` : ""}</span>
         </div>
       ))}
     </div>
@@ -66,6 +67,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: { paylo
 
 /** Daily kills (up) and losses (down) on one axis. */
 export function KillsChart({ rows }: { rows: DailyActivity[] }) {
+  const { t, f } = useI18n();
   const [view, setView] = useState<"chart" | "table">("chart");
   const data = rows.map((r) => ({ ...r, lossesNeg: -r.losses }));
   const totals = rows.reduce((t, r) => ({ kills: t.kills + r.kills, losses: t.losses + r.losses }), { kills: 0, losses: 0 });
@@ -74,26 +76,26 @@ export function KillsChart({ rows }: { rows: DailyActivity[] }) {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" aria-label="Legend">
+        <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" aria-label={t.killboard.chart.legend}>
           <li className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-[3px]" style={{ background: KILL_COLOR }} aria-hidden />
-            <span className="text-ink-2">Kills</span>
-            <span className="text-ink-3 tabular-nums">{integer(totals.kills)}</span>
+            <span className="text-ink-2">{t.killboard.terms.kills}</span>
+            <span className="text-ink-3 tabular-nums">{f.integer(totals.kills)}</span>
           </li>
           <li className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-[3px]" style={{ background: LOSS_COLOR }} aria-hidden />
-            <span className="text-ink-2">Losses</span>
-            <span className="text-ink-3 tabular-nums">{integer(totals.losses)}</span>
+            <span className="text-ink-2">{t.killboard.terms.losses}</span>
+            <span className="text-ink-3 tabular-nums">{f.integer(totals.losses)}</span>
           </li>
         </ul>
         <Segmented
           size="sm"
-          label="Chart or table"
+          label={t.killboard.chart.view}
           value={view}
           onChange={setView}
           options={[
-            { value: "chart", label: "Chart" },
-            { value: "table", label: "Table" },
+            { value: "chart", label: t.killboard.chart.chart },
+            { value: "table", label: t.killboard.chart.table },
           ]}
         />
       </div>
@@ -105,26 +107,26 @@ export function KillsChart({ rows }: { rows: DailyActivity[] }) {
               <CartesianGrid vertical={false} strokeWidth={1} />
               <XAxis
                 dataKey="date"
-                tickFormatter={(d: string) => shortDate(d)}
+                tickFormatter={(d: string) => f.shortDate(d)}
                 tickLine={false}
                 axisLine={false}
                 minTickGap={28}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 12 }}
                 dy={6}
               />
               <YAxis
                 domain={[-max, max]}
                 allowDecimals={false}
-                tickFormatter={(v: number) => integer(Math.abs(v))}
+                tickFormatter={(v: number) => f.integer(Math.abs(v))}
                 tickLine={false}
                 axisLine={false}
                 width={36}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 12 }}
               />
               <ReferenceLine y={0} stroke="var(--axis)" />
               <Tooltip cursor={{ fill: "rgba(255,255,255,0.045)" }} content={<ChartTooltip />} isAnimationActive={false} />
-              <Bar dataKey="kills" stackId="day" fill={KILL_COLOR} maxBarSize={24} isAnimationActive={false} shape={<KillShape />} name="Kills" />
-              <Bar dataKey="lossesNeg" stackId="day" fill={LOSS_COLOR} maxBarSize={24} isAnimationActive={false} shape={<LossShape />} name="Losses" />
+              <Bar dataKey="kills" stackId="day" fill={KILL_COLOR} maxBarSize={24} isAnimationActive={false} shape={<KillShape />} name={t.killboard.terms.kills} />
+              <Bar dataKey="lossesNeg" stackId="day" fill={LOSS_COLOR} maxBarSize={24} isAnimationActive={false} shape={<LossShape />} name={t.killboard.terms.losses} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -133,21 +135,21 @@ export function KillsChart({ rows }: { rows: DailyActivity[] }) {
           <table className="ks-table">
             <thead className="sticky top-0 bg-space-800/90 backdrop-blur">
               <tr>
-                <th>Date</th>
-                <th className="num">Kills</th>
-                <th className="num">Losses</th>
-                <th className="num">Destroyed</th>
-                <th className="num">Lost</th>
+                <th>{t.killboard.chart.date}</th>
+                <th className="num">{t.killboard.terms.kills}</th>
+                <th className="num">{t.killboard.terms.losses}</th>
+                <th className="num">{t.killboard.terms.destroyed}</th>
+                <th className="num">{t.killboard.terms.lost}</th>
               </tr>
             </thead>
             <tbody>
               {[...rows].reverse().map((r) => (
                 <tr key={r.date}>
                   <td className="tabular-nums text-ink-2">{r.date}</td>
-                  <td className="num">{r.kills || "—"}</td>
-                  <td className="num">{r.losses || "—"}</td>
-                  <td className="num">{r.destroyed ? compact(r.destroyed) : "—"}</td>
-                  <td className="num">{r.lost ? compact(r.lost) : "—"}</td>
+                  <td className="num">{r.kills ? f.integer(r.kills) : "—"}</td>
+                  <td className="num">{r.losses ? f.integer(r.losses) : "—"}</td>
+                  <td className="num">{r.destroyed ? f.compact(r.destroyed) : "—"}</td>
+                  <td className="num">{r.lost ? f.compact(r.lost) : "—"}</td>
                 </tr>
               ))}
             </tbody>

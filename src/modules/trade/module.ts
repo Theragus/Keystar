@@ -14,18 +14,18 @@ export const tradeModule: KeystarModule = {
   permissions: [
     {
       key: TRADE_PERMISSIONS.appraisal,
-      label: "Use appraisals",
-      description: "Appraise items at Jita prices and open appraisal links shared by others.",
-      group: "Trade",
+      label: (t) => t.trade.module.permissions.appraisal.label,
+      description: (t) => t.trade.module.permissions.appraisal.description,
+      group: (t) => t.trade.module.permissionGroup,
       defaultMinRole: "member",
     },
   ],
   nav: [
     {
       id: "trade",
-      label: "Trade",
+      label: (t) => t.trade.module.navSection,
       order: 20,
-      items: [{ href: "/trade/appraisal", label: "Appraisal", icon: Scale, anyPermission: [TRADE_PERMISSIONS.appraisal] }],
+      items: [{ href: "/trade/appraisal", label: (t) => t.trade.module.nav.appraisal, icon: Scale, anyPermission: [TRADE_PERMISSIONS.appraisal] }],
     },
   ],
 };

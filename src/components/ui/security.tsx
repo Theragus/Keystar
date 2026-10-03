@@ -11,7 +11,7 @@ export function SecurityStatus({ value }: { value: number | null }) {
   const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
   return (
     <span
-      className="inline-block min-w-[2.4rem] rounded-md px-1.5 py-0.5 text-center text-[0.7rem] font-semibold tabular-nums"
+      className="inline-block min-w-[2.4rem] rounded-md px-1.5 py-0.5 text-center text-2xs font-semibold tabular-nums"
       style={{ background: color, color: lum > 0.5 ? "#06101c" : "#ffffff" }}
       title={`Security status ${value.toFixed(3)}`}
     >

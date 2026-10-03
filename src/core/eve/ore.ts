@@ -16,17 +16,7 @@ export const ORE_CLASSES = [
 
 export type OreClass = (typeof ORE_CLASSES)[number];
 
-export const ORE_CLASS_META: Record<OreClass, { label: string; short: string }> = {
-  ore: { label: "Asteroid Ore", short: "Ore" },
-  moon_r4: { label: "Moon Ore · R4 Ubiquitous", short: "R4" },
-  moon_r8: { label: "Moon Ore · R8 Common", short: "R8" },
-  moon_r16: { label: "Moon Ore · R16 Uncommon", short: "R16" },
-  moon_r32: { label: "Moon Ore · R32 Rare", short: "R32" },
-  moon_r64: { label: "Moon Ore · R64 Exceptional", short: "R64" },
-  ice: { label: "Ice", short: "Ice" },
-  gas: { label: "Gas", short: "Gas" },
-  other: { label: "Other", short: "Other" },
-};
+// Display names (long and short) live in the dictionaries: t.eve.oreClasses[oreClass].
 
 const MOON_GROUPS: Record<number, OreClass> = {
   1884: "moon_r4",

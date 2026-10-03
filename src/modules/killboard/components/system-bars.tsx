@@ -1,11 +1,11 @@
 import { SecurityStatus } from "@/components/ui/security";
-import { compact } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import { zkillSystem } from "../links";
 import type { SystemRow } from "../queries";
 import { DeltaChip } from "@/components/ui/deltas";
 
 /** Ranked systems as horizontal bars; each row links to the system on zKillboard. */
-export function SystemBars({
+export async function SystemBars({
   rows,
   color,
   unit,
@@ -16,7 +16,8 @@ export function SystemBars({
   unit: "kills" | "losses";
   upIsGood: boolean;
 }) {
-  if (!rows.length) return <p className="py-6 text-center text-sm text-ink-3">No {unit} in this period.</p>;
+  const { t, f } = await getI18n();
+  if (!rows.length) return <p className="py-6 text-center text-sm text-ink-3">{t.killboard.systems.empty[unit]}</p>;
   const max = rows[0].count;
   return (
     <ol className="space-y-1">
@@ -27,7 +28,14 @@ export function SystemBars({
             target="_blank"
             rel="noopener noreferrer"
             className="group -mx-2 grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 rounded-md px-2 py-1.5 hover:bg-white/5"
-            title={`${r.name ?? r.systemId}: ${r.count} ${unit}, ${compact(r.value)} ISK. 7d: ${r.week} (prev ${r.prevWeek})`}
+            title={t.killboard.systems.tooltip({
+              system: r.name ?? String(r.systemId),
+              side: unit,
+              value: r.count,
+              isk: f.compact(r.value),
+              week: r.week,
+              prevWeek: r.prevWeek,
+            })}
           >
             <span className="flex min-w-0 items-center gap-1.5 text-sm">
               <SecurityStatus value={r.security} />
@@ -40,7 +48,7 @@ export function SystemBars({
               />
             </span>
             <span className="flex items-center gap-2">
-              <span className="w-9 text-right text-sm font-semibold tabular-nums">{r.count}</span>
+              <span className="w-9 text-right text-sm font-semibold tabular-nums">{f.integer(r.count)}</span>
               <span className="w-10 text-right">
                 <DeltaChip value={r.week - r.prevWeek} upIsGood={upIsGood} />
               </span>

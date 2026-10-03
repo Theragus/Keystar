@@ -18,32 +18,7 @@ export const ROLE_LEVEL: Record<Role, number> = {
   admin: 50,
 };
 
-export const ROLE_META: Record<Role, { label: string; description: string }> = {
-  guest: {
-    label: "Guest",
-    description: "Signed in but not approved yet. Can only manage their own characters.",
-  },
-  member: {
-    label: "Member",
-    description: "Sees data from their own characters and ESI tokens only.",
-  },
-  viewer: {
-    label: "Viewer",
-    description: "Read-only access to all corporation data.",
-  },
-  contributor: {
-    label: "Contributor",
-    description: "Viewer plus shared content and manual sync triggers.",
-  },
-  director: {
-    label: "Director",
-    description: "Manages members, approvals and roles below Director.",
-  },
-  admin: {
-    label: "Admin",
-    description: "Full control, including application settings and admin assignments.",
-  },
-};
+// Labels and descriptions live in the dictionaries: t.common.roles[role].
 
 export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);

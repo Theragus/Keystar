@@ -7,12 +7,8 @@ import { mapLimit } from "@/lib/concurrency";
 export const THE_FORGE_REGION_ID = 10000002;
 export const JITA_44_STATION_ID = 60003760;
 
-export const VALUATION_SOURCES: { value: ValuationSource; label: string }[] = [
-  { value: "jita_buy", label: "Jita 4-4 · highest buy" },
-  { value: "jita_sell", label: "Jita 4-4 · lowest sell" },
-  { value: "jita_split", label: "Jita 4-4 · buy/sell split" },
-  { value: "esi_average", label: "ESI average price" },
-];
+/** Choices for the ore valuation setting; labels are in `t.eve.valuationSources`. */
+export const VALUATION_SOURCES: ValuationSource[] = ["jita_buy", "jita_sell", "jita_split", "esi_average"];
 
 interface MarketOrder {
   is_buy_order: boolean;
