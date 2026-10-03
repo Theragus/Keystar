@@ -6,6 +6,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- Threat Intel shows the latest observed group fight's destroyed hull, recorded attackers, victim, time and value. Pilot summaries are more compact, and recent kills and losses are ordered newest first.
+
+
 ### Added
 
 - **Light mode.** Switch between light and dark beside the language selector in the sidebar or on sign-in, join,

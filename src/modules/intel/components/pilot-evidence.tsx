@@ -54,27 +54,17 @@ export async function PilotEvidence({
   names: DisplayNames;
   associates: number;
 }) {
-  const { t } = await getI18n();
+  const { t, f } = await getI18n();
   const e = t.intel.evidence;
   const latest = latestEvidence(profile);
   return (
-    <div className="mt-3 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 xl:grid-cols-4">
-      <div>
-        <span className="eve-label mb-1 block text-2xs text-ink-3">{e.lastKill}</span>
-        <EventEvidence event={latest.kill} names={names} />
-      </div>
-      <div>
-        <span className="eve-label mb-1 block text-2xs text-ink-3">{e.lastLoss}</span>
-        <EventEvidence event={latest.loss} names={names} />
-      </div>
-      <div>
-        <span className="eve-label mb-1 block text-2xs text-ink-3">{e.cyno}</span>
-        <CynoEvidence profile={profile} />
-      </div>
-      <div>
-        <span className="eve-label mb-1 block text-2xs text-ink-3">{e.association}</span>
-        <span className="text-ink-2">{profile ? e.associates(associates) : e.unknown}</span>
-      </div>
+    <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+      {[{ label: e.lastKill, event: latest.kill }, { label: e.lastLoss, event: latest.loss }].map(({ label, event }) => {
+        const hull = event ? eventTargetHull(event) : null;
+        return <span key={label} className="text-ink-2"><span className="text-ink-3">{label}: </span>{event ? `${hull ? (names.types.get(hull)?.name ?? e.unknown) : e.unknown} · ${f.relativeTime(event.time)}` : e.noEvent}</span>;
+      })}
+      <span className={cynoEvidence(profile).length ? "text-warning" : "text-ink-3"}>{e.cyno}: {cynoEvidence(profile).length ? cynoEvidence(profile).map(fit => `${e.cynoKinds[fit.kind]} · ${f.relativeTime(fit.lastAt)}`).join(" · ") : profile?.depth === "deep" ? e.noCyno : e.unknown}</span>
+      {associates > 0 && <span className="text-ink-2">{e.associates(associates)}</span>}
     </div>
   );
 }

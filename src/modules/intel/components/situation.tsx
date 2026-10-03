@@ -105,6 +105,12 @@ export async function ObservedGroupsPanel({ view, now }: { view: ScanView; now: 
                 {e.groupCount(g.members.length, g.killmailIds.length)} ·{" "}
                 {now.getTime() - Date.parse(g.time) <= 2 * 60 * 60_000 ? e.recent : e.fallback}
               </p>
+              <div className="mt-2 border-t border-surface-contrast/6 pt-2 text-xs">
+                <p className="eve-label mb-1 text-2xs text-ink-3">{e.latestGroupFight}</p>
+                <p className="text-ink">{e.destroyedHull(g.events[0].otherShipTypeId ? (view.names.types.get(g.events[0].otherShipTypeId)?.name ?? e.unknown) : e.unknown)}</p>
+                <p className="mt-0.5 text-ink-2">{e.attackers(g.events[0].attackerCount)} · {e.oneVictim}</p>
+                <p className="mt-0.5 text-ink-3">{f.dateTime(g.events[0].time)} · {f.compact(g.events[0].value)} ISK</p>
+              </div>
               <ul className="my-3 space-y-1 text-xs text-ink-2">
                 {g.members.map((m) => (
                   <li key={m.characterId}>

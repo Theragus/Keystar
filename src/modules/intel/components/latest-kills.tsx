@@ -1,4 +1,4 @@
-import { eventTargetHull } from "../evidence";
+import { eventTargetHull, newestEvents } from "../evidence";
 import { TypeIcon } from "@/components/ui/eve-image";
 import { getI18n } from "@/i18n/server";
 import { KILL_COLOR, LOSS_COLOR } from "@/modules/killboard/colors";
@@ -13,7 +13,7 @@ export async function LatestKills({ events, names, limit = 5 }: { events: Latest
   const l = t.intel.latest;
   return (
     <ol className="flex flex-wrap gap-1.5">
-      {events.slice(0, limit).map((e) => {
+      {newestEvents(events).slice(0, limit).map((e) => {
         const color = e.isLoss ? LOSS_COLOR : KILL_COLOR;
         const targetHull = eventTargetHull(e);
         const other = targetHull ? (names.types.get(targetHull)?.name ?? null) : null;
