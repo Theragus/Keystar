@@ -8,7 +8,7 @@ import type { ScanPilot } from "../scans";
 import type { PilotHistory, PilotProfile, PilotScore, Standing } from "../types";
 import { PilotEvidence } from "./pilot-evidence";
 import { LatestKills } from "./latest-kills";
-import { ScoreBadge } from "./score";
+import { AssessmentSummary, ScoreBadge } from "./score";
 import { StandingBadge } from "./standing-badge";
 
 export async function HistoryChip({ history }: { history: PilotHistory | null }) {
@@ -74,6 +74,7 @@ export async function PilotRow({
           <HistoryChip history={history} />
           <ProfileStatus pilot={pilot} />
         </div>
+        <AssessmentSummary score={score} />
         <div className="w-full border-y border-surface-contrast/6 py-3">
           <PilotEvidence profile={profile} names={names} />
         </div>

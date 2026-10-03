@@ -289,6 +289,8 @@ export interface Standing {
 }
 
 export interface PilotScore {
+  /** Evidence model v2; optional for previously cached scores. */
+  assessment?: { capability: number; relevance: number | null; confidence: "low" | "moderate" | "high"; sample: number; escalation: TagLabel[] };
   composite: number;
   tier: Tier | "unknown";
   recencyGate: number;

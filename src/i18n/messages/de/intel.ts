@@ -379,6 +379,11 @@ export const intel: typeof en = {
     fullProfile: "Vollständiges Profil",
   },
   score: {
+    sample: "Erfasste Killmails",
+    capability: "Kampfstärke",
+    relevance: "Lokale Relevanz",
+    confidence: "Vertrauen",
+    explanation: "Wert /10: 70% Kampfstärke + 30% lokale Relevanz; bei unbekanntem Kontext nur Kampfstärke. Kampfstärke: 45% Aktivität, 30% Kampferfolg, 25% Kampfstil. Flottenbeteiligung und ISK zählen weniger. Kampf-/Lokalbelege halbieren sich nach 14/3 Tagen. Vertrauen berücksichtigt Umfang, Aktualität und Abdeckung. Historische Belege, keine Angriffswahrscheinlichkeit; Eskalation separat.",
     quick: "Schnelle Bewertung aus zKillboard-Statistiken; die letzten Kills werden noch geladen",
     damped: (gate) => `Bewertung auf ${pct(gate)} gedämpft, weil der Pilot zuletzt nicht aktiv war.`,
   },

@@ -386,6 +386,11 @@ export const intel = {
     fullProfile: "Full profile",
   },
   score: {
+    sample: "Sampled killmails",
+    capability: "Combat capability",
+    relevance: "Local relevance",
+    confidence: "Confidence",
+    explanation: "Score /10: 70% capability + 30% local relevance; capability only if context is unknown. Capability: 45% activity, 30% lethality, 25% fighting style. Fleet participation and ISK count less. Combat/local evidence halves after 14/3 days. Confidence measures sample size, freshness and coverage. Historical evidence, not attack probability; escalation is separate.",
     quick: "Quick score from zKillboard statistics; recent kills are still loading",
     damped: (gate: number) => `Score damped to ${pct(gate)} because the pilot has not been active recently.`,
   },
