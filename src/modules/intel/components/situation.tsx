@@ -120,8 +120,11 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
                     <ul className="mt-2 space-y-1">
                       {(fight.battle?.[team.key] ?? []).map(ship => <li key={ship.shipTypeId} className={`flex flex-wrap items-center gap-1 rounded-md px-1.5 py-1 ${ship.lost ? "bg-critical/10" : "bg-surface-contrast/5"}`}>
                         <TypeIcon id={ship.shipTypeId} size={18} className="rounded" />
-                        <span className="text-ink-2">{f.integer(ship.count)}× {view.names.types.get(ship.shipTypeId)?.name ?? e.unknown}</span>
-                        {ship.lost > 0 && <span className="text-3xs text-critical-text">{e.shipsLost(ship.lost)}</span>}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1"><span className="text-ink-2">{f.integer(ship.count)}× {view.names.types.get(ship.shipTypeId)?.name ?? e.unknown}</span>
+                          {ship.lost > 0 && <span className="text-3xs text-critical-text">{e.shipsLost(ship.lost)}</span>}</div>
+                          <p className="mt-0.5 break-words text-3xs text-ink-3">{ship.pilotIds?.length ? ship.pilotIds.map(id => view.names.entities.get(id) ?? view.pilotNames.get(id) ?? e.unknown).join(", ") : e.unknown}</p>
+                        </div>
                       </li>)}
                     </ul>
                   </div>)}

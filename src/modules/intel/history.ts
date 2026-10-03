@@ -247,7 +247,7 @@ export function summarizeEngagement(
       if (!ours(km) && attacker.corporationId === H) addShip("ours", attacker.shipTypeId, String(attacker.characterId), false);
     }
   }
-  const shipsFor = (team: "ours" | "theirs") => [...shipRows[team]].map(([shipTypeId, entry]) => ({ shipTypeId, count: Math.max(entry.pilots.size, entry.lost), lost: entry.lost })).sort((a, b) => b.lost - a.lost || b.count - a.count);
+  const shipsFor = (team: "ours" | "theirs") => [...shipRows[team]].map(([shipTypeId, entry]) => ({ shipTypeId, count: Math.max(entry.pilots.size, entry.lost), lost: entry.lost, pilotIds: [...entry.pilots].map(Number).filter(id => Number.isSafeInteger(id) && id > 0) })).sort((a, b) => b.lost - a.lost || b.count - a.count);
   const times = killmails.map((k) => k.time.getTime());
   return {
     key: `${cluster.systemId}-${Math.min(...times)}`,

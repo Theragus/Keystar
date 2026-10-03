@@ -2,6 +2,8 @@ import { getDb, eveSystems, eveConstellations } from "@/core/db";
 import { eq, inArray } from "drizzle-orm";
 import { systemContext } from "./resolve";
 import { scorePilot } from "./score/composite";
+import { env } from "@/core/env";
+import { ensureNames } from "@/core/eve/resolver";
 import { getSetting } from "@/core/settings";
 import { encountersWithUs, engagementsWithUs, historyTotals } from "./history";
 import { lookupDisplayNames, scanEntityIds } from "./names";
@@ -34,6 +36,7 @@ export async function loadScanView(scan: ScanRow) {
     pilots.map((p) => p.history),
     engagements,
   );
+  if (!env().KEYSTAR_DEMO_MODE) await ensureNames(entityIds.entityIds);
   const names = await lookupDisplayNames({
     typeIds: [
       ...entityIds.typeIds,
