@@ -106,7 +106,8 @@ stay `YYYY-MM-DD HH:mm ET` in both languages. Module manifests and job definitio
 selectors (`label: (t) => t.mining.module.nav.ledger`) so they can be rendered in any language.
 
 Not translated: names from ESI (items, systems, pilots — ESI is queried in English), CSV exports, log output and the
-stored killboard situation reports.
+stored killboard situation reports. Threat intel notes written by Claude stay in the language of whoever asked for
+them; its scores, tags and template notes are stored as data and shown in the reader's language.
 
 ## ESI client
 
@@ -218,7 +219,7 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
 - **Scoring** (`score/`, pure functions): every event is weighted by recency (half-life 14 days); the digest covers
   the newest killmails exactly and zKillboard's monthly statistics the time before, so nothing counts twice. Eight
   dimensions (activity, lethality, style, specialties, nearby, history with us, active now, character), each 0–100
-  with a reason, average into a composite that a **recency gate** damps for pilots who are not active now, so
+  with a reason (stored as data, written out in the reader's language by `text.ts`), average into a composite that a **recency gate** damps for pilots who are not active now, so
   lifetime fame alone never ranks high. Tags (cyno, hunter, tackle, capital, gate camper, ganker, …) come from hull
   and module groups (`hulls.ts`, checked against ESI) and loss fits; evidence older than 30 days is marked historic.
 - **Claude** (`ai/`) only reads computed facts — each pilot's latest killmails first, lifetime numbers last — and
@@ -227,7 +228,9 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
   D-scan reads may only name pilots the deterministic matcher proposed. Output is sanitised and rendered through
   the killboard's safe markup. Without a key, without permission, over the hourly budget (20 per user, 120 per
   instance) or on failure, templates write the same notes. Notes are stored with their facts in `intel_ai_notes` and
-  reused for unchanged facts.
+  reused for unchanged facts in the same language. Facts are always English; Claude writes in the language of
+  whoever asked (the scan creator's for automatic briefings, `intel_scans.locale`). Template notes are stored as
+  drafts (keys, numbers, names) and written out in each reader's language.
 - The **recently seen hostiles** feed lists pilots from anyone's scans in the last 7 days, without friendlies.
 
 ## Security notes

@@ -22,7 +22,7 @@ const IDLE_POLL_MS = 60_000;
 /** Reads pilots from zKillboard for open scans: statistics first, then their newest killmails. */
 export const scanWorkerJob: JobDefinition = {
   key: SCAN_WORKER_JOB,
-  label: "Threat intel (zKillboard)",
+  label: (t) => t.intel.module.jobs.scanWorker,
   module: "intel",
   owner: "global",
   intervalSeconds: 2,
@@ -41,7 +41,7 @@ export const scanWorkerJob: JobDefinition = {
 /** Writes the briefing of scans that just became ready (Claude or the template). */
 export const briefingJob: JobDefinition = {
   key: BRIEFING_JOB,
-  label: "Threat intel briefings",
+  label: (t) => t.intel.module.jobs.briefings,
   module: "intel",
   owner: "global",
   intervalSeconds: 60,
@@ -70,7 +70,7 @@ export const briefingJob: JobDefinition = {
 /** Retention: old killmail digests, pilots nobody scanned for months, old scans. */
 export const intelHousekeepingJob: JobDefinition = {
   key: "intel.housekeeping",
-  label: "Threat intel housekeeping",
+  label: (t) => t.intel.module.jobs.housekeeping,
   module: "intel",
   owner: "global",
   intervalSeconds: 6 * 3600,

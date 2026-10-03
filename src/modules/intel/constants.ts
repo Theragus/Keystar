@@ -35,7 +35,7 @@ export const DEEP_TARGET_DAYS = 30;
 export const DEEP_MAX_PAGES = 3;
 
 /** Bump when the profile shape or its derivation changes. */
-export const PROFILE_VERSION = 1;
+export const PROFILE_VERSION = 2;
 
 /** Worker: seconds of zKillboard work per run, and retries per pilot. */
 export const WORKER_BUDGET_MS = 40_000;
@@ -50,6 +50,10 @@ export const DIGEST_RETENTION_DAYS = 90;
 export const DIGEST_KEEP_NEWEST = 10;
 export const PILOT_RETENTION_DAYS = 180;
 export const SCAN_RETENTION_DAYS = 365;
+
+/** Claude calls per user and per instance in a rolling hour (each call costs money on the instance's key). */
+export const USER_HOURLY_LIMIT = 20;
+export const INSTANCE_HOURLY_LIMIT = 120;
 
 /** Recently seen hostiles feed. */
 export const FEED_DAYS = 7;

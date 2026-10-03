@@ -10,6 +10,7 @@ import {
   type Db,
 } from "@/core/db";
 import { getSetting } from "@/core/settings";
+import type { Locale } from "@/i18n/config";
 import { triggerJobs } from "@/core/sync/scheduler";
 import { shareId } from "@/lib/share-id";
 import { MAX_INPUT_CHARS, MAX_PILOTS, MAX_PROFILED, SCAN_RATE_LIMIT, SCAN_RATE_WINDOW_MS } from "./constants";
@@ -34,11 +35,23 @@ export interface StartScanInput {
   userId: string;
   userName: string | null;
   aiAllowed: boolean;
+  /** The creator's language (for the automatic briefing). */
+  locale?: Locale;
   rescanOf?: string | null;
 }
 
+/** Why a paste was refused; the action writes it out in the user's language (t.intel.errors). */
+export type ScanError =
+  | { code: "tooLong"; max: number }
+  | { code: "dscanInPilots" }
+  | { code: "noNames" }
+  | { code: "tooMany"; found: number; max: number }
+  | { code: "rateLimited" }
+  | { code: "unknownSystem"; name: string }
+  | { code: "noCharacters" };
+
 /** `naming`: ids the new scan shows that may still need names (see nameScanEntities). */
-export type StartScanResult = { ok: true; id: string; naming: NamingWork } | { ok: false; error: string };
+export type StartScanResult = { ok: true; id: string; naming: NamingWork } | { ok: false; error: ScanError };
 
 /**
  * Creates a scan from a paste: resolves names, affiliations and history with
@@ -47,22 +60,14 @@ export type StartScanResult = { ok: true; id: string; naming: NamingWork } | { o
 export async function startScan(input: StartScanInput, deps: { now?: Date; db?: Db } = {}): Promise<StartScanResult> {
   const db = deps.db ?? getDb();
   const now = deps.now ?? new Date();
-  if (input.text.length > MAX_INPUT_CHARS) return { ok: false, error: "That paste is too long (100,000 characters at most)." };
+  if (input.text.length > MAX_INPUT_CHARS) return { ok: false, error: { code: "tooLong", max: MAX_INPUT_CHARS } };
 
   const parsed = parsePilotList(input.text);
   if (!parsed.names.length) {
-    return {
-      ok: false,
-      error: parsed.dscanLines
-        ? "That looks like a d-scan. Paste it into the d-scan box and add the pilots from local."
-        : "No pilot names found. Paste the local member list, a fleet composition or names, one per line.",
-    };
+    return { ok: false, error: { code: parsed.dscanLines ? "dscanInPilots" : "noNames" } };
   }
   if (parsed.names.length > MAX_PILOTS) {
-    return {
-      ok: false,
-      error: `That list has ${parsed.names.length.toLocaleString("en-US")} pilots; scan at most ${MAX_PILOTS} at a time.`,
-    };
+    return { ok: false, error: { code: "tooMany", found: parsed.names.length, max: MAX_PILOTS } };
   }
 
   const [recent] = await db
@@ -70,18 +75,18 @@ export async function startScan(input: StartScanInput, deps: { now?: Date; db?: 
     .from(intelScans)
     .where(and(eq(intelScans.createdBy, input.userId), gt(intelScans.createdAt, new Date(now.getTime() - SCAN_RATE_WINDOW_MS))));
   if ((recent?.n ?? 0) >= SCAN_RATE_LIMIT) {
-    return { ok: false, error: "That is a lot of scans in a short time. Give zKillboard a few minutes." };
+    return { ok: false, error: { code: "rateLimited" } };
   }
 
   let systemId: number | null = input.systemId ?? null;
   if (input.systemName?.trim()) {
     const system = await resolveSystem(input.systemName);
-    if (!system) return { ok: false, error: `Unknown solar system "${input.systemName.trim()}".` };
+    if (!system) return { ok: false, error: { code: "unknownSystem", name: input.systemName.trim() } };
     systemId = system.systemId;
   }
 
   const { found, unresolved } = await resolvePilotNames(parsed.names);
-  if (!found.length) return { ok: false, error: "None of these names are EVE characters." };
+  if (!found.length) return { ok: false, error: { code: "noCharacters" } };
   const affiliations = await refreshAffiliations(found);
   const standings = await loadStandings();
   const home = await getSetting("corp.homeCorporationId");
@@ -138,6 +143,7 @@ export async function startScan(input: StartScanInput, deps: { now?: Date; db?: 
       systemId,
       pilotCount: pilots.length,
       aiAllowed: input.aiAllowed,
+      locale: input.locale ?? "en",
       rescanOf: input.rescanOf ?? null,
       // Nothing to wait for when no pilot gets profiled.
       status: profiled.size ? "running" : "ready",

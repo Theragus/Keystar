@@ -2,7 +2,7 @@ import { ChevronRight, ExternalLink, Swords } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Portrait, TypeIcon } from "@/components/ui/eve-image";
-import { compact, relativeTime } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import { zkillCharacter } from "@/modules/killboard/links";
 import type { DisplayNames } from "../names";
 import type { ScanPilot } from "../scans";
@@ -11,13 +11,14 @@ import { LastSeen, LatestKills } from "./latest-kills";
 import { DimensionBreakdown, ScoreBadge, TagList } from "./score";
 import { StandingBadge } from "./standing-badge";
 
-export function HistoryChip({ history }: { history: PilotHistory | null }) {
+export async function HistoryChip({ history }: { history: PilotHistory | null }) {
   if (!history || history.killsOnUs + history.lossesToUs === 0) return null;
+  const { t, f } = await getI18n();
   const parts = [];
-  if (history.killsOnUs) parts.push(`on ${history.killsOnUs} of our losses`);
-  if (history.lossesToUs) parts.push(`${history.lossesToUs} died to us`);
+  if (history.killsOnUs) parts.push(t.intel.pilot.onOurLosses(history.killsOnUs));
+  if (history.lossesToUs) parts.push(t.intel.pilot.diedToUs(history.lossesToUs));
   return (
-    <span title={`Last ${relativeTime(history.lastAt)}`}>
+    <span title={t.intel.pilot.lastFought(f.relativeTime(history.lastAt))}>
       <Badge tone={history.killsOnUs ? "warning" : "neutral"}>
         <Swords className="size-3" aria-hidden />
         {parts.join(" · ")}
@@ -26,16 +27,18 @@ export function HistoryChip({ history }: { history: PilotHistory | null }) {
   );
 }
 
-function ProfileStatus({ pilot }: { pilot: ScanPilot }) {
-  if (!pilot.profiled) return <span className="text-xs text-ink-3">not profiled</span>;
-  if (pilot.statsStatus === "none") return <span className="text-xs text-ink-3">no killboard history</span>;
-  if (pilot.statsStatus === "error") return <span className="text-xs text-critical-text">zKillboard unavailable</span>;
-  if (!pilot.statsStatus) return <span className="text-xs text-ink-3">queued…</span>;
+async function ProfileStatus({ pilot }: { pilot: ScanPilot }) {
+  const { t } = await getI18n();
+  const p = t.intel.pilot;
+  if (!pilot.profiled) return <span className="text-xs text-ink-3">{p.notProfiled}</span>;
+  if (pilot.statsStatus === "none") return <span className="text-xs text-ink-3">{p.noHistory}</span>;
+  if (pilot.statsStatus === "error") return <span className="text-xs text-critical-text">{p.zkillUnavailable}</span>;
+  if (!pilot.statsStatus) return <span className="text-xs text-ink-3">{p.queued}</span>;
   return null;
 }
 
 /** One scanned pilot: identity, score, tags and latest kills in the row; the evidence when expanded. */
-export function PilotRow({
+export async function PilotRow({
   pilot,
   standing,
   names,
@@ -48,6 +51,8 @@ export function PilotRow({
   pilotNames: Map<number, string>;
   scanId: string;
 }) {
+  const { t, f } = await getI18n();
+  const p = t.intel.pilot;
   const ticker = pilot.corporationTicker ? `[${pilot.corporationTicker}]` : null;
   const history = pilot.history;
   const score = (pilot.scoreDetail as PilotScore | null) ?? null;
@@ -67,8 +72,8 @@ export function PilotRow({
           </div>
           <div className="mt-0.5 truncate text-xs text-ink-3">
             {ticker && <span className="text-ink-2">{ticker} </span>}
-            {pilot.corporationName ?? (pilot.corporationId ? `Corporation ${pilot.corporationId}` : "Unknown corporation")}
-            {pilot.allianceId && <> · {pilot.allianceName ?? `Alliance ${pilot.allianceId}`}</>}
+            {pilot.corporationName ?? (pilot.corporationId ? p.corporation(pilot.corporationId) : p.unknownCorporation)}
+            {pilot.allianceId && <> · {pilot.allianceName ?? p.alliance(pilot.allianceId)}</>}
           </div>
           {profile && (
             <div className="mt-1">
@@ -87,35 +92,46 @@ export function PilotRow({
       <div className="space-y-4 border-t border-white/6 px-4 py-3">
         {profile && profile.recent.latest.length > 0 && (
           <div>
-            <h4 className="eve-label mb-1.5 text-[0.62rem] text-ink-3">Latest kills and losses</h4>
+            <h4 className="eve-label mb-1.5 text-2xs text-ink-3">{p.latestTitle}</h4>
             <LatestKills events={profile.recent.latest} names={names} limit={10} />
           </div>
         )}
         {score && score.dimensions.length > 0 && (
           <div>
-            <h4 className="eve-label mb-1.5 text-[0.62rem] text-ink-3">Why this score</h4>
+            <h4 className="eve-label mb-1.5 text-2xs text-ink-3">{p.whyTitle}</h4>
             <DimensionBreakdown dimensions={score.dimensions} recencyGate={score.recencyGate} />
           </div>
         )}
         {flyingWith.length > 0 && (
           <p className="text-xs text-ink-2">
-            Flies with {flyingWith.slice(0, 6).map((a) => `${pilotNames.get(a.characterId)} (${a.sharedKills})`).join(", ")} from this list.
+            {p.fliesWith(
+              flyingWith
+                .slice(0, 6)
+                .map((a) => `${pilotNames.get(a.characterId)} (${f.integer(a.sharedKills)})`)
+                .join(", "),
+            )}
           </p>
         )}
         {history && history.killsOnUs + history.lossesToUs > 0 && (
           <div>
-            <h4 className="eve-label mb-1.5 text-[0.62rem] text-ink-3">Against us</h4>
+            <h4 className="eve-label mb-1.5 text-2xs text-ink-3">{p.againstUs}</h4>
             <p className="text-xs text-ink-2">
-              On {history.killsOnUs} of our losses ({compact(history.iskDestroyedOnUs)} ISK), lost {history.lossesToUs} ships to us (
-              {compact(history.iskLostToUs)} ISK). First {relativeTime(history.firstAt)}, last {relativeTime(history.lastAt)}.
+              {p.againstUsText({
+                killsOnUs: history.killsOnUs,
+                iskOnUs: f.compact(history.iskDestroyedOnUs),
+                lossesToUs: history.lossesToUs,
+                iskToUs: f.compact(history.iskLostToUs),
+                first: f.relativeTime(history.firstAt),
+                last: f.relativeTime(history.lastAt),
+              })}
             </p>
             {history.ships.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {history.ships.map((s) => (
                   <span key={s.shipTypeId} className="inline-flex items-center gap-1 text-xs text-ink-2">
                     <TypeIcon id={s.shipTypeId} size={20} className="rounded" />
-                    {names.types.get(s.shipTypeId)?.name ?? "Unknown hull"}
-                    <span className="text-ink-3 tabular-nums">×{s.count}</span>
+                    {names.types.get(s.shipTypeId)?.name ?? p.unknownHull}
+                    <span className="text-ink-3 tabular-nums">×{f.integer(s.count)}</span>
                   </span>
                 ))}
               </div>
@@ -124,9 +140,14 @@ export function PilotRow({
         )}
         <div className="flex gap-4 text-xs">
           <Link href={`/intel/${scanId}/pilot/${pilot.characterId}`} className="text-accent hover:underline">
-            Full profile
+            {p.fullProfile}
           </Link>
-          <a href={zkillCharacter(pilot.characterId)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-ink-2 hover:text-accent">
+          <a
+            href={zkillCharacter(pilot.characterId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-ink-2 hover:text-accent"
+          >
             zKillboard <ExternalLink className="size-3" aria-hidden />
           </a>
         </div>

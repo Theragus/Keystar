@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { claudeBriefing, claudeDossier, sanitizeBriefing, type ClaudeClient } from "@/modules/intel/ai/claude";
 import { briefingFacts, dossierFacts, factsHash, type FactsPilot } from "@/modules/intel/ai/facts";
-import { templateBriefing, templateDossier, threatLevelOf } from "@/modules/intel/ai/template";
+import { MESSAGES } from "@/i18n/messages";
+import { renderBriefing, renderDossier, templateBriefing, templateDossier, threatLevelOf } from "@/modules/intel/ai/template";
 import type { DisplayNames } from "@/modules/intel/names";
 import { scorePilot } from "@/modules/intel/score/composite";
 import { DAY_MS } from "@/modules/intel/score/decay";
@@ -71,7 +72,8 @@ const summary = groupSummary(
   pilots.map((p) => ({ characterId: p.characterId, corporationId: 98000001, allianceId: null, standing: p.standing, score: p.score, profile: p.profile })),
   now,
 );
-const facts = () => briefingFacts({ scan: { pilotCount: 2, createdAt: now, system: "Tama" }, pilots, summary, engagements: [], names, now });
+const input = () => ({ scan: { pilotCount: 2, createdAt: now, system: "Tama" }, pilots, summary, engagements: [], names, now });
+const facts = () => briefingFacts(input());
 
 const fakeClient = (parse: (params: Record<string, unknown>) => unknown) => ({ messages: { parse: vi.fn(parse) } }) as unknown as ClaudeClient;
 
@@ -117,7 +119,7 @@ describe("Claude briefing and dossier", () => {
       expect(content.indexOf('"latestKillmails"')).toBeLessThan(content.indexOf('"lifetime"'));
       return { stop_reason: "end_turn", parsed_output: output, model: "claude-sonnet-5-5", usage: { input_tokens: 1000, output_tokens: 200 } };
     });
-    const out = await claudeBriefing(facts(), { apiKey: "k", model: "claude-sonnet-5-5", client });
+    const out = await claudeBriefing(facts(), { apiKey: "k", model: "claude-sonnet-5-5", locale: "en", client });
     expect(out.content.headline).toBe("Sabre gang in Tama");
     expect(out.content.paragraphs).toEqual(["Watch the gate."]);
     expect(out.content.keyPilots).toEqual([{ characterId: 1, note: "Tackle in a Sabre" }]);
@@ -138,30 +140,58 @@ describe("Claude briefing and dossier", () => {
       return { stop_reason: "end_turn", parsed_output: dossier, model: "m", usage: { input_tokens: 1, output_tokens: 1 } };
     });
     const f = dossierFacts(pilots[0], [], names, now);
-    expect((await claudeDossier(f, { apiKey: "k", model: "m", client: ok })).content.watchFor).toEqual(["Bubbles on gates"]);
+    expect((await claudeDossier(f, { apiKey: "k", model: "m", locale: "en", client: ok })).content.watchFor).toEqual(["Bubbles on gates"]);
     const refused = fakeClient(() => ({ stop_reason: "refusal" }));
-    await expect(claudeDossier(f, { apiKey: "k", model: "m", client: refused })).rejects.toThrow("declined");
+    await expect(claudeDossier(f, { apiKey: "k", model: "m", locale: "en", client: refused })).rejects.toThrow("declined");
     const cut = fakeClient(() => ({ stop_reason: "max_tokens" }));
-    await expect(claudeBriefing(facts(), { apiKey: "k", model: "m", client: cut })).rejects.toThrow("cut off");
+    await expect(claudeBriefing(facts(), { apiKey: "k", model: "m", locale: "en", client: cut })).rejects.toThrow("cut off");
     expect(() => sanitizeBriefing({ ...output, headline: " ", recent: "" }, new Set())).toThrow("empty");
   });
 });
 
 describe("intel templates", () => {
-  it("briefs from the facts, recent activity first", () => {
-    const b = templateBriefing(facts());
-    expect(b.threatLevel).toBe(threatLevelOf(facts()));
+  it("briefs from the computed data, recent activity first", () => {
+    const draft = templateBriefing(input());
+    const b = renderBriefing(draft, MESSAGES.en, now);
+    expect(b.threatLevel).toBe(threatLevelOf(input()));
     expect(b.recent).toContain("{@Sabre Guy}");
     expect(b.recent).toContain("**Sabre**");
+    expect(b.recent).toContain("5 hours ago");
     expect(b.headline).toContain("Tama");
-    expect(b.advice.length).toBeGreaterThan(10);
+    expect(b.advice).toBe(MESSAGES.en.intel.template.advice[b.threatLevel]);
+  });
+
+  it("writes the same draft in each reader's language", () => {
+    const draft = JSON.parse(JSON.stringify(templateBriefing(input())));
+    const de = renderBriefing(draft, MESSAGES.de, now);
+    expect(de.headline).toContain("nicht befreundete Piloten in Tama");
+    expect(de.recent).toContain("vor 5 Stunden");
+    expect(de.advice).toBe(MESSAGES.de.intel.template.advice[de.threatLevel]);
   });
 
   it("writes a dossier without Claude", () => {
-    const d = templateDossier(dossierFacts(pilots[0], [], names, now));
+    const d = renderDossier(templateDossier(pilots[0], names), MESSAGES.en, now);
     expect(d.summary).toContain("{@Sabre Guy}");
     expect(d.recentActivity).toContain("Sabre");
-    const quiet = templateDossier(dossierFacts(pilots[1], [], names, now));
-    expect(quiet.confidence).toBe("low");
+    expect(renderDossier(templateDossier(pilots[0], names), MESSAGES.de, now).recentActivity).toContain("Kills in den letzten 7 Tagen");
+    expect(templateDossier(pilots[1], names).confidence).toBe("low");
+  });
+});
+
+describe("note language", () => {
+  it("asks Claude to write in the asker's language from English facts", async () => {
+    const client = fakeClient((params) => {
+      const content = String((params.messages as { content: string }[])[0].content);
+      expect(content).toContain("Write every text field in German");
+      expect(content).toContain('"Recent activity"');
+      return {
+        stop_reason: "end_turn",
+        parsed_output: { summary: "Aktiver Sabre-Pilot.", recentActivity: "", playstyle: "", watchFor: [], historyWithUs: null, confidence: "medium" },
+        model: "m",
+        usage: { input_tokens: 1, output_tokens: 1 },
+      };
+    });
+    const out = await claudeDossier(dossierFacts(pilots[0], [], names, now), { apiKey: "k", model: "m", locale: "de", client });
+    expect(out.content.summary).toBe("Aktiver Sabre-Pilot.");
   });
 });

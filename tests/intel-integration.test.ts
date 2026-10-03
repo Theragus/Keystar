@@ -24,7 +24,9 @@ describe.skipIf(!enabled)("intel integration", async () => {
   const { recentSightings } = await import("@/modules/intel/scans");
   const { loadStandings, standingOf } = await import("@/modules/intel/standings");
   const { writeBriefing, writeDossier, latestNote } = await import("@/modules/intel/ai/generate");
-  const { USER_HOURLY_LIMIT } = await import("@/modules/intel/ai/limits");
+  const { readBriefing } = await import("@/modules/intel/ai/template");
+  const { MESSAGES } = await import("@/i18n/messages");
+  const { USER_HOURLY_LIMIT } = await import("@/modules/intel/constants");
   const { resetEnvCache } = await import("@/core/env");
 
   const db = () => getDb();
@@ -191,11 +193,11 @@ describe.skipIf(!enabled)("intel integration", async () => {
     try {
       expect(await startScan({ text: "12345\tWreck\tRifter Wreck\t1 km", userId, userName: null, aiAllowed: false })).toMatchObject({
         ok: false,
-        error: expect.stringContaining("d-scan"),
+        error: { code: "dscanInPilots" },
       });
       expect(await startScan({ text: "Pilot Nine", systemName: "Nowhere", userId, userName: null, aiAllowed: false })).toMatchObject({
         ok: false,
-        error: expect.stringContaining("Unknown solar system"),
+        error: { code: "unknownSystem", name: "Nowhere" },
       });
       expect(await startScan({ text: "Nobody Known", userId, userName: null, aiAllowed: false })).toMatchObject({ ok: false });
     } finally {
@@ -247,7 +249,7 @@ describe.skipIf(!enabled)("intel integration", async () => {
       const spy = esi(fakeEsi);
       try {
         const res = await startScan({ text: "Pilot Nine\nPilot Ten\nRed Twelve", userId, userName: null, aiAllowed: false }, { now: wnow });
-        if (!res.ok) throw new Error(res.error);
+        if (!res.ok) throw new Error(res.error.code);
         return res.id;
       } finally {
         spy.mockRestore();
@@ -393,7 +395,7 @@ describe.skipIf(!enabled)("intel integration", async () => {
       const spy = esi(fakeEsi);
       try {
         const res = await startScan({ text: "Pilot Nine\nPilot Ten\nRed Twelve", userId, userName: null, aiAllowed });
-        if (!res.ok) throw new Error(res.error);
+        if (!res.ok) throw new Error(res.error.code);
         await db().update(schema.intelScans).set({ status: "ready" });
         return res.id;
       } finally {
@@ -435,6 +437,28 @@ describe.skipIf(!enabled)("intel integration", async () => {
       expect((await latestNote({ kind: "briefing", scanId: id }))?.source).toBe("template");
     });
 
+    it("writes Claude's notes in the asker's language and template notes in the reader's", async () => {
+      const id = await readyScan(true);
+      await db().update(schema.intelScans).set({ locale: "de" });
+      const template = await writeBriefing(id, { createdBy: null, automatic: true });
+      expect(template).toMatchObject({ source: "template", locale: null });
+      const de = readBriefing(template!, MESSAGES.de).content;
+      const en = readBriefing(template!, MESSAGES.en).content;
+      expect(de.threatLevel).toBe(en.threatLevel);
+      expect(de.advice).toBe(MESSAGES.de.intel.template.advice[de.threatLevel]);
+      expect(en.advice).toBe(MESSAGES.en.intel.template.advice[en.threatLevel]);
+
+      const briefing = vi.fn(async (_facts: unknown, opts: { locale: string }) => ({ ...briefingOut, content: { ...briefingOut.content, headline: opts.locale } }));
+      await withKey(async () => {
+        // The automatic briefing is written in the scan creator's language.
+        expect(await writeBriefing(id, { createdBy: null, automatic: true }, { briefing })).toMatchObject({ source: "claude", locale: "de", content: { headline: "de" } });
+        // Same facts in another language: written again; in the same language: reused.
+        expect(await writeBriefing(id, { createdBy: userId, automatic: false, locale: "en" }, { briefing })).toMatchObject({ locale: "en", content: { headline: "en" } });
+        expect(await writeBriefing(id, { createdBy: userId, automatic: false, locale: "de" }, { briefing })).toMatchObject({ locale: "de" });
+        expect(briefing).toHaveBeenCalledTimes(2);
+      });
+    });
+
     it("respects the creator's permission and the hourly budget", async () => {
       const id = await readyScan(false);
       const briefing = vi.fn(async () => briefingOut);
@@ -448,7 +472,7 @@ describe.skipIf(!enabled)("intel integration", async () => {
         );
         const out = await writeBriefing(id, { createdBy: userId, automatic: false }, { briefing });
         expect(out).toMatchObject({ source: "template" });
-        expect(out?.error).toContain("Claude notes this hour");
+        expect(out?.error).toBe("budget:user");
         expect(briefing).not.toHaveBeenCalled();
       });
     });
@@ -461,8 +485,8 @@ describe.skipIf(!enabled)("intel integration", async () => {
         usage: { inputTokens: 1, outputTokens: 1 },
       }));
       await withKey(async () => {
-        expect(await writeDossier(id, 9, { createdBy: userId }, { dossier })).toMatchObject({ source: "claude" });
-        expect(await writeDossier(id, 424242, { createdBy: userId }, { dossier })).toBeNull();
+        expect(await writeDossier(id, 9, { createdBy: userId, locale: "en" }, { dossier })).toMatchObject({ source: "claude", locale: "en" });
+        expect(await writeDossier(id, 424242, { createdBy: userId, locale: "en" }, { dossier })).toBeNull();
       });
       expect((await latestNote({ kind: "dossier", scanId: id, characterId: 9 }))?.content).toMatchObject({ summary: "S" });
     });

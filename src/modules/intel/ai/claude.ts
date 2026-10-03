@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import type { Locale } from "@/i18n/config";
 import { CONFIDENCE, MATCH_CONFIDENCE, THREAT_LEVELS, type Briefing, type Dossier, type DscanRead } from "./types";
 import type { BriefingFacts, DossierFacts, DscanFacts } from "./facts";
 
@@ -18,6 +19,8 @@ type Effort = "low" | "medium" | "high";
 export interface ClaudeOptions {
   apiKey: string;
   model: string;
+  /** The language to write in: whoever asked for the note (the scan's creator for automatic briefings). */
+  locale: Locale;
   client?: ClaudeClient;
 }
 
@@ -95,6 +98,18 @@ export const clip = (s: string, max: number) => {
 };
 const plain = (s: string, max: number) => clip(s.replace(/[*{}]/g, ""), max);
 
+/** Facts are always English; the note is written in the asker's language. Enum fields stay as specified. */
+const LANGUAGE: Record<Locale, string> = {
+  en: "Write every text field in English.",
+  de:
+    "Write every text field in German (informal, as German EVE players talk). Keep the EVE terms they use in English " +
+    "(kill, tackle, cyno, gate camp, hot drop, logi, blob, small gang, d-scan, local) and every pilot, ship, system and " +
+    "corporation name exactly as given. Enum values (threatLevel, confidence) stay in English.",
+};
+
+const ask = (task: string, facts: unknown, locale: Locale) =>
+  `${task}\n\n<facts>\n${JSON.stringify(facts, null, 1)}\n</facts>\n\n${LANGUAGE[locale]}`;
+
 async function callStructured<S extends z.ZodType>(
   schema: S,
   system: string,
@@ -151,13 +166,13 @@ export function sanitizeDossier(raw: z.infer<typeof DossierSchema>): Dossier {
 
 export async function claudeBriefing(facts: BriefingFacts, opts: ClaudeOptions): Promise<ClaudeResult<Briefing>> {
   const where = facts.scan.system ? ` in ${facts.scan.system}` : "";
-  const user = `Brief us on these ${facts.scan.pilots} pilots${where}, scanned ${facts.scan.scannedAt}.\n\n<facts>\n${JSON.stringify(facts, null, 1)}\n</facts>`;
+  const user = ask(`Brief us on these ${facts.scan.pilots} pilots${where}, scanned ${facts.scan.scannedAt}.`, facts, opts.locale);
   const out = await callStructured(BriefingSchema, BRIEFING_SYSTEM, user, { ...opts, effort: "medium", maxTokens: 16000, timeoutMs: 90_000 });
   return { content: sanitizeBriefing(out.parsed, new Set(facts.pilots.map((p) => p.id))), model: out.model, usage: out.usage };
 }
 
 export async function claudeDossier(facts: DossierFacts, opts: ClaudeOptions): Promise<ClaudeResult<Dossier>> {
-  const user = `Write the dossier for ${facts.pilot.name}.\n\n<facts>\n${JSON.stringify(facts, null, 1)}\n</facts>`;
+  const user = ask(`Write the dossier for ${facts.pilot.name}.`, facts, opts.locale);
   const out = await callStructured(DossierSchema, DOSSIER_SYSTEM, user, { ...opts, effort: "low", maxTokens: 8000, timeoutMs: 45_000 });
   return { content: sanitizeDossier(out.parsed), model: out.model, usage: out.usage };
 }
@@ -182,7 +197,7 @@ export function sanitizeDscan(raw: z.infer<typeof DscanSchema>, facts: DscanFact
 }
 
 export async function claudeDscan(facts: DscanFacts, opts: ClaudeOptions): Promise<ClaudeResult<DscanRead>> {
-  const user = `Who is flying what on this d-scan?\n\n<facts>\n${JSON.stringify(facts, null, 1)}\n</facts>`;
+  const user = ask("Who is flying what on this d-scan?", facts, opts.locale);
   const out = await callStructured(DscanSchema, DSCAN_SYSTEM, user, { ...opts, effort: "low", maxTokens: 8000, timeoutMs: 45_000 });
   return { content: sanitizeDscan(out.parsed, facts), model: out.model, usage: out.usage };
 }

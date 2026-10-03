@@ -3,14 +3,18 @@
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useI18n } from "@/i18n/client";
+import type { Messages } from "@/i18n/messages";
 import type { ScanProgress } from "../scans";
 
 const MAX_POLL_MS = 20 * 60_000;
 
-function describe(p: ScanProgress["pending"]): string | null {
-  if (p.stats) return `Reading zKillboard statistics: ${p.stats} pilot${p.stats === 1 ? "" : "s"} to go`;
-  if (p.newest) return `Reading recent kills: ${p.newest} pilot${p.newest === 1 ? "" : "s"} to go`;
-  if (p.deeper) return `Reading older kills for ${p.deeper} active pilot${p.deeper === 1 ? "" : "s"}`;
+const busy = (p: ScanProgress["pending"]) => p.stats + p.newest + p.deeper > 0;
+
+function describe(p: ScanProgress["pending"], t: Messages): string | null {
+  if (p.stats) return t.intel.progress.stats(p.stats);
+  if (p.newest) return t.intel.progress.newest(p.newest);
+  if (p.deeper) return t.intel.progress.deeper(p.deeper);
   return null;
 }
 
@@ -20,12 +24,13 @@ function describe(p: ScanProgress["pending"]): string | null {
  * server-rendered page only when something changed.
  */
 export function ScanProgressPoller({ scanId, initial }: { scanId: string; initial: ScanProgress }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [progress, setProgress] = useState(initial);
   const [, startTransition] = useTransition();
   const version = useRef(initial.version);
   const pending = useRef(initial.pending);
-  const done = initial.status === "ready" && !describe(initial.pending);
+  const done = initial.status === "ready" && !busy(initial.pending);
   const [stopped, setStopped] = useState(done);
 
   useEffect(() => {
@@ -46,7 +51,7 @@ export function ScanProgressPoller({ scanId, initial }: { scanId: string; initia
               version.current = next.version;
               startTransition(() => router.refresh());
             }
-            if (next.status === "ready" && !describe(next.pending)) {
+            if (next.status === "ready" && !busy(next.pending)) {
               setStopped(true);
               return;
             }
@@ -69,7 +74,7 @@ export function ScanProgressPoller({ scanId, initial }: { scanId: string; initia
     };
   }, [scanId, stopped, router]);
 
-  const text = describe(progress.pending);
+  const text = describe(progress.pending, t);
   if (!text || stopped) return null;
   return (
     <p className="flex items-center gap-2 text-sm text-ink-2" role="status">

@@ -14,6 +14,7 @@ CREATE TABLE "intel_ai_notes" (
 	"source" text NOT NULL,
 	"model" text,
 	"error" text,
+	"locale" text,
 	"content" jsonb NOT NULL,
 	"facts" jsonb NOT NULL,
 	"usage" jsonb,
@@ -128,6 +129,7 @@ CREATE TABLE "intel_scans" (
 	"ready_at" timestamp with time zone,
 	"pilot_count" integer DEFAULT 0 NOT NULL,
 	"ai_allowed" boolean DEFAULT false NOT NULL,
+	"locale" text DEFAULT 'en' NOT NULL,
 	"briefing_status" text DEFAULT 'pending' NOT NULL,
 	"rescan_of" text
 );

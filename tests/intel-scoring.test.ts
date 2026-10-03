@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { MESSAGES } from "@/i18n/messages";
+import { reasonText, tagText } from "@/modules/intel/text";
 import { CYNO_TYPES, fitKeyOf, hullClass, isFittedSlot, locationKind, MODULE_GROUPS, SHIP_GROUPS } from "@/modules/intel/hulls";
 import { scorePilot, tierOf, type ScoreContext } from "@/modules/intel/score/composite";
 import { DAY_MS } from "@/modules/intel/score/decay";
@@ -135,7 +137,7 @@ describe("threat score", () => {
     const score = scorePilot(buildProfile(input({ stats })), ctx());
     expect(score.composite).toBeLessThan(25);
     expect(score.tier).toBe("low");
-    expect(score.dimensions.find((d) => d.key === "activity")!.why).toContain("last active 2023-12");
+    expect(reasonText(MESSAGES.en, score.dimensions.find((d) => d.key === "activity")!.why)).toContain("last active 2023-12");
   });
 
   it("rates a pilot active last week highly, from their newest killmails", () => {
@@ -186,7 +188,12 @@ describe("threat score", () => {
     const profile = buildProfile(input({ digest, coveredSince: new Date(now.getTime() - 30 * DAY_MS) }));
     expect(profile.fits.covertCyno?.count).toBe(1);
     const tags = scorePilot(profile, ctx()).tags;
-    expect(tags.find((t) => t.key === "cyno")).toMatchObject({ label: "Covert cyno", evidence: "recent" });
+    const cyno = tags.find((t) => t.key === "cyno")!;
+    expect(cyno).toMatchObject({ label: "covertCyno", evidence: "recent", why: { key: "cynoFits", count: 1 } });
+    expect(tagText(MESSAGES.en, cyno)).toBe("Covert cyno");
+    expect(tagText(MESSAGES.de, cyno)).toBe("Covert-Cyno");
+    expect(reasonText(MESSAGES.en, cyno.why, now)).toBe("Cyno fitted on 1 lost ship, last 3 days ago");
+    expect(reasonText(MESSAGES.de, cyno.why, now)).toBe("Cyno auf 1 verlorenem Schiff, zuletzt vor 3 Tagen");
   });
 
   it("marks friendlies and pilots without data", () => {
@@ -201,7 +208,7 @@ describe("threat score", () => {
     const withHistory = scorePilot(profile, ctx({ history }));
     const dim = withHistory.dimensions.find((d) => d.key === "history")!;
     expect(dim.available).toBe(true);
-    expect(dim.why).toContain("On 3 of our losses");
+    expect(reasonText(MESSAGES.en, dim.why, now)).toContain("On 3 of our losses");
     expect(scorePilot(profile, ctx()).dimensions.find((d) => d.key === "history")!.available).toBe(false);
   });
 });

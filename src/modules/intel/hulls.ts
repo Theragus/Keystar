@@ -118,25 +118,6 @@ const CLASS_BY_GROUP = new Map<number, HullClass>([
   [G.shuttle, "pod"],
 ]);
 
-export const HULL_CLASS_LABELS: Record<HullClass, string> = {
-  tackle: "Tackle",
-  hunter: "Covert / bomber",
-  recon: "Recon",
-  logistics: "Logistics",
-  frigate: "Frigate",
-  destroyer: "Destroyer",
-  cruiser: "Cruiser",
-  battlecruiser: "Battlecruiser",
-  battleship: "Battleship",
-  capital: "Capital",
-  supercapital: "Supercapital",
-  blackOps: "Black Ops",
-  industrial: "Industrial",
-  command: "Command ship",
-  pod: "Pod / shuttle",
-  other: "Other",
-};
-
 export function hullClass(groupId: number | null | undefined): HullClass {
   return (groupId && CLASS_BY_GROUP.get(groupId)) || "other";
 }

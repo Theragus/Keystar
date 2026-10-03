@@ -1,120 +1,232 @@
-import type { BriefingFacts, DossierFacts, DscanFacts } from "./facts";
-import type { Briefing, Dossier, DscanRead, ThreatLevel } from "./types";
+import type { Messages } from "@/i18n/messages";
+import type { DscanMatchRow } from "../dscan";
+import type { HullClass } from "../hulls";
+import type { DisplayNames } from "../names";
+import { reasonText } from "../text";
+import type { Engagement, Reason, TagLabel, Tier, TimeZone } from "../types";
+import type { BriefingInput, FactsPilot } from "./facts";
+import type { Briefing, Confidence, Dossier, DscanRead, MatchConfidence, StoredNote, ThreatLevel } from "./types";
 
 /**
- * Plain briefings written from the same facts when Claude is not configured,
- * not allowed or unavailable. Deterministic and factual, recent activity first.
+ * Notes written without Claude (not configured, not allowed, over budget or
+ * failed). Deterministic and factual, recent activity first.
+ *
+ * A template note is stored as a draft (keys, numbers, names and times) and
+ * written out when it is shown, in the reader's language (`t.intel.template`).
  */
 
-const list = (items: string[]) => (items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`);
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+type TagRef = { label: TagLabel; historic: boolean };
+type Role = keyof GroupRoles;
+type GroupRoles = BriefingInput["summary"]["roles"];
 
-export function threatLevelOf(facts: BriefingFacts): ThreatLevel {
-  const t = facts.group.tiers;
-  const recentLoss = facts.historyWithUs.engagements.some((e) => e.weLost > e.weKilled && e.ago !== null && !/days/.test(e.ago));
-  if (t.extreme >= 2 || (t.extreme >= 1 && (facts.group.roles.cyno > 0 || facts.group.roles.capital > 0)) || (t.extreme + t.high >= 3 && recentLoss)) return "critical";
+export interface BriefingDraft {
+  level: ThreatLevel;
+  system: string | null;
+  nonFriendly: number;
+  /** Pilots with kills in the last week, most dangerous first (the first three with their latest killmail). */
+  activeCount: number;
+  active: { name: string; latest: { isLoss: boolean; ship: string | null; at: string } | null }[];
+  top: { characterId: number; name: string; tier: Tier | "unknown"; tags: TagRef[]; why: Reason | null }[];
+  comp: { cls: HullClass; pilots: number }[];
+  roles: { role: Role; count: number }[];
+  flyTogether: string[][];
+  fight: {
+    pilots: string[];
+    at: string;
+    system: string | null;
+    brought: { ship: string | null; count: number }[];
+    weKilled: number;
+    weLost: number;
+    iskKilled: number;
+    iskLost: number;
+  } | null;
+}
+
+export interface DossierDraft {
+  name: string;
+  tier: Tier | "unknown";
+  score: number | null;
+  tags: TagRef[];
+  latest: { isLoss: boolean; ship: string | null; system: string | null; at: string } | null;
+  kills7d: number;
+  /** Null without a deep pass (only statistics). */
+  kills30d: number | null;
+  lastActiveMonth: string | null;
+  style: Reason | null;
+  ships: string[];
+  zone: TimeZone | null;
+  history: { killsOnUs: number; lossesToUs: number; lastAt: string | null } | null;
+  confidence: Confidence;
+}
+
+export interface DscanDraft {
+  ships: number;
+  comp: { cls: HullClass; count: number }[];
+  assignments: { typeId: number; characterId: number; confidence: MatchConfidence; exact: boolean; lastAt: string | null; cls: HullClass }[];
+  unplaced: string[];
+}
+
+const typeName = (names: DisplayNames, id: number | null | undefined) => (id ? (names.types.get(id)?.name ?? null) : null);
+const systemName = (names: DisplayNames, id: number | null | undefined) => (id ? (names.systems.get(id)?.name ?? null) : null);
+const isFriendly = (p: FactsPilot) => p.standing.cls === "own" || p.standing.cls === "blue";
+const tagRefs = (p: FactsPilot): TagRef[] => (p.score?.tags ?? []).map((t) => ({ label: t.label, historic: t.evidence !== "recent" }));
+const HOUR_MS = 3_600_000;
+
+export function threatLevelOf(input: Pick<BriefingInput, "summary" | "engagements" | "now">): ThreatLevel {
+  const t = input.summary.tiers;
+  const roles = input.summary.roles;
+  const recentLoss = input.engagements
+    .slice(0, 5)
+    .some((e) => e.ourLosses > e.ourKills && input.now.getTime() - Date.parse(e.start) < 48 * HOUR_MS);
+  if (t.extreme >= 2 || (t.extreme >= 1 && (roles.cyno > 0 || roles.capital > 0)) || (t.extreme + t.high >= 3 && recentLoss)) return "critical";
   if (t.extreme >= 1 || t.high >= 2) return "high";
   if (t.high >= 1 || t.moderate >= 2) return "elevated";
   if (t.moderate >= 1) return "low";
   return "minimal";
 }
 
-const ADVICE: Record<ThreatLevel, string> = {
-  minimal: "Nobody here has been dangerous lately; operate normally and keep an eye on local.",
-  low: "Little recent activity; stay aligned and watch d-scan.",
-  elevated: "Some active PvP pilots are here; travel aligned, avoid lingering on gates and keep a scout out.",
-  high: "Active, dangerous pilots are here; avoid solo travel and expect tackle on gates.",
-  critical: "An active, dangerous group is here; dock up or form a fleet before undocking.",
-};
-
-export function templateBriefing(facts: BriefingFacts): Briefing {
-  const level = threatLevelOf(facts);
-  const active = facts.pilots.filter((p) => (p.last7Days?.kills ?? 0) > 0);
-  const top = facts.pilots.filter((p) => p.threat && (p.threat.tier === "high" || p.threat.tier === "extreme")).slice(0, 5);
-  const where = facts.scan.system ? ` in **${facts.scan.system}**` : "";
-
-  const recent = active.length
-    ? `${plural(active.length, "pilot")} got kills in the last week; most recently ${list(
-        active.slice(0, 3).map((p) => {
-          const k = p.latestKillmails[0];
-          return k ? `{@${p.name}} (${k.type === "kill" ? "a kill" : "a loss"} in **${k.ship ?? "a ship"}**, ${k.ago} ago)` : `{@${p.name}}`;
-        }),
-      )}.`
-    : `None of the ${plural(facts.scan.nonFriendly, "non-friendly pilot")}${where} got a kill in the last week.`;
-
-  const paragraphs: string[] = [];
-  if (top.length) {
-    paragraphs.push(
-      `Most dangerous right now: ${list(top.map((p) => `{@${p.name}} (${p.threat!.tier}${p.threat!.tags.length ? `, ${p.threat!.tags.slice(0, 3).join(", ")}` : ""})`))}.`,
-    );
-  }
-  const comp = facts.group.likelyComposition.slice(0, 4);
-  const roles = Object.entries(facts.group.roles)
-    .filter(([, n]) => n > 0)
-    .map(([role, n]) => `${n} ${role}`);
-  if (comp.length || roles.length) {
-    paragraphs.push(
-      `${comp.length ? `Likely flying ${list(comp.map((c) => `${c.pilots} ${c.class.toLowerCase()}`))}` : "No recent hulls on record"}${roles.length ? `; roles seen: ${list(roles)}` : ""}.${facts.group.flyTogether.length ? ` ${list(facts.group.flyTogether.slice(0, 2).map((g) => g.map((n) => `{@${n}}`).join(", ")))} fly together.` : ""}`,
-    );
-  }
-  const fight = facts.historyWithUs.engagements[0];
-  if (fight) {
-    paragraphs.push(
-      `We last fought ${list(fight.theirPilotsFromThisList.slice(0, 4).map((n) => `{@${n}}`))} ${fight.ago} ago in **${fight.system}**: they brought ${list(fight.theyBrought.slice(0, 5))}; we killed ${fight.weKilled} ({+${fight.iskKilled} ISK}) and lost ${fight.weLost} ({-${fight.iskLost} ISK}).`,
-    );
-  }
+function fightDraft(e: Engagement, names: DisplayNames, pilotNames: Map<number, string>): BriefingDraft["fight"] {
   return {
-    headline: `${facts.scan.nonFriendly} non-friendly pilot${facts.scan.nonFriendly === 1 ? "" : "s"}${facts.scan.system ? ` in ${facts.scan.system}` : ""}: threat ${level}`,
-    threatLevel: level,
-    recent,
-    paragraphs,
-    keyPilots: top.map((p) => ({ characterId: p.id, note: p.threat!.dimensions[0]?.why ?? `${p.threat!.tier} threat` })),
-    advice: ADVICE[level],
+    pilots: e.pilots.slice(0, 4).map((p) => pilotNames.get(p.characterId) ?? String(p.characterId)),
+    at: e.start,
+    system: systemName(names, e.systemId),
+    brought: e.brought.slice(0, 5).map((b) => ({ ship: typeName(names, b.shipTypeId), count: b.count })),
+    weKilled: e.ourKills,
+    weLost: e.ourLosses,
+    iskKilled: e.iskKilled,
+    iskLost: e.iskLost,
   };
 }
 
-export function templateDossier(facts: DossierFacts): Dossier {
-  const p = facts.pilot;
-  const k = p.latestKillmails[0];
-  const tier = p.threat?.tier ?? "unknown";
-  const recentActivity = k
-    ? `Latest: ${k.type === "kill" ? "a kill" : "a loss"} in **${k.ship ?? "a ship"}** ${k.ago} ago in **${k.system ?? "?"}**. ${p.last7Days?.kills ?? 0} kills in the last 7 days${p.last30Days ? `, ${p.last30Days.kills} in 30` : ""}.`
-    : `No recent killmails${p.lifetime?.lastActiveMonth ? `; last active ${p.lifetime.lastActiveMonth}` : ""}.`;
-  const style = p.threat?.dimensions.find((d) => d.dimension === "Fighting style")?.why;
+export function templateBriefing(input: BriefingInput): BriefingDraft {
+  const { names } = input;
+  const pilotNames = new Map(input.pilots.map((p) => [p.characterId, p.name]));
+  const ranked = input.pilots.filter((p) => !isFriendly(p)).sort((a, b) => (b.score?.composite ?? -1) - (a.score?.composite ?? -1));
+  const active = ranked.filter((p) => (p.profile?.recent.kills7d ?? 0) > 0);
+  const top = ranked.filter((p) => p.score?.tier === "high" || p.score?.tier === "extreme").slice(0, 5);
   return {
-    summary: `{@${p.name}} is a ${tier} threat${p.threat ? ` (${p.threat.score})` : ""}${p.threat?.tags.length ? `: ${p.threat.tags.join(", ")}` : ""}.`,
-    recentActivity,
-    playstyle: [style, p.ships.length ? `Flies ${list(p.ships.slice(0, 3).map((s) => s.ship ?? "?"))}` : null, p.timezone ? `mostly ${p.timezone} time zone` : null]
+    level: threatLevelOf(input),
+    system: input.scan.system,
+    nonFriendly: ranked.length,
+    activeCount: active.length,
+    active: active.slice(0, 3).map((p) => {
+      const k = p.profile?.recent.latest[0];
+      return { name: p.name, latest: k ? { isLoss: k.isLoss, ship: typeName(names, k.shipTypeId), at: k.time } : null };
+    }),
+    top: top.map((p) => ({
+      characterId: p.characterId,
+      name: p.name,
+      tier: p.score!.tier,
+      tags: tagRefs(p).slice(0, 3),
+      why: p.score!.dimensions.find((d) => d.available)?.why ?? null,
+    })),
+    comp: input.summary.comp.slice(0, 4).map((c) => ({ cls: c.cls, pilots: c.pilots })),
+    roles: (Object.entries(input.summary.roles) as [Role, number][]).filter(([, n]) => n > 0).map(([role, count]) => ({ role, count })),
+    flyTogether: input.summary.clusters.slice(0, 2).map((c) => c.map((id) => pilotNames.get(id) ?? String(id))),
+    fight: input.engagements[0] ? fightDraft(input.engagements[0], names, pilotNames) : null,
+  };
+}
+
+export function renderBriefing(d: BriefingDraft, t: Messages, now: Date = new Date()): Briefing {
+  const s = t.intel.template;
+  const paragraphs: string[] = [];
+  if (d.top.length) paragraphs.push(s.mostDangerous(d.top.map((p) => s.dangerousPilot(p.name, p.tier, p.tags))));
+  if (d.comp.length || d.roles.length) paragraphs.push(s.composition(d.comp, d.roles, d.flyTogether));
+  if (d.fight) paragraphs.push(s.lastFight(d.fight, now));
+  return {
+    headline: s.headline(d.nonFriendly, d.system, d.level),
+    threatLevel: d.level,
+    recent: d.activeCount
+      ? s.recentActive(d.activeCount, d.active.map((p) => s.recentPilot(p.name, p.latest, now)))
+      : s.recentQuiet(d.nonFriendly, d.system),
+    paragraphs,
+    keyPilots: d.top.map((p) => ({ characterId: p.characterId, note: p.why ? reasonText(t, p.why, now) : s.keyPilotFallback(p.tier) })),
+    advice: s.advice[d.level],
+  };
+}
+
+export function templateDossier(pilot: FactsPilot, names: DisplayNames): DossierDraft {
+  const profile = pilot.profile;
+  const r = profile?.recent;
+  const k = r?.latest[0];
+  const h = pilot.history;
+  const deep = profile?.depth === "deep";
+  return {
+    name: pilot.name,
+    tier: pilot.score?.tier ?? "unknown",
+    score: pilot.score && pilot.score.tier !== "unknown" ? pilot.score.composite : null,
+    tags: tagRefs(pilot),
+    latest: k ? { isLoss: k.isLoss, ship: typeName(names, k.shipTypeId), system: systemName(names, k.systemId), at: k.time } : null,
+    kills7d: r?.kills7d ?? 0,
+    kills30d: deep && r ? r.kills30d : null,
+    lastActiveMonth: profile?.lifetime.lastActiveMonth ?? null,
+    style: pilot.score?.dimensions.find((x) => x.key === "style" && x.available)?.why ?? null,
+    ships: (profile?.hulls ?? [])
+      .slice(0, 3)
+      .map((x) => typeName(names, x.shipTypeId))
+      .filter((x): x is string => !!x),
+    zone: profile?.timezone.zone ?? null,
+    history: h && h.killsOnUs + h.lossesToUs > 0 ? { killsOnUs: h.killsOnUs, lossesToUs: h.lossesToUs, lastAt: h.lastAt } : null,
+    confidence: deep && r && r.kills30d + r.losses30d >= 10 ? "high" : k ? "medium" : "low",
+  };
+}
+
+export function renderDossier(d: DossierDraft, t: Messages, now: Date = new Date()): Dossier {
+  const s = t.intel.template;
+  return {
+    summary: s.dossierSummary(d.name, d.tier, d.score, d.tags),
+    recentActivity: d.latest ? s.dossierLatest(d.latest, d.kills7d, d.kills30d, now) : s.dossierQuiet(d.lastActiveMonth),
+    playstyle: [d.style ? reasonText(t, d.style, now) : null, d.ships.length ? s.flies(d.ships) : null, d.zone ? s.zone(d.zone) : null]
       .filter(Boolean)
       .join("; "),
-    watchFor: (p.threat?.tags ?? []).slice(0, 4),
-    historyWithUs: p.historyWithUs
-      ? `On ${p.historyWithUs.onOurLosses} of our losses and died to us ${p.historyWithUs.diedToUs} times; last ${p.historyWithUs.last} ago.`
-      : null,
-    confidence: p.last30Days && (p.last30Days.kills + p.last30Days.losses) >= 10 ? "high" : k ? "medium" : "low",
+    watchFor: d.tags.slice(0, 4).map((tag) => (tag.historic ? t.intel.historic(t.intel.tags[tag.label]) : t.intel.tags[tag.label])),
+    historyWithUs: d.history ? s.dossierHistory(d.history, now) : null,
+    confidence: d.confidence,
   };
 }
 
-export function templateDscan(facts: DscanFacts): DscanRead {
-  const ships = facts.dscan.reduce((n, r) => n + r.onScan, 0);
-  const classes = new Map<string, number>();
-  for (const r of facts.dscan) classes.set(r.class, (classes.get(r.class) ?? 0) + r.onScan);
-  const comp = [...classes.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `${n} ${c.toLowerCase()}`);
-  const assignments = facts.dscan.flatMap((r) =>
-    r.computedAssignment.map((a) => {
-      const c = r.candidates.find((x) => x.id === a.id);
-      return {
-        typeId: r.typeId,
-        characterId: a.id,
-        confidence: a.confidence,
-        reason: c?.flewThisExactHull ? `Flew this hull${c.lastFlown ? ` ${c.lastFlown} ago` : " before"}` : `Flies ${r.class.toLowerCase()} hulls`,
-      };
-    }),
-  );
-  const unplaced = facts.dscan.filter((r) => r.computedAssignment.length < r.onScan).map((r) => r.ship);
+export function templateDscan(rows: DscanMatchRow[]): DscanDraft {
+  const comp = new Map<HullClass, number>();
+  for (const r of rows) comp.set(r.cls, (comp.get(r.cls) ?? 0) + r.count);
   return {
-    assessment: `${plural(ships, "ship")} on scan: ${list(comp.slice(0, 5))}. ${assignments.length ? `${plural(assignments.length, "pilot")} from local match a hull they flew recently.` : "No pilot in local has flown these hulls recently."}`,
-    assignments,
-    notes: unplaced.length ? `Nobody in local is known to fly ${list([...new Set(unplaced)].slice(0, 5))}; they may be off the list or in new hulls.` : "",
+    ships: rows.reduce((n, r) => n + r.count, 0),
+    comp: [...comp.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([cls, count]) => ({ cls, count })),
+    assignments: rows.flatMap((r) =>
+      r.assigned.map((a) => {
+        const c = r.candidates.find((x) => x.characterId === a.characterId);
+        return { typeId: r.typeId, characterId: a.characterId, confidence: a.confidence, exact: !!c?.exact, lastAt: c?.lastAt ?? null, cls: r.cls };
+      }),
+    ),
+    unplaced: [...new Set(rows.filter((r) => r.assigned.length < r.count).map((r) => r.name))].slice(0, 5),
   };
+}
+
+export function renderDscan(d: DscanDraft, t: Messages, now: Date = new Date()): DscanRead {
+  const s = t.intel.template;
+  return {
+    assessment: s.dscanAssessment(d.ships, d.comp, d.assignments.length),
+    assignments: d.assignments.map((a) => ({
+      typeId: a.typeId,
+      characterId: a.characterId,
+      confidence: a.confidence,
+      reason: a.exact ? s.flewHull(a.lastAt, now) : s.fliesClass(a.cls),
+    })),
+    notes: d.unplaced.length ? s.unplaced(d.unplaced) : "",
+  };
+}
+
+/** A stored note as the reader sees it: Claude's text as written, a template draft in the reader's language. */
+export function readBriefing(note: StoredNote<unknown>, t: Messages): StoredNote<Briefing> {
+  return note.source === "template" ? { ...note, content: renderBriefing(note.content as BriefingDraft, t) } : (note as StoredNote<Briefing>);
+}
+
+export function readDossier(note: StoredNote<unknown>, t: Messages): StoredNote<Dossier> {
+  return note.source === "template" ? { ...note, content: renderDossier(note.content as DossierDraft, t) } : (note as StoredNote<Dossier>);
+}
+
+export function readDscan(note: StoredNote<unknown>, t: Messages): StoredNote<DscanRead> {
+  return note.source === "template" ? { ...note, content: renderDscan(note.content as DscanDraft, t) } : (note as StoredNote<DscanRead>);
 }

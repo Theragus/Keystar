@@ -14,6 +14,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { Locale } from "@/i18n/config";
 import type {
   CorpHistoryEntry,
   DscanEntry,
@@ -54,6 +55,8 @@ export const intelScans = pgTable(
     pilotCount: integer("pilot_count").notNull().default(0),
     /** Whether the creator may use Claude (the automatic briefing respects it). */
     aiAllowed: boolean("ai_allowed").notNull().default(false),
+    /** The creator's language: Claude writes the automatic briefing in it. */
+    locale: text("locale").$type<Locale>().notNull().default("en"),
     briefingStatus: text("briefing_status").$type<BriefingStatus>().notNull().default("pending"),
     rescanOf: text("rescan_of"),
   },
@@ -223,6 +226,8 @@ export const intelAiNotes = pgTable(
     source: text("source").notNull(),
     model: text("model"),
     error: text("error"),
+    /** Language of Claude's text (whoever asked for it); null for template drafts, written out per reader. */
+    locale: text("locale").$type<Locale>(),
     content: jsonb("content").notNull(),
     facts: jsonb("facts").notNull(),
     usage: jsonb("usage"),

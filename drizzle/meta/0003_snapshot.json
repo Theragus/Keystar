@@ -1,5 +1,5 @@
 {
-  "id": "2f52b8b3-4ca5-4ab3-b7b9-5cc9ef92e7d8",
+  "id": "c8cd5075-fad4-40ad-bfdb-b3dc2cb7c602",
   "prevId": "7e961e4d-dbcb-47e0-bd2a-e0b5f931852b",
   "version": "7",
   "dialect": "postgresql",
@@ -1369,6 +1369,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "content": {
           "name": "content",
           "type": "jsonb",
@@ -2302,6 +2308,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'en'"
         },
         "briefing_status": {
           "name": "briefing_status",

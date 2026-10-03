@@ -2,7 +2,7 @@ import { PROFILE_VERSION } from "../constants";
 import { fitKeyOf, locationKind } from "../hulls";
 import { isNpcCorporation } from "../priority";
 import { gangBuckets } from "../stats";
-import type { CorpHistoryEntry, FitEvidence, HullUse, LatestEvent, NormalizedStats, PilotProfile } from "../types";
+import type { CorpHistoryEntry, FitEvidence, HullUse, LatestEvent, NormalizedStats, PilotProfile, TimeZone } from "../types";
 import { DAY_MS, weightAt } from "./decay";
 
 /**
@@ -50,7 +50,7 @@ export interface ProfileInput {
   now: Date;
 }
 
-const TZ_LABELS: Record<string, string> = { "tz:eu": "EU", "tz:use": "US East", "tz:usw": "US West", "tz:au": "AU", "tz:ru": "RU" };
+const TZ_LABELS: Record<string, TimeZone> = { "tz:eu": "eu", "tz:use": "use", "tz:usw": "usw", "tz:au": "au", "tz:ru": "ru" };
 /** zKillboard's "recent ships" count roughly the last months; one appearance weighs this much. */
 const RECENT_SHIP_WEIGHT = 0.15;
 
@@ -229,7 +229,7 @@ export function buildProfile(input: ProfileInput): PilotProfile {
     : [];
   const tzLabels = stats ? (Object.keys(stats.labels.recent).length ? stats.labels.recent : stats.labels.lifetime) : {};
   const tz = Object.entries(TZ_LABELS)
-    .map(([key, label]) => ({ label, n: (tzLabels[key]?.kills ?? 0) + (tzLabels[key]?.losses ?? 0) }))
+    .map(([key, zone]) => ({ zone, n: (tzLabels[key]?.kills ?? 0) + (tzLabels[key]?.losses ?? 0) }))
     .sort((a, b) => b.n - a.n)[0];
 
   const lastActive = stats?.months.filter((m) => m.kills + m.losses > 0).at(-1);
@@ -299,7 +299,7 @@ export function buildProfile(input: ProfileInput): PilotProfile {
       npcCorp: isNpcCorporation(input.corporationId),
       securityStatus: input.securityStatus ?? stats?.info.securityStatus ?? null,
     },
-    timezone: { peakHours, label: tz && tz.n > 0 ? tz.label : null, heat: stats?.activity ?? null },
+    timezone: { peakHours, zone: tz && tz.n > 0 ? tz.zone : null, heat: stats?.activity ?? null },
     flags: {
       blops: stats?.activityTags?.blops ?? 0,
       logi: stats?.activityTags?.logi ?? 0,

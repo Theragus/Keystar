@@ -1,19 +1,21 @@
 import { TypeIcon } from "@/components/ui/eve-image";
-import { compact, relativeTime } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import { KILL_COLOR, LOSS_COLOR } from "@/modules/killboard/colors";
 import { zkillKill } from "@/modules/killboard/links";
 import type { DisplayNames } from "../names";
 import type { LatestEvent, PilotProfile } from "../types";
 
 /** The pilot's newest kills and losses, newest first: what they fly right now and where. */
-export function LatestKills({ events, names, limit = 5 }: { events: LatestEvent[]; names: DisplayNames; limit?: number }) {
+export async function LatestKills({ events, names, limit = 5 }: { events: LatestEvent[]; names: DisplayNames; limit?: number }) {
   if (!events.length) return null;
+  const { t, f } = await getI18n();
+  const l = t.intel.latest;
   return (
     <ol className="flex flex-wrap gap-1.5">
       {events.slice(0, limit).map((e) => {
         const color = e.isLoss ? LOSS_COLOR : KILL_COLOR;
-        const other = e.otherShipTypeId ? names.types.get(e.otherShipTypeId)?.name : null;
-        const system = names.systems.get(e.systemId)?.name;
+        const other = e.otherShipTypeId ? (names.types.get(e.otherShipTypeId)?.name ?? null) : null;
+        const system = names.systems.get(e.systemId)?.name ?? null;
         return (
           <li key={e.killmailId}>
             <a
@@ -22,16 +24,16 @@ export function LatestKills({ events, names, limit = 5 }: { events: LatestEvent[
               rel="noopener noreferrer"
               className="glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-white/8"
               style={{ borderLeftColor: color }}
-              title={`${e.isLoss ? "Lost" : "Killed"} ${other ?? "a ship"}${system ? ` in ${system}` : ""} · ${compact(e.value)} ISK · ${e.attackerCount} attacker${e.attackerCount === 1 ? "" : "s"}`}
+              title={l.title({ isLoss: e.isLoss, ship: other, system, isk: f.compact(e.value), attackers: e.attackerCount })}
             >
               {e.shipTypeId ? <TypeIcon id={e.shipTypeId} size={22} className="rounded" /> : null}
               <span className="min-w-0">
                 <span className="block max-w-36 truncate text-ink">
-                  <span className="sr-only">{e.isLoss ? "Loss: " : "Kill: "}</span>
-                  {e.isLoss ? "Lost" : "Killed"} {other ?? "ship"}
+                  <span className="sr-only">{l.srKind(e.isLoss)}</span>
+                  {l.chip(e.isLoss, other)}
                 </span>
-                <span className="block text-[0.66rem] text-ink-3">
-                  {relativeTime(e.time)} · {system ?? "?"} · {e.solo ? "solo" : `${e.attackerCount} pilots`}
+                <span className="block text-3xs text-ink-3">
+                  {f.relativeTime(e.time)} · {system ?? "?"} · {e.solo ? l.solo : l.pilots(e.attackerCount)}
                 </span>
               </span>
             </a>
@@ -43,16 +45,16 @@ export function LatestKills({ events, names, limit = 5 }: { events: LatestEvent[
 }
 
 /** "Last seen flying a Sabre, 3 h ago in Amamake" — or what zKillboard says they fly recently. */
-export function LastSeen({ profile, names }: { profile: PilotProfile; names: DisplayNames }) {
+export async function LastSeen({ profile, names }: { profile: PilotProfile; names: DisplayNames }) {
+  const { t, f } = await getI18n();
   const seen = profile.recent.lastSeen;
   if (seen) {
-    const ship = seen.shipTypeId ? names.types.get(seen.shipTypeId)?.name : null;
-    const system = names.systems.get(seen.systemId)?.name;
+    const ship = seen.shipTypeId ? (names.types.get(seen.shipTypeId)?.name ?? null) : null;
+    const system = names.systems.get(seen.systemId)?.name ?? null;
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
         {seen.shipTypeId && <TypeIcon id={seen.shipTypeId} size={16} className="rounded" />}
-        Last seen {seen.isLoss ? "losing" : "flying"} {ship ?? "a ship"}, {relativeTime(seen.time)}
-        {system ? ` in ${system}` : ""}
+        {t.intel.latest.lastSeen(seen.isLoss, ship, f.relativeTime(seen.time), system)}
       </span>
     );
   }
@@ -60,7 +62,7 @@ export function LastSeen({ profile, names }: { profile: PilotProfile; names: Dis
   if (!recent.length) return null;
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-ink-3">
-      Recently flying
+      {t.intel.latest.recentlyFlying}
       {recent.map((h) => (
         <span key={h.shipTypeId} className="inline-flex items-center gap-1 text-ink-2">
           <TypeIcon id={h.shipTypeId} size={16} className="rounded" />

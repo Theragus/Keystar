@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { countDscan, parseDscanLine } from "@/core/eve/dscan";
 import { sanitizeDscan } from "@/modules/intel/ai/claude";
 import { dscanFacts, type FactsPilot } from "@/modules/intel/ai/facts";
-import { templateDscan } from "@/modules/intel/ai/template";
+import { MESSAGES } from "@/i18n/messages";
+import { renderDscan, templateDscan } from "@/modules/intel/ai/template";
 import { matchDscan, type DscanPilot } from "@/modules/intel/dscan";
 import type { DisplayNames } from "@/modules/intel/names";
 import type { HullUse, PilotProfile } from "@/modules/intel/types";
@@ -93,9 +94,12 @@ describe("d-scan read", () => {
   });
 
   it("falls back to the computed assignment", () => {
-    const read = templateDscan(facts());
+    const draft = templateDscan(matchDscan([SABRE, LOKI], pilots, now));
+    const read = renderDscan(draft, MESSAGES.en, now);
     expect(read.assessment).toContain("3 ships on scan");
     expect(read.assignments.map((a) => a.characterId)).toEqual([1, 2]);
+    expect(read.assignments[0].reason).toBe("Flew this hull 2 hours ago");
     expect(read.notes).toContain("Loki");
+    expect(renderDscan(draft, MESSAGES.de, now).assessment).toContain("3 Schiffe auf dem Scan");
   });
 });

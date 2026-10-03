@@ -3,59 +3,66 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Portrait } from "@/components/ui/eve-image";
 import { Panel } from "@/components/ui/glass";
-import { relativeTime } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import { RichText } from "@/modules/killboard/components/rich-text";
-import type { Briefing, Dossier, StoredNote, ThreatLevel } from "../ai/types";
+import { readBriefing, readDossier } from "../ai/template";
+import type { StoredNote, ThreatLevel } from "../ai/types";
+import { noteErrorText } from "../text";
 
-const LEVEL: Record<ThreatLevel, { tone: "neutral" | "gold" | "warning" | "critical"; label: string }> = {
-  minimal: { tone: "neutral", label: "Minimal threat" },
-  low: { tone: "neutral", label: "Low threat" },
-  elevated: { tone: "gold", label: "Elevated threat" },
-  high: { tone: "warning", label: "High threat" },
-  critical: { tone: "critical", label: "Critical threat" },
+const LEVEL_TONE: Record<ThreatLevel, "neutral" | "gold" | "warning" | "critical"> = {
+  minimal: "neutral",
+  low: "neutral",
+  elevated: "gold",
+  high: "warning",
+  critical: "critical",
 };
 
-function Byline({ note }: { note: StoredNote<unknown> }) {
+/** Who wrote a note and when, and why Claude did not if it was meant to. */
+export async function NoteByline({ note, verb = "wrote" }: { note: StoredNote<unknown>; verb?: "wrote" | "read" }) {
+  const { t, f } = await getI18n();
+  const n = t.intel.notes;
+  const by = note.source === "claude" ? (verb === "read" ? n.readByClaude(note.model) : n.byClaude(note.model)) : n.byTemplate;
   return (
-    <p className="mt-3 flex items-center gap-1.5 text-[0.7rem] text-ink-3">
+    <p className="mt-3 flex items-center gap-1.5 text-2xs text-ink-3">
       {note.source === "claude" ? <Bot className="size-3.5" aria-hidden /> : <FileText className="size-3.5" aria-hidden />}
-      {note.source === "claude" ? `Written by Claude (${note.model})` : "Written from a template"} {relativeTime(note.createdAt)}
-      {note.error ? ` · Claude unavailable: ${note.error}` : ""}
+      {by} {f.relativeTime(note.createdAt)}
+      {note.error ? ` · ${n.unavailable(noteErrorText(t, note.error))}` : ""}
     </p>
   );
 }
 
 /** The scan's briefing: threat level, what happened recently, who matters, what to do. */
-export function BriefingPanel({
-  note,
+export async function BriefingPanel({
+  note: stored,
   pending,
   actions,
   scanId,
   pilotNames,
   claudeHint,
 }: {
-  note: StoredNote<Briefing> | null;
+  note: StoredNote<unknown> | null;
   pending: boolean;
   actions?: React.ReactNode;
   scanId: string;
   pilotNames: Map<number, string>;
   claudeHint: string | null;
 }) {
-  if (!note) {
+  const { t } = await getI18n();
+  const n = t.intel.notes;
+  if (!stored) {
     return (
-      <Panel title="Briefing" actions={actions}>
-        <p className="text-sm text-ink-3">
-          {pending ? "The briefing is written once the most dangerous pilots have their recent kills loaded." : "No briefing for this scan."}
-        </p>
+      <Panel title={n.briefingTitle} actions={actions}>
+        <p className="text-sm text-ink-3">{pending ? n.briefingPending : n.noBriefing}</p>
         {claudeHint && <p className="mt-2 text-xs text-ink-3">{claudeHint}</p>}
       </Panel>
     );
   }
+  const note = readBriefing(stored, t);
   const b = note.content;
   return (
-    <Panel title="Briefing" actions={actions}>
+    <Panel title={n.briefingTitle} actions={actions}>
       <div className="flex flex-wrap items-center gap-3">
-        <Badge tone={LEVEL[b.threatLevel].tone}>{LEVEL[b.threatLevel].label}</Badge>
+        <Badge tone={LEVEL_TONE[b.threatLevel]}>{t.intel.threatLevels[b.threatLevel]}</Badge>
         <h2 className="text-lg font-semibold text-ink">{b.headline}</h2>
       </div>
       <div className="mt-3 max-w-4xl space-y-2.5 text-sm leading-relaxed text-ink-2">
@@ -88,14 +95,17 @@ export function BriefingPanel({
       <p className="mt-3 text-sm font-medium text-ink">
         <RichText text={b.advice} />
       </p>
-      <Byline note={note} />
+      <NoteByline note={note} />
     </Panel>
   );
 }
 
-export function DossierPanel({ note, actions, claudeHint }: { note: StoredNote<Dossier> | null; actions?: React.ReactNode; claudeHint: string | null }) {
+export async function DossierPanel({ note: stored, actions, claudeHint }: { note: StoredNote<unknown> | null; actions?: React.ReactNode; claudeHint: string | null }) {
+  const { t } = await getI18n();
+  const n = t.intel.notes;
+  const note = stored ? readDossier(stored, t) : null;
   return (
-    <Panel title="Dossier" subtitle={note ? `Confidence: ${note.content.confidence}` : undefined} actions={actions}>
+    <Panel title={n.dossierTitle} subtitle={note ? n.confidence(t.intel.confidence[note.content.confidence]) : undefined} actions={actions}>
       {note ? (
         <div className="space-y-2.5 text-sm leading-relaxed text-ink-2">
           <p className="text-ink">
@@ -121,10 +131,10 @@ export function DossierPanel({ note, actions, claudeHint }: { note: StoredNote<D
               <RichText text={note.content.historyWithUs} />
             </p>
           )}
-          <Byline note={note} />
+          <NoteByline note={note} />
         </div>
       ) : (
-        <p className="text-sm text-ink-3">{claudeHint ?? "A short written profile of this pilot, from the facts on this page."}</p>
+        <p className="text-sm text-ink-3">{claudeHint ?? n.dossierHint}</p>
       )}
     </Panel>
   );

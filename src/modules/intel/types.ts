@@ -118,6 +118,12 @@ export type FitKey = (typeof FIT_KEYS)[number];
 /** Modules seen on the pilot's lost ships: how often and when last. */
 export type FitEvidence = Partial<Record<FitKey, { count: number; lastAt: string }>>;
 
+/** zKillboard's time zone labels ("tz:eu" …). */
+export type TimeZone = "eu" | "use" | "usw" | "au" | "ru";
+
+/** Kills by attackers on the killmail: solo, 2–9, 10–24, 25+. */
+export type GangSize = "solo" | "small" | "fleet" | "blob";
+
 export interface PilotProfile {
   version: number;
   builtAt: string;
@@ -165,7 +171,7 @@ export interface PilotProfile {
     lastActiveMonth: string | null;
   };
   character: { ageDays: number | null; corpHops365: number; npcCorp: boolean; securityStatus: number | null };
-  timezone: { peakHours: number[]; label: string | null; heat: number[][] | null };
+  timezone: { peakHours: number[]; zone: TimeZone | null; heat: number[][] | null };
   flags: { blops: number; logi: number; capital: number; super: number; titan: number; fcLevel: string | null };
 }
 
@@ -187,13 +193,12 @@ export type Evidence = "recent" | "lifetime" | "none";
 
 export interface DimensionScore {
   key: DimensionKey;
-  label: string;
   /** 0–100. */
   score: number;
   weight: number;
   /** False when the inputs are missing (e.g. no current system); excluded from the composite. */
   available: boolean;
-  why: string;
+  why: Reason;
   evidence: Evidence;
 }
 
@@ -213,12 +218,62 @@ export type TagKey =
   | "npcalt"
   | "activenow";
 
+/** What a tag reads as: its key, or a stronger variant (covert cyno, supercapital). */
+export type TagLabel = TagKey | "covertCyno" | "supercapital";
+
 export interface PilotTag {
   key: TagKey;
-  label: string;
+  label: TagLabel;
   evidence: "recent" | "lifetime";
-  why: string;
+  why: Reason;
 }
+
+/**
+ * Why a dimension scored what it did, or why a tag applies. Stored as data and
+ * written out in the reader's language (`t.intel.reasons`, see text.ts).
+ * Shares are 0–1, times ISO strings.
+ */
+export type Reason =
+  | { key: "activityRecent"; kills7d: number; kills30d: number; lastKillAt: string | null }
+  | { key: "activityWeek"; kills7d: number }
+  | { key: "activityQuiet"; days: 7 | 30; lastActiveMonth: string | null }
+  | { key: "lethality"; killShare: number | null; iskDestroyed: number; finalBlowShare: number | null }
+  | { key: "style"; gang: GangSize; share: number }
+  | { key: "styleUnknown" }
+  | { key: "specialty"; tags: { label: TagLabel; historic: boolean }[] }
+  | { key: "specialtyNone" }
+  | { key: "relevance"; here: number; nearby: number }
+  | { key: "relevanceBefore" }
+  | { key: "relevanceNone" }
+  | { key: "relevanceNoSystem" }
+  | { key: "history"; killsOnUs: number; lossesToUs: number; lastAt: string | null }
+  | { key: "historyNone" }
+  | { key: "historyNoHome" }
+  | { key: "timezone"; share: number; peakHours: number[]; zone: TimeZone | null }
+  | { key: "timezoneUnknown" }
+  /** Only the unusual: age under 180 days, security status below -5. */
+  | { key: "character"; ageDays: number | null; corpHops: number; npcCorp: boolean; securityStatus: number | null }
+  | { key: "characterNormal" }
+  | { key: "cynoFits"; count: number; lastAt: string }
+  | { key: "capitalShare"; share: number }
+  | { key: "capitalKillmails"; count: number }
+  | { key: "blopsShare"; share: number }
+  | { key: "blopsKillmails" }
+  | { key: "hunterShare"; share: number }
+  | { key: "hunterCloaks" }
+  | { key: "tackleShare"; share: number }
+  | { key: "tackleFits" }
+  | { key: "logiShare"; share: number }
+  | { key: "gateKills"; share: number }
+  | { key: "highsecKills"; share: number; securityStatus: number }
+  | { key: "fcRating"; level: "medium" | "high" }
+  | { key: "soloKills"; share: number }
+  | { key: "blobKills"; share: number }
+  | { key: "newCharacter"; ageDays: number }
+  | { key: "npcCorporation" }
+  | { key: "activeNow"; share: number };
+
+export type ReasonKey = Reason["key"];
 
 export type Tier = "low" | "moderate" | "high" | "extreme";
 

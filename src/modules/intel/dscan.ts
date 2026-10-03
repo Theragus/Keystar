@@ -3,7 +3,7 @@ import { eveGroups, eveTypes, getDb, type Db } from "@/core/db";
 import { countDscan } from "@/core/eve/dscan";
 import { ensureTypes } from "@/core/eve/resolver";
 import { env } from "@/core/env";
-import { hullClass, HULL_CLASS_LABELS, SHIP_GROUPS } from "./hulls";
+import { hullClass, SHIP_GROUPS, type HullClass } from "./hulls";
 import { DAY_MS } from "./score/decay";
 import type { DscanEntry, PilotProfile, Standing } from "./types";
 
@@ -66,7 +66,7 @@ export interface DscanMatchRow {
   typeId: number;
   name: string;
   count: number;
-  classLabel: string;
+  cls: HullClass;
   candidates: DscanCandidate[];
   /** Pilots assigned to this hull, at most `count`. */
   assigned: { characterId: number; confidence: "likely" | "possible" | "guess" }[];
@@ -98,7 +98,7 @@ export function matchDscan(entries: DscanEntry[], pilots: DscanPilot[], now: Dat
       }
     }
     candidates.sort((a, b) => Number(b.exact) - Number(a.exact) || b.evidence - a.evidence);
-    return { typeId: e.typeId, name: e.name, count: e.count, classLabel: HULL_CLASS_LABELS[cls], candidates: candidates.slice(0, 6), assigned: [] };
+    return { typeId: e.typeId, name: e.name, count: e.count, cls, candidates: candidates.slice(0, 6), assigned: [] };
   });
 
   // Greedy: strongest evidence first, each pilot flies one hull, each hull has `count` pilots.

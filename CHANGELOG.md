@@ -14,7 +14,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   only your own corporation and alliance count as friendly.
 - Optional: `INTEL_MODEL` picks the Claude model for intel briefings, dossiers and d-scan reads (default
   `claude-sonnet-5-5`). Claude is only used when `ANTHROPIC_API_KEY` is set.
-- The update adds database tables; they are created on start like every migration.
+- The update adds database tables; the app creates them on start, like every migration.
 
 ### Added
 
@@ -31,7 +31,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   - a **briefing** per scan, pilot **dossiers** and **d-scan reads** written by Claude when `ANTHROPIC_API_KEY` is
     set (model `INTEL_MODEL`, default `claude-sonnet-5-5`; capped at 20 calls per user and 120 per instance an
     hour), otherwise from templates;
-  - shareable scan links and a corp-wide **recently seen hostiles** feed.
+  - shareable scan links and a corp-wide **recently seen hostiles** feed;
+  - in English and German: scores, tags and template notes follow the reader's language, and Claude writes in the
+    language of whoever asks for a note (the scan's creator for automatic briefings).
 - New permissions **Use threat intel**, **Use Claude for intel** (both members by default) and **Manage threat
   intel** (directors).
 

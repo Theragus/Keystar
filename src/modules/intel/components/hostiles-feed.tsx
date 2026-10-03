@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Portrait } from "@/components/ui/eve-image";
-import { relativeTime } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import type { DisplayNames } from "../names";
 import type { Sighting } from "../scans";
 import type { PilotScore, Standing } from "../types";
@@ -8,7 +8,7 @@ import { ScoreBadge } from "./score";
 import { StandingBadge } from "./standing-badge";
 
 /** Pilots the corporation saw in scans recently, newest sighting first; friendlies are left out. */
-export function HostilesFeed({
+export async function HostilesFeed({
   sightings,
   names,
   hidden,
@@ -17,12 +17,13 @@ export function HostilesFeed({
   names: DisplayNames;
   hidden: number;
 }) {
-  if (!sightings.length) return <p className="text-sm text-ink-3">Nobody hostile scanned in the last week.</p>;
+  const { t, f } = await getI18n();
+  if (!sightings.length) return <p className="text-sm text-ink-3">{t.intel.feed.none}</p>;
   return (
     <div>
       <ul className="divide-y divide-white/6">
         {sightings.map((s) => {
-          const system = s.systemId ? names.systems.get(s.systemId)?.name : null;
+          const system = s.systemId ? (names.systems.get(s.systemId)?.name ?? null) : null;
           const score: PilotScore | null =
             s.tier && s.tier !== "unknown" && s.score !== null
               ? { composite: s.score, tier: s.tier as PilotScore["tier"], recencyGate: 1, dimensions: [], tags: [], excluded: null, quick: false }
@@ -37,11 +38,7 @@ export function HostilesFeed({
                     <StandingBadge standing={s.standing} />
                   </div>
                   <div className="truncate text-xs text-ink-3">
-                    Seen {relativeTime(s.seenAt)}
-                    {system ? ` in ${system}` : ""}
-                    {s.seenBy ? ` by ${s.seenBy}` : ""}
-                    {s.times > 1 ? ` · ${s.times} scans` : ""}
-                    {s.fought ? " · fought us" : ""}
+                    {t.intel.feed.seen({ ago: f.relativeTime(s.seenAt), system, by: s.seenBy, times: s.times, fought: s.fought })}
                   </div>
                 </div>
                 <ScoreBadge score={score} />
@@ -50,7 +47,7 @@ export function HostilesFeed({
           );
         })}
       </ul>
-      {hidden > 0 && <p className="mt-2 text-xs text-ink-3">{hidden} more low-threat pilots not shown.</p>}
+      {hidden > 0 && <p className="mt-2 text-xs text-ink-3">{t.intel.feed.hidden(hidden)}</p>}
     </div>
   );
 }

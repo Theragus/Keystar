@@ -1,4 +1,4 @@
-import { hullClass, HULL_CLASS_LABELS, isCombatHull, type HullClass } from "../hulls";
+import { hullClass, isCombatHull, type HullClass } from "../hulls";
 import type { PilotProfile, PilotScore, Standing, Tier } from "../types";
 import { DAY_MS } from "./decay";
 
@@ -22,7 +22,7 @@ export interface GroupSummary {
   reds: number;
   /** Threat total: the sum of composite scores (a rough "how much trouble"). */
   threat: number;
-  comp: { cls: HullClass; label: string; pilots: number }[];
+  comp: { cls: HullClass; pilots: number }[];
   roles: { cyno: number; logi: number; capital: number; tackle: number; hunter: number };
   /** Pasted pilots who share kills, largest group first. */
   clusters: number[][];
@@ -88,7 +88,7 @@ export function groupSummary(pilots: GroupPilot[], now: Date): GroupSummary {
     tiers,
     reds: hostile.filter((p) => p.standing.cls === "red").length,
     threat: Math.round(threat),
-    comp: [...comp.entries()].sort((a, b) => b[1] - a[1]).map(([cls, n]) => ({ cls, label: HULL_CLASS_LABELS[cls], pilots: n })),
+    comp: [...comp.entries()].sort((a, b) => b[1] - a[1]).map(([cls, n]) => ({ cls, pilots: n })),
     roles,
     clusters: [...clusters.values()].filter((c) => c.length >= 2).sort((a, b) => b.length - a.length),
     groups: [...groups.values()].sort((a, b) => b.pilots - a.pilots).slice(0, 8),

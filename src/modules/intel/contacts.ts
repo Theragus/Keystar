@@ -53,7 +53,7 @@ const summary = (contacts: EsiContact[]) => {
 
 export const corporationContactsJob: JobDefinition = {
   key: "intel.corporation-contacts",
-  label: "Corporation contacts (standings)",
+  label: (t) => t.intel.module.jobs.corporationContacts,
   module: "intel",
   owner: "corporation",
   requiredScopes: [CONTACT_SCOPES.corporation],
@@ -69,7 +69,7 @@ export const corporationContactsJob: JobDefinition = {
 
 export const allianceContactsJob: JobDefinition = {
   key: "intel.alliance-contacts",
-  label: "Alliance contacts (standings)",
+  label: (t) => t.intel.module.jobs.allianceContacts,
   module: "intel",
   owner: "corporation",
   requiredScopes: [CONTACT_SCOPES.alliance],

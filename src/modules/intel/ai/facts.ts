@@ -1,17 +1,22 @@
 import { createHash } from "node:crypto";
+import { MESSAGES } from "@/i18n/messages";
 import { compact } from "@/lib/format";
-import { HULL_CLASS_LABELS, hullClass } from "../hulls";
+import { hullClass } from "../hulls";
 import type { DisplayNames } from "../names";
 import type { DscanMatchRow } from "../dscan";
 import type { GroupSummary } from "../score/summary";
+import { reasonText, tagText } from "../text";
 import type { Engagement, PilotHistory, PilotProfile, PilotScore, Standing } from "../types";
 
 /**
  * The facts Claude writes from: computed numbers and names only. Key order is
  * deliberate — every pilot starts with their latest killmails, then recent
  * counts, then the scores and only last their lifetime numbers — so the model
- * reads recent activity first.
+ * reads recent activity first. Facts are in English whatever language the
+ * note is written in.
  */
+
+const EN = MESSAGES.en;
 
 export interface FactsPilot {
   characterId: number;
@@ -68,12 +73,14 @@ export function pilotFacts(p: FactsPilot, names: DisplayNames, now: Date) {
       ? {
           tier: p.score.tier,
           score: p.score.composite,
-          tags: p.score.tags.map((t) => (t.evidence === "recent" ? t.label : `${t.label} (historic)`)),
-          dimensions: p.score.dimensions.filter((d) => d.available).map((d) => ({ dimension: d.label, score: d.score, why: d.why })),
+          tags: p.score.tags.map((t) => tagText(EN, t)),
+          dimensions: p.score.dimensions
+            .filter((d) => d.available)
+            .map((d) => ({ dimension: EN.intel.dimensions[d.key], score: d.score, why: reasonText(EN, d.why, now) })),
         }
       : null,
-    ships: (p.profile?.hulls ?? []).slice(0, 5).map((s) => ({ ship: typeName(names, s.shipTypeId), class: HULL_CLASS_LABELS[hullClass(s.groupId)] })),
-    timezone: p.profile?.timezone.label ?? null,
+    ships: (p.profile?.hulls ?? []).slice(0, 5).map((s) => ({ ship: typeName(names, s.shipTypeId), class: EN.intel.hullClasses[hullClass(s.groupId)] })),
+    timezone: p.profile?.timezone.zone ? EN.intel.timeZones[p.profile.timezone.zone] : null,
     historyWithUs:
       h && h.killsOnUs + h.lossesToUs > 0
         ? { onOurLosses: h.killsOnUs, diedToUs: h.lossesToUs, last: ago(h.lastAt, now), shipsAgainstUs: h.ships.slice(0, 4).map((s) => typeName(names, s.shipTypeId)) }
@@ -134,7 +141,7 @@ export function briefingFacts(input: BriefingInput) {
     pilots: detailed.map((p) => pilotFacts(p, names, now)),
     group: {
       tiers: input.summary.tiers,
-      likelyComposition: input.summary.comp.map((c) => ({ class: c.label, pilots: c.pilots })),
+      likelyComposition: input.summary.comp.map((c) => ({ class: EN.intel.hullClasses[c.cls], pilots: c.pilots })),
       roles: input.summary.roles,
       flyTogether: input.summary.clusters.slice(0, 5).map((c) => c.map((id) => pilotNames.get(id) ?? String(id))),
       groups: input.summary.groups.map((g) => ({
@@ -161,9 +168,12 @@ export function dossierFacts(pilot: FactsPilot, engagements: Engagement[], names
 
 export type DossierFacts = ReturnType<typeof dossierFacts>;
 
-/** Stable hash of facts, ignoring relative times, to reuse a recent note for unchanged facts. */
+/**
+ * Stable hash of facts, ignoring relative times (and the reasons, which
+ * contain some), to reuse a recent note for unchanged facts.
+ */
 export function factsHash(facts: unknown): string {
-  const json = JSON.stringify(facts, (key, value) => (key === "ago" ? undefined : value));
+  const json = JSON.stringify(facts, (key, value) => (key === "ago" || key === "why" ? undefined : value));
   return createHash("sha256").update(json).digest("hex").slice(0, 32);
 }
 
@@ -175,7 +185,7 @@ export function dscanFacts(rows: DscanMatchRow[], pilots: FactsPilot[], names: D
     dscan: rows.map((r) => ({
       typeId: r.typeId,
       ship: r.name,
-      class: r.classLabel,
+      class: EN.intel.hullClasses[r.cls],
       onScan: r.count,
       candidates: r.candidates.map((c) => ({
         id: c.characterId,

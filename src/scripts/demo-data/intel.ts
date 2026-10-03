@@ -99,6 +99,6 @@ export async function seedIntel(
     await db.update(intelScans).set({ dscan: [...counts.values()] }).where(eq(intelScans.id, scan.id));
   }
   await writeBriefing(scan.id, { createdBy: null, automatic: true }, { db });
-  if (counts.size) await writeDscanRead(scan.id, { createdBy: opts.userId }, { db });
+  if (counts.size) await writeDscanRead(scan.id, { createdBy: opts.userId, locale: "en" }, { db });
   return { scanId: scan.id, pilots: scanned.length };
 }
