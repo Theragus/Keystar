@@ -40,6 +40,7 @@ import { mulberry32 } from "@/lib/random";
 import { generateSituationReport } from "@/modules/killboard/report/generate";
 import { runMigrations } from "@/scripts/migrate";
 import staticData from "./demo-data/eve-static.json";
+import { seedIntel } from "./demo-data/intel";
 import { seedKillboard } from "./demo-data/killboard";
 
 const DEMO_CHARACTER_BASE = 2_120_000_000;
@@ -481,10 +482,11 @@ async function main() {
 
   // Needs the home corporation setting, so it runs last.
   const report = await generateSituationReport(db, HOME_CORP.corporationId, new Date(), { force: true });
+  const intel = await seedIntel(db, { homeCorporationId: HOME_CORP.corporationId, userId: demoUserIds.director, userName: "Tovan Rhask", now: new Date() });
 
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
-      `${killboard.killmails} killmails and a ${report.source} situation report.`,
+      `${killboard.killmails} killmails, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");
   await closeDb();
