@@ -108,6 +108,15 @@ describe("partial observed group reconstruction", () => {
     expect(observedGroups([pilot(1, [a, b, c]), pilot(2, [a, b, c])], now)).toHaveLength(3);
     expect(observedGroups([pilot(1, [a]), pilot(2, [a, event(2, 20)]), pilot(3, [event(2, 20)])], now)).toHaveLength(2);
   });
+  it("joins two groups when an older encounter shares two pilots with each", () => {
+    const a = event(1, 10),
+      b = event(2, 15),
+      bridge = event(3, 20);
+    const groups = observedGroups([pilot(1, [a, bridge]), pilot(2, [a, bridge]), pilot(3, [b, bridge]), pilot(4, [b, bridge])], now);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].killmailIds).toEqual([1, 2, 3]);
+    expect(groups[0].members.map((m) => m.characterId)).toEqual([1, 2, 3, 4]);
+  });
   it("never reconstructs a recent encounter from aggregate associations alone", () => {
     const p = profile();
     p.associates = [{ characterId: 2, sharedKills: 20, source: "stats" }];

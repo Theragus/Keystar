@@ -48,22 +48,30 @@ export function observedGroups(pilots: { characterId: number; profile: PilotProf
   for (const encounter of [...encounters.values()]
     .filter((g) => g.members.length >= 2)
     .sort((a, b) => Date.parse(b.time) - Date.parse(a.time))) {
-    const group = groups.find(
+    const matches = groups.filter(
       (g) =>
         g.systemId === encounter.systemId &&
         Date.parse(g.time) - Date.parse(encounter.time) <= 30 * 60_000 &&
         encounter.members.filter((m) => g.members.some((n) => n.characterId === m.characterId)).length >= 2,
     );
-    if (!group) {
+    if (!matches.length) {
       groups.push(encounter);
       continue;
     }
-    group.killmailIds.push(...encounter.killmailIds);
-    for (const member of encounter.members) {
-      const existing = group.members.find((m) => m.characterId === member.characterId);
-      if (!existing) group.members.push(member);
-      else if (existing.shipTypeId !== member.shipTypeId) existing.changed = true;
-    }
+    // An encounter that bridges several groups joins them: the newest group absorbs the rest.
+    const [group, ...rest] = matches;
+    for (const other of [...rest, encounter]) absorb(group, other);
+    for (const other of rest) groups.splice(groups.indexOf(other), 1);
   }
   return groups;
+}
+
+/** `into` is newer than `from`, so its hulls stay and a different older hull marks a change. */
+function absorb(into: ObservedGroup, from: ObservedGroup) {
+  into.killmailIds.push(...from.killmailIds);
+  for (const member of from.members) {
+    const existing = into.members.find((m) => m.characterId === member.characterId);
+    if (!existing) into.members.push(member);
+    else if (member.changed || existing.shipTypeId !== member.shipTypeId) existing.changed = true;
+  }
 }

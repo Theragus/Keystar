@@ -6,6 +6,14 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Threat Intel puts evidence first.** A compact Local Situation summary, early D-scan input, timestamped
+  local co-attacker observations, and always-visible latest kill, loss and cyno-history fields replace the dense
+  briefing-led layout. Historical ship profiles and optional score details are clearly separated from scanner
+  observations; missing data and incomplete fitting history stay explicit. Latest records retain five kills and
+  five losses, and loss chips now name the lost hull rather than the final-blow attacker’s hull.
+
 ## [0.8.0] - 2026-10-03
 
 ### Added
@@ -20,14 +28,6 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   corporation's totals.
 
 ### Changed
-
-- **Threat Intel puts evidence first.** A compact Local Situation summary, early D-scan input, timestamped
-  local co-attacker observations, and always-visible latest kill, loss and cyno-history fields replace the dense
-  briefing-led layout. Historical ship profiles and optional score details are clearly separated from scanner
-  observations; missing data and incomplete fitting history stay explicit. Latest records retain five kills and
-  five losses, and loss chips now name the lost hull rather than the final-blow attacker’s hull.
-- Project version raised from **0.7.0 to 0.8.0** for this feature update, as explicitly requested; release publishing
-  remains manual.
 
 - **Fleet access is opt-in per character.** Members are no longer asked for `esi-fleets.read_fleet.v1` when they join
   or link a character: only the fleet boss's character can read a fleet's members, so pilots who run fleets turn it on

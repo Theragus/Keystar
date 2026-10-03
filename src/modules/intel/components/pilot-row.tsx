@@ -78,6 +78,7 @@ export async function PilotRow({
           <PilotEvidence profile={profile} names={names} associates={flyingWith.length} />
         </div>
         <ProfileStatus pilot={pilot} />
+        <ScoreBadge score={score} />
       </summary>
       <div className="space-y-4 border-t border-white/6 px-4 py-3">
         <p className="text-xs text-ink-3">
@@ -102,10 +103,7 @@ export async function PilotRow({
         {score && score.dimensions.length > 0 && (
           <div>
             <details>
-              <summary className="flex cursor-pointer items-center justify-between gap-3 text-xs text-ink-2">
-                {p.whyTitle}
-                <ScoreBadge score={score} />
-              </summary>
+              <summary className="cursor-pointer text-xs text-ink-2">{p.whyTitle}</summary>
               <div className="mt-3 space-y-3">
                 <TagList tags={score.tags} />
                 <DimensionBreakdown dimensions={score.dimensions} recencyGate={score.recencyGate} />

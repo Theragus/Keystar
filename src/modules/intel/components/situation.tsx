@@ -89,7 +89,7 @@ export async function ObservedGroupsPanel({ view, now }: { view: ScanView; now: 
   const { t, f } = await getI18n();
   const e = t.intel.evidence;
   const groups = observedGroups(
-    view.rows.map((r) => ({ characterId: r.pilot.characterId, profile: r.profile })),
+    view.rows.filter((r) => !isFriendly(r.standing)).map((r) => ({ characterId: r.pilot.characterId, profile: r.profile })),
     now,
   );
   return (
