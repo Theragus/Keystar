@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { audit } from "@/core/audit";
 import { getCurrentUser } from "@/core/auth/dal";
 import { getSettings } from "@/core/settings";
-import { csvCell } from "@/modules/mining/csv";
+import { csvNumber, csvText } from "@/modules/mining/csv";
 import { parseMiningFilters } from "@/modules/mining/filters";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { getLedgerRows, miningScope, type LedgerRow } from "@/modules/mining/queries";
@@ -31,25 +31,23 @@ const HEADER = [
 
 function csvLine(r: LedgerRow): string {
   return [
-    r.date,
-    r.source,
-    r.characterId,
-    r.characterName,
-    r.ownerName,
-    r.typeId,
-    r.typeName,
-    r.oreClass,
-    r.systemId,
-    r.systemName,
-    r.security === null ? null : r.security.toFixed(2),
-    r.observerName,
-    r.quantity,
-    r.volume.toFixed(2),
-    r.unitPrice.toFixed(2),
-    r.value.toFixed(2),
-  ]
-    .map(csvCell)
-    .join(",");
+    csvText(r.date),
+    csvText(r.source),
+    csvNumber(r.characterId),
+    csvText(r.characterName),
+    csvText(r.ownerName),
+    csvNumber(r.typeId),
+    csvText(r.typeName),
+    csvText(r.oreClass),
+    csvNumber(r.systemId),
+    csvText(r.systemName),
+    csvNumber(r.security, 2),
+    csvText(r.observerName),
+    csvNumber(r.quantity),
+    csvNumber(r.volume, 2),
+    csvNumber(r.unitPrice, 2),
+    csvNumber(r.value, 2),
+  ].join(",");
 }
 
 /**

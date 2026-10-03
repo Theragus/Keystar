@@ -1,22 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { csvCell } from "@/modules/mining/csv";
+import { csvNumber, csvText } from "@/modules/mining/csv";
 
-describe("csvCell", () => {
+describe("csvNumber", () => {
   it("leaves negative numbers unchanged", () => {
-    expect(csvCell("-0.45")).toBe("-0.45");
-    expect(csvCell("-1.00")).toBe("-1.00");
-    expect(csvCell(-5)).toBe("-5");
+    expect(csvNumber(-0.45, 2)).toBe("-0.45");
+    expect(csvNumber(-1, 2)).toBe("-1.00");
+    expect(csvNumber(-5)).toBe("-5");
   });
 
-  it("neutralises formulas in text", () => {
-    expect(csvCell('=HYPERLINK("http://evil","x")')).toBe(`"'=HYPERLINK(""http://evil"",""x"")"`);
-    expect(csvCell("-1+1")).toBe(`"'-1+1"`);
-    expect(csvCell("@SUM(A1)")).toBe(`"'@SUM(A1)"`);
-    expect(csvCell("+cmd")).toBe(`"'+cmd"`);
+  it("handles null", () => {
+    expect(csvNumber(null, 2)).toBe("");
+  });
+});
+
+describe("csvText", () => {
+  it("neutralises formulas", () => {
+    expect(csvText('=HYPERLINK("http://evil","x")')).toBe(`"'=HYPERLINK(""http://evil"",""x"")"`);
+    expect(csvText("-1+1")).toBe(`"'-1+1"`);
+    expect(csvText("@SUM(A1)")).toBe(`"'@SUM(A1)"`);
+    expect(csvText("+cmd")).toBe(`"'+cmd"`);
+  });
+
+  it("neutralises names that look like negative numbers", () => {
+    expect(csvText("-1")).toBe(`"'-1"`);
   });
 
   it("quotes and handles null", () => {
-    expect(csvCell("a,b")).toBe('"a,b"');
-    expect(csvCell(null)).toBe("");
+    expect(csvText("a,b")).toBe('"a,b"');
+    expect(csvText(null)).toBe("");
   });
 });
