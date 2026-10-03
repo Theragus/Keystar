@@ -29,3 +29,21 @@ export function Delta({ value, period, upIsGood = true }: { value: number | null
     </span>
   );
 }
+
+/** Compact signed chip for table cells, e.g. "+18" / "+1.234". */
+export function DeltaChip({ value, upIsGood = true }: { value: number; upIsGood?: boolean }) {
+  const { f } = useI18n();
+  if (!value) return <span className="text-ink-3">—</span>;
+  const good = value > 0 === upIsGood;
+  return (
+    <span
+      className={cn(
+        "inline-flex min-w-8 justify-center rounded-full px-1.5 py-0.5 text-2xs font-semibold tabular-nums ring-1 ring-inset",
+        good ? "bg-good/15 text-good-text ring-good/30" : "bg-critical/15 text-critical-text ring-critical/30",
+      )}
+    >
+      {value > 0 ? "+" : "−"}
+      {f.integer(Math.abs(value))}
+    </span>
+  );
+}
