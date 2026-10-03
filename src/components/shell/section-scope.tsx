@@ -4,11 +4,13 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { SectionTone } from "@/core/modules/types";
 import { matchNavItem } from "./nav-match";
+import { useSidebar } from "./sidebar-state";
 
 /**
  * App shell root. Sets `data-section-tone` from the current route so the
  * section colour (`--section` in globals.css) reaches headings, the sidebar
- * marker and the header glow.
+ * marker and the header glow, and `data-sidebar` so the server-rendered
+ * sidebar can style its collapsed icon rail (`group-data-[sidebar=collapsed]/shell:`).
  */
 export function SectionScope({
   items,
@@ -19,8 +21,9 @@ export function SectionScope({
 }) {
   const pathname = usePathname();
   const tone = matchNavItem(pathname, items)?.tone;
+  const { collapsed } = useSidebar();
   return (
-    <div className="flex min-h-screen" data-section-tone={tone}>
+    <div className="group/shell flex min-h-screen" data-section-tone={tone} data-sidebar={collapsed ? "collapsed" : "expanded"}>
       {children}
     </div>
   );

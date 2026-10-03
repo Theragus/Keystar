@@ -13,6 +13,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   surfaces, readable status colours, controls, tables, chart chrome, and keyboard focus. Charts get their own
   colour-vision-checked series and rarity/threat colours for the light surface, and EVE mail colours that would be too
   pale on it are darkened. Dark remains the default.
+- **Collapsible sidebar.** The menu button at the left of the top bar shrinks the sidebar to a narrow icon rail
+  and back; hover an icon for its label. The choice is remembered for a year and applied before rendering.
 
 ### Changed
 
