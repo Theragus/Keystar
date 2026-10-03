@@ -73,30 +73,40 @@ export interface SortState {
   dir: SortDir;
 }
 
+type SortValue = number | string | null | undefined;
+
+/**
+ * Compares two cell values for sorting: strings by locale, numbers
+ * numerically; a missing value sorts last in either direction. Returns 0
+ * for a tie so the caller can fall back to another key.
+ */
+export function compareSortValues(a: SortValue, b: SortValue, dir: SortDir): number {
+  const sign = dir === "asc" ? 1 : -1;
+  if (typeof a === "string" || typeof b === "string") return String(a ?? "").localeCompare(String(b ?? "")) * sign;
+  if (a == null || b == null) return a == null ? (b == null ? 0 : 1) : -1;
+  return a === b ? 0 : (a - b) * sign;
+}
+
 /**
  * Sort state plus the sorted rows, for tables that render their own cells.
- * `value` maps a row and a column key to what it sorts by; strings compare
- * by locale, missing numbers sort last when descending. Ties fall back to
- * `name`. A newly picked column starts descending, except "name".
+ * `value` maps a row and a column key to what it sorts by (see
+ * `compareSortValues`); ties fall back to `name`. A newly picked column
+ * starts descending, except "name".
  */
 export function useSortedRows<T>(
   rows: T[],
   defaultSort: string,
-  value: (row: T, key: string) => number | string | null | undefined,
+  value: (row: T, key: string) => SortValue,
   name: (row: T) => string,
 ) {
   const [sort, setSort] = useState<SortState>({ key: defaultSort, dir: "desc" });
-  const sorted = useMemo(() => {
-    const dir = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      const av = value(a, sort.key);
-      const bv = value(b, sort.key);
-      if (typeof av === "string" || typeof bv === "string") return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
-      const an = av ?? -Infinity;
-      const bn = bv ?? -Infinity;
-      return an === bn ? name(a).localeCompare(name(b)) : (an - bn) * dir;
-    });
-  }, [rows, sort, value, name]);
+  const sorted = useMemo(
+    () =>
+      [...rows].sort(
+        (a, b) => compareSortValues(value(a, sort.key), value(b, sort.key), sort.dir) || name(a).localeCompare(name(b)),
+      ),
+    [rows, sort, value, name],
+  );
   const toggle = (key: string) =>
     setSort((s) => (s.key === key ? { key, dir: s.dir === "desc" ? "asc" : "desc" } : { key, dir: key === "name" ? "asc" : "desc" }));
   return { sorted, sort, toggle };
