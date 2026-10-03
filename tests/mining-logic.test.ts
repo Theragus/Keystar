@@ -3,15 +3,8 @@ import { bestJitaPrices, JITA_44_STATION_ID, resolveUnitValue } from "@/core/eve
 import { classifyOre, oreClassSqlCase } from "@/core/eve/ore";
 import { compact } from "@/lib/format";
 import { chartClassOf, toChartClasses } from "@/modules/mining/class-colors";
-import {
-  DATE_PRESETS,
-  daysBetween,
-  isValidIsoDate,
-  ledgerGrouping,
-  miningQueryString,
-  parseMiningFilters,
-} from "@/modules/mining/filters";
-import { groupLedger } from "@/modules/mining/ledger-groups";
+import { DATE_PRESETS, daysBetween, isValidIsoDate, miningQueryString, parseMiningFilters } from "@/modules/mining/filters";
+import { groupLedgerByDay } from "@/modules/mining/ledger-groups";
 import { miningScope, type LedgerRow } from "@/modules/mining/queries";
 
 describe("mining filters", () => {
@@ -156,15 +149,13 @@ describe("formatting", () => {
   });
 });
 
-describe("ledger groups", () => {
-  const row = (date: string, characterId: number, value: number, groupKey: string | null = null): LedgerRow => ({
+describe("ledger day groups", () => {
+  const row = (date: string, characterId: number, value: number): LedgerRow => ({
     date,
     source: "personal",
     characterId,
     characterName: `C${characterId}`,
     ownerName: null,
-    mainCharacterId: null,
-    groupKey,
     typeId: 1230,
     typeName: "Veldspar",
     oreClass: "ore",
@@ -177,57 +168,24 @@ describe("ledger groups", () => {
     unitPrice: 1,
     value,
   });
-  const totals = (date: string, entries: number, value: number) => ({
-    date,
-    entries,
-    characters: 1,
-    quantity: value,
-    volume: value / 10,
-    value,
-  });
 
   it("groups contiguous days in order and keeps whole-day totals for a day split across pages", () => {
     const rows = [row("2026-10-02", 1, 30), row("2026-10-02", 2, 20), row("2026-10-01", 1, 10)];
-    const days = groupLedger(rows, { days: [totals("2026-10-02", 2, 50), totals("2026-10-01", 5, 90)], groups: [] }, false);
-    expect(days.map((d) => [d.date, d.rows.length, d.groups])).toEqual([
-      ["2026-10-02", 2, null],
-      ["2026-10-01", 1, null],
+    const dayTotals = [
+      { date: "2026-10-02", entries: 2, characters: 2, quantity: 50, volume: 5, value: 50 },
+      { date: "2026-10-01", entries: 5, characters: 3, quantity: 90, volume: 9, value: 90 },
+    ];
+    const groups = groupLedgerByDay(rows, dayTotals);
+    expect(groups.map((g) => [g.date, g.rows.length])).toEqual([
+      ["2026-10-02", 2],
+      ["2026-10-01", 1],
     ]);
-    expect(days[1].totals.entries).toBe(5);
-    expect(days[1].totals.value).toBe(90);
-  });
-
-  it("splits each day into its groups with whole-group totals", () => {
-    const rows = [row("2026-10-02", 1, 30, "a"), row("2026-10-02", 2, 20, "a"), row("2026-10-02", 3, 5, "b")];
-    const [day] = groupLedger(
-      rows,
-      { days: [totals("2026-10-02", 4, 60)], groups: [{ ...totals("2026-10-02", 3, 55), key: "a" }] },
-      true,
-    );
-    expect(day.groups?.map((g) => [g.key, g.rows.length, g.totals.entries])).toEqual([
-      ["a", 2, 3],
-      // No totals for "b" (e.g. synced in between): falls back to its rows on the page.
-      ["b", 1, 1],
-    ]);
+    expect(groups[1].totals.entries).toBe(5);
+    expect(groups[1].totals.value).toBe(90);
   });
 
   it("falls back to the page's rows when a day's totals are missing or stale", () => {
-    const [day] = groupLedger([row("2026-10-02", 1, 30), row("2026-10-02", 1, 20)], { days: [], groups: [] }, false);
-    expect(day.totals).toEqual({ date: "2026-10-02", entries: 2, characters: 1, quantity: 50, volume: 5, value: 50 });
-  });
-
-  it("resolves the second level from the URL and the scope", () => {
-    const parse = (q: string) => parseMiningFilters(Object.fromEntries(new URLSearchParams(q)));
-    // Defaults: pilots for the corporation, systems for one's own characters.
-    expect(ledgerGrouping(parse(""), true)).toBe("pilot");
-    expect(ledgerGrouping(parse(""), false)).toBe("system");
-    expect(ledgerGrouping(parse("by=character"), true)).toBe("character");
-    // Without corporation scope every row is one pilot's, so members means characters.
-    expect(ledgerGrouping(parse("group=member"), false)).toBe("character");
-    expect(ledgerGrouping(parse("group=none"), true)).toBe("none");
-    expect(ledgerGrouping(parse("group=bogus"), true)).toBe("pilot");
-    const f = parse("group=system");
-    expect(miningQueryString(f)).toContain("group=system");
-    expect(miningQueryString({ ...f, ledgerGroup: null })).not.toContain("group=");
+    const groups = groupLedgerByDay([row("2026-10-02", 1, 30), row("2026-10-02", 1, 20)], []);
+    expect(groups[0].totals).toEqual({ date: "2026-10-02", entries: 2, characters: 1, quantity: 50, volume: 5, value: 50 });
   });
 });

@@ -343,35 +343,15 @@ select option:disabled {
 .ks-table tbody tr.ks-group-row:hover > * {
   background: rgba(255, 255, 255, 0.055);
 }
-/* Second-level group header (e.g. a pilot within a day): lighter than the day. */
-.ks-table .ks-subgroup-row > th,
-.ks-table .ks-subgroup-row > td {
-  font-family: inherit;
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
-  font-size: 0.8125rem;
-  color: var(--color-ink-2);
-  white-space: normal;
-  background: rgba(255, 255, 255, 0.015);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
-  padding-left: 1.6rem;
-}
-.ks-table .ks-subgroup-row > td {
-  padding-left: 0.9rem;
-}
-.ks-table tbody tr.ks-subgroup-row:hover > * {
-  background: rgba(255, 255, 255, 0.035);
-}
 /* Rows of a collapsed group: invisible and zero-height, but still sizing the columns
    (`visibility: collapse` would do this, but Safari treats it as `hidden`). */
-.ks-table tr[data-hidden] > * {
+.ks-table [data-collapsed] > tr:not(.ks-group-row) > td {
   visibility: hidden;
   padding-block: 0;
-  border-block-width: 0;
+  border-bottom: 0;
   line-height: 0;
 }
-.ks-table tr[data-hidden] > * > * {
+.ks-table [data-collapsed] > tr:not(.ks-group-row) > td > * {
   max-height: 0;
   padding-block: 0;
   border-block-width: 0;

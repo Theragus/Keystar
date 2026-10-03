@@ -69,7 +69,6 @@ export function pnlLedgerFilters(range: { from: string; to: string }, characters
     metric: "value",
     groupBy: "character",
     view: "own",
-    ledgerGroup: null,
     page: 1,
   };
 }

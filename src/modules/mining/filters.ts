@@ -12,27 +12,6 @@ export type MiningMetric = "value" | "volume" | "quantity";
 export type MiningGroupBy = "user" | "character";
 /** Whose mining a viewer with corporation access looks at; everyone else always sees their own. */
 export type MiningView = "corp" | "own";
-/**
- * The ledger's second grouping level, inside each day. "member" follows `groupBy`
- * (pilots or characters). Unset means the default for the scope (see `ledgerGrouping`).
- */
-export type LedgerGroup = "none" | "member" | "system";
-
-export const LEDGER_GROUPS: readonly LedgerGroup[] = ["none", "member", "system"];
-
-/** What the ledger groups each day's rows by, once the scope is known. */
-export type LedgerGrouping = "none" | "pilot" | "character" | "system";
-
-/**
- * Resolves the ledger's second level. Without corporation scope every row is the
- * viewer's own, so pilots would be a single group: members mean characters there,
- * and the default is systems.
- */
-export function ledgerGrouping(f: Pick<MiningFilters, "ledgerGroup" | "groupBy">, corpScope: boolean): LedgerGrouping {
-  const group = f.ledgerGroup ?? (corpScope ? "member" : "system");
-  if (group !== "member") return group;
-  return corpScope && f.groupBy === "user" ? "pilot" : "character";
-}
 
 export interface MiningFilters {
   from: string;
@@ -45,7 +24,6 @@ export interface MiningFilters {
   metric: MiningMetric;
   groupBy: MiningGroupBy;
   view: MiningView;
-  ledgerGroup: LedgerGroup | null;
   page: number;
 }
 
@@ -85,7 +63,6 @@ export function parseMiningFilters(params: RawParams, today: string = isoDate(ne
   const metric = first(params.metric);
   const groupBy = first(params.by);
   const view = first(params.view);
-  const ledgerGroup = first(params.group);
   const classes = (first(params.classes) ?? "").split(",").filter(isOreClass);
   const page = Math.max(1, Math.min(10_000, Math.floor(Number(first(params.page))) || 1));
 
@@ -100,7 +77,6 @@ export function parseMiningFilters(params: RawParams, today: string = isoDate(ne
     metric: metric === "volume" || metric === "quantity" ? metric : "value",
     groupBy: groupBy === "character" ? "character" : "user",
     view: view === "own" ? "own" : "corp",
-    ledgerGroup: LEDGER_GROUPS.find((g) => g === ledgerGroup) ?? null,
     page,
   };
 }
@@ -119,7 +95,6 @@ export function miningQueryString(f: MiningFilters, overrides: Partial<MiningFil
   if (v.metric !== "value") p.set("metric", v.metric);
   if (v.groupBy !== "user") p.set("by", v.groupBy);
   if (v.view !== "corp") p.set("view", v.view);
-  if (v.ledgerGroup) p.set("group", v.ledgerGroup);
   if (v.page > 1) p.set("page", String(v.page));
   return p.toString();
 }

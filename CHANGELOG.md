@@ -12,10 +12,6 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   entry and character counts, and the day's units, volume and value. The totals cover the whole day even when its
   entries run onto the next page; the header then says how many of them the current page shows. Click a day to
   collapse or expand it, or use "Collapse all" for a day-by-day summary that stays collapsed as you page through.
-- **Mining ledger groups within each day.** Each day can be split further by member or by system, with a
-  subtotal for each group that also covers entries on other pages. Members follow the overview's Pilots /
-  Characters switch, so a pilot's alts sit together under their main. Groups are collapsible too. The corporation
-  view groups by pilot by default; "My characters" groups by system, and there members means your characters.
 
 ### Changed
 
