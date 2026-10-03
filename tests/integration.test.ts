@@ -284,6 +284,32 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(a.isDisabled).toBe(false);
     });
 
+    it("re-checks users.manage, so a manager demoted mid-request can't approve a guest", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await db().update(schema.users).set({ role: "member" }).where(sql`id = ${userA}`);
+      await db().update(schema.users).set({ role: "guest" }).where(sql`id = ${userB}`);
+      // Alpha was a director when the request was authorised; a member still outranks a guest.
+      await expect(changeUserAccess(userA, userB, { role: "member" }, { onlyFromRole: "guest" })).rejects.toThrow(/permission/);
+      expect((await roles())[userB]).toBe("guest");
+
+      // An override that hands users.manage to members is honoured: a member may disable a guest.
+      const { setSetting } = await import("@/core/settings");
+      await setSetting("permissions.overrides", { "users.manage": "member" });
+      await changeUserAccess(userA, userB, { isDisabled: true });
+      const [b] = await db().select().from(schema.users).where(sql`id = ${userB}`);
+      expect(b.isDisabled).toBe(true);
+    });
+
+    it("signs a user out everywhere when disabling them", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      const { createSession } = await import("@/core/auth/session");
+      await db().update(schema.users).set({ role: "admin" }).where(sql`id = ${userA}`);
+      await createSession(userA);
+      await createSession(userB);
+      await changeUserAccess(userA, userB, { isDisabled: true });
+      expect((await db().select().from(schema.sessions)).map((r) => r.userId)).toEqual([userA]);
+    });
+
     it("only approves users who are still guests", async () => {
       const { changeUserAccess } = await import("@/core/auth/manage-users");
       await db().update(schema.users).set({ role: "admin" }).where(sql`id = ${userA}`);

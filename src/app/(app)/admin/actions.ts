@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { audit } from "@/core/audit";
 import { assertPermission } from "@/core/auth/dal";
 import { changeUserAccess } from "@/core/auth/manage-users";
-import { deleteUserSessions } from "@/core/auth/session";
 import { refreshCorporations } from "@/core/eve/resolver";
 import { allPermissions } from "@/core/modules/registry";
 import { isRole, type Role } from "@/core/rbac/roles";
@@ -47,7 +46,6 @@ export async function setUserDisabled(userId: string, disabled: boolean) {
   const actor = await assertPermission("users.manage");
   if (actor.id === userId) throw new Error("You can't disable yourself");
   await changeUserAccess(actor.id, userId, { isDisabled: disabled });
-  if (disabled) await deleteUserSessions(userId);
   await audit({
     actorUserId: actor.id,
     actorName: actor.main?.name,
