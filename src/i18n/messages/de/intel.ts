@@ -322,6 +322,7 @@ export const intel: typeof en = {
     groups: "Kürzlich beobachtete Gruppe",
     groupsHint: "Gemeinsame Killmails der letzten 2 Stunden; ersatzweise bis zu 6 Stunden. Nur nicht befreundete Piloten dieser Local-Momentaufnahme werden gezeigt.",
     noGroup: "Keine gemeinsame aktuelle Killmail in den geladenen Profilen gefunden. Eine aktuelle Gruppenrekonstruktion ist nicht verfügbar.",
+    groupBrief: "Historischer gemeinsamer Angriff; aktuelle Flotte unbekannt.",
     groupCaution: "Historisch beobachtete Mitangreifer, keine aktuelle Flottenzusammensetzung. Vollständige Besetzung, aktuelle Schiffe und Zugehörigkeit der Mitangreifer sind unbekannt. Spätere Verluste können frühere Schiffsbeobachtungen entkräften.",
     recent: "Innerhalb von 2 Stunden",
     fallback: "Ersatzdaten: 2–6 Stunden",

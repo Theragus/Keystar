@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { ButtonLink } from "@/components/ui/button";
 import { CopyField } from "@/components/ui/copy-button";
 import { Panel } from "@/components/ui/glass";
-import { SituationPanel, ObservedGroupsPanel } from "@/modules/intel/components/situation";
+import { SituationPanel } from "@/modules/intel/components/situation";
 import { requirePermission } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { getI18n } from "@/i18n/server";
@@ -99,7 +99,6 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
 
       <SituationPanel view={view} scannedAt={scan.createdAt} dscanAt={scan.dscanAt} />
       {dscanPanel}
-      <ObservedGroupsPanel view={view} now={new Date()} />
 
       <ScanProgressPoller scanId={scan.id} initial={progress} />
 

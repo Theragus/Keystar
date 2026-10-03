@@ -15,12 +15,12 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
     .sort((a, b) => Date.parse(b.event.time) - Date.parse(a.event.time));
   const newest = events[0];
   const cynos = others.filter((r) => cynoEvidence(r.profile).length);
-  const priorities = others.filter((r) => r.score?.tier === "high" || r.score?.tier === "extreme");
+  const now = new Date();
+  const group = observedGroups(others.map(r => ({ characterId: r.pilot.characterId, profile: r.profile })), now)[0];
   const checks = view.pilots
     .map((p) => p.statsAt)
     .filter((at): at is Date => at !== null)
     .sort((a, b) => a.getTime() - b.getTime());
-  const associated = new Set(view.summary.clusters.flat());
   const missing = others.filter((r) => r.profile?.depth !== "deep").length;
   return (
     <Panel title={e.situation} subtitle={e.snapshotHint}>
@@ -31,17 +31,23 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="glass-inset rounded-lg p-3">
-          <h3 className="eve-label mb-2 text-2xs text-ink-3">{e.interest}</h3>
-          <p className="text-sm text-ink">{e.highInterest(view.summary.tiers.high + view.summary.tiers.extreme)}</p>
-          <p className="mt-1 text-xs text-accent">
-            {priorities
-              .slice(0, 3)
-              .map((r) => r.pilot.name)
-              .join(" · ")}
-          </p>
-          <p className="mt-1 text-xs text-ink-2">{e.associated(associated.size)}</p>
-          <p className="mt-1 text-xs text-ink-3">{e.incomplete(missing)}</p>
-        </div>
+          <h3 className="eve-label mb-2 text-2xs text-ink-3" title={e.groupsHint}>{e.groups}</h3>
+          {group ? (
+            <div className="space-y-1 text-xs">
+              <p className="font-medium text-ink">{view.names.systems.get(group.systemId)?.name ?? e.unknown} · {f.relativeTime(group.time)}</p>
+              <p className="text-ink-3">{e.groupCount(group.members.length, group.killmailIds.length)} · {now.getTime() - Date.parse(group.time) <= 2 * 60 * 60_000 ? e.recent : e.fallback}</p>
+              <p className="text-ink">{e.destroyedHull(group.events[0].otherShipTypeId ? (view.names.types.get(group.events[0].otherShipTypeId)?.name ?? e.unknown) : e.unknown)}</p>
+              <p className="text-ink-2">{e.attackers(group.events[0].attackerCount)} · {e.oneVictim}</p>
+              <p className="text-ink-3">{f.compact(group.events[0].value)} ISK</p>
+              <ul className="space-y-0.5 text-ink-2">
+                {group.members.map(m => <li key={m.characterId}>{view.pilotNames.get(m.characterId)} · {m.shipTypeId ? (view.names.types.get(m.shipTypeId)?.name ?? e.unknown) : e.unknown}{m.changed ? " · " + e.changed : ""}</li>)}
+              </ul>
+              <div className="flex flex-wrap gap-2 text-accent">
+                {group.killmailIds.map(id => <a key={id} href={zkillKill(id)} target="_blank" rel="noopener noreferrer" className="hover:underline">{e.killmail(id)}</a>)}
+              </div>
+            </div>
+          ) : <p className="text-xs text-ink-3">{e.noGroup}</p>}
+          <p className="mt-2 text-3xs text-ink-3" title={e.groupCaution}>{e.groupBrief}</p>        </div>
         <div className="glass-inset rounded-lg p-3">
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{e.newest}</h3>
           {newest ? (
@@ -85,55 +91,3 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
   );
 }
 
-export async function ObservedGroupsPanel({ view, now }: { view: ScanView; now: Date }) {
-  const { t, f } = await getI18n();
-  const e = t.intel.evidence;
-  const groups = observedGroups(
-    view.rows.filter((r) => !isFriendly(r.standing)).map((r) => ({ characterId: r.pilot.characterId, profile: r.profile })),
-    now,
-  );
-  return (
-    <Panel title={e.groups} subtitle={e.groupsHint}>
-      {groups.length ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {groups.slice(0, 4).map((g) => (
-            <div key={g.killmailIds[0]} className="glass-inset rounded-lg p-3">
-              <h3 className="text-sm font-medium text-ink">
-                {f.relativeTime(g.time)} · {view.names.systems.get(g.systemId)?.name ?? e.unknown}
-              </h3>
-              <p className="mt-1 text-xs text-ink-3">
-                {e.groupCount(g.members.length, g.killmailIds.length)} ·{" "}
-                {now.getTime() - Date.parse(g.time) <= 2 * 60 * 60_000 ? e.recent : e.fallback}
-              </p>
-              <div className="mt-2 border-t border-surface-contrast/6 pt-2 text-xs">
-                <p className="eve-label mb-1 text-2xs text-ink-3">{e.latestGroupFight}</p>
-                <p className="text-ink">{e.destroyedHull(g.events[0].otherShipTypeId ? (view.names.types.get(g.events[0].otherShipTypeId)?.name ?? e.unknown) : e.unknown)}</p>
-                <p className="mt-0.5 text-ink-2">{e.attackers(g.events[0].attackerCount)} · {e.oneVictim}</p>
-                <p className="mt-0.5 text-ink-3">{f.dateTime(g.events[0].time)} · {f.compact(g.events[0].value)} ISK</p>
-              </div>
-              <ul className="my-3 space-y-1 text-xs text-ink-2">
-                {g.members.map((m) => (
-                  <li key={m.characterId}>
-                    {view.pilotNames.get(m.characterId)} ·{" "}
-                    {m.shipTypeId ? (view.names.types.get(m.shipTypeId)?.name ?? e.unknown) : e.unknown} · {f.relativeTime(m.time)}
-                    {m.changed ? " · " + e.changed : ""}
-                  </li>
-                ))}
-              </ul>
-              <div className="flex flex-wrap gap-3 text-xs text-accent">
-                {g.killmailIds.map((id) => (
-                  <a key={id} href={zkillKill(id)} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                    {e.killmail(id)}
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-ink-3">{e.noGroup}</p>
-      )}
-      <p className="mt-3 text-xs text-ink-3">{e.groupCaution}</p>
-    </Panel>
-  );
-}

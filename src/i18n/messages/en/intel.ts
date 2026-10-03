@@ -327,6 +327,7 @@ export const intel = {
     groups: "Recent observed group",
     groupsHint: "Shared killmails within 2 hours; up to 6 hours as a fallback. Only non-friendly pilots in this Local snapshot are shown.",
     noGroup: "No shared recent killmail found in loaded profiles. A recent group reconstruction is unavailable.",
+    groupBrief: "Historical co-attack; current fleet unknown.",
     groupCaution: "Historical co-attack observations, not current fleet composition. Complete roster, current ships and affiliation of co-attackers are unknown. Subsequent losses may invalidate earlier hull observations.",
     recent: "Within 2 hours",
     fallback: "2–6 hour fallback",
