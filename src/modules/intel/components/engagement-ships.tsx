@@ -18,9 +18,8 @@ export function EngagementShips({ ships, legendLabel, unknown }: { ships: Ship[]
   return <>
     <ul className="mt-2 space-y-1">
       {ships.map(ship => <li key={ship.id} className={`rounded-md px-1.5 py-1 transition-opacity ${ship.lost ? "bg-critical/10" : "bg-surface-contrast/5"}`} style={{ opacity: selected && ship.pilots.length && !ship.pilots.some(p => p.affiliationId === selected) ? 0.45 : 1 }}>
-        <div className="flex flex-wrap items-center gap-1">{ship.heading}</div>
-        <div className="mt-0.5 flex flex-wrap gap-1">
-          {ship.pilots.length ? ship.pilots.map(pilot => <button key={pilot.id} type="button" aria-pressed={selected === pilot.affiliationId} title={pilot.affiliationName} onClick={() => toggle(pilot.affiliationId)} className="max-w-full cursor-pointer break-words rounded-md border px-1 py-0.5 text-left text-3xs text-ink-2 transition-[opacity,background-color] focus-visible:outline-2 focus-visible:outline-accent" style={{ backgroundColor: `color-mix(in srgb, ${pilot.color} ${selected === pilot.affiliationId ? 32 : 14}%, transparent)`, borderColor: selected === pilot.affiliationId ? pilot.color : "transparent", opacity: selected && selected !== pilot.affiliationId ? 0.45 : 1 }}>{pilot.name}</button>) : <span className="text-3xs text-ink-3">{unknown}</span>}
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-3xs">{ship.heading}
+          {ship.pilots.length ? ship.pilots.map(pilot => <button key={pilot.id} type="button" aria-pressed={selected === pilot.affiliationId} title={pilot.affiliationName} onClick={() => toggle(pilot.affiliationId)} className="max-w-full cursor-pointer break-words rounded-md border px-0.5 text-left text-3xs text-ink-2 transition-[opacity,background-color] focus-visible:outline-2 focus-visible:outline-accent" style={{ backgroundColor: `color-mix(in srgb, ${pilot.color} ${selected === pilot.affiliationId ? 32 : 14}%, transparent)`, borderColor: selected === pilot.affiliationId ? pilot.color : "transparent", opacity: selected && selected !== pilot.affiliationId ? 0.45 : 1 }}>({pilot.name})</button>) : <span className="text-3xs text-ink-3">({unknown})</span>}
         </div>
       </li>)}
     </ul>
