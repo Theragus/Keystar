@@ -644,6 +644,13 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(rows[0].windowStart.getTime()).toBe(earlier.getTime());
       const [ledger] = await db().select().from(schema.miningCharacterLedger).where(sql`character_id = 1 AND date = ${today}`);
       expect(ledger.quantity).toBe(1600);
+
+      // A snapshot that isn't newer than the last observation never rolls the ledger back.
+      await db().update(schema.miningActivityCoverage).set({ lastObservedAt: new Date(Date.now() + 60_000) });
+      quantity = 1200;
+      expect((await characterLedgerJob.run(ctx))?.summary).toContain("older snapshot, skipped");
+      const [kept] = await db().select().from(schema.miningCharacterLedger).where(sql`character_id = 1 AND date = ${today}`);
+      expect(kept.quantity).toBe(1600);
     });
 
     it("imports wallet transactions for the owning account", async () => {
@@ -673,6 +680,111 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(result?.summary).toBe("1 new transaction");
       const rows = await db().select().from(schema.walletTransactions);
       expect(rows).toEqual([expect.objectContaining({ characterId: 3, transactionId: 11, userId: userB, isBuy: true })]);
+    });
+
+    it("ignores market trades between the account's own characters", async () => {
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 31, 18066), // bought from a stranger: a cost
+        tx(2, 32, 18066, { clientId: 3 }), // bought from your own alt: just moving crystals around
+        tx(3, 33, 1230, { isBuy: false, quantity: 100, unitPrice: 50, clientId: 2 }), // sold to your main
+      ]);
+      const rows = await pnl.getPurchases(scopeB(), { status: "mining", limit: 50, offset: 0 });
+      expect(rows.rows.map((r) => r.transactionId)).toEqual([31]);
+      expect(await pnl.getSaleHints(scopeB(), range)).toEqual([]);
+    });
+
+    it("never brings wallet rows back for a character removed or sold during the import", async () => {
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async () => {
+          // The character changes hands while ESI is answering.
+          await db().execute(sql`UPDATE characters SET user_id = ${userA} WHERE character_id = 3`);
+          return new Response(
+            JSON.stringify([{ transaction_id: 41, date: "2026-09-10T12:00:00Z", type_id: 16272, quantity: 1, unit_price: 1,
+              is_buy: true, is_personal: true, client_id: 5, location_id: 60003760, journal_ref_id: 1 }]),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }) as unknown as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
+      const result = await walletTransactionsJob.run(ctx);
+      expect(result?.summary).toBe("Character changed owner during the import");
+      expect(await db().select().from(schema.walletTransactions)).toEqual([]);
+    });
+
+    it("resumes the wallet import per owner, past unstored corporation trades", async () => {
+      // A previous owner's rows must not hide the new owner's history.
+      await db().insert(schema.walletTransactions).values({ ...tx(3, 900, 34), userId: userA });
+      const seen: (string | null)[] = [];
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async (url: string) => {
+          const fromId = new URL(String(url)).searchParams.get("from_id");
+          seen.push(fromId);
+          const all = [
+            { transaction_id: 950, is_personal: false },
+            { transaction_id: 800, is_personal: true },
+          ].map((t) => ({ ...t, date: "2026-09-10T12:00:00Z", type_id: 34, quantity: 1, unit_price: 5, is_buy: true,
+            client_id: 5, location_id: 60003760, journal_ref_id: t.transaction_id }));
+          return new Response(JSON.stringify(all.filter((t) => !fromId || t.transaction_id < Number(fromId))), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }) as unknown as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
+      const first = await walletTransactionsJob.run(ctx);
+      expect(first?.summary).toBe("1 new transaction");
+      expect(first?.meta).toEqual({ userId: userB, newestSeenId: 950 });
+      // Next run: the corporation trade (950) is the high-water mark, so one request is enough.
+      seen.length = 0;
+      await walletTransactionsJob.run({ ...ctx, meta: first!.meta! });
+      expect(seen).toEqual([null]);
+    });
+
+    it("drops the previous owner's wallet history when a character is transferred", async () => {
+      const { detachTransferredCharacter } = await import("@/core/auth/provision");
+      await db().insert(schema.walletTransactions).values([tx(3, 51, 18066), tx(2, 52, 18066)]);
+      await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: false }));
+      expect((await db().select().from(schema.walletTransactions)).map((r) => r.transactionId)).toEqual([52]);
+    });
+
+    it("reports opt-in scopes that a generic re-link dropped", async () => {
+      const { encryptToken } = await import("@/core/crypto");
+      const { provisionFromSso } = await import("@/core/auth/provision");
+      const MINING = "esi-industry.read_character_mining.v1";
+      await db().insert(schema.esiTokens).values({ characterId: 2, refreshTokenEnc: encryptToken("r"), scopes: [MINING, WALLET_SCOPE] });
+      // The shared client may already hold an earlier fetch, so stub its calls rather than global fetch.
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) =>
+          reply(path.startsWith("/corporations/") ? { name: "Home", ticker: "HOME", member_count: 3 } : { corporation_id: 100 }),
+        ) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      const link = (scopes: string[]) =>
+        provisionFromSso({
+          verified: { characterId: 2, name: "Bravo", ownerHash: "h2", scopes, expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent: "link",
+          currentUserId: userB,
+        });
+      try {
+        expect((await link([MINING])).lostOptionalScopes).toEqual([WALLET_SCOPE]);
+        // Granted again: nothing lost.
+        await db().update(schema.esiTokens).set({ scopes: [MINING, WALLET_SCOPE] });
+        expect((await link([MINING, WALLET_SCOPE])).lostOptionalScopes).toEqual([]);
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
     });
 
     it("hints at realised sale prices per raw unit, raw or compressed", async () => {

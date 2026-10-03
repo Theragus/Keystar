@@ -5,6 +5,7 @@ import {
   corporationScopes,
   memberScopeRequirements,
   optionalScopes,
+  parseOptionalScopes,
   reauthorizeHref,
   scopesForIntent,
 } from "@/core/modules/registry";
@@ -52,7 +53,16 @@ describe("optional scopes", () => {
     const add = params(reauthorizeHref([MINING], { add: [WALLET_SCOPE], returnTo: "/mining/pnl/settings" }));
     expect(add.get("with")).toBe(WALLET_SCOPE);
     expect(add.get("returnTo")).toBe("/mining/pnl/settings");
-    expect(params(reauthorizeHref([MINING, WALLET_SCOPE], { remove: [WALLET_SCOPE] })).get("with")).toBeNull();
+    const stop = params(reauthorizeHref([MINING, WALLET_SCOPE], { remove: [WALLET_SCOPE] }));
+    expect(stop.get("with")).toBeNull();
+    // Deliberately dropped, so the callback doesn't warn about losing it.
+    expect(stop.get("drop")).toBe(WALLET_SCOPE);
+    expect(params(reauthorizeHref([MINING], { remove: [WALLET_SCOPE] })).get("drop")).toBeNull();
     expect(params(reauthorizeHref([MINING], { add: ["bogus"] })).get("with")).toBeNull();
+  });
+
+  it("parses with=/drop= lists down to known opt-in scopes", () => {
+    expect(parseOptionalScopes(`${WALLET_SCOPE}, bogus ${WALLET_SCOPE}`)).toEqual([WALLET_SCOPE]);
+    expect(parseOptionalScopes(null)).toEqual([]);
   });
 });

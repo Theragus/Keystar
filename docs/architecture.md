@@ -79,8 +79,10 @@ redirect for visitors without a session cookie.
 the member or corporation scope sets and never shown as missing. A user enables it per character; the link
 (`/auth/login?intent=link&with=<scope>`) is built by `reauthorizeHref()` in `src/core/modules/registry.ts`, which also
 re-requests the corporation and optional scopes the character already holds, because EVE replaces a token's scopes
-on every login. Re-linking a character through the generic "Link a character" or `/join` therefore drops optional
-scopes (the P&L settings then show wallet import as off; imported history is kept).
+on every login. Re-linking a character through a generic link ("Link a character", corporation access, `/join`)
+can't keep them: provisioning reports opt-in scopes the character lost, and unless the user asked to drop them
+(`drop=` in the sealed OAuth state) the callback sends them to My Characters with a "turn it back on" warning.
+Imported history is kept either way.
 
 ## Roles and permissions
 
@@ -164,8 +166,9 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   (`mining_pnl_price_rules`, optional date range, latest start wins) sets the price.
 - **Wallet import** is opt-in per character (optional `esi-wallet.read_character_wallet.v1` scope). The wallet job
   pages back with `from_id` until it reaches stored transactions and stores personal transactions in
-  `wallet_transactions` with the owning account (`user_id`), so wallet data never follows a sold character and is
-  deleted with the account or when the character is removed. Wallet responses bypass the ESI response cache, so
+  `wallet_transactions` with the owning account (`user_id`), so wallet data never follows a sold character: it is
+  deleted with the account, when the character is removed and when it is transferred to another account. Trades
+  between the account's own characters are ignored (neither costs nor sales). Wallet responses bypass the ESI response cache, so
   deleting the history leaves no copy behind.
 - **Expenses**: buys are auto-tagged by item group/type (`src/modules/mining/pnl/categories.ts`, with an SQL twin):
   mining crystals, Heavy Water, Mining Foreman burst charges, mining drones, mining hulls and fittings. A tagged

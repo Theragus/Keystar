@@ -154,6 +154,15 @@ export async function getActivityStats(s: PnlScope): Promise<ActivityStats> {
   return out;
 }
 
+/**
+ * Market trades between the account's own characters (an alt selling to the main) move items around without
+ * costing or earning anything: the cost was the original purchase.
+ */
+function internalTrade(s: PnlScope): SQL {
+  const own = s.ledgerScope.ownCharacterIds;
+  return own.length ? sql`AND w.client_id NOT IN (${list(own)})` : sql``;
+}
+
 /** Wallet purchases with their effective category, inclusion and status (mirrors expenseStatus()). */
 function purchasesCte(s: PnlScope): SQL {
   const { start, end } = utcDayBounds(s.from, s.to);
@@ -170,6 +179,7 @@ function purchasesCte(s: PnlScope): SQL {
     LEFT JOIN mining_pnl_characters pc ON pc.user_id = w.user_id AND pc.character_id = w.character_id
     WHERE w.user_id = ${s.userId}::uuid AND w.character_id IN (${list(s.characterIds)}) AND w.is_buy
       AND w.date >= ${start}::timestamptz AND w.date < ${end}::timestamptz
+      ${internalTrade(s)}
   ),
   effective AS (
     SELECT p.*, COALESCE(p.o_category, p.auto_category) AS category,
@@ -412,7 +422,7 @@ export async function getSaleHints(s: PnlScope, range: { from: string; to: strin
     JOIN eve_types t ON t.type_id = v.raw_id
     LEFT JOIN type_values tv ON tv.type_id = v.raw_id AND tv.source = ${s.valuation.source}
     WHERE w.user_id = ${s.userId}::uuid AND w.character_id IN (${list(s.characterIds)}) AND NOT w.is_buy
-      AND w.date >= ${start}::timestamptz AND w.date < ${end}::timestamptz
+      AND w.date >= ${start}::timestamptz AND w.date < ${end}::timestamptz ${internalTrade(s)}
     GROUP BY 1, 2
     ORDER BY isk DESC`);
   return rows

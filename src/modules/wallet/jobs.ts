@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { characters } from "@/core/db/schema/core";
 import { ensureTypes } from "@/core/eve/resolver";
 import type { JobDefinition } from "@/core/sync/types";
@@ -21,20 +21,23 @@ export const walletTransactionsJob: JobDefinition = {
   requiredScopes: [WALLET_SCOPE],
   // ESI caches wallet transactions for an hour.
   intervalSeconds: 3600,
-  async run({ esi, db, characterId }) {
+  async run({ esi, db, characterId, meta }) {
     const [owner] = await db
       .select({ userId: characters.userId })
       .from(characters)
       .where(eq(characters.characterId, characterId!));
     if (!owner) return { summary: "Character is not linked" };
 
+    // Resume after the newest transaction seen for this owner, including corporation-wallet ones that aren't stored.
     const [newest] = await db
       .select({ id: sql<string | null>`max(${walletTransactions.transactionId})` })
       .from(walletTransactions)
-      .where(eq(walletTransactions.characterId, characterId!));
-    const newestId = newest?.id == null ? null : Number(newest.id);
+      .where(and(eq(walletTransactions.characterId, characterId!), eq(walletTransactions.userId, owner.userId)));
+    const seen = meta.userId === owner.userId && typeof meta.newestSeenId === "number" ? meta.newestSeenId : null;
+    const stored = newest?.id == null ? null : Number(newest.id);
+    const cursor = stored === null ? seen : seen === null ? stored : Math.max(stored, seen);
 
-    const res = await fetchNewTransactions(esi, characterId!, newestId);
+    const res = await fetchNewTransactions(esi, characterId!, cursor);
     // Corporation-wallet transactions made by this character are out of scope.
     const rows = res.rows
       .filter((t) => t.is_personal)
@@ -51,21 +54,34 @@ export const walletTransactionsJob: JobDefinition = {
         locationId: t.location_id,
         journalRefId: t.journal_ref_id,
       }));
-    for (let i = 0; i < rows.length; i += CHUNK) {
-      await db
-        .insert(walletTransactions)
-        .values(rows.slice(i, i + CHUNK))
-        .onConflictDoUpdate({
-          target: [walletTransactions.characterId, walletTransactions.transactionId],
-          set: { userId: sql`excluded.user_id` },
-          setWhere: sql`${walletTransactions.userId} IS DISTINCT FROM excluded.user_id`,
-        });
-    }
+
+    const stillOwned = await db.transaction(async (tx) => {
+      // Removing or transferring the character meanwhile must not bring its wallet rows back.
+      const [current] = await tx.execute<{ user_id: string }>(
+        sql`SELECT user_id FROM characters WHERE character_id = ${characterId!} FOR SHARE`,
+      );
+      if (current?.user_id !== owner.userId) return false;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        await tx
+          .insert(walletTransactions)
+          .values(rows.slice(i, i + CHUNK))
+          .onConflictDoUpdate({
+            target: [walletTransactions.characterId, walletTransactions.transactionId],
+            set: { userId: sql`excluded.user_id` },
+            setWhere: sql`${walletTransactions.userId} IS DISTINCT FROM excluded.user_id`,
+          });
+      }
+      return true;
+    });
+    if (!stillOwned) return { summary: "Character changed owner during the import" };
+
     await ensureTypes(rows.map((r) => r.typeId));
-    const added = rows.filter((r) => newestId === null || r.transactionId > newestId).length;
+    const added = rows.filter((r) => cursor === null || r.transactionId > cursor).length;
+    const newestSeenId = res.rows.reduce((max, t) => Math.max(max, t.transaction_id), cursor ?? 0);
     return {
       summary: `${added} new transaction${added === 1 ? "" : "s"}${res.truncated ? " (older ones skipped)" : ""}`,
       nextRunAt: res.expiresAt,
+      meta: { userId: owner.userId, newestSeenId: newestSeenId || null },
     };
   },
 };

@@ -10,11 +10,13 @@ const stateSchema = z.object({
   intent: z.enum(["login", "join", "link", "link-corp"]),
   returnTo: z.string(),
   createdAt: z.number(),
+  /** Opt-in scopes the user asked to remove; losing them is expected, not a surprise. */
+  optionalRemoved: z.array(z.string()).max(20).default([]),
 });
 
 export type OAuthState = z.infer<typeof stateSchema>;
 
-export function sealOAuthState(state: OAuthState): string {
+export function sealOAuthState(state: z.input<typeof stateSchema>): string {
   return encrypt(JSON.stringify(state), deriveKey("oauth-state"));
 }
 

@@ -13,6 +13,7 @@ import {
   characterScopes,
   corporationScopes,
   optionalScopes,
+  parseOptionalScopes,
   reauthorizeHref,
 } from "@/core/modules/registry";
 import { relativeTime } from "@/lib/format";
@@ -21,8 +22,9 @@ import { removeCharacter, setMainCharacter, syncCharacterNow } from "./actions";
 
 export const metadata = { title: "My characters" };
 
-export default async function CharactersPage() {
+export default async function CharactersPage({ searchParams }: PageProps<"/characters">) {
   const user = await requireUser();
+  const params = await searchParams;
   const ids = user.characterIds;
   const db = getDb();
   const [tokens, roles, corps, jobs] = ids.length
@@ -40,6 +42,12 @@ export default async function CharactersPage() {
   const memberScopes = characterScopes();
   const corpOnly = corporationScopes().filter((s) => !memberScopes.includes(s));
   const optional = optionalScopes();
+  // Set by the SSO callback when a generic link dropped opt-in scopes a character had.
+  const lostChar = user.characters.find((c) => String(c.characterId) === String(params.lost ?? ""));
+  const lostGranted = tokens.find((t) => t.characterId === lostChar?.characterId)?.scopes ?? [];
+  const lostScopes = lostChar
+    ? parseOptionalScopes(String(params.scopes ?? "")).filter((s) => !lostGranted.includes(s))
+    : [];
   const reasons = new Map(allScopeRequirements().map((s) => [s.scope, s.reason]));
 
   return (
@@ -54,6 +62,27 @@ export default async function CharactersPage() {
           </ButtonLink>
         }
       />
+
+      {lostChar && lostScopes.length > 0 && (
+        <Glass className="flex flex-wrap items-center gap-4 border border-warning/30 px-5 py-4">
+          <TriangleAlert className="size-5 shrink-0 text-warning" aria-hidden />
+          <div className="min-w-0 flex-1 text-sm text-ink-2">
+            <p className="font-semibold text-ink">Optional access was turned off for {lostChar.name}</p>
+            <p className="mt-0.5 text-xs">
+              That EVE login didn&apos;t include{" "}
+              {lostScopes.map((s) => (
+                <code key={s} className="text-ink" title={reasons.get(s)}>
+                  {s}
+                </code>
+              ))}
+              , which the character had before: EVE replaces a character&apos;s scopes on every login. Imported data is kept.
+            </p>
+          </div>
+          <ButtonLink href={reauthorizeHref(lostGranted, { add: lostScopes })} size="sm" variant="primary">
+            <KeyRound className="size-3.5" aria-hidden /> Turn it back on
+          </ButtonLink>
+        </Glass>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-12">
         <div className="space-y-4 xl:col-span-8">

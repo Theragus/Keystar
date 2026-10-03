@@ -41,7 +41,9 @@ describe("oauth state cookie", () => {
   };
 
   it("round-trips", () => {
-    expect(unsealOAuthState(sealOAuthState(state))).toEqual(state);
+    expect(unsealOAuthState(sealOAuthState(state))).toEqual({ ...state, optionalRemoved: [] });
+    const dropping = { ...state, optionalRemoved: ["esi-wallet.read_character_wallet.v1"] };
+    expect(unsealOAuthState(sealOAuthState(dropping))).toEqual(dropping);
   });
 
   it("rejects expired, garbage and missing values", () => {

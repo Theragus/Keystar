@@ -26,7 +26,9 @@ All notable changes to Keystar. Versions follow [Semantic Versioning](https://se
 ### Changed
 
 - "Re-authorise" on My Characters keeps the character's corporation and optional scopes instead of requesting only
-  the member scopes.
+  the member scopes. When another EVE login drops an opt-in scope anyway, My Characters says so and offers to turn
+  it back on.
+- The personal mining ledger sync no longer re-applies a snapshot from Keystar's own cache or an older snapshot.
 
 ### Fixed
 

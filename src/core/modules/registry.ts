@@ -61,6 +61,12 @@ export function scopesForIntent(intent: LoginIntent, extra: readonly string[] = 
   return [...new Set([...base, ...extra.filter((s) => allowed.has(s))])].sort();
 }
 
+/** Known opt-in scopes from a `with=`/`drop=` list (comma or space separated). */
+export function parseOptionalScopes(value: string | null | undefined): string[] {
+  const allowed = new Set(optionalScopes());
+  return [...new Set((value ?? "").split(/[\s,]+/).filter((s) => allowed.has(s)))];
+}
+
 /**
  * SSO link that re-authorises a character without losing what it already has:
  * EVE replaces a token's scopes on every login, so corporation and opt-in
@@ -76,8 +82,10 @@ export function reauthorizeHref(
   const intent: LoginIntent = corpOnly.some((s) => granted.includes(s)) ? "link-corp" : "link";
   const remove = new Set(opts.remove ?? []);
   const extra = optionalScopes().filter((s) => (granted.includes(s) || opts.add?.includes(s)) && !remove.has(s));
+  const dropped = optionalScopes().filter((s) => granted.includes(s) && remove.has(s));
   const params = new URLSearchParams({ intent });
   if (extra.length) params.set("with", extra.join(","));
+  if (dropped.length) params.set("drop", dropped.join(","));
   if (opts.returnTo) params.set("returnTo", opts.returnTo);
   return `/auth/login?${params}`;
 }
