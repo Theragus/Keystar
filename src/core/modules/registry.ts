@@ -89,11 +89,12 @@ export function parseOptionalScopes(value: string | null | undefined): string[] 
  * SSO link that re-authorises a character without losing what it already has:
  * EVE replaces a token's scopes on every login, so corporation and opt-in
  * scopes the character holds are requested again (`add`/`remove` change the
- * opt-in set).
+ * opt-in set). With `characterId`, the callback refuses a login with any other
+ * character, whose token would otherwise get this character's scope set.
  */
 export function reauthorizeHref(
   granted: readonly string[],
-  opts: { add?: readonly string[]; remove?: readonly string[]; returnTo?: string } = {},
+  opts: { add?: readonly string[]; remove?: readonly string[]; returnTo?: string; characterId?: number } = {},
 ): string {
   const member = new Set(characterScopes());
   const corpOnly = corporationScopes().filter((s) => !member.has(s));
@@ -105,6 +106,7 @@ export function reauthorizeHref(
   if (extra.length) params.set("with", extra.join(","));
   if (dropped.length) params.set("drop", dropped.join(","));
   if (opts.returnTo) params.set("returnTo", opts.returnTo);
+  if (opts.characterId) params.set("character", String(opts.characterId));
   return `/auth/login?${params}`;
 }
 

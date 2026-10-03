@@ -1,8 +1,10 @@
+import { eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 import { OAUTH_COOKIE, unsealOAuthState, type OAuthState } from "@/core/auth/oauth-state";
 import { ProvisionError, provisionFromSso, type ProvisionResult } from "@/core/auth/provision";
 import { SESSION_COOKIE, createSession, sessionCookieOptions, validateSessionToken } from "@/core/auth/session";
 import { exchangeCode, verifyAccessToken, type VerifiedCharacter } from "@/core/auth/sso";
+import { characters, getDb } from "@/core/db";
 import { env } from "@/core/env";
 import { FLASH_COOKIE, encodeFlash, flashCookieOptions, type Flash, type LinkFailure } from "@/core/flash";
 import { createLogger, errorMessage } from "@/core/logger";
@@ -19,11 +21,15 @@ function fail(code: string, message?: string) {
 }
 
 /** Back to the page a signed-in user linked from, with a toast saying why linking failed. */
-function linkFailed(returnTo: string, code: LinkFailure) {
+function linkFailed(returnTo: string, code: LinkFailure, names: Pick<Flash, "name" | "expected"> = {}) {
   const appUrl = env().APP_URL;
   const res = NextResponse.redirect(new URL(returnTo, appUrl));
   res.cookies.delete({ name: OAUTH_COOKIE, path: "/auth" });
-  res.cookies.set(FLASH_COOKIE, encodeFlash({ kind: "linkFailed", code }), flashCookieOptions(appUrl.startsWith("https://")));
+  res.cookies.set(
+    FLASH_COOKIE,
+    encodeFlash({ kind: "linkFailed", code, ...names }),
+    flashCookieOptions(appUrl.startsWith("https://")),
+  );
   return res;
 }
 
@@ -62,6 +68,15 @@ export async function GET(request: NextRequest) {
   try {
     const tokens = await exchangeCode(code, saved.verifier);
     const verified = await verifyAccessToken(tokens.access_token);
+    // Re-authorising one character but EVE logged in another: storing this token would give that character the
+    // scope set meant for the first (and drop, say, its corporation scopes). Keep both as they were.
+    if (linkReturn && saved.expectedCharacterId && verified.characterId !== saved.expectedCharacterId) {
+      const [expected] = await getDb()
+        .select({ name: characters.name })
+        .from(characters)
+        .where(eq(characters.characterId, saved.expectedCharacterId));
+      return linkFailed(linkReturn, "wrongCharacter", { name: verified.name, expected: expected?.name });
+    }
     const result = await provisionFromSso({
       verified,
       tokens,

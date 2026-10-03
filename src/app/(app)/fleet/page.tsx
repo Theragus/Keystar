@@ -107,7 +107,7 @@ export default async function FleetPage() {
                         </Button>
                       ) : (
                         <ButtonLink
-                          href={reauthorizeHref(granted, { add: [FLEET_SCOPE], returnTo: RETURN_TO })}
+                          href={reauthorizeHref(granted, { add: [FLEET_SCOPE], returnTo: RETURN_TO, characterId: c.characterId })}
                           size="sm"
                           variant="primary"
                           title={tf.tracking.enableHint}

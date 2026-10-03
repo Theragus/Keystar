@@ -85,12 +85,16 @@ export const characters: typeof en = {
     removed: (what: string) => `Abgeschaltet: ${what}`,
     character: "den Charakter",
     failed: "Der Charakter konnte nicht verknüpft werden",
+    wrongCharacter: (picked: string) => `Du hast dich mit ${picked} angemeldet`,
+    wrongCharacterDetail: (expected: string) =>
+      `Es wurde nichts geändert. Autorisiere erneut und wähle beim EVE-Login ${expected}.`,
     errors: {
       denied: "Der EVE-Login wurde abgebrochen.",
       invalidState: "Der EVE-Login ist abgelaufen oder wurde doppelt geöffnet. Bitte versuche es noch einmal.",
       signInFirst: "Melde dich an, bevor du einen weiteren Charakter verknüpfst.",
       linkedElsewhere: "Dieser Charakter ist bereits mit einem anderen Keystar-Konto verknüpft.",
       disabled: "Dieses Konto wurde von einem Administrator deaktiviert.",
+      wrongCharacter: "Der EVE-Login hat einen anderen Charakter verwendet als den, den du neu autorisieren wolltest. Es wurde nichts geändert.",
       failed: "EVE hat den Login nicht bestätigt. Bitte versuche es gleich noch einmal.",
     },
   },

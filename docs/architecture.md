@@ -100,6 +100,12 @@ After an SSO round trip the callback confirms the outcome (character linked, re-
 explains a failed link with a one-shot `ks_flash` cookie (`src/core/flash.ts`), which `FlashToasts` in the app
 layout shows as a toast. A signed-in user whose link fails goes back to the page they came from instead of `/login`.
 
+Re-authorise links name their character (`reauthorizeHref(granted, { characterId })` → `&character=`, kept in the
+sealed OAuth state). EVE lets the user pick any character of their account, and storing that token would give the
+picked character the scope set meant for the other one (dropping, for example, its corporation scopes and with
+them the corporation jobs). So the callback refuses a login with any other character: it stores nothing and says
+which character to pick. "Link a character" and the corporation-access link still accept any character.
+
 ## Roles and permissions
 
 Roles are hierarchical: `guest < member < viewer < contributor < director < admin`. Every permission has a default

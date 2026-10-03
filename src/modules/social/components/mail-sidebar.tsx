@@ -137,7 +137,7 @@ export function MailboxPanel({
                     </Button>
                   ) : (
                     <ButtonLink
-                      href={reauthorizeHref(b.grantedScopes, { add: [MAIL_SCOPE], returnTo })}
+                      href={reauthorizeHref(b.grantedScopes, { add: [MAIL_SCOPE], returnTo, characterId: b.characterId })}
                       size="sm"
                       variant="primary"
                       className="h-6 px-2"

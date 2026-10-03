@@ -71,7 +71,7 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
       <Panel title={m.wallet.title} subtitle={m.wallet.subtitle}>
         <div className="space-y-3">
           {wallet.map((w) => {
-            const enable = reauthorizeHref(w.grantedScopes, { add: [WALLET_SCOPE], returnTo: RETURN_TO });
+            const enable = reauthorizeHref(w.grantedScopes, { add: [WALLET_SCOPE], returnTo: RETURN_TO, characterId: w.characterId });
             const tracksMining = w.grantedScopes.includes(MINING_SCOPE);
             return (
               <Glass key={w.characterId} className="flex flex-wrap items-center gap-4 rounded-2xl px-4 py-3">

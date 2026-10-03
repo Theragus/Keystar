@@ -83,6 +83,11 @@ describe("optional scopes", () => {
     expect(off.get("drop")).toBe(FLEET_SCOPE);
   });
 
+  it("names the character being re-authorised", () => {
+    expect(params(reauthorizeHref([MINING], { characterId: 2120000001 })).get("character")).toBe("2120000001");
+    expect(params(reauthorizeHref([MINING])).get("character")).toBeNull();
+  });
+
   it("parses with=/drop= lists down to known opt-in scopes", () => {
     expect(parseOptionalScopes(`${WALLET_SCOPE}, bogus ${WALLET_SCOPE}`)).toEqual([WALLET_SCOPE]);
     expect(parseOptionalScopes(null)).toEqual([]);

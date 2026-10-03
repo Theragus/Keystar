@@ -12,7 +12,15 @@ export const FLASH_KINDS = ["linked", "reauthorized", "corpGranted", "scopesChan
 export type FlashKind = (typeof FLASH_KINDS)[number];
 
 /** Why linking a character failed (`linkFailed`). */
-export const LINK_FAILURES = ["denied", "invalidState", "signInFirst", "linkedElsewhere", "disabled", "failed"] as const;
+export const LINK_FAILURES = [
+  "denied",
+  "invalidState",
+  "signInFirst",
+  "linkedElsewhere",
+  "disabled",
+  "wrongCharacter",
+  "failed",
+] as const;
 export type LinkFailure = (typeof LINK_FAILURES)[number];
 
 export interface Flash {
@@ -24,6 +32,8 @@ export interface Flash {
   removed?: string[];
   /** `linkFailed`: what went wrong. */
   code?: LinkFailure;
+  /** `wrongCharacter`: the character the user meant to re-authorise (`name` is the one they picked). */
+  expected?: string;
 }
 
 export function encodeFlash(flash: Flash): string {
@@ -49,6 +59,7 @@ export function parseFlash(raw: string | null | undefined): Flash | null {
       added: scopeList(v.added),
       removed: scopeList(v.removed),
       code: (LINK_FAILURES as readonly unknown[]).includes(v.code) ? (v.code as LinkFailure) : undefined,
+      expected: typeof v.expected === "string" ? v.expected.slice(0, 64) : undefined,
     };
   } catch {
     return null;

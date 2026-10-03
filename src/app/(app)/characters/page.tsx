@@ -88,7 +88,7 @@ export default async function CharactersPage({ searchParams }: PageProps<"/chara
               {m.lostScope.after}
             </p>
           </div>
-          <ButtonLink href={reauthorizeHref(lostGranted, { add: lostScopes })} size="sm" variant="primary">
+          <ButtonLink href={reauthorizeHref(lostGranted, { add: lostScopes, characterId: lostChar.characterId })} size="sm" variant="primary">
             <KeyRound className="size-3.5" aria-hidden /> {m.lostScope.action}
           </ButtonLink>
         </Glass>
@@ -148,7 +148,7 @@ export default async function CharactersPage({ searchParams }: PageProps<"/chara
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {(!token || token.status === "invalid" || missing.length > 0) && (
-                      <ButtonLink href={reauthorizeHref(granted)} size="sm" variant="primary">
+                      <ButtonLink href={reauthorizeHref(granted, { characterId: c.characterId })} size="sm" variant="primary">
                         <KeyRound className="size-3.5" aria-hidden /> {m.card.reauthorise}
                       </ButtonLink>
                     )}
@@ -203,7 +203,7 @@ export default async function CharactersPage({ searchParams }: PageProps<"/chara
                       <p className="mt-0.5">{m.disabledScopes.body}</p>
                       <p className="mt-0.5 font-medium text-ink">{m.disabledScopes.pickCharacter(c.name)}</p>
                     </div>
-                    <ButtonLink href={reauthorizeHref(granted)} size="sm">
+                    <ButtonLink href={reauthorizeHref(granted, { characterId: c.characterId })} size="sm">
                       <KeyRound className="size-3.5" aria-hidden /> {m.disabledScopes.action}
                     </ButtonLink>
                   </div>

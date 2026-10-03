@@ -89,12 +89,17 @@ export const characters = {
     removed: (what: string) => `Turned off: ${what}`,
     character: "the character",
     failed: "Linking the character didn't work",
+    /** Re-authorising one character, but the EVE login used another: nothing is stored. */
+    wrongCharacter: (picked: string) => `You logged in with ${picked}`,
+    wrongCharacterDetail: (expected: string) =>
+      `Nothing was changed. Re-authorise again and pick ${expected} on the EVE login.`,
     errors: {
       denied: "The EVE login was cancelled.",
       invalidState: "The EVE login expired or was opened twice. Please try again.",
       signInFirst: "Sign in before linking another character.",
       linkedElsewhere: "That character is already linked to another Keystar account.",
       disabled: "This account has been disabled by an administrator.",
+      wrongCharacter: "The EVE login used a different character than the one you re-authorised. Nothing was changed.",
       failed: "EVE didn't confirm the login. Please try again in a moment.",
     },
   },

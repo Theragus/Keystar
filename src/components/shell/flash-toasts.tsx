@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useToast, type ToastOptions } from "@/components/ui/toast";
 import { FLASH_COOKIE, parseFlash, type Flash } from "@/core/flash";
 import { useI18n } from "@/i18n/client";
@@ -23,15 +23,23 @@ function readFlashCookie(): string | null {
 export function FlashToasts({ scopeLabels }: { scopeLabels: Record<string, string> }) {
   const { toast } = useToast();
   const { t } = useI18n();
+  // Read once per page load: a re-render of a page that was already open (another tab) mustn't take the message.
+  const labels = useRef(scopeLabels);
+  const shown = useRef(false);
 
   useEffect(() => {
+    labels.current = scopeLabels;
+  }, [scopeLabels]);
+
+  useEffect(() => {
+    if (shown.current) return;
+    shown.current = true;
     const raw = readFlashCookie();
     if (raw === null) return;
     document.cookie = `${FLASH_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
     const flash = parseFlash(raw);
-    if (flash) toast(flashToast(flash, t.characters, scopeLabels));
-    // Only on the page load the callback redirected to.
-  }, [toast, t, scopeLabels]);
+    if (flash) toast(flashToast(flash, t.characters, labels.current));
+  }, [toast, t]);
 
   return null;
 }
@@ -54,6 +62,14 @@ function flashToast(flash: Flash, m: Messages["characters"], labels: Record<stri
       return { tone: "good", title: m.sso.scopesChanged(name), description: parts.join(" · ") || undefined };
     }
     case "linkFailed":
+      if (flash.code === "wrongCharacter" && flash.name) {
+        return {
+          tone: "warning",
+          title: m.sso.wrongCharacter(flash.name),
+          description: m.sso.wrongCharacterDetail(flash.expected ?? m.sso.character),
+          durationMs: 15_000,
+        };
+      }
       return { tone: "critical", title: m.sso.failed, description: m.sso.errors[flash.code ?? "failed"] };
   }
 }
