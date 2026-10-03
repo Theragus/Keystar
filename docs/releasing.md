@@ -8,11 +8,16 @@ unreleased work, and a release is cut only when you start one by hand.
 Describe user-facing changes under `## [Unreleased]` at the top of [CHANGELOG.md](../CHANGELOG.md). Leave the
 version in `package.json` alone.
 
+When an entry fixes or implements a GitHub issue, end it with the issue number in parentheses, as a link so it is
+clickable both in CHANGELOG.md and in the release notes. Several issues share one pair of parentheses:
+`([#14](…/issues/14), [#18](…/issues/18))`. Entries without an issue carry no reference.
+
 ```markdown
 ## [Unreleased]
 
-### Added
-- …
+### Fixed
+- Sign-in could redirect to another site when `returnTo` contained a tab.
+  ([#14](https://github.com/Theragus/Keystar/issues/14))
 ```
 
 ## Cutting a release
