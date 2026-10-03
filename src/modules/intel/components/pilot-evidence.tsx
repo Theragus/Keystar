@@ -61,7 +61,7 @@ export async function PilotEvidence({
     <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-xs">
       {[{ label: e.tileKill, event: latest.kill }, { label: e.tileLoss, event: latest.loss }].map(({ label, event }) => {
         const hull = event ? eventTargetHull(event) : null;
-        return <div key={label} className="contents"><span className="text-ink-3">{label}</span><span className="min-w-0 text-ink"><span className="block truncate">{event ? (hull ? (names.types.get(hull)?.name ?? e.unknown) : e.unknown) : e.noEvent}</span>{event && <span className="text-3xs text-ink-3">{f.relativeTime(event.time)}</span>}</span></div>;
+        return <div key={label} className="contents"><span className="text-ink-3">{label}</span><span className="flex min-w-0 items-baseline gap-1.5 text-ink"><span className="truncate">{event ? (hull ? (names.types.get(hull)?.name ?? e.unknown) : e.unknown) : e.noEvent}</span>{event && <span className="shrink-0 whitespace-nowrap text-3xs text-ink-3">· {f.relativeTime(event.time)}</span>}</span></div>;
       })}
       <span className="text-ink-3">{e.tileCyno}</span>
       <span className={cynoEvidence(profile).length ? "text-warning" : "text-ink-3"}>{cynoEvidence(profile).length ? cynoEvidence(profile).map(fit => `${e.cynoKinds[fit.kind]} · ${f.relativeTime(fit.lastAt)}`).join(" · ") : profile?.depth === "deep" ? e.tileNoCyno : e.unknown}</span>
