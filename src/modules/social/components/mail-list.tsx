@@ -16,8 +16,7 @@ const DAY = 86400_000;
 /** Recent mail by relative time, older mail by date (with the year once it isn't this year). */
 export function listDate(date: Date, now: Date, f: Formatter): string {
   if (now.getTime() - date.getTime() < 7 * DAY) return f.relativeTime(date, now);
-  const iso = date.toISOString().slice(0, 10);
-  return date.getUTCFullYear() === now.getUTCFullYear() ? f.shortDate(iso) : iso;
+  return date.getUTCFullYear() === now.getUTCFullYear() ? f.shortDate(date.toISOString().slice(0, 10)) : f.date(date);
 }
 
 export function MailSearch({ params, t }: { params: MailParams; t: T }) {

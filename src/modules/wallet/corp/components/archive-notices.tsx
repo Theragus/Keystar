@@ -50,7 +50,7 @@ export async function ArchiveNotices({
         <p className="flex items-center gap-1.5 text-xs text-ink-3">
           <History className="size-3.5 shrink-0" aria-hidden />
           <span>
-            {w.historySince(day(since))}
+            {w.historySince(f.date(since))}
             {lastSync && ` · ${w.lastSync(f.relativeTime(lastSync))}`}
           </span>
         </p>

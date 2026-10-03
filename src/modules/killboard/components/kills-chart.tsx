@@ -145,7 +145,7 @@ export function KillsChart({ rows }: { rows: DailyActivity[] }) {
             <tbody>
               {[...rows].reverse().map((r) => (
                 <tr key={r.date}>
-                  <td className="tabular-nums text-ink-2">{r.date}</td>
+                  <td className="tabular-nums text-ink-2">{f.date(r.date)}</td>
                   <td className="num">{r.kills ? f.integer(r.kills) : "—"}</td>
                   <td className="num">{r.losses ? f.integer(r.losses) : "—"}</td>
                   <td className="num">{r.destroyed ? f.compact(r.destroyed) : "—"}</td>

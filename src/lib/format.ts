@@ -16,6 +16,8 @@ interface LocaleRules {
   percentSuffix: string;
   /** Tag for "02 Oct" style day labels. */
   shortDate: string;
+  /** Full dates: "02 Oct 2026" / "02.10.2026". */
+  date: Intl.DateTimeFormatOptions;
   relative: string;
   never: string;
   justNow: string;
@@ -33,6 +35,8 @@ const RULES: Record<Locale, LocaleRules> = {
     ],
     percentSuffix: "%",
     shortDate: "en-GB",
+    // Spelled-out month: a numeric 02/10/2026 reads as February to US readers.
+    date: { day: "2-digit", month: "short", year: "numeric" },
     relative: "en",
     never: "never",
     justNow: "just now",
@@ -50,6 +54,7 @@ const RULES: Record<Locale, LocaleRules> = {
     // DIN 5008: a (non-breaking) space before the percent sign.
     percentSuffix: " %",
     shortDate: "de-DE",
+    date: { day: "2-digit", month: "2-digit", year: "numeric" },
     relative: "de",
     never: "nie",
     justNow: "gerade eben",
@@ -75,9 +80,11 @@ export interface Formatter {
   relativeTime(date: Date | string | null | undefined, now?: Date): string;
   /** YYYY-MM-DD → "02 Oct" / "02. Okt.". */
   shortDate(date: string): string;
+  /** YYYY-MM-DD (or a timestamp, taken in EVE time) → "02 Oct 2026" / "02.10.2026". */
+  date(date: Date | string): string;
   /** YYYY-MM-DD → "Friday" / "Freitag" (the day in EVE time, UTC). */
   weekday(date: string): string;
-  /** EVE time, the same in every language: "2026-10-02 18:00 ET". */
+  /** EVE time: "02 Oct 2026 18:00 ET" / "02.10.2026 18:00 ET". */
   dateTime(date: Date | string | null | undefined): string;
 }
 
@@ -104,6 +111,10 @@ export function createFormatter(locale: Locale): Formatter {
     opts.compact === false ? `${grouped(value)} ISK` : `${compact(value)} ISK`;
   const volume = (value: number, opts: { compact?: boolean } = {}) =>
     opts.compact === false ? `${grouped(value)} m³` : `${compact(value)} m³`;
+  // A bare YYYY-MM-DD is the EVE (UTC) day; anything longer is a timestamp.
+  const toDate = (date: Date | string) =>
+    typeof date !== "string" ? date : new Date(date.length === 10 ? `${date}T00:00:00Z` : date);
+  const fullDate = (date: Date | string) => toDate(date).toLocaleDateString(rules.shortDate, { ...rules.date, timeZone: "UTC" });
 
   return {
     locale,
@@ -131,13 +142,14 @@ export function createFormatter(locale: Locale): Formatter {
       const d = new Date(`${date}T00:00:00Z`);
       return d.toLocaleDateString(rules.shortDate, { day: "2-digit", month: "short", timeZone: "UTC" });
     },
+    date: fullDate,
     weekday(date) {
       return new Date(`${date}T00:00:00Z`).toLocaleDateString(rules.shortDate, { weekday: "long", timeZone: "UTC" });
     },
     dateTime(date) {
       if (!date) return "—";
-      const d = typeof date === "string" ? new Date(date) : date;
-      return `${d.toISOString().slice(0, 16).replace("T", " ")} ET`;
+      const d = toDate(date);
+      return `${fullDate(d)} ${d.toISOString().slice(11, 16)} ET`;
     },
   };
 }
