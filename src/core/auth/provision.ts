@@ -1,10 +1,11 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { audit } from "@/core/audit";
 import { encryptToken } from "@/core/crypto";
-import { characters, esiTokens, eveCorporations, getDb, sessions, users, type Db } from "@/core/db";
+import { characters, esiTokens, eveCorporations, getDb, sessions, users, walletTransactions, type Db } from "@/core/db";
 import { env } from "@/core/env";
 import { getEsi } from "@/core/esi";
 import { ensureNames, refreshCorporations } from "@/core/eve/resolver";
+import { optionalScopes } from "@/core/modules/registry";
 import type { Role } from "@/core/rbac/roles";
 import { getSettings, setSetting } from "@/core/settings";
 import { policyRole, reconcileRole } from "./policy";
@@ -38,6 +39,10 @@ export async function detachTransferredCharacter(
   opts: { keepAccount: boolean },
 ): Promise<{ retired: boolean }> {
   await tx.delete(characters).where(eq(characters.characterId, characterId));
+  // Wallet history imported for the previous owner is theirs, not the new owner's.
+  await tx
+    .delete(walletTransactions)
+    .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, previousUserId)));
   const [next] = await tx
     .select({ characterId: characters.characterId })
     .from(characters)
@@ -62,6 +67,8 @@ export interface ProvisionResult {
   characterId: number;
   createdUser: boolean;
   role: Role;
+  /** Opt-in scopes the character held before this login but EVE didn't grant again. */
+  lostOptionalScopes: string[];
 }
 
 /**
@@ -184,7 +191,13 @@ export async function provisionFromSso(params: {
         },
       });
 
+    let lostOptionalScopes: string[] = [];
     if (verified.scopes.length > 0) {
+      // EVE replaces a token's scopes on every login: note opt-in scopes this login dropped.
+      const [previous] = owned
+        ? await tx.select({ scopes: esiTokens.scopes }).from(esiTokens).where(eq(esiTokens.characterId, verified.characterId))
+        : [];
+      lostOptionalScopes = optionalScopes().filter((s) => previous?.scopes.includes(s) && !verified.scopes.includes(s));
       const tokenValues = {
         refreshTokenEnc: encryptToken(tokens.refresh_token),
         accessTokenEnc: encryptToken(tokens.access_token),
@@ -211,7 +224,7 @@ export async function provisionFromSso(params: {
       })
       .where(eq(users.id, userId));
 
-    return { userId, characterId: verified.characterId, createdUser, role };
+    return { userId, characterId: verified.characterId, createdUser, role, lostOptionalScopes };
   });
 
   // The first admin's corporation becomes the home corporation if none is configured.

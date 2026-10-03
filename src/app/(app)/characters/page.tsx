@@ -1,4 +1,5 @@
 import { inArray } from "drizzle-orm";
+import Link from "next/link";
 import { Building2, Crown, KeyRound, Link2, RefreshCw, Trash2, TriangleAlert } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge, StatusBadge } from "@/components/ui/badge";
@@ -7,7 +8,14 @@ import { CorpLogo, Portrait } from "@/components/ui/eve-image";
 import { Glass, Panel } from "@/components/ui/glass";
 import { requireUser } from "@/core/auth/dal";
 import { characterCorpRoles, esiTokens, eveCorporations, getDb, syncJobs } from "@/core/db";
-import { allScopeRequirements, characterScopes, corporationScopes } from "@/core/modules/registry";
+import {
+  allScopeRequirements,
+  characterScopes,
+  corporationScopes,
+  optionalScopes,
+  parseOptionalScopes,
+  reauthorizeHref,
+} from "@/core/modules/registry";
 import { getI18n } from "@/i18n/server";
 import { jobLabel } from "@/modules/jobs";
 import { removeCharacter, setMainCharacter, syncCharacterNow } from "./actions";
@@ -17,8 +25,9 @@ export async function generateMetadata() {
   return { title: t.characters.metaTitle };
 }
 
-export default async function CharactersPage() {
+export default async function CharactersPage({ searchParams }: PageProps<"/characters">) {
   const user = await requireUser();
+  const params = await searchParams;
   const { t, f } = await getI18n();
   const m = t.characters;
   const ids = user.characterIds;
@@ -37,6 +46,13 @@ export default async function CharactersPage() {
 
   const memberScopes = characterScopes();
   const corpOnly = corporationScopes().filter((s) => !memberScopes.includes(s));
+  const optional = optionalScopes();
+  // Set by the SSO callback when a generic link dropped opt-in scopes a character had.
+  const lostChar = user.characters.find((c) => String(c.characterId) === String(params.lost ?? ""));
+  const lostGranted = tokens.find((x) => x.characterId === lostChar?.characterId)?.scopes ?? [];
+  const lostScopes = lostChar
+    ? parseOptionalScopes(String(params.scopes ?? "")).filter((s) => !lostGranted.includes(s))
+    : [];
   const reasons = new Map(allScopeRequirements().map((s) => [s.scope, s.reason(t)]));
 
   return (
@@ -51,6 +67,27 @@ export default async function CharactersPage() {
           </ButtonLink>
         }
       />
+
+      {lostChar && lostScopes.length > 0 && (
+        <Glass className="flex flex-wrap items-center gap-4 border border-warning/30 px-5 py-4">
+          <TriangleAlert className="size-5 shrink-0 text-warning" aria-hidden />
+          <div className="min-w-0 flex-1 text-sm text-ink-2">
+            <p className="font-semibold text-ink">{m.lostScope.title(lostChar.name)}</p>
+            <p className="mt-0.5 text-xs">
+              {m.lostScope.before}{" "}
+              {lostScopes.map((s) => (
+                <code key={s} className="text-ink" title={reasons.get(s)}>
+                  {s}
+                </code>
+              ))}{" "}
+              {m.lostScope.after}
+            </p>
+          </div>
+          <ButtonLink href={reauthorizeHref(lostGranted, { add: lostScopes })} size="sm" variant="primary">
+            <KeyRound className="size-3.5" aria-hidden /> {m.lostScope.action}
+          </ButtonLink>
+        </Glass>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-12">
         <div className="space-y-4 xl:col-span-8">
@@ -105,7 +142,7 @@ export default async function CharactersPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {(!token || token.status === "invalid" || missing.length > 0) && (
-                      <ButtonLink href="/auth/login?intent=link" size="sm" variant="primary">
+                      <ButtonLink href={reauthorizeHref(granted)} size="sm" variant="primary">
                         <KeyRound className="size-3.5" aria-hidden /> {m.card.reauthorise}
                       </ButtonLink>
                     )}
@@ -147,6 +184,21 @@ export default async function CharactersPage() {
                         <li className="pt-1 text-ink-3">{m.card.corporationScopes(corpGranted.length)}</li>
                       )}
                     </ul>
+                    {optional.length > 0 && (
+                      <>
+                        <div className="eve-label mt-3 mb-2 text-2xs text-ink-3">{m.card.optional}</div>
+                        <ul className="space-y-1 text-xs">
+                          {optional.map((s) => (
+                            <li key={s} className="flex items-center justify-between gap-2" title={reasons.get(s)}>
+                              <code className="truncate text-ink-2">{s}</code>
+                              <Link href="/mining/pnl/settings" className="shrink-0">
+                                {granted.includes(s) ? <Badge tone="good">{m.card.optionalOn}</Badge> : <Badge>{m.card.optionalOff}</Badge>}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                   </div>
                   <div className="rounded-2xl glass-inset px-4 py-3">
                     <div className="eve-label mb-2 text-2xs text-ink-3">{m.card.backgroundSync}</div>
@@ -197,6 +249,7 @@ export default async function CharactersPage() {
               <li>{m.privacy.encrypted}</li>
               <li>{m.privacy.readOnly}</li>
               <li>{m.privacy.removal}</li>
+              <li>{m.privacy.wallet}</li>
               <li>{m.privacy.revoke}</li>
             </ul>
           </Panel>

@@ -1,7 +1,15 @@
-import { sql } from "drizzle-orm";
-import { miningCharacterLedger, miningObserverLedger, miningObservers } from "@/core/db";
+import { and, eq, gte, sql } from "drizzle-orm";
+import {
+  miningActivity,
+  miningActivityCoverage,
+  miningCharacterLedger,
+  miningObserverLedger,
+  miningObservers,
+} from "@/core/db";
 import { ensureNames, ensureSystems, ensureTypes } from "@/core/eve/resolver";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
+import { addDays, isoDate } from "@/lib/dates";
+import { observationTime, planActivity } from "./activity";
 
 interface CharacterMiningEntry {
   date: string;
@@ -45,26 +53,92 @@ export const characterLedgerJob: JobDefinition = {
       quantity: e.quantity,
       updatedAt: new Date(),
     }));
-    // Upserting is idempotent, so cached (unchanged) data is simply re-applied.
-    for (let i = 0; i < rows.length; i += CHUNK) {
-      await db
-        .insert(miningCharacterLedger)
-        .values(rows.slice(i, i + CHUNK))
+    // A snapshot served from Keystar's own cache was already applied by the run that fetched it (or will be by the
+    // next one, if that run failed): writing it again could only hide growth from the activity measurement.
+    if (res.fromCache) return { summary: `${rows.length} ledger entries (cached)`, nextRunAt: res.expiresAt };
+    const observedAt = observationTime(res.lastModified, new Date());
+    let windows = 0;
+    let stale = false;
+
+    await db.transaction(async (tx) => {
+      // Growth is measured against the stored ledger, so read it before the upsert.
+      const recentFrom = addDays(isoDate(observedAt), -2);
+      const [coverage] = await tx
+        .select()
+        .from(miningActivityCoverage)
+        .where(eq(miningActivityCoverage.characterId, characterId!))
+        .for("update");
+      const before = coverage
+        ? await tx
+            .select({
+              date: miningCharacterLedger.date,
+              solarSystemId: miningCharacterLedger.solarSystemId,
+              typeId: miningCharacterLedger.typeId,
+              quantity: miningCharacterLedger.quantity,
+            })
+            .from(miningCharacterLedger)
+            .where(and(eq(miningCharacterLedger.characterId, characterId!), gte(miningCharacterLedger.date, recentFrom)))
+        : [];
+      const plan = planActivity({
+        before,
+        after: rows.filter((r) => r.date >= recentFrom),
+        coverage: coverage ?? null,
+        observedAt,
+      });
+      // Not newer than what is stored: don't roll the ledger back to an older snapshot.
+      if (!plan) {
+        stale = true;
+        return;
+      }
+
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        await tx
+          .insert(miningCharacterLedger)
+          .values(rows.slice(i, i + CHUNK))
+          .onConflictDoUpdate({
+            target: [
+              miningCharacterLedger.characterId,
+              miningCharacterLedger.date,
+              miningCharacterLedger.solarSystemId,
+              miningCharacterLedger.typeId,
+            ],
+            set: { quantity: sql`excluded.quantity`, updatedAt: sql`excluded.updated_at` },
+            setWhere: sql`${miningCharacterLedger.quantity} IS DISTINCT FROM excluded.quantity`,
+          });
+      }
+
+      if (plan.window) {
+        const window = plan.window;
+        await tx
+          .insert(miningActivity)
+          .values(
+            plan.deltas.map((d) => ({
+              characterId: characterId!,
+              windowStart: window.start,
+              windowEnd: window.end,
+              date: d.date,
+              typeId: d.typeId,
+              quantity: d.quantity,
+            })),
+          )
+          .onConflictDoNothing();
+        windows = 1;
+      }
+      await tx
+        .insert(miningActivityCoverage)
+        .values({ characterId: characterId!, ...plan.coverage })
         .onConflictDoUpdate({
-          target: [
-            miningCharacterLedger.characterId,
-            miningCharacterLedger.date,
-            miningCharacterLedger.solarSystemId,
-            miningCharacterLedger.typeId,
-          ],
-          set: { quantity: sql`excluded.quantity`, updatedAt: sql`excluded.updated_at` },
-          setWhere: sql`${miningCharacterLedger.quantity} IS DISTINCT FROM excluded.quantity`,
+          target: miningActivityCoverage.characterId,
+          set: { lastObservedAt: plan.coverage.lastObservedAt, lastGrowthAt: plan.coverage.lastGrowthAt },
         });
-    }
+    });
+
     await ensureTypes(rows.map((r) => r.typeId));
     await ensureSystems(rows.map((r) => r.solarSystemId));
     return {
-      summary: `${rows.length} ledger entries${res.notModified ? " (unchanged)" : ""}`,
+      summary: `${rows.length} ledger entries${stale ? " (older snapshot, skipped)" : res.notModified ? " (unchanged)" : ""}${
+        windows ? ", mining activity recorded" : ""
+      }`,
       nextRunAt: res.expiresAt,
     };
   },

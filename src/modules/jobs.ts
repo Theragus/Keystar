@@ -12,6 +12,7 @@ import { fleetJobs } from "./fleet/jobs";
 import { intelJobs } from "./intel/jobs";
 import { killboardJobs } from "./killboard/jobs";
 import { miningJobs, miningPriceInterest } from "./mining/jobs";
+import { walletJobs } from "./wallet/jobs";
 
 /**
  * Background jobs run by the worker. Add a module's jobs and price interest
@@ -30,6 +31,7 @@ export const JOBS: JobDefinition[] = [
   ...killboardJobs,
   ...fleetJobs,
   ...intelJobs,
+  ...walletJobs,
 ];
 
 const JOBS_BY_KEY = new Map(JOBS.map((j) => [j.key, j]));

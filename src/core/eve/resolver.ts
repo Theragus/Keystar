@@ -1,7 +1,8 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { eveConstellations, eveCorporations, eveEntities, eveGroups, eveSystems, eveTypes, getDb } from "@/core/db";
 import { getEsi } from "@/core/esi";
 import { createLogger } from "@/core/logger";
+import { classifyOre } from "@/core/eve/ore";
 import { mapLimit } from "@/lib/concurrency";
 
 /**
@@ -9,9 +10,6 @@ import { mapLimit } from "@/lib/concurrency";
  * these after storing new data so the UI never has to talk to ESI.
  */
 const log = createLogger("resolver");
-
-/** Inventory category of ores, ice and gas clouds. */
-const ASTEROID_CATEGORY = 25;
 
 function unique(ids: Iterable<number>): number[] {
   return [...new Set([...ids].filter((n) => Number.isSafeInteger(n) && n > 0))];
@@ -106,11 +104,12 @@ export async function ensureTypes(typeIds: Iterable<number>): Promise<void> {
   await ensureGroups(groupIds);
   await upsertTypes(fetched);
   // Only ores, ice and gas have compressed variants; ships and modules would fetch whole groups for nothing.
-  const asteroidGroups = await db
-    .select({ id: eveGroups.groupId })
+  // classifyOre covers gas too, which lives outside the asteroid category.
+  const groups = await db
+    .select({ groupId: eveGroups.groupId, categoryId: eveGroups.categoryId })
     .from(eveGroups)
-    .where(and(inArray(eveGroups.groupId, groupIds), eq(eveGroups.categoryId, ASTEROID_CATEGORY)));
-  await linkCompressedVariants(asteroidGroups.map((g) => g.id));
+    .where(inArray(eveGroups.groupId, groupIds));
+  await linkCompressedVariants(groups.filter((g) => classifyOre(g.groupId, g.categoryId) !== "other").map((g) => g.groupId));
 }
 
 async function upsertTypes(types: EsiType[]): Promise<void> {

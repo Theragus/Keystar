@@ -1,0 +1,78 @@
+/**
+ * Mining expense categories and the auto-tagging of wallet purchases by item
+ * type/group. Isomorphic; labels are in the dictionaries (`t.pnl.categories`). Group and type ids from ESI /universe/groups and
+ * /universe/types (checked against Tranquility).
+ */
+export const EXPENSE_CATEGORIES = ["crystals", "fuel", "bursts", "drones", "ships", "subscription", "other"] as const;
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+/** Types in generic groups (Venture is a "Frigate", Pioneer a "Destroyer"); checked before groups. */
+const TYPE_CATEGORIES: Record<number, ExpenseCategory> = {
+  16272: "fuel", // Heavy Water
+  32880: "ships", // Venture
+  89240: "ships", // Pioneer
+  89647: "ships", // Pioneer Consortium Issue
+};
+
+const GROUP_CATEGORIES: Record<number, ExpenseCategory> = {
+  482: "crystals", // Mining Crystal
+  663: "crystals", // Mercoxit Mining Crystal
+  1771: "bursts", // Mining Foreman Burst Charges
+  101: "drones", // Mining Drone
+  463: "ships", // Mining Barge
+  543: "ships", // Exhumer
+  941: "ships", // Industrial Command Ship
+  883: "ships", // Capital Industrial Ship
+  1283: "ships", // Expedition Frigate
+  54: "ships", // Mining Laser
+  464: "ships", // Strip Miner
+  483: "ships", // Frequency Mining Laser
+  546: "ships", // Mining Upgrade
+  737: "ships", // Gas Cloud Scoops
+  4138: "ships", // Gas Cloud Harvesters
+  904: "ships", // Rig Mining
+  4174: "ships", // Compressors
+  49: "ships", // Mining Survey Chipset
+};
+
+export function isExpenseCategory(value: unknown): value is ExpenseCategory {
+  return typeof value === "string" && (EXPENSE_CATEGORIES as readonly string[]).includes(value);
+}
+
+/** Category a purchase is auto-tagged with, or null when it isn't an obvious mining cost. */
+export function classifyPurchase(typeId: number, groupId: number | null | undefined): ExpenseCategory | null {
+  return TYPE_CATEGORIES[typeId] ?? (groupId == null ? null : (GROUP_CATEGORIES[groupId] ?? null));
+}
+
+/** SQL CASE equivalent of classifyPurchase (NULL when untagged). */
+export function purchaseCategorySqlCase(typeCol: string, groupCol: string): string {
+  const types = Object.entries(TYPE_CATEGORIES).map(([id, c]) => `WHEN ${typeCol} = ${id} THEN '${c}'`);
+  const groups = Object.entries(GROUP_CATEGORIES).map(([id, c]) => `WHEN ${groupCol} = ${id} THEN '${c}'`);
+  return `CASE ${[...types, ...groups].join(" ")} ELSE NULL END`;
+}
+
+export type ExpenseStatus = "counted" | "suggested" | "excluded" | "untagged";
+
+/**
+ * Effective state of a wallet purchase. Mirrors the SQL in pnl/queries.ts:
+ * your category wins over the auto-tag; your include/exclude wins over the
+ * character's "count automatically" switch, which only covers tagged purchases.
+ */
+export function expenseStatus(input: {
+  autoCategory: ExpenseCategory | null;
+  overrideCategory: ExpenseCategory | null;
+  overrideIncluded: boolean | null;
+  autoInclude: boolean;
+}): { category: ExpenseCategory | null; included: boolean; status: ExpenseStatus } {
+  const category = input.overrideCategory ?? input.autoCategory;
+  const included = input.overrideIncluded ?? (input.autoCategory !== null && input.autoInclude);
+  const status: ExpenseStatus = included
+    ? "counted"
+    : input.overrideIncluded === false
+      ? "excluded"
+      : category === null
+        ? "untagged"
+        : "suggested";
+  return { category, included, status };
+}

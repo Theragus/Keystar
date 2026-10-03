@@ -1,0 +1,289 @@
+import { addDays, bucketEnd, bucketStart, type DateBucket } from "@/lib/dates";
+import { CHART_CLASSES, chartClassOf, type ChartClass } from "../class-colors";
+import { EXPENSE_CATEGORIES, type ExpenseCategory, type ExpenseStatus } from "./categories";
+import type { ActivityStats, ExpenseRow, IncomeRow, ManualDailyRow } from "./queries";
+
+/**
+ * Turns P&L query rows into the sheet: totals, day/week/month buckets,
+ * per-character and per-activity splits, ISK/hour and cost per m³. Pure.
+ */
+
+/** Below this share of income covered by measured activity, expenses are split by m³ instead of hours. */
+export const HOURS_ALLOCATION_MIN_SHARE = 0.9;
+
+export type ClassValues = Record<ChartClass, number>;
+
+const zeroClasses = (): ClassValues => ({ moon: 0, ore: 0, ice: 0, gas: 0, other: 0 });
+
+export interface PnlBucket {
+  start: string;
+  end: string;
+  income: number;
+  incomeByClass: ClassValues;
+  /** Counted wallet purchases. */
+  wallet: number;
+  /** Manual entries (spread ones divided over their days). */
+  manual: number;
+  expenses: number;
+  net: number;
+  /** The bucket extends beyond the selected range. */
+  partial: boolean;
+}
+
+export interface PnlCharacterRow {
+  /** null: account-wide manual entries. */
+  characterId: number | null;
+  /** null for account-wide entries or a character no longer linked. */
+  name: string | null;
+  income: number;
+  volume: number;
+  hours: number;
+  iskPerHour: number | null;
+  expenses: number;
+  net: number;
+}
+
+export interface PnlActivityRow {
+  activity: ChartClass;
+  income: number;
+  volume: number;
+  hours: number;
+  iskPerHour: number | null;
+  /** Share of all expenses, allocated by `allocation`. */
+  expenses: number;
+  net: number;
+}
+
+export interface StatusTotal {
+  amount: number;
+  count: number;
+}
+
+export interface PnlReport {
+  totals: {
+    income: number;
+    /** The same ore at the dashboard valuation (no rate or price rules). */
+    baseIncome: number;
+    wallet: number;
+    manual: number;
+    expenses: number;
+    net: number;
+    volume: number;
+    unpricedRows: number;
+  };
+  purchases: Record<ExpenseStatus, StatusTotal>;
+  byCategory: { category: ExpenseCategory; amount: number }[];
+  buckets: PnlBucket[];
+  characters: PnlCharacterRow[];
+  activities: PnlActivityRow[];
+  /** How expenses were split across activities. */
+  allocation: "hours" | "volume" | null;
+  activity: {
+    /** Wall-clock hours: several characters mining at once count once. */
+    wallClockHours: number;
+    characterHours: number;
+    /** P&L value of the ore mined in measured windows. */
+    measuredIncome: number;
+    /** measuredIncome / income (0–1). */
+    measuredShare: number;
+    trackedSince: Date | null;
+  };
+  iskPerHour: { gross: number | null; net: number | null };
+  costPerM3: number | null;
+}
+
+/** Splits `total` proportionally to the weights (all zero → nothing allocated). */
+export function allocateByShare<K>(total: number, weights: Map<K, number>): Map<K, number> {
+  const sum = [...weights.values()].reduce((a, b) => a + Math.max(0, b), 0);
+  return new Map([...weights].map(([k, w]) => [k, sum > 0 ? (total * Math.max(0, w)) / sum : 0]));
+}
+
+const perHour = (value: number, hours: number) => (hours > 0 ? value / hours : null);
+
+export function buildPnlReport(input: {
+  from: string;
+  to: string;
+  bucket: DateBucket;
+  income: IncomeRow[];
+  expenses: ExpenseRow[];
+  manual: ManualDailyRow[];
+  activity: ActivityStats;
+  characters: { characterId: number; name: string }[];
+}): PnlReport {
+  const { from, to, bucket, income, expenses, manual, activity } = input;
+
+  // Buckets covering the range, in order.
+  const buckets = new Map<string, PnlBucket>();
+  for (let d = from; d <= to; d = addDays(d, 1)) {
+    const start = bucketStart(d, bucket);
+    if (!buckets.has(start)) {
+      const end = bucketEnd(start, bucket);
+      buckets.set(start, {
+        start,
+        end,
+        income: 0,
+        incomeByClass: zeroClasses(),
+        wallet: 0,
+        manual: 0,
+        expenses: 0,
+        net: 0,
+        partial: start < from || end > to,
+      });
+    }
+  }
+  const bucketOf = (date: string) => buckets.get(bucketStart(date, bucket));
+
+  const chars = new Map<number | null, PnlCharacterRow>();
+  const names = new Map(input.characters.map((c) => [c.characterId, c.name]));
+  const charRow = (id: number | null) => {
+    let row = chars.get(id);
+    if (!row) {
+      row = {
+        characterId: id,
+        name: id === null ? null : (names.get(id) ?? null),
+        income: 0,
+        volume: 0,
+        hours: 0,
+        iskPerHour: null,
+        expenses: 0,
+        net: 0,
+      };
+      chars.set(id, row);
+    }
+    return row;
+  };
+
+  const classIncome = zeroClasses();
+  const classVolume = zeroClasses();
+  let totalIncome = 0;
+  let baseIncome = 0;
+  let volume = 0;
+  let unpricedRows = 0;
+  for (const r of income) {
+    const cls = chartClassOf(r.oreClass);
+    totalIncome += r.value;
+    baseIncome += r.baseValue;
+    volume += r.volume;
+    unpricedRows += r.unpricedRows;
+    classIncome[cls] += r.value;
+    classVolume[cls] += r.volume;
+    const b = bucketOf(r.date);
+    if (b) {
+      b.income += r.value;
+      b.incomeByClass[cls] += r.value;
+    }
+    const c = charRow(r.characterId);
+    c.income += r.value;
+    c.volume += r.volume;
+  }
+
+  const purchases: Record<ExpenseStatus, StatusTotal> = {
+    counted: { amount: 0, count: 0 },
+    suggested: { amount: 0, count: 0 },
+    excluded: { amount: 0, count: 0 },
+    untagged: { amount: 0, count: 0 },
+  };
+  const byCategory = new Map<ExpenseCategory, number>();
+  let wallet = 0;
+  for (const r of expenses) {
+    purchases[r.status].amount += r.amount;
+    purchases[r.status].count += r.count;
+    if (r.status !== "counted") continue;
+    wallet += r.amount;
+    const category = r.category ?? "other";
+    byCategory.set(category, (byCategory.get(category) ?? 0) + r.amount);
+    const b = bucketOf(r.date);
+    if (b) b.wallet += r.amount;
+    charRow(r.characterId).expenses += r.amount;
+  }
+  let manualTotal = 0;
+  for (const r of manual) {
+    manualTotal += r.amount;
+    byCategory.set(r.category, (byCategory.get(r.category) ?? 0) + r.amount);
+    const b = bucketOf(r.date);
+    if (b) b.manual += r.amount;
+    charRow(r.characterId).expenses += r.amount;
+  }
+  for (const b of buckets.values()) {
+    b.expenses = b.wallet + b.manual;
+    b.net = b.income - b.expenses;
+  }
+
+  for (const [id, figure] of activity.byCharacter) {
+    const c = charRow(id);
+    c.hours = figure.hours;
+    c.iskPerHour = perHour(figure.value, figure.hours);
+  }
+  for (const c of chars.values()) c.net = c.income - c.expenses;
+
+  const totalExpenses = wallet + manualTotal;
+  const measuredIncome = activity.total.value;
+  const measuredShare = totalIncome > 0 ? Math.min(1, measuredIncome / totalIncome) : 0;
+  const wallClockHours = activity.total.hours;
+  const characterHours = [...activity.byCharacter.values()].reduce((a, f) => a + f.hours, 0);
+
+  // Split expenses by active hours when activity covers (nearly) all income, else by m³.
+  const classHours = new Map(CHART_CLASSES.map((c) => [c.id, activity.byActivity.get(c.id)?.hours ?? 0]));
+  const allocation: PnlReport["allocation"] =
+    totalExpenses <= 0
+      ? null
+      : wallClockHours > 0 && measuredShare >= HOURS_ALLOCATION_MIN_SHARE
+        ? "hours"
+        : volume > 0
+          ? "volume"
+          : null;
+  const allocated =
+    allocation === "hours"
+      ? allocateByShare(totalExpenses, classHours)
+      : allocation === "volume"
+        ? allocateByShare(totalExpenses, new Map(CHART_CLASSES.map((c) => [c.id, classVolume[c.id]])))
+        : new Map<ChartClass, number>();
+
+  const activities: PnlActivityRow[] = CHART_CLASSES.map((c) => {
+    const figure = activity.byActivity.get(c.id);
+    const expensesShare = allocated.get(c.id) ?? 0;
+    return {
+      activity: c.id,
+      income: classIncome[c.id],
+      volume: classVolume[c.id],
+      hours: figure?.hours ?? 0,
+      iskPerHour: figure ? perHour(figure.value, figure.hours) : null,
+      expenses: expensesShare,
+      net: classIncome[c.id] - expensesShare,
+    };
+  }).filter((a) => a.income !== 0 || a.volume !== 0 || a.hours !== 0);
+
+  const characters = [...chars.values()].sort((a, b) =>
+    a.characterId === null
+      ? 1
+      : b.characterId === null
+        ? -1
+        : b.income - a.income || (a.name ?? "").localeCompare(b.name ?? ""),
+  );
+
+  return {
+    totals: {
+      income: totalIncome,
+      baseIncome,
+      wallet,
+      manual: manualTotal,
+      expenses: totalExpenses,
+      net: totalIncome - totalExpenses,
+      volume,
+      unpricedRows,
+    },
+    purchases,
+    byCategory: EXPENSE_CATEGORIES.filter((c) => byCategory.has(c)).map((c) => ({ category: c, amount: byCategory.get(c)! })),
+    buckets: [...buckets.values()],
+    characters,
+    activities,
+    allocation,
+    activity: { wallClockHours, characterHours, measuredIncome, measuredShare, trackedSince: activity.trackedSince },
+    iskPerHour: {
+      gross: perHour(measuredIncome, wallClockHours),
+      // Expenses scaled to the share of income the measured hours produced.
+      net: perHour(measuredIncome - totalExpenses * measuredShare, wallClockHours),
+    },
+    costPerM3: volume > 0 ? totalExpenses / volume : null,
+  };
+}

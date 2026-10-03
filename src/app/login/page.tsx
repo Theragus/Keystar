@@ -7,7 +7,7 @@ import { LanguageLinks } from "@/components/shell/language-switcher";
 import { KeystarMark } from "@/components/shell/logo";
 import { getCurrentUser } from "@/core/auth/dal";
 import { env, ssoCallbackUrl, ssoConfigured } from "@/core/env";
-import { corporationScopes } from "@/core/modules/registry";
+import { applicationScopes } from "@/core/modules/registry";
 import { isRole } from "@/core/rbac/roles";
 import { getSetting } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
@@ -79,7 +79,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
               <li>
                 {t.auth.login.setupScopes}
                 <div className="mt-1.5">
-                  <CopyField value={corporationScopes().join(" ")} />
+                  <CopyField value={applicationScopes().join(" ")} />
                 </div>
               </li>
               <li>

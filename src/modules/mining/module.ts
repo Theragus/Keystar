@@ -1,10 +1,11 @@
-import { Calculator, Gem, Pickaxe, TableProperties } from "lucide-react";
+import { Calculator, Gem, Pickaxe, ReceiptText, TableProperties } from "lucide-react";
 import type { KeystarModule } from "@/core/modules/types";
 
 export const MINING_PERMISSIONS = {
   viewOwn: "mining.view.own",
   viewCorp: "mining.view.corp",
   export: "mining.export",
+  pnl: "mining.pnl",
 } as const;
 
 export const miningModule: KeystarModule = {
@@ -52,6 +53,13 @@ export const miningModule: KeystarModule = {
       group: (t) => t.mining.module.permissionGroup,
       defaultMinRole: "viewer",
     },
+    {
+      key: MINING_PERMISSIONS.pnl,
+      label: (t) => t.mining.module.permissions.pnl.label,
+      description: (t) => t.mining.module.permissions.pnl.description,
+      group: (t) => t.mining.module.permissionGroup,
+      defaultMinRole: "member",
+    },
   ],
   nav: [
     {
@@ -68,6 +76,7 @@ export const miningModule: KeystarModule = {
           icon: Calculator,
           anyPermission: ["mining.view.own", "mining.view.corp"],
         },
+        { href: "/mining/pnl", label: (t) => t.mining.module.nav.pnl, icon: ReceiptText, anyPermission: ["mining.pnl"] },
       ],
     },
   ],

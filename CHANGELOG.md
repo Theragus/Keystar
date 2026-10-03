@@ -6,6 +6,44 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+**When updating:** wallet import in the mining P&L needs one optional character scope.
+
+1. Add `esi-wallet.read_character_wallet.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>. Nobody is asked for it unless they enable wallet import in the
+   mining P&L, but without it on the application that EVE login fails with `invalid_scope`.
+2. Update as usual; the database migrations run on start. Nobody needs to re-authorise.
+
+### Added
+
+- **Mining P&L** (Industry → Mining P&L, German "Mining-GuV"): a personal income/expense sheet for pilots mining
+  with alts, visible only to the account itself, in English and German.
+  - Income: ore mined by your characters, valued like the mining dashboard, with an optional buyback % and per-ore
+    price rules (with date ranges); realised prices from your wallet sells can be applied with one click.
+  - Expenses: opt-in wallet import per character. Purchases of mining crystals, Heavy Water, Mining Foreman burst
+    charges, mining drones and mining hulls/fittings are auto-tagged and only suggested until you include them;
+    "count tagged purchases automatically" can be switched on per character (off by default). Other purchases stay
+    out unless you tag them. Manual costs (PLEX/Omega, contracts …) can be spread over up to a year.
+  - Net profit per day / week / month, ISK per hour (gross and net), cost per m³, and splits per character and per
+    activity (ore / moon / ice / gas).
+- **Mining activity tracking**: the personal ledger sync now records when each character's ledger grows, which gives
+  active hours (wall-clock across alts and per character) from now on.
+- **Optional ESI scopes**: modules can declare scopes that users enable per character instead of every member being
+  asked for them. The first is wallet read access.
+
+### Changed
+
+- "Re-authorise" on My Characters keeps the character's corporation and optional scopes instead of requesting only
+  the member scopes. When another EVE login drops an opt-in scope anyway, My Characters says so and offers to turn
+  it back on.
+- The personal mining ledger sync no longer re-applies a snapshot from Keystar's own cache or an older snapshot.
+- Trades between your own characters are left out of the P&L (neither a cost nor a sale).
+
+### Fixed
+
+- Gas types seen for the first time are linked to their compressed variants again; 0.3.0 only did that for ore and
+  ice. Valuation falls back to the compressed price when raw gas has none, and the mining P&L recognises sales of
+  compressed gas.
+
 ## [0.3.0] - 2026-10-03
 
 **When updating:** Threat intel reads blues and reds from the corporation's and alliance's contacts, which needs two

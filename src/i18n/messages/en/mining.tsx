@@ -15,12 +15,17 @@ export const mining = {
       ledger: "Mining Ledger",
       observers: "Moon Observers",
       estimator: "Field Estimator",
+      pnl: "Mining P&L",
     },
     permissionGroup: "Mining",
     permissions: {
       viewOwn: { label: "View own mining", description: "See the mining ledger of your own characters." },
       viewCorp: { label: "View corporation mining", description: "See mining of all members and refinery observers." },
       export: { label: "Export mining data", description: "Download ledgers as CSV." },
+      pnl: {
+        label: "Mining P&L",
+        description: "Personal income and expense sheet for your own characters (never other members').",
+      },
     },
     scopes: {
       characterMining: "Reads your personal mining ledger (all ore, ice, gas and moon mining, last 30 days).",

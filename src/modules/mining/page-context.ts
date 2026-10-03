@@ -1,5 +1,5 @@
 import { requirePermission, type CurrentUser } from "@/core/auth/dal";
-import { getSettings } from "@/core/settings";
+import { getSettings, type Settings } from "@/core/settings";
 import type { Messages } from "@/i18n/messages";
 import { getI18n } from "@/i18n/server";
 import type { RangePreset } from "@/components/ui/date-range";
@@ -23,6 +23,11 @@ export interface MiningPageContext {
   today: string;
 }
 
+/** The corporation's mining valuation (admin settings), shared by the dashboards and the P&L. */
+export function miningValuation(settings: Settings): Valuation {
+  return { source: settings["mining.valuationSource"], mode: settings["mining.valuationMode"] };
+}
+
 /** Shared setup for every mining page: auth, scope, filters and valuation. */
 export async function miningPageContext(
   searchParams: Record<string, string | string[] | undefined>,
@@ -30,10 +35,7 @@ export async function miningPageContext(
   const user = await requirePermission(MINING_PERMISSIONS.viewOwn, MINING_PERMISSIONS.viewCorp);
   const today = isoDate(new Date());
   const settings = await getSettings();
-  const valuation: Valuation = {
-    source: settings["mining.valuationSource"],
-    mode: settings["mining.valuationMode"],
-  };
+  const valuation = miningValuation(settings);
   const { t } = await getI18n();
   return {
     user,

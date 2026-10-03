@@ -51,6 +51,10 @@ situation report, and an **appraisal** tool for Jita prices.
   - Full ledger with pagination and CSV export
   - **Ore field estimator**: paste a survey scanner result (German or English client) and get the field's value by
     ore and grade, with distance filter and time-to-clear
+  - **Mining P&L** for pilots mining with alts: ore income valued like the dashboard (with a buyback % and per-ore
+    prices), mining costs from opt-in wallet imports (crystals, Heavy Water, burst charges, drones, hulls — suggested
+    until you include them) plus manual costs, net profit per day / week / month, ISK per hour from measured ledger
+    activity, cost per m³, per-character and per-activity splits. Only you see your sheet.
 - **Killboard** for the home corporation from zKillboard (no extra scopes): kills, losses, ISK efficiency with
   week-over-week changes, a weekly **situation report** written by Claude (optional API key) or from a template, top
   systems, recent activity, most effective / used / lost ships and pilot efficiency.
@@ -72,7 +76,7 @@ situation report, and an **appraisal** tool for Jita prices.
   sidebar footer; numbers and dates use the language's conventions (e.g. "9,87 Mio. ISK").
 - **Design**: dark, EVE-flavoured UI.
 
-See [ROADMAP.md](ROADMAP.md) for what's next (skills, assets, wallets, mining P&L).
+See [ROADMAP.md](ROADMAP.md) for what's next (skills, assets, wallets).
 
 ## Deploy
 

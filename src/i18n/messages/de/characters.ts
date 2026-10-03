@@ -32,6 +32,16 @@ export const characters: typeof en = {
     backgroundSync: "Hintergrund-Sync",
     noJobs: "Noch keine Sync-Jobs – sie erscheinen innerhalb einer Minute, nachdem du Scopes erteilt hast.",
     tokenRefreshed: (when: string) => `Token ${when} erneuert`,
+    optional: "Optional",
+    optionalOn: "an",
+    optionalOff: "aus",
+  },
+  lostScope: {
+    title: (name: string) => `Optionaler Zugriff für ${name} wurde abgeschaltet`,
+    before: "Dieser EVE-Login enthielt",
+    after:
+      "nicht mehr, obwohl der Charakter es vorher hatte: EVE ersetzt bei jedem Login die Scopes eines Charakters. Importierte Daten bleiben erhalten.",
+    action: "Wieder einschalten",
   },
   corporationAccess: {
     title: "Corporation-Zugriff",
@@ -47,6 +57,8 @@ export const characters: typeof en = {
     readOnly: "Keystar fragt nur Lese-Scopes an und kann im Spiel nichts ausführen.",
     removal:
       "Wenn du einen Charakter entfernst, wird sein Token gelöscht und bei CCP widerrufen. Der Mining-Verlauf bleibt bei der Corp.",
+    wallet:
+      "Wallet-Zugriff ist optional und gilt pro Charakter (Mining-GuV → Einstellungen). Importierte Wallet-Transaktionen siehst nur du, und sie werden gelöscht, wenn du den Charakter entfernst.",
     revoke: "Du kannst den Zugriff jederzeit auf der EVE-Online-Website unter „Third-Party Applications“ widerrufen.",
   },
 };

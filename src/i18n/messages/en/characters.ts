@@ -31,6 +31,16 @@ export const characters = {
     backgroundSync: "Background sync",
     noJobs: "No sync jobs yet — they appear within a minute of granting scopes.",
     tokenRefreshed: (when: string) => `Token refreshed ${when}`,
+    optional: "Optional",
+    optionalOn: "on",
+    optionalOff: "off",
+  },
+  /** Shown after an EVE login dropped an opt-in scope (e.g. wallet import) the character had. */
+  lostScope: {
+    title: (name: string) => `Optional access was turned off for ${name}`,
+    before: "That EVE login didn't include",
+    after: "which the character had before: EVE replaces a character's scopes on every login. Imported data is kept.",
+    action: "Turn it back on",
   },
   corporationAccess: {
     title: "Corporation access",
@@ -45,6 +55,8 @@ export const characters = {
     encrypted: "Refresh tokens are encrypted with AES-256-GCM before they touch the database.",
     readOnly: "Only read scopes are requested; Keystar cannot act in game.",
     removal: "Removing a character deletes its token and revokes it with CCP. Mining history stays with the corp.",
+    wallet:
+      "Wallet access is optional and per character (Mining P&L → Settings). Imported wallet transactions are only ever shown to you, and are deleted when you remove the character.",
     revoke: "You can revoke access any time under Third-Party Applications on the EVE Online website.",
   },
 };

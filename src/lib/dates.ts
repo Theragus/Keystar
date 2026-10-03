@@ -48,3 +48,33 @@ export const DATE_PRESETS: DatePreset[] = [
   },
   { id: "ytd", range: (t) => ({ from: `${t.slice(0, 4)}-01-01`, to: t }) },
 ];
+
+export type DateBucket = "day" | "week" | "month";
+
+/** Monday of the ISO week containing `date`. */
+export function startOfIsoWeek(date: string): string {
+  const weekday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+  return addDays(date, -weekday);
+}
+
+/** First day of the day/week/month bucket containing `date`. */
+export function bucketStart(date: string, bucket: DateBucket): string {
+  if (bucket === "week") return startOfIsoWeek(date);
+  if (bucket === "month") return `${date.slice(0, 7)}-01`;
+  return date;
+}
+
+/** Last day (inclusive) of the bucket starting at `start`. */
+export function bucketEnd(start: string, bucket: DateBucket): string {
+  if (bucket === "week") return addDays(start, 6);
+  if (bucket === "month") {
+    const d = new Date(`${start}T00:00:00Z`);
+    return isoDate(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)));
+  }
+  return start;
+}
+
+/** Half-open UTC bounds of a day range as ISO strings (raw Dates aren't valid SQL parameters here). */
+export function utcDayBounds(from: string, to: string): { start: string; end: string } {
+  return { start: `${from}T00:00:00Z`, end: `${addDays(to, 1)}T00:00:00Z` };
+}

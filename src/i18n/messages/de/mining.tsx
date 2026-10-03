@@ -13,6 +13,7 @@ export const mining: typeof en = {
       ledger: "Mining-Ledger",
       observers: "Mond-Observer",
       estimator: "Feldschätzer",
+      pnl: "Mining-GuV",
     },
     permissionGroup: "Mining",
     permissions: {
@@ -22,6 +23,10 @@ export const mining: typeof en = {
         description: "Das Mining aller Mitglieder und der Raffinerie-Observer sehen.",
       },
       export: { label: "Mining-Daten exportieren", description: "Ledger als CSV herunterladen." },
+      pnl: {
+        label: "Mining-GuV",
+        description: "Persönliche Einnahmen-/Ausgaben-Übersicht der eigenen Charaktere (nie die anderer Mitglieder).",
+      },
     },
     scopes: {
       characterMining: "Liest dein persönliches Mining-Ledger (Erz, Eis, Gas und Mond-Mining der letzten 30 Tage).",

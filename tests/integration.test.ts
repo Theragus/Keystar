@@ -38,7 +38,9 @@ describe.skipIf(!enabled)("integration", async () => {
       eve_entities, type_values, type_value_history, mining_character_ledger, mining_observer_ledger, mining_observers,
       sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, esi_cache,
       fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
-      intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes
+      intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, mining_activity,
+      mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
+      mining_pnl_tx_overrides, mining_pnl_entries
       RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
@@ -451,6 +453,352 @@ describe.skipIf(!enabled)("integration", async () => {
       } finally {
         fetchSpy.mockRestore();
       }
+    });
+  });
+
+  describe("mining P&L", async () => {
+    const pnl = await import("@/modules/mining/pnl/queries");
+    const { pnlScope } = await import("@/modules/mining/pnl/scope");
+    const { buildPnlReport } = await import("@/modules/mining/pnl/report");
+    const { characterLedgerJob } = await import("@/modules/mining/jobs");
+    const { walletTransactionsJob } = await import("@/modules/wallet/jobs");
+    const { WALLET_SCOPE } = await import("@/modules/wallet/module");
+
+    const range = { from: "2026-09-01", to: "2026-09-30" };
+    const scopeB = (extra: { characters?: number[]; ratePct?: number; mode?: "current" | "historical" } = {}) =>
+      pnlScope(
+        { id: userB, characterIds: [2, 3] },
+        { ...range, characters: extra.characters ?? [] },
+        { ...val, mode: extra.mode ?? "current" },
+        extra.ratePct ?? 100,
+      );
+    const income = async (s: ReturnType<typeof scopeB>) =>
+      (await pnl.getIncomeRows(s)).reduce((sum, r) => sum + r.value, 0);
+    const tx = (characterId: number, transactionId: number, typeId: number, extra: Record<string, unknown> = {}) => ({
+      characterId,
+      transactionId,
+      userId: userB,
+      date: new Date("2026-09-10T12:00:00Z"),
+      typeId,
+      quantity: 10,
+      unitPrice: 1000,
+      isBuy: true,
+      clientId: 1,
+      locationId: 60003760,
+      journalRefId: transactionId,
+      ...extra,
+    });
+
+    beforeEach(async () => {
+      await db().insert(schema.eveGroups).values([
+        { groupId: 482, name: "Mining Crystal", categoryId: 8 },
+        { groupId: 423, name: "Ice Product", categoryId: 4 },
+        { groupId: 18, name: "Mineral", categoryId: 4 },
+      ]);
+      await db().insert(schema.eveTypes).values([
+        { typeId: 18066, name: "Veldspar Mining Crystal I", groupId: 482, volume: 6 },
+        { typeId: 16272, name: "Heavy Water", groupId: 423, volume: 0.4 },
+        { typeId: 34, name: "Tritanium", groupId: 18, volume: 0.01 },
+        { typeId: 62516, name: "Compressed Veldspar", groupId: 462, volume: 0.001, portionSize: 1 },
+      ]);
+      await db().update(schema.eveTypes).set({ compressedTypeId: 62516 }).where(sql`type_id = 1230`);
+    });
+
+    it("values income like the dashboard, then applies the rate and price rules", async () => {
+      const dashboard = await q.getMiningSummary(filters(), own([2, 3]), val);
+      expect(await income(scopeB())).toBe(dashboard.current.value);
+      expect(await income(scopeB({ ratePct: 90 }))).toBeCloseTo(58_500);
+
+      // Veldspar sold at 20 ISK from the 11th: only Bravo Alt's 500 units on the 11th.
+      await db().insert(schema.miningPnlPriceRules).values({ userId: userB, typeId: 1230, unitPrice: 20, validFrom: "2026-09-11" });
+      expect(await income(scopeB({ ratePct: 90 }))).toBeCloseTo(100 * 600 * 0.9 + 500 * 20);
+      // Another account's rules never apply.
+      await db().insert(schema.miningPnlPriceRules).values({ userId: userA, typeId: 45490, unitPrice: 1 });
+      expect(await income(scopeB({ ratePct: 90 }))).toBeCloseTo(100 * 600 * 0.9 + 500 * 20);
+
+      await db().execute(sql`TRUNCATE mining_pnl_price_rules`);
+      expect(await income(scopeB({ mode: "historical" }))).toBe(100 * 500 + 500 * 10);
+      // A member asking for someone else's character gets their own.
+      const a = pnlScope({ id: userA, characterIds: [1] }, { ...range, characters: [2] }, val, 100);
+      expect(a.characterIds).toEqual([1]);
+      expect(await income(a)).toBe(1000 * 10);
+    });
+
+    it("keeps wallet purchases private to the importing account", async () => {
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 1, 18066),
+        // Imported while the character belonged to someone else.
+        { ...tx(2, 2, 18066), userId: userA },
+      ]);
+      const rows = await pnl.getPurchases(scopeB(), { status: "mining", limit: 50, offset: 0 });
+      expect(rows.rows.map((r) => r.transactionId)).toEqual([1]);
+      const a = pnlScope({ id: userA, characterIds: [1] }, { ...range, characters: [2] }, val, 100);
+      expect((await pnl.getPurchases(a, { status: "mining", limit: 50, offset: 0 })).total).toBe(0);
+      expect(await pnl.getExpenseRows(a)).toEqual([]);
+    });
+
+    it("classifies purchases: suggested by default, counted when switched on, overrides win", async () => {
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 1, 18066), // crystal, Bravo: auto-count off -> suggested
+        tx(3, 2, 16272), // heavy water, Bravo Alt: auto-count on -> counted
+        tx(2, 3, 34), // tritanium: untagged
+        tx(3, 4, 18066), // crystal excluded by hand
+        tx(2, 5, 34), // tritanium tagged and included by hand
+        tx(2, 6, 18066, { isBuy: false }), // a sale is never an expense
+        tx(2, 7, 18066, { date: new Date("2026-10-01T00:00:00Z") }), // outside the range
+      ]);
+      await db().insert(schema.miningPnlCharacters).values({ userId: userB, characterId: 3, autoIncludeExpenses: true });
+      await db().insert(schema.miningPnlTxOverrides).values([
+        { userId: userB, characterId: 3, transactionId: 4, included: false },
+        { userId: userB, characterId: 2, transactionId: 5, category: "other", included: true },
+      ]);
+      const status = async (s: "counted" | "suggested" | "excluded" | "untagged") =>
+        (await pnl.getPurchases(scopeB(), { status: s, limit: 50, offset: 0 })).rows.map((r) => r.transactionId);
+      expect(await status("suggested")).toEqual([1]);
+      expect((await status("counted")).sort()).toEqual([2, 5]);
+      expect(await status("excluded")).toEqual([4]);
+      expect(await status("untagged")).toEqual([3]);
+
+      const report = buildPnlReport({
+        ...range,
+        bucket: "month",
+        income: await pnl.getIncomeRows(scopeB()),
+        expenses: await pnl.getExpenseRows(scopeB()),
+        manual: [],
+        activity: await pnl.getActivityStats(scopeB()),
+        characters: [
+          { characterId: 2, name: "Bravo" },
+          { characterId: 3, name: "Bravo Alt" },
+        ],
+      });
+      expect(report.totals.wallet).toBe(20_000);
+      expect(report.purchases.suggested).toEqual({ amount: 10_000, count: 1 });
+      expect(report.byCategory).toEqual([
+        { category: "fuel", amount: 10_000 },
+        { category: "other", amount: 10_000 },
+      ]);
+    });
+
+    it("spreads manual entries over their days; account-wide ones only without a character filter", async () => {
+      await db().insert(schema.miningPnlEntries).values([
+        { userId: userB, characterId: 3, date: "2026-08-17", spreadDays: 30, category: "subscription", amount: 3000 },
+        { userId: userB, characterId: null, date: "2026-09-05", category: "other", amount: 100 },
+        { userId: userA, characterId: 1, date: "2026-09-05", category: "other", amount: 999 },
+      ]);
+      const all = await pnl.getManualDaily(scopeB(), [2, 3]);
+      expect(all.reduce((s, r) => s + r.amount, 0)).toBeCloseTo(1500 + 100);
+      expect(all.filter((r) => r.characterId === 3)).toHaveLength(15);
+      const narrowed = await pnl.getManualDaily(scopeB({ characters: [3] }), [2, 3]);
+      expect(narrowed.reduce((s, r) => s + r.amount, 0)).toBeCloseTo(1500);
+      expect((await pnl.getManualEntries(userB, range.from, range.to)).map((e) => e.amount)).toEqual([100, 3000]);
+    });
+
+    it("measures wall-clock and character hours from activity windows", async () => {
+      await db().insert(schema.miningCharacterLedger).values({
+        characterId: 3, date: "2026-09-10", solarSystemId: 30000180, typeId: 1230, quantity: 300,
+      });
+      await db().insert(schema.miningActivity).values([
+        { characterId: 2, date: "2026-09-10", typeId: 45490, quantity: 50,
+          windowStart: new Date("2026-09-10T10:00:00Z"), windowEnd: new Date("2026-09-10T11:00:00Z") },
+        { characterId: 3, date: "2026-09-10", typeId: 1230, quantity: 300,
+          windowStart: new Date("2026-09-10T10:30:00Z"), windowEnd: new Date("2026-09-10T11:30:00Z") },
+      ]);
+      await db().insert(schema.miningActivityCoverage).values([
+        { characterId: 2, since: new Date("2026-09-01T00:00:00Z"), lastObservedAt: new Date("2026-09-10T11:00:00Z") },
+      ]);
+      const stats = await pnl.getActivityStats(scopeB());
+      expect(stats.total.hours).toBeCloseTo(1.5);
+      expect(stats.total.value).toBe(50 * 600 + 300 * 10);
+      expect(stats.byCharacter.get(2)?.hours).toBeCloseTo(1);
+      expect(stats.byActivity.get("moon")?.hours).toBeCloseTo(1);
+      expect(stats.byActivity.get("ore")?.value).toBe(3000);
+      expect(stats.trackedSince?.toISOString()).toBe("2026-09-01T00:00:00.000Z");
+    });
+
+    it("records ledger growth in the sync job", async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      let quantity = 1000;
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async () =>
+          new Response(JSON.stringify([{ date: today, quantity, solar_system_id: 30000180, type_id: 1230 }]), {
+            status: 200,
+            headers: { "content-type": "application/json", "last-modified": new Date().toUTCString() },
+          })) as unknown as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 1, characterId: 1, esi, db: db(), log: undefined as never, meta: {} };
+      await characterLedgerJob.run(ctx);
+      const [first] = await db().select().from(schema.miningActivityCoverage);
+      expect(first.characterId).toBe(1);
+      expect(await db().select().from(schema.miningActivity)).toHaveLength(0);
+
+      // Fifteen minutes later the ledger has grown.
+      const earlier = new Date(Date.now() - 15 * 60_000);
+      await db().update(schema.miningActivityCoverage).set({ lastObservedAt: earlier });
+      quantity = 1600;
+      await characterLedgerJob.run(ctx);
+      const rows = await db().select().from(schema.miningActivity);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ characterId: 1, date: today, typeId: 1230, quantity: 600 });
+      expect(rows[0].windowStart.getTime()).toBe(earlier.getTime());
+      const [ledger] = await db().select().from(schema.miningCharacterLedger).where(sql`character_id = 1 AND date = ${today}`);
+      expect(ledger.quantity).toBe(1600);
+
+      // A snapshot that isn't newer than the last observation never rolls the ledger back.
+      await db().update(schema.miningActivityCoverage).set({ lastObservedAt: new Date(Date.now() + 60_000) });
+      quantity = 1200;
+      expect((await characterLedgerJob.run(ctx))?.summary).toContain("older snapshot, skipped");
+      const [kept] = await db().select().from(schema.miningCharacterLedger).where(sql`character_id = 1 AND date = ${today}`);
+      expect(kept.quantity).toBe(1600);
+    });
+
+    it("imports wallet transactions for the owning account", async () => {
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async (url: string) =>
+          new Response(
+            JSON.stringify(
+              String(url).includes("from_id")
+                ? []
+                : [
+                    { transaction_id: 11, date: "2026-09-10T12:00:00Z", type_id: 16272, quantity: 500, unit_price: 700,
+                      is_buy: true, is_personal: true, client_id: 5, location_id: 60003760, journal_ref_id: 1 },
+                    { transaction_id: 12, date: "2026-09-10T12:00:00Z", type_id: 34, quantity: 1, unit_price: 5,
+                      is_buy: true, is_personal: false, client_id: 5, location_id: 60003760, journal_ref_id: 2 },
+                  ],
+            ),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )) as unknown as typeof fetch,
+      });
+      expect(walletTransactionsJob.requiredScopes).toEqual([WALLET_SCOPE]);
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
+      const result = await walletTransactionsJob.run(ctx);
+      expect(result?.summary).toBe("1 new transaction");
+      const rows = await db().select().from(schema.walletTransactions);
+      expect(rows).toEqual([expect.objectContaining({ characterId: 3, transactionId: 11, userId: userB, isBuy: true })]);
+    });
+
+    it("ignores market trades between the account's own characters", async () => {
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 31, 18066), // bought from a stranger: a cost
+        tx(2, 32, 18066, { clientId: 3 }), // bought from your own alt: just moving crystals around
+        tx(3, 33, 1230, { isBuy: false, quantity: 100, unitPrice: 50, clientId: 2 }), // sold to your main
+      ]);
+      const rows = await pnl.getPurchases(scopeB(), { status: "mining", limit: 50, offset: 0 });
+      expect(rows.rows.map((r) => r.transactionId)).toEqual([31]);
+      expect(await pnl.getSaleHints(scopeB(), range)).toEqual([]);
+    });
+
+    it("never brings wallet rows back for a character removed or sold during the import", async () => {
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async () => {
+          // The character changes hands while ESI is answering.
+          await db().execute(sql`UPDATE characters SET user_id = ${userA} WHERE character_id = 3`);
+          return new Response(
+            JSON.stringify([{ transaction_id: 41, date: "2026-09-10T12:00:00Z", type_id: 16272, quantity: 1, unit_price: 1,
+              is_buy: true, is_personal: true, client_id: 5, location_id: 60003760, journal_ref_id: 1 }]),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }) as unknown as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
+      const result = await walletTransactionsJob.run(ctx);
+      expect(result?.summary).toBe("Character changed owner during the import");
+      expect(await db().select().from(schema.walletTransactions)).toEqual([]);
+    });
+
+    it("resumes the wallet import per owner, past unstored corporation trades", async () => {
+      // A previous owner's rows must not hide the new owner's history.
+      await db().insert(schema.walletTransactions).values({ ...tx(3, 900, 34), userId: userA });
+      const seen: (string | null)[] = [];
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async (url: string) => {
+          const fromId = new URL(String(url)).searchParams.get("from_id");
+          seen.push(fromId);
+          const all = [
+            { transaction_id: 950, is_personal: false },
+            { transaction_id: 800, is_personal: true },
+          ].map((t) => ({ ...t, date: "2026-09-10T12:00:00Z", type_id: 34, quantity: 1, unit_price: 5, is_buy: true,
+            client_id: 5, location_id: 60003760, journal_ref_id: t.transaction_id }));
+          return new Response(JSON.stringify(all.filter((t) => !fromId || t.transaction_id < Number(fromId))), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }) as unknown as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
+      const first = await walletTransactionsJob.run(ctx);
+      expect(first?.summary).toBe("1 new transaction");
+      expect(first?.meta).toEqual({ userId: userB, newestSeenId: 950 });
+      // Next run: the corporation trade (950) is the high-water mark, so one request is enough.
+      seen.length = 0;
+      await walletTransactionsJob.run({ ...ctx, meta: first!.meta! });
+      expect(seen).toEqual([null]);
+    });
+
+    it("drops the previous owner's wallet history when a character is transferred", async () => {
+      const { detachTransferredCharacter } = await import("@/core/auth/provision");
+      await db().insert(schema.walletTransactions).values([tx(3, 51, 18066), tx(2, 52, 18066)]);
+      await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: false }));
+      expect((await db().select().from(schema.walletTransactions)).map((r) => r.transactionId)).toEqual([52]);
+    });
+
+    it("reports opt-in scopes that a generic re-link dropped", async () => {
+      const { encryptToken } = await import("@/core/crypto");
+      const { provisionFromSso } = await import("@/core/auth/provision");
+      const MINING = "esi-industry.read_character_mining.v1";
+      await db().insert(schema.esiTokens).values({ characterId: 2, refreshTokenEnc: encryptToken("r"), scopes: [MINING, WALLET_SCOPE] });
+      // The shared client may already hold an earlier fetch, so stub its calls rather than global fetch.
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) =>
+          reply(path.startsWith("/corporations/") ? { name: "Home", ticker: "HOME", member_count: 3 } : { corporation_id: 100 }),
+        ) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      const link = (scopes: string[]) =>
+        provisionFromSso({
+          verified: { characterId: 2, name: "Bravo", ownerHash: "h2", scopes, expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent: "link",
+          currentUserId: userB,
+        });
+      try {
+        expect((await link([MINING])).lostOptionalScopes).toEqual([WALLET_SCOPE]);
+        // Granted again: nothing lost.
+        await db().update(schema.esiTokens).set({ scopes: [MINING, WALLET_SCOPE] });
+        expect((await link([MINING, WALLET_SCOPE])).lostOptionalScopes).toEqual([]);
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
+    });
+
+    it("hints at realised sale prices per raw unit, raw or compressed", async () => {
+      await db().insert(schema.walletTransactions).values([
+        tx(3, 21, 62516, { isBuy: false, quantity: 10, unitPrice: 1100 }), // 10 compressed = 1000 raw
+        tx(3, 22, 1230, { isBuy: false, quantity: 500, unitPrice: 12 }),
+        { ...tx(1, 23, 1230, { isBuy: false, quantity: 1, unitPrice: 1e6 }), userId: userA },
+      ]);
+      const hints = await pnl.getSaleHints(scopeB(), range);
+      expect(hints).toHaveLength(1);
+      expect(hints[0]).toMatchObject({ typeId: 1230, rawUnits: 1500, isk: 17_000, sales: 2, baseUnitPrice: 10 });
+      expect(hints[0].rawUnitPrice).toBeCloseTo(17_000 / 1500);
     });
   });
 

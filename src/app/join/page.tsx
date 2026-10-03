@@ -6,7 +6,7 @@ import { LanguageLinks } from "@/components/shell/language-switcher";
 import { KeystarMark } from "@/components/shell/logo";
 import { getCurrentUser } from "@/core/auth/dal";
 import { getCorporation } from "@/core/corp";
-import { allScopeRequirements } from "@/core/modules/registry";
+import { memberScopeRequirements } from "@/core/modules/registry";
 import { getSetting } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
 
@@ -23,7 +23,7 @@ export default async function JoinPage() {
   const user = await getCurrentUser();
   const { t } = await getI18n();
   const corp = await getCorporation(await getSetting("corp.homeCorporationId"));
-  const scopes = allScopeRequirements().filter((s) => s.level === "character");
+  const scopes = memberScopeRequirements();
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">

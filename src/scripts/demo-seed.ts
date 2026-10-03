@@ -43,6 +43,7 @@ import staticData from "./demo-data/eve-static.json";
 import { seedFleets } from "./demo-data/fleet";
 import { seedIntel } from "./demo-data/intel";
 import { seedKillboard } from "./demo-data/killboard";
+import { seedMiningPnl } from "./demo-data/pnl";
 
 const DEMO_CHARACTER_BASE = 2_120_000_000;
 const HOME_CORP = { corporationId: 98_765_432, name: "Keystar Industries", ticker: "KSTR" };
@@ -187,7 +188,8 @@ async function main() {
     type_value_history, esi_cache, sync_jobs, worker_heartbeats, mining_character_ledger, mining_observers,
     mining_observer_ledger, killmails, killmail_attackers, killboard_reports, fleets, fleet_members, fleet_trackers,
     eve_constellations, intel_scans, intel_scan_pilots, intel_pilots, intel_pilot_killmails, intel_queue, intel_contacts,
-    intel_ai_notes RESTART IDENTITY CASCADE`);
+    intel_ai_notes, wallet_transactions, mining_activity, mining_activity_coverage, mining_pnl_settings,
+    mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
   await db.insert(eveGroups).values(staticData.groups);
@@ -406,6 +408,20 @@ async function main() {
   await db.insert(typeValues).values(valueRows);
   await db.insert(marketPrices).values(marketRows);
 
+  // --- Mining P&L of the admin account (wallet import, costs, activity) ---
+  const pnlChars = allChars.filter((c) => c.userId === demoUserIds.admin);
+  const pnl = await seedMiningPnl(db, {
+    userId: demoUserIds.admin,
+    characters: pnlChars.map((c) => ({ characterId: c.characterId, name: c.name, profile: c.profile })),
+    ledger: personalRows
+      .filter((r) => pnlChars.some((c) => c.characterId === r.characterId))
+      .map((r) => ({ characterId: r.characterId!, date: r.date!, typeId: r.typeId!, quantity: Number(r.quantity) })),
+    types: new Map(staticData.types.map((t) => [t.typeId, { name: t.name, volume: t.volume, compressedTypeId: t.compressedTypeId ?? null }])),
+    jitaBuy: new Map(valueRows.filter((v) => v.source === "jita_buy").map((v) => [v.typeId!, v.unitPrice!])),
+    rand,
+    now: new Date(),
+  });
+
   // --- Sync status, settings, audit --------------------------------------
   const now = Date.now();
   const jobRows: (typeof syncJobs.$inferInsert)[] = [
@@ -495,8 +511,8 @@ async function main() {
 
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
-      `${killboard.killmails} killmails, ${fleetCount} fleets, a ${report.source} situation report and a threat intel scan ` +
-      `of ${intel.pilots} pilots.`,
+      `${killboard.killmails} killmails, ${fleetCount} fleets, ${pnl.transactions} wallet transactions, ${pnl.windows} ` +
+      `activity windows, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");
   await closeDb();

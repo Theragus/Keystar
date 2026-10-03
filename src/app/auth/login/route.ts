@@ -3,12 +3,13 @@ import { OAUTH_COOKIE, OAUTH_MAX_AGE_SECONDS, safeReturnTo, sealOAuthState } fro
 import { buildAuthorizeUrl, createPkcePair } from "@/core/auth/sso";
 import { randomToken } from "@/core/crypto";
 import { env, ssoConfigured } from "@/core/env";
-import { characterScopes, corporationScopes } from "@/core/modules/registry";
+import { LOGIN_INTENTS, parseOptionalScopes, scopesForIntent, type LoginIntent } from "@/core/modules/registry";
 
-const INTENTS = ["login", "join", "link", "link-corp"] as const;
-type Intent = (typeof INTENTS)[number];
-
-/** Starts the EVE SSO flow. ?intent=login|join|link|link-corp&returnTo=/path */
+/**
+ * Starts the EVE SSO flow. ?intent=login|join|link|link-corp&returnTo=/path
+ * Linking may add opt-in scopes with &with=<scope>[,<scope>] (unknown ones are ignored); &drop= names the
+ * opt-in scopes the user is deliberately giving up, so the callback doesn't warn about them.
+ */
 export async function GET(request: NextRequest) {
   const appUrl = env().APP_URL;
   if (!ssoConfigured()) {
@@ -16,16 +17,19 @@ export async function GET(request: NextRequest) {
   }
 
   const requested = request.nextUrl.searchParams.get("intent");
-  const intent: Intent = (INTENTS as readonly string[]).includes(requested ?? "") ? (requested as Intent) : "login";
+  const intent: LoginIntent = (LOGIN_INTENTS as readonly string[]).includes(requested ?? "")
+    ? (requested as LoginIntent)
+    : "login";
   const defaultReturn = intent === "link" || intent === "link-corp" ? "/characters" : "/";
   const returnTo = safeReturnTo(request.nextUrl.searchParams.get("returnTo"), defaultReturn);
 
-  const scopes = intent === "login" ? [] : intent === "link-corp" ? corporationScopes() : characterScopes();
+  const scopes = scopesForIntent(intent, parseOptionalScopes(request.nextUrl.searchParams.get("with")));
+  const optionalRemoved = parseOptionalScopes(request.nextUrl.searchParams.get("drop"));
   const { verifier, challenge } = createPkcePair();
   const state = randomToken(24);
 
   const response = NextResponse.redirect(buildAuthorizeUrl({ state, codeChallenge: challenge, scopes }));
-  response.cookies.set(OAUTH_COOKIE, sealOAuthState({ state, verifier, intent, returnTo, createdAt: Date.now() }), {
+  response.cookies.set(OAUTH_COOKIE, sealOAuthState({ state, verifier, intent, returnTo, createdAt: Date.now(), optionalRemoved }), {
     httpOnly: true,
     secure: appUrl.startsWith("https://"),
     sameSite: "lax",

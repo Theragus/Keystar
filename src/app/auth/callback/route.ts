@@ -41,7 +41,12 @@ export async function GET(request: NextRequest) {
       currentUserId: existingSession?.userId ?? null,
     });
 
-    const res = NextResponse.redirect(new URL(saved.returnTo, env().APP_URL));
+    // An opt-in scope (e.g. wallet import) dropped by a generic link: say so instead of silently stopping it.
+    const lost = result.lostOptionalScopes.filter((s) => !saved.optionalRemoved.includes(s));
+    const target = lost.length
+      ? `/characters?${new URLSearchParams({ lost: String(result.characterId), scopes: lost.join(",") })}`
+      : saved.returnTo;
+    const res = NextResponse.redirect(new URL(target, env().APP_URL));
     res.cookies.delete({ name: OAUTH_COOKIE, path: "/auth" });
     // Linking keeps the current session; logins start a fresh one.
     if (!existingSession || existingSession.userId !== result.userId) {

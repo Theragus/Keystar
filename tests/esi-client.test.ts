@@ -69,6 +69,18 @@ describe("EsiClient", () => {
     expect(second.data).toEqual([1]);
   });
 
+  it("reports Last-Modified, and whether every page came from the local cache", async () => {
+    const cache = memoryCache();
+    const modified = "Fri, 02 Oct 2026 10:00:00 GMT";
+    const { esi } = client(() => json([1], { headers: { expires: later(), "last-modified": modified } }), { cache });
+    const first = await esi.getAllPages<number>("/characters/1/mining");
+    expect(first.fromCache).toBe(false);
+    expect(first.lastModified?.toISOString()).toBe("2026-10-02T10:00:00.000Z");
+    const second = await esi.getAllPages<number>("/characters/1/mining");
+    expect(second.fromCache).toBe(true);
+    expect(second.lastModified).toBeNull();
+  });
+
   it("revalidates stale entries with If-None-Match and reuses the body on 304", async () => {
     const cache = memoryCache();
     cache.map.set("0:GET /markets/prices", { etag: '"v1"', body: [42], pages: 1, expiresAt: new Date(0) });
