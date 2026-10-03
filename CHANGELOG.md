@@ -40,6 +40,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
   dashboard's killboard button now read "Combat Report".
+- **"Corp wallet journal" instead of "Wallet journal".** The sidebar entry, the journal page heading and the button
+  on the corporation wallet page now make clear that the journal covers the corporation's wallets, not your own.
 
 ## [0.10.0] - 2026-10-03
 
