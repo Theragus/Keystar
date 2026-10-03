@@ -27,14 +27,15 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
     const danger = (bScore && bScore.tier !== "unknown" ? bScore.composite : -1) - (aScore && aScore.tier !== "unknown" ? aScore.composite : -1);
     return danger || Number(cynoEvidence(b.profile).length > 0) - Number(cynoEvidence(a.profile).length > 0) || a.pilot.name.localeCompare(b.pilot.name);
   });
-  const allianceGroups = new Map<number | null, typeof sortedPilots>();
+  const affiliationKey = (pilot: (typeof sortedPilots)[number]["pilot"]) => pilot.allianceId ? `alliance:${pilot.allianceId}` : pilot.corporationId ? `corporation:${pilot.corporationId}` : `pilot:${pilot.characterId}`;
+  const affiliationGroups = new Map<string, typeof sortedPilots>();
   for (const row of sortedPilots) {
-    const key = row.pilot.allianceId ?? null;
-    allianceGroups.set(key, [...(allianceGroups.get(key) ?? []), row]);
+    const key = affiliationKey(row.pilot);
+    affiliationGroups.set(key, [...(affiliationGroups.get(key) ?? []), row]);
   }
-  const groupedPilots = [...allianceGroups].map(([id, pilots], index) => ({
-    id, pilots, number: index + 1, color: CHART_CLASSES[index % CHART_CLASSES.length].color,
-    name: id ? pilots[0].pilot.allianceName ?? t.intel.pilot.alliance(id) : e.noAlliance,
+  const groupedPilots = [...affiliationGroups].map(([id, pilots], index) => ({
+    id, pilots, color: CHART_CLASSES[index % CHART_CLASSES.length].color,
+    name: pilots[0].pilot.allianceId ? pilots[0].pilot.allianceName ?? t.intel.pilot.alliance(pilots[0].pilot.allianceId) : pilots[0].pilot.corporationName ?? t.intel.pilot.unknownCorporation,
   }));
   const now = new Date();
   const group = observedGroups(others.map(r => ({ characterId: r.pilot.characterId, profile: r.profile })), now)[0];
@@ -58,8 +59,8 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
             const fits = cynoEvidence(profile);
             const fitDetails = fits.map(fit => `${e.cynoKinds[fit.kind]}: ${f.integer(fit.count)} · ${f.relativeTime(fit.lastAt)}`).join("; ");
             const cynoDetails = fits.length ? `${e.cyno}: ${fitDetails}. ${e.cynoTagCaution}` : `${profile?.depth === "deep" ? e.noCyno : e.unknownCyno}. ${e.cynoTagCaution}`;
-            const alliance = groupedPilots.find(group => group.id === (pilot.allianceId ?? null))!;
-            return { id: pilot.characterId, allianceId: pilot.allianceId ?? null, color: alliance.color,
+            const alliance = groupedPilots.find(group => group.id === affiliationKey(pilot))!;
+            return { id: pilot.characterId, affiliationId: affiliationKey(pilot), color: alliance.color,
               title: `${pilot.name} · ${alliance.name} · ${t.intel.score.explanation} ${cynoDetails}`,
               content: <>
                 <span className="min-w-0 break-words text-ink-2">{pilot.name}</span>

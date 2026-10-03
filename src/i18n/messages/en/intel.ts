@@ -322,7 +322,7 @@ export const intel = {
     noCyno: "No fitted cyno found in sampled losses",
     unknownCyno: "Unknown — loss fittings not yet loaded",
     cynoTagCaution: "Fitted modules on sampled losses only. Cyno activation and fight association unknown. Counts are fittings, not cynos opened.",
-    allianceLegend: "Alliances",
+    allianceLegend: "Alliances / corporations",
     noAlliance: "No alliance / affiliation unknown",
     cynoTagLegend: "Cyno icon: fitted-module history. Activation and fight association unknown.",
     cynoHint: "Sampled losses only; no guaranteed 365-day coverage. Current fit unknown.",
