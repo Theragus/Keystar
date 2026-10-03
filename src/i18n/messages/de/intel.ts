@@ -253,6 +253,8 @@ export const intel: typeof en = {
       "System zählen Kills in der Nähe stärker.",
   },
   buttons: {
+    briefing: "Briefing",
+    closeBriefing: "Briefing schließen",
     rescan: "Neu scannen",
     scanning: "Wird gescannt …",
     profileMore: (more) => `${n(more)} weitere analysieren`,

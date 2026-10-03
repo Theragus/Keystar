@@ -256,6 +256,8 @@ export const intel = {
       "system makes kills nearby count more.",
   },
   buttons: {
+    briefing: "Briefing",
+    closeBriefing: "Close briefing",
     rescan: "Rescan",
     scanning: "Scanning…",
     profileMore: (more: number) => `Profile ${n(more)} more`,
