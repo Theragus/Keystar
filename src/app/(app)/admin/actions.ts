@@ -1,21 +1,35 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { audit } from "@/core/audit";
 import { assertPermission } from "@/core/auth/dal";
-import { changeUserAccess } from "@/core/auth/manage-users";
+import { changeUserAccess, UserAccessError, type UserAccessErrorCode } from "@/core/auth/manage-users";
 import { refreshCorporations } from "@/core/eve/resolver";
 import { allPermissions } from "@/core/modules/registry";
 import { isRole, type Role } from "@/core/rbac/roles";
 import { getSettings, setSetting, type Settings } from "@/core/settings";
 import { triggerJobs } from "@/core/sync/scheduler";
 
-export async function updateUserRole(userId: string, formData: FormData) {
-  const actor = await assertPermission("users.manage");
-  const role = formData.get("role");
+export type RoleChangeResult = { ok: true; from: Role } | { ok: false; error: UserAccessErrorCode };
+
+/**
+ * Returns a result instead of throwing so the role picker can show a translated
+ * message and put the previous role back. The lockout guards live in `changeUserAccess`.
+ */
+export async function updateUserRole(userId: string, role: Role): Promise<RoleChangeResult> {
+  const actor = await assertPermission("users.manage").catch(() => null);
+  if (!actor) return { ok: false, error: "forbidden" };
   if (!isRole(role)) throw new Error("Unknown role");
-  if (actor.id === userId) throw new Error("You can't change your own role");
-  const { from } = await changeUserAccess(actor.id, userId, { role });
+  if (actor.id === userId) return { ok: false, error: "self" };
+  let from: Role;
+  try {
+    ({ from } = await changeUserAccess(actor.id, userId, { role }));
+  } catch (err) {
+    if (!(err instanceof UserAccessError)) throw err;
+    // A refusal usually means the page is out of date (another admin got there first).
+    refresh();
+    return { ok: false, error: err.code };
+  }
   await audit({
     actorUserId: actor.id,
     actorName: actor.main?.name,
@@ -25,6 +39,7 @@ export async function updateUserRole(userId: string, formData: FormData) {
     details: { from, to: role },
   });
   revalidatePath("/admin/users");
+  return { ok: true, from };
 }
 
 export async function approveUser(userId: string) {

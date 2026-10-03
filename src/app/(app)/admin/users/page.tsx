@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { ArrowRight, Ban, CheckCircle2, UserCheck } from "lucide-react";
+import { ArrowRight, Ban, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge, RoleBadge, StatusBadge } from "@/components/ui/badge";
@@ -14,7 +14,8 @@ import { getSetting } from "@/core/settings";
 import { assignableRoles, canManageRole, isRole, ROLES, type Role } from "@/core/rbac/roles";
 import { getI18n } from "@/i18n/server";
 import { zkillCharacter } from "@/modules/killboard/links";
-import { approveUser, setUserDisabled, updateUserRole } from "../actions";
+import { approveUser, setUserDisabled } from "../actions";
+import { RoleSelect } from "./role-select";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -244,23 +245,15 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                     <td className="text-ink-2">{f.relativeTime(u.last_login_at)}</td>
                     <td>
                       {canChange ? (
-                        <form action={updateUserRole.bind(null, u.id)} className="flex items-center gap-1.5">
-                          <select
-                            name="role"
-                            defaultValue={u.role}
-                            className="glass-inset h-8 rounded-lg px-2.5 text-xs text-ink"
-                            aria-label={tu.roleFor(u.main_name)}
-                          >
-                            {ROLES.filter((r) => assignable.includes(r) || r === u.role).map((r) => (
-                              <option key={r} value={r} disabled={!assignable.includes(r)}>
-                                {t.common.roles[r].label}
-                              </option>
-                            ))}
-                          </select>
-                          <Button size="sm" type="submit" title={tu.saveRole}>
-                            <CheckCircle2 className="size-3.5" aria-hidden />
-                          </Button>
-                        </form>
+                        <RoleSelect
+                          userId={u.id}
+                          userName={u.main_name}
+                          role={u.role}
+                          options={ROLES.filter((r) => assignable.includes(r) || r === u.role).map((r) => ({
+                            role: r,
+                            assignable: assignable.includes(r),
+                          }))}
+                        />
                       ) : (
                         <RoleBadge role={u.role} />
                       )}

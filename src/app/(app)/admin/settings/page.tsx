@@ -33,9 +33,12 @@ export default async function SettingsPage() {
   const groups = [...new Set(perms.map((p) => p.group(t)))];
   const overrides = settings["permissions.overrides"];
   const e = env();
+  // React resets the form after saving, and a <select> resets to the value it was
+  // first rendered with. A key over the saved choices remounts it with the new ones.
+  const savedChoices = JSON.stringify([settings["mining.valuationSource"], settings["mining.valuationMode"], overrides]);
 
   return (
-    <form action={saveSettings} className="space-y-6">
+    <form key={savedChoices} action={saveSettings} className="space-y-6">
       <PageHeader
         eyebrow={t.shell.navSections.admin}
         title={t.shell.nav.settings}

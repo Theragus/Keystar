@@ -17,6 +17,19 @@ export async function lockUsers(tx: Tx): Promise<void> {
 
 export type UserAccessChange = { role: Role } | { isDisabled: boolean };
 
+/** Why `changeUserAccess` refused a change; the UI translates the code. */
+export type UserAccessErrorCode = "self" | "forbidden" | "notFound" | "higherRole" | "unassignable";
+
+export class UserAccessError extends Error {
+  constructor(
+    readonly code: UserAccessErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "UserAccessError";
+  }
+}
+
 /**
  * Applies a manager's change to another user's role or disabled flag; disabling
  * also signs the user out everywhere.
@@ -35,20 +48,20 @@ export async function changeUserAccess(
   change: UserAccessChange,
   opts: { onlyFromRole?: Role } = {},
 ): Promise<{ from: Role; changed: boolean }> {
-  if (actorId === targetId) throw new Error("You can't change your own access");
+  if (actorId === targetId) throw new UserAccessError("self", "You can't change your own access");
   const overrides = (await getSettings())["permissions.overrides"];
   return getDb().transaction(async (tx) => {
     await lockUsers(tx);
     const [actor] = await tx.select().from(users).where(eq(users.id, actorId));
     if (!actor || actor.isDisabled || !permissionsForRole(actor.role, allPermissions(), overrides).has("users.manage")) {
-      throw new Error("You do not have permission to do that");
+      throw new UserAccessError("forbidden", "You do not have permission to do that");
     }
     const [target] = await tx.select().from(users).where(eq(users.id, targetId));
-    if (!target) throw new Error("User not found");
+    if (!target) throw new UserAccessError("notFound", "User not found");
     if (opts.onlyFromRole && target.role !== opts.onlyFromRole) return { from: target.role, changed: false };
-    if (!canManageRole(actor.role, target.role)) throw new Error("You can only manage users below your own role");
+    if (!canManageRole(actor.role, target.role)) throw new UserAccessError("higherRole", "You can only manage users below your own role");
     if ("role" in change && !assignableRoles(actor.role).includes(change.role)) {
-      throw new Error("You can't assign that role");
+      throw new UserAccessError("unassignable", "You can't assign that role");
     }
     await tx
       .update(users)

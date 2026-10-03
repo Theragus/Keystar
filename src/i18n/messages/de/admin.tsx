@@ -34,6 +34,20 @@ export const admin: typeof en = {
     },
     roleFor: (name: string | null) => `Rolle für ${name ?? "Benutzer"}`,
     saveRole: "Rolle speichern",
+    roleChange: {
+      changed: (name: string, role: string) => `${name} ist jetzt ${role}`,
+      from: (role: string) => `Vorher ${role}`,
+      restored: (name: string, role: string) => `${name} ist wieder ${role}`,
+      failed: (name: string) => `Die Rolle von ${name} konnte nicht geändert werden`,
+      errors: {
+        self: "Du kannst deine eigene Rolle nicht ändern.",
+        forbidden: "Du darfst keine Benutzer mehr verwalten.",
+        notFound: "Dieses Konto existiert nicht mehr.",
+        higherRole: "Nur eine höhere Rolle kann dieses Konto ändern.",
+        unassignable: "Diese Rolle kannst du nicht vergeben.",
+        unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+      },
+    },
     enable: "Aktivieren",
     disable: "Deaktivieren",
     noAction: {

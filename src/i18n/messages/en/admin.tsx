@@ -39,6 +39,21 @@ export const admin = {
     },
     roleFor: (name: string | null) => `Role for ${name ?? "user"}`,
     saveRole: "Save role",
+    /** Toasts after a role change from the table. */
+    roleChange: {
+      changed: (name: string, role: string) => `${name} is now ${role}`,
+      from: (role: string) => `Previously ${role}`,
+      restored: (name: string, role: string) => `${name} is back to ${role}`,
+      failed: (name: string) => `Couldn't change the role of ${name}`,
+      errors: {
+        self: "You can't change your own role.",
+        forbidden: "You no longer have permission to manage users.",
+        notFound: "This account no longer exists.",
+        higherRole: "Only a higher role can change this account.",
+        unassignable: "You can't assign that role.",
+        unknown: "Something went wrong. Reload the page and try again.",
+      },
+    },
     enable: "Enable",
     disable: "Disable",
     /** Why a row has no actions. */

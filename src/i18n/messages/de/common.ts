@@ -67,6 +67,11 @@ export const common: typeof en = {
     selected: (count: number) => `${n(count)} ausgewählt`,
     apply: (count: number) => (count ? `Übernehmen (${n(count)})` : "Übernehmen"),
   },
+  toast: {
+    region: "Benachrichtigungen",
+    close: "Benachrichtigung schließen",
+    undo: "Rückgängig",
+  },
   delta: {
     vs: (period: string) => `ggü. ${period}`,
     noData: (period: string) => `Keine Daten für ${period}`,

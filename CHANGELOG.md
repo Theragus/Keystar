@@ -17,8 +17,15 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   and back with a short slide and fade (instant when reduced motion is requested). On the rail, hovering or focusing
   an icon opens its section as a menu beside it, and hovering the portrait shows the pilot's name, role and corp.
   The choice is remembered for a year and applied before rendering.
+- **Notifications.** Short toasts in the top-right corner confirm actions. A bar along the bottom counts down
+  the time left and pauses while the pointer or keyboard focus is on the toast. Changing a user's role now
+  confirms the new role and offers Undo, and a refused change says why.
 
 ### Changed
+
+- **Dropdowns match the theme.** In Chrome, Edge and Safari 27+, the open list of every dropdown is a glass panel
+  in the current theme with an accent check mark, instead of the system's list. Other browsers keep their native
+  list. On Users & Roles the save button only appears once a different role is picked.
 
 - **Releasing an older version line no longer moves `:latest` back.** The Release workflow now tags an image
   `:latest` (and marks the GitHub release *Latest*) only when its version is newer than every earlier release, and
@@ -33,6 +40,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - Extend the sidebar surface to the bottom of long pages while keeping navigation and footer controls in the viewport.
 - Preserve the original dark-mode table separators and scrollbar colours when adding light mode.
+- After a role change on Users & Roles, the dropdown no longer jumps back to the old role. After saving
+  Settings, the valuation and permission dropdowns no longer show the old values.
 
 ## [0.8.0] - 2026-10-03
 
