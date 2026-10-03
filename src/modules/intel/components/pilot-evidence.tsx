@@ -64,7 +64,7 @@ export async function PilotEvidence({
         return <div key={label} className="contents"><span className="text-ink-3">{label}</span><span className="flex min-w-0 items-baseline gap-1.5 text-ink"><span className="truncate">{event ? (hull ? (names.types.get(hull)?.name ?? e.unknown) : e.unknown) : e.noEvent}</span>{event && <span className="shrink-0 whitespace-nowrap text-3xs text-ink-3">· {f.relativeTime(event.time)}</span>}</span></div>;
       })}
       <span className="text-ink-3">{e.tileCyno}</span>
-      <span className={cynoEvidence(profile).length ? "text-warning" : "text-ink-3"}>{cynoEvidence(profile).length ? cynoEvidence(profile).map(fit => `${e.cynoKinds[fit.kind]} · ${f.relativeTime(fit.lastAt)}`).join(" · ") : profile?.depth === "deep" ? e.tileNoCyno : e.unknown}</span>
+      <span className={cynoEvidence(profile).length ? "text-warning" : "text-ink-3"}>{cynoEvidence(profile).length ? cynoEvidence(profile).map(fit => <span key={fit.kind} className="block">{e.cynoKinds[fit.kind]} · {f.relativeTime(fit.lastAt)}</span>) : profile?.depth === "deep" ? e.tileNoCyno : e.unknown}</span>
       <span className="text-ink-3">{e.tileAssociates}</span><span className="text-ink-2">{profile ? f.integer(associates) : e.unknown}</span>
     </div>
   );
