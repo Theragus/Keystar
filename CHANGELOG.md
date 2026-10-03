@@ -23,6 +23,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - The mining CSV export no longer turns negative security status (`-0.45`) into text, so null-sec and wormhole rows
   stay numeric in spreadsheets. Names starting with `=`, `+`, `-` or `@` are still neutralised.
   ([#18](https://github.com/Theragus/Keystar/issues/18))
+- Name lookups no longer multiply ESI requests during an outage. Keystar splits a batch only when ESI rejects it for
+  an invalid id; a server error, timeout or rate limit now fails the job, so the scheduler backs off instead of
+  sending about two failing requests per id and reporting success. ([#19](https://github.com/Theragus/Keystar/issues/19))
 
 ## [0.6.0] - 2026-10-03
 

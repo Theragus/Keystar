@@ -1,6 +1,6 @@
 import { inArray, sql } from "drizzle-orm";
 import { eveConstellations, eveCorporations, eveEntities, eveGroups, eveSystems, eveTypes, getDb } from "@/core/db";
-import { getEsi } from "@/core/esi";
+import { EsiError, getEsi } from "@/core/esi";
 import { createLogger } from "@/core/logger";
 import { classifyOre } from "@/core/eve/ore";
 import { mapLimit } from "@/lib/concurrency";
@@ -37,7 +37,9 @@ export async function ensureNames(ids: Iterable<number>): Promise<void> {
           });
       }
     } catch (err) {
-      // /universe/names fails the whole batch if a single id is invalid; fall back to halves.
+      // /universe/names answers 404 for the whole batch if a single id is invalid; bisect to find it.
+      // Anything else (outage, timeout, rate limit) would only multiply failing requests, so let the job fail.
+      if (!(err instanceof EsiError) || err.status !== 404) throw err;
       if (chunk.length > 1) {
         const mid = Math.ceil(chunk.length / 2);
         await ensureNames(chunk.slice(0, mid));
