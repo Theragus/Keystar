@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- Add a searchable, interactive 3D EVE universe map under Combat, with real system positions and security status.
+
 - **Sortable ore breakdown.** Click any column header of the mining dashboard's ore breakdown to sort by it; click
   again to reverse the order.
 - **Grouped ore types.** The ore breakdown combines the grades and variants of each ore (Scordite, Scordite
