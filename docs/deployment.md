@@ -92,17 +92,23 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    esi-industry.read_character_mining.v1
    esi-industry.read_corporation_mining.v1
    esi-mail.read_mail.v1
+   esi-skills.read_skillqueue.v1
+   esi-skills.read_skills.v1
    esi-wallet.read_character_wallet.v1
    esi-wallet.read_corporation_wallets.v1
    ```
 
    Keystar only ever asks members for the scopes its enabled modules need; corporation scopes are requested only when
-   a director links a character with "corporation access", and the wallet, mail and fleet scopes only when a pilot enables
-   wallet import for a character in the mining P&L, mail for a character on the EVE Mail page or fleet access for a
-   character on the Live fleet page. (The login page also shows this exact list while SSO is not configured yet.)
+   a director links a character with "corporation access", and the wallet, mail, fleet and skills scopes only when a
+   pilot enables wallet import for a character in the mining P&L, mail for a character on the EVE Mail page, fleet
+   access for a character on the Live fleet page or skill sharing on the Skills access page. (The login page also shows this exact list while SSO is not configured yet.)
 5. Save and keep the **Client ID** and **Secret Key** for the next step.
 
-When future modules (skills, assets) are added, add their scopes to the application as well.
+When future modules (assets) are added, add their scopes to the application as well.
+
+> **Upgrading to the release with skill queues (see the CHANGELOG):** add `esi-skills.read_skillqueue.v1` and
+> `esi-skills.read_skills.v1` to the EVE application. Without them, "Share skills" on the Skills access page fails at
+> the EVE login with `invalid_scope`. Nobody is asked for the scopes unless they share their skills themselves.
 
 > **Upgrading to the release with EVE Mail (see the CHANGELOG):** add `esi-mail.read_mail.v1` to the EVE application.
 > Without it, "Enable mail" on the EVE Mail page fails at the EVE login with `invalid_scope`. Nobody is asked for the

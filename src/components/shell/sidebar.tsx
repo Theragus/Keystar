@@ -1,5 +1,5 @@
 import { LogOut } from "lucide-react";
-import Link from "next/link";
+
 import type { CurrentUser } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { navSections } from "@/core/modules/registry";
@@ -9,7 +9,7 @@ import { Portrait } from "@/components/ui/eve-image";
 import { RoleBadge } from "@/components/ui/badge";
 import { ThemeSwitcher } from "./theme-switcher";
 import { LanguageSwitcher } from "./language-switcher";
-import { KeystarMark } from "./logo";
+import { SidebarToggle } from "./sidebar-state";
 import { NavLink } from "./nav-link";
 import { RailFlyout } from "./rail-flyout";
 
@@ -44,24 +44,18 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
   return (
     <aside
       id="app-sidebar"
-      className="relative z-30 w-[232px] shrink-0 self-stretch border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl transition-[width] duration-150 ease-out group-data-[sidebar=collapsed]/shell:w-14 motion-reduce:transition-none"
+      className="relative z-30 w-[232px] shrink-0 self-stretch border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl transition-[width] duration-300 ease-out group-data-[sidebar=collapsed]/shell:w-14 motion-reduce:transition-none"
     >
-      {/* Hidden while the width changes (SidebarProvider), so labels never show squeezed. */}
-      <div className="sticky top-0 flex h-dvh flex-col transition-opacity duration-100 group-data-[sidebar-fading]/shell:opacity-0 motion-reduce:transition-none">
-        <Link
-          href="/"
-          className="flex h-14 shrink-0 items-center gap-2.5 border-b border-surface-contrast/[0.07] px-4 group-data-[sidebar=collapsed]/shell:justify-center group-data-[sidebar=collapsed]/shell:px-0"
-        >
-          <KeystarMark className="size-7" />
-          <span className="font-display text-[1.05rem] font-bold tracking-[0.2em] text-ink group-data-[sidebar=collapsed]/shell:sr-only">
-            KEYSTAR
-          </span>
-        </Link>
+      {/* Preserve heading space so collapsed icons keep their vertical positions. */}
+      <div className="sticky top-0 flex h-dvh flex-col ">
+        <div className="flex h-14 shrink-0 items-center border-b border-surface-contrast/[0.07] px-4">
+          <SidebarToggle />
+        </div>
         <nav
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 group-data-[sidebar=collapsed]/shell:space-y-3"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 group-data-[sidebar=collapsed]/shell:overflow-clip"
           aria-label={t.shell.mainNav}
         >
-          {sections.map((section, i) => (
+          {sections.map((section) => (
             <RailFlyout
               key={section.id}
               className="group"
@@ -84,12 +78,9 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
                 </>
               }
             >
-              <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))] group-data-[sidebar=collapsed]/shell:sr-only">
-                {section.label(t)}
+              <div className="eve-label pb-1.5 pl-[calc((2rem-3ch)/2)] text-2xs whitespace-nowrap text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))]" title={section.label(t)}>
+                <span>{Array.from(section.label(t)).slice(0, 3).join("")}</span><span className="group-data-[sidebar=collapsed]/shell:hidden">{Array.from(section.label(t)).slice(3).join("")}</span>
               </div>
-              {i > 0 && (
-                <div className="mx-1.5 mb-3 hidden h-px bg-surface-contrast/[0.07] group-data-[sidebar=collapsed]/shell:block" aria-hidden />
-              )}
               <ul className="space-y-0.5" data-flyout-anchor>
                 {section.items.map((item) => (
                   <li key={item.href}>

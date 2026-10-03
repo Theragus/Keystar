@@ -64,6 +64,20 @@
       "when": 1791025326673,
       "tag": "0008_price_interest",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791062739110,
+      "tag": "0009_esi_disabled_scopes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791066576038,
+      "tag": "0010_skills",
+      "breakpoints": true
     }
   ]
 }
