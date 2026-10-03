@@ -41,8 +41,8 @@ describe.skipIf(!enabled)("integration", async () => {
       intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, mining_activity,
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
       mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
-      corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists
-      RESTART IDENTITY CASCADE`);
+      corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists,
+      corporation_members RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
     userA = a.id;
@@ -1265,6 +1265,75 @@ describe.skipIf(!enabled)("integration", async () => {
       const base = { ...job(async () => {}), owner: "corporation" as const };
       expect(await scheduler.corporationCandidates(db(), 100, base)).toEqual([2, 3]);
       expect(await scheduler.corporationCandidates(db(), 100, { ...base, anyCorpMember: true })).toEqual([2, 1, 3]);
+    });
+  });
+
+  describe("member audit", async () => {
+    const audit = await import("@/core/member-audit");
+    const { parseMemberAuditParams } = await import("@/core/member-audit-filters");
+    const required = ["scope.a", "scope.b"];
+    const params = (sp: Record<string, string> = {}) => parseMemberAuditParams(sp);
+    const ids = async (sp: Record<string, string> = {}) =>
+      (await audit.getMemberAuditPage(100, required, params(sp))).map((r) => r.id);
+
+    beforeEach(async () => {
+      const { encryptToken } = await import("@/core/crypto");
+      // Roster: Alpha, Bravo, the unregistered Outsider and a pilot without a known name. Bravo Alt is missing from it.
+      await db().insert(schema.corporationMembers).values([1, 2, 9, 10].map((characterId) => ({ corporationId: 100, characterId })));
+      await db().insert(schema.esiTokens).values([
+        { characterId: 1, refreshTokenEnc: encryptToken("r"), scopes: required },
+        { characterId: 2, refreshTokenEnc: encryptToken("r"), scopes: ["scope.a"] },
+      ]);
+    });
+
+    it("counts the roster against registered characters and ESI access", async () => {
+      expect(await audit.getMemberAuditStats(100, required, params())).toEqual({
+        rosterKnown: true,
+        roster: 4,
+        registered: 2,
+        unregistered: 2,
+        esiTrouble: 2,
+        matched: 5,
+        accountName: null,
+      });
+    });
+
+    it("lists unregistered members first, then by name", async () => {
+      expect(await ids()).toEqual(["9", "10", "1", "2", "3"]);
+      const [bravo] = await audit.getMemberAuditPage(100, required, params({ q: "Bravo", filter: "registered" }));
+      expect(bravo).toMatchObject({ name: "Bravo", inRoster: true, registered: true, mainName: "Bravo", scopes: ["scope.a"] });
+    });
+
+    it("filters like the stat tiles count", async () => {
+      expect(await ids({ filter: "roster" })).toEqual(["9", "10", "1", "2"]);
+      expect(await ids({ filter: "registered" })).toEqual(["1", "2"]);
+      expect(await ids({ filter: "unregistered" })).toEqual(["9", "10"]);
+      expect(await ids({ filter: "esi" })).toEqual(["2", "3"]);
+    });
+
+    it("searches character and account names, exact IDs and literal wildcards", async () => {
+      expect(await ids({ q: "alt" })).toEqual(["3"]);
+      // Bravo Alt also matches through its account's main.
+      expect(await ids({ q: "bravo" })).toEqual(["2", "3"]);
+      expect(await ids({ q: "bravo", filter: "registered" })).toEqual(["2"]);
+      expect(await ids({ q: "10" })).toEqual(["10"]);
+      expect(await ids({ q: "%" })).toEqual([]);
+      expect((await audit.getMemberAuditStats(100, required, params({ q: "bravo", filter: "esi" }))).matched).toBe(2);
+    });
+
+    it("limits the view to one account's characters, not every name that contains its main", async () => {
+      expect(await ids({ account: userB })).toEqual(["2", "3"]);
+      expect(await ids({ account: userB, filter: "esi" })).toEqual(["2", "3"]);
+      // Alpha's account has no ESI trouble even though a search for its name could match other characters.
+      expect(await ids({ account: userA, filter: "esi" })).toEqual([]);
+      const stats = await audit.getMemberAuditStats(100, required, params({ account: userB }));
+      expect(stats).toMatchObject({ matched: 2, accountName: "Bravo", roster: 4 });
+    });
+
+    it("counts every registered character while the roster is unknown", async () => {
+      await db().execute(sql`TRUNCATE corporation_members`);
+      const stats = await audit.getMemberAuditStats(100, required, params({ filter: "registered" }));
+      expect(stats).toMatchObject({ rosterKnown: false, roster: 0, registered: 3, unregistered: 0, matched: 3 });
     });
   });
 });

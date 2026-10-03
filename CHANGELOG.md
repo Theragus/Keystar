@@ -6,6 +6,15 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Member audit** handles large corporations: search by character, account (main) or character ID as you type, click a
+  stat tile (In-game roster, Registered, Not registered, Missing or revoked ESI) to show only those characters, and page
+  through 50 at a time. Searching, filtering and paging happen in the database, and the state is in the URL, so a
+  filtered view can be bookmarked or shared.
+- The unregistered-members count on Mining Overview and the token warnings on Users & Roles now open the member audit
+  already filtered to the characters concerned.
+
 ### Fixed
 
 - Sign-in could redirect to another site when `returnTo` contained a tab, line feed or carriage return (for example
