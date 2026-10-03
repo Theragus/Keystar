@@ -39,6 +39,7 @@ import { setSetting } from "@/core/settings";
 import { generateSituationReport } from "@/modules/killboard/report/generate";
 import { runMigrations } from "@/scripts/migrate";
 import staticData from "./demo-data/eve-static.json";
+import { seedFleets } from "./demo-data/fleet";
 import { seedKillboard } from "./demo-data/killboard";
 
 const DEMO_CHARACTER_BASE = 2_120_000_000;
@@ -191,7 +192,8 @@ async function main() {
   await db.execute(sql`TRUNCATE users, characters, esi_tokens, sessions, audit_log, app_settings, character_corp_roles,
     corporation_members, eve_entities, eve_corporations, eve_groups, eve_types, eve_systems, market_prices, type_values,
     type_value_history, esi_cache, sync_jobs, worker_heartbeats, mining_character_ledger, mining_observers,
-    mining_observer_ledger, killmails, killmail_attackers, killboard_reports RESTART IDENTITY CASCADE`);
+    mining_observer_ledger, killmails, killmail_attackers, killboard_reports, fleets, fleet_members, fleet_trackers
+    RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
   await db.insert(eveGroups).values(staticData.groups);
@@ -471,6 +473,13 @@ async function main() {
     now: new Date(),
   });
 
+  const fleetCount = await seedFleets(db, {
+    pilots: combatPilots.map((p) => p.characterId),
+    systems: staticData.systems,
+    rand,
+    now: new Date(),
+  });
+
   await setSetting("corp.homeCorporationId", HOME_CORP.corporationId);
   await setSetting("demo.users", demoUserIds);
   await setSetting("setup.completedAt", new Date().toISOString());
@@ -491,7 +500,7 @@ async function main() {
 
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
-      `${killboard.killmails} killmails and a ${report.source} situation report.`,
+      `${killboard.killmails} killmails, ${fleetCount} fleets and a ${report.source} situation report.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");
   await closeDb();

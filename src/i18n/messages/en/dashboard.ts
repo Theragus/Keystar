@@ -78,7 +78,6 @@ export const dashboard = {
       skills: { title: "Skills & skill plans", text: "Corp skill plans and who can fly what." },
       assets: { title: "Assets", text: "Find items across members and corp hangars." },
       wallets: { title: "Wallets", text: "Corporation divisions and personal wallets." },
-      fleet: { title: "Live fleet", text: "Fleet composition from shared fleet ESI." },
     },
   },
 };

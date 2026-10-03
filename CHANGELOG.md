@@ -6,6 +6,17 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Live fleet** (Combat → Live fleet): a fleet boss clicks "Track fleet" on one of their characters and the worker
+  reads the fleet from ESI every 15 seconds. The page shows members by wing and squad with ship, system and role,
+  the composition by ship class and hull, who joined and left, and a list of past fleets with their participants.
+  Only the tracked character is polled, because ESI shows members and wings only to the fleet boss. Tracking
+  stops on its own when the character leaves the fleet. Texts are in English and German, and the demo data
+  includes a live and two past fleets.
+- New character scope `esi-fleets.read_fleet.v1`: enable it on the EVE application, then members re-authorise
+  under My Characters to share fleets.
+
 ## [0.1.5] - 2026-10-03
 
 ### Changed
