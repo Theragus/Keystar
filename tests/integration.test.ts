@@ -202,6 +202,12 @@ describe.skipIf(!enabled)("integration", async () => {
       }
       expect(keys).toHaveLength(4);
       expect(new Set(keys).size).toBe(4);
+      // The ledger's day groups: entry counts add up to the row count, values to the summary.
+      const days = await q.getLedgerDayTotals(filters(), corp, val);
+      expect(days.reduce((s, d) => s + d.entries, 0)).toBe(4);
+      expect(days.map((d) => d.date)).toEqual([...days.map((d) => d.date)].sort().reverse());
+      const summary = await q.getMiningSummary(filters(), corp, val);
+      expect(days.reduce((s, d) => s + d.value, 0)).toBeCloseTo(summary.current.value);
       const observers = await q.getObserverSummaries(filters(), val, 100);
       expect(observers[0].name).toBe("Osmon Athanor");
       expect(observers[0].foreignMiners).toBe(1);

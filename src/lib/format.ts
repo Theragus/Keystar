@@ -75,6 +75,8 @@ export interface Formatter {
   relativeTime(date: Date | string | null | undefined, now?: Date): string;
   /** YYYY-MM-DD → "02 Oct" / "02. Okt.". */
   shortDate(date: string): string;
+  /** YYYY-MM-DD → "Friday" / "Freitag" (the day in EVE time, UTC). */
+  weekday(date: string): string;
   /** EVE time, the same in every language: "2026-10-02 18:00 ET". */
   dateTime(date: Date | string | null | undefined): string;
 }
@@ -128,6 +130,9 @@ export function createFormatter(locale: Locale): Formatter {
     shortDate(date) {
       const d = new Date(`${date}T00:00:00Z`);
       return d.toLocaleDateString(rules.shortDate, { day: "2-digit", month: "short", timeZone: "UTC" });
+    },
+    weekday(date) {
+      return new Date(`${date}T00:00:00Z`).toLocaleDateString(rules.shortDate, { weekday: "long", timeZone: "UTC" });
     },
     dateTime(date) {
       if (!date) return "—";

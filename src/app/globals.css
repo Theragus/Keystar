@@ -473,6 +473,41 @@ select option:disabled {
 .ks-table tbody tr:hover {
   background: color-mix(in srgb, var(--color-surface-contrast) 2.5%, transparent);
 }
+/* Group header row (e.g. a day in the mining ledger): body text, not column-header styling. */
+.ks-table .ks-group-row > th,
+.ks-table .ks-group-row > td {
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  font-size: 0.8125rem;
+  color: var(--color-ink-2);
+  white-space: normal;
+  background: color-mix(in srgb, var(--color-surface-contrast) 3.5%, transparent);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+.ks-table tbody:first-of-type .ks-group-row > * {
+  border-top: 0;
+}
+.ks-table tbody tr.ks-group-row:hover > * {
+  background: color-mix(in srgb, var(--color-surface-contrast) 5.5%, transparent);
+}
+/* Rows of a collapsed group: invisible and zero-height, but still sizing the columns
+   (`visibility: collapse` would do this, but Safari treats it as `hidden`). */
+.ks-table [data-collapsed] > tr:not(.ks-group-row) > td {
+  visibility: hidden;
+  padding-block: 0;
+  border-bottom: 0;
+  line-height: 0;
+}
+.ks-table [data-collapsed] > tr:not(.ks-group-row) > td > * {
+  max-height: 0;
+  padding-block: 0;
+  border-block-width: 0;
+  vertical-align: top;
+  overflow: hidden;
+}
 .ks-table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;

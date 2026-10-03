@@ -455,6 +455,41 @@ export async function getLedgerRows(
   };
 }
 
+export interface LedgerDayTotals {
+  date: string;
+  entries: number;
+  characters: number;
+  quantity: number;
+  volume: number;
+  value: number;
+}
+
+/**
+ * Per-day totals for the ledger's day groups, newest first. Rows are paged, so a
+ * day can straddle pages; its header still sums every entry of that day. The
+ * entry counts add up to the ledger's row count.
+ */
+export async function getLedgerDayTotals(f: MiningFilters, scope: MiningScope, val: Valuation): Promise<LedgerDayTotals[]> {
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    WITH ${ledgerCte(f, scope, val)}
+    SELECT to_char(l.date, 'YYYY-MM-DD') AS date, COUNT(*)::int AS entries,
+           COUNT(DISTINCT l.character_id)::int AS characters,
+           SUM(l.quantity)::float8 AS quantity,
+           SUM(l.quantity * l.unit_volume)::float8 AS volume,
+           SUM(l.quantity * l.unit_price)::float8 AS value
+    FROM ledger l
+    GROUP BY l.date
+    ORDER BY l.date DESC`);
+  return rows.map((r) => ({
+    date: String(r.date),
+    entries: num(r.entries),
+    characters: num(r.characters),
+    quantity: num(r.quantity),
+    volume: num(r.volume),
+    value: num(r.value),
+  }));
+}
+
 export interface FilterOptions {
   characters: { id: number; name: string; registered: boolean }[];
   types: { id: number; name: string; oreClass: OreClass; groupName: string | null }[];
