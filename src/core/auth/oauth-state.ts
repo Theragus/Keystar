@@ -42,12 +42,14 @@ const RETURN_TO_BASE = "https://return-to.invalid";
  */
 export function safeReturnTo(value: string | null | undefined, fallback = "/"): string {
   if (!value || !value.startsWith("/")) return fallback;
-  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\u007f]/.test(value)) return fallback;
   try {
     const url = new URL(value, RETURN_TO_BASE);
     if (url.origin !== RETURN_TO_BASE) return fallback;
-    return url.pathname + url.search + url.hash;
+    const path = url.pathname + url.search + url.hash;
+    // Dot segments can collapse to "//host" ("/.//evil.example"), which resolves to another host again.
+    if (path.startsWith("//")) return fallback;
+    return path;
   } catch {
     return fallback;
   }
