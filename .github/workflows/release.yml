@@ -1,16 +1,12 @@
-# Publishes a release whenever main carries a package.json version that has no
-# tag yet: builds and pushes ghcr.io/<owner>/keystar:<version>, <major.minor>
-# and latest, then creates the vX.Y.Z tag and GitHub release with the matching
-# CHANGELOG.md section. See docs/releasing.md.
+# Publishes a release when started by hand (Actions → Release → Run workflow):
+# takes the package.json version on main, checks that it has no tag yet and
+# that CI passed on that commit, builds and pushes
+# ghcr.io/<owner>/keystar:<version>, <major.minor> and latest, then creates the
+# vX.Y.Z tag and GitHub release with the matching CHANGELOG.md section.
+# Merging to main releases nothing on its own. See docs/releasing.md.
 name: Release
 
 on:
-  # After CI passed on main, so only tested commits are released.
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
-  # Manual retry (e.g. after a registry outage); releases the current main.
   workflow_dispatch:
 
 concurrency:
@@ -22,33 +18,44 @@ permissions:
 
 jobs:
   check:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
       sha: ${{ steps.v.outputs.sha }}
       version: ${{ steps.v.outputs.version }}
-      release: ${{ steps.v.outputs.release }}
     steps:
+      - name: Only from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Releases are cut from main; run the workflow with \"Use workflow from: main\"."
+          exit 1
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
       - id: v
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           version=$(node -p "require('./package.json').version")
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          sha=$(git rev-parse HEAD)
           if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
-            echo "v$version is already released."
-            echo "release=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Releasing v$version."
-            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "::error::v$version is already released. Bump \"version\" in package.json and date its CHANGELOG.md section on main first."
+            exit 1
           fi
+          passed=$(gh run list --workflow ci.yml --commit "$sha" --event push --status success --json databaseId --jq length)
+          if [ "$passed" -eq 0 ]; then
+            echo "::error::CI has not passed on $sha (main) yet. Wait for it to finish, or fix it, and run Release again."
+            exit 1
+          fi
+          echo "Releasing v$version from $sha."
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
   release:
     needs: check
-    if: needs.check.outputs.release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write

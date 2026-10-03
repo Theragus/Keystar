@@ -8,6 +8,7 @@ x-database-url: &database-url postgres://keystar:${POSTGRES_PASSWORD:?set POSTGR
 
 x-keystar: &keystar
   # Released images: pin KEYSTAR_VERSION in .env (e.g. 0.1.1), or "latest".
+  # "main" follows unreleased changes (may be unstable).
   image: ghcr.io/theragus/keystar:${KEYSTAR_VERSION:-latest}
   # `docker compose up --build` builds this checkout instead.
   build: .

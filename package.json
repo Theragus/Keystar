@@ -18,7 +18,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "demo:seed": "tsx src/scripts/demo-seed.ts"
+    "demo:seed": "tsx src/scripts/demo-seed.ts",
+    "release:prepare": "tsx src/scripts/release-prepare.ts"
   },
   "packageManager": "pnpm@10.28.0",
   "dependencies": {

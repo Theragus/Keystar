@@ -4,6 +4,8 @@ All notable changes to Keystar. Versions follow [Semantic Versioning](https://se
 1.0, releases with new features bump the minor version (0.1.5 → 0.2.0) and releases with only fixes bump the patch
 version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/releasing.md).
 
+## [Unreleased]
+
 ## [0.1.5] - 2026-10-03
 
 ### Changed

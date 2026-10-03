@@ -20,5 +20,5 @@ Self-hosted EVE Online corporation dashboard. Next.js 16 app + a separate Node w
 - UI text lives in the dictionaries (`src/i18n/messages/en` is the source, `de` must match key for key); read it with `getI18n()` (server) or `useI18n()` (client) and format numbers/dates with its `f`. No hard-coded UI strings. See "Languages" in `docs/architecture.md`.
 - Chart colours are validated for colour-vision safety (`src/modules/mining/class-colors.ts`); don't add hues ad hoc.
 - Checks before committing: `pnpm lint && pnpm typecheck && pnpm test` (set `TEST_DATABASE_URL` to a throwaway database to include integration tests).
-- Releases: bump `version` in package.json and add a CHANGELOG.md section in the PR; merging to main publishes the image and GitHub release (`docs/releasing.md`).
+- Releases: in a PR, add CHANGELOG.md entries under `## [Unreleased]` and leave `version` in package.json alone. Merging to main releases nothing; releases are cut by hand (`pnpm release:prepare` picks the bump, commit, then Actions → Release → Run workflow — `docs/releasing.md`).
 - Demo data: `KEYSTAR_DEMO_MODE=true pnpm demo:seed`, then sign in via the demo buttons on /login.

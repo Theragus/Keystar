@@ -124,7 +124,7 @@ Edit `.env` (`nano .env`) and set at least:
 | `EVE_CLIENT_ID` / `EVE_CLIENT_SECRET` | from step 5                                                        |
 | `ESI_CONTACT`                     | your email or EVE character name (sent to CCP in the User-Agent)       |
 | `ADMIN_CHARACTER_IDS`             | optional: your character ID(s). If empty, the **first** pilot to sign in becomes admin |
-| `KEYSTAR_VERSION`                 | release to run, e.g. `0.1.1`, or `latest` (default) — see [releases](https://github.com/theragus/keystar/releases) |
+| `KEYSTAR_VERSION`                 | release to run, e.g. `0.1.1`, or `latest` (default) — see [releases](https://github.com/theragus/keystar/releases). `main` follows unreleased, possibly unstable changes |
 | `ANTHROPIC_API_KEY`               | optional: a [Claude API key](https://console.anthropic.com) so Claude writes the killboard's weekly situation report (≈ one call a day, one to two US cents each with the default model). Without it the report is written from a template |
 | `KILLBOARD_REPORT_MODEL`          | optional: Claude model for the report, default `claude-sonnet-5-5` (`claude-haiku-4-5-20251001` is about half the cost) |
 
