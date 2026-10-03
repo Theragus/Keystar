@@ -1,3 +1,4 @@
+import { CHART_CLASSES } from "@/modules/mining/class-colors";
 import { Radio } from "lucide-react";
 import { TIER_COLOR } from "../colors";
 import type { PilotScore } from "../types";
@@ -24,6 +25,15 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
     const danger = (bScore && bScore.tier !== "unknown" ? bScore.composite : -1) - (aScore && aScore.tier !== "unknown" ? aScore.composite : -1);
     return danger || Number(cynoEvidence(b.profile).length > 0) - Number(cynoEvidence(a.profile).length > 0) || a.pilot.name.localeCompare(b.pilot.name);
   });
+  const allianceGroups = new Map<number | null, typeof sortedPilots>();
+  for (const row of sortedPilots) {
+    const key = row.pilot.allianceId ?? null;
+    allianceGroups.set(key, [...(allianceGroups.get(key) ?? []), row]);
+  }
+  const groupedPilots = [...allianceGroups].map(([id, pilots], index) => ({
+    id, pilots, number: index + 1, color: CHART_CLASSES[index % CHART_CLASSES.length].color,
+    name: id ? pilots[0].pilot.allianceName ?? t.intel.pilot.alliance(id) : e.noAlliance,
+  }));
   const now = new Date();
   const group = observedGroups(others.map(r => ({ characterId: r.pilot.characterId, profile: r.profile })), now)[0];
   const checks = view.pilots
@@ -72,21 +82,27 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
         </div>
         <div className="glass-inset rounded-lg p-3">
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{t.intel.scan.pilotsTitle}</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {sortedPilots.map(({ pilot, profile }) => {
+          <div className="space-y-2">
+            {groupedPilots.map(alliance => <div key={alliance.id ?? "none"} className="flex flex-wrap gap-1.5 border-l-2 pl-2" style={{ borderColor: alliance.color }} title={alliance.name}>
+            <span className="text-3xs font-semibold" style={{ color: alliance.color }}>{f.integer(alliance.number)}</span>
+            {alliance.pilots.map(({ pilot, profile }) => {
               const score = pilot.scoreDetail as PilotScore | null;
               const fits = cynoEvidence(profile);
               const fitDetails = fits.map(fit => `${e.cynoKinds[fit.kind]}: ${f.integer(fit.count)} · ${f.relativeTime(fit.lastAt)}`).join("; ");
               const cynoDetails = fits.length ? `${e.cyno}: ${fitDetails}. ${e.cynoTagCaution}` : `${profile?.depth === "deep" ? e.noCyno : e.unknownCyno}. ${e.cynoTagCaution}`;
               return (
-                <a key={pilot.characterId} href={zkillCharacter(pilot.characterId)} target="_blank" rel="noopener noreferrer" title={`${pilot.name} · ${t.intel.score.explanation} ${cynoDetails}`} className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-surface-contrast/5 px-2 py-1 text-xs hover:bg-surface-contrast/10 focus-visible:outline-2 focus-visible:outline-accent">
+                <a key={pilot.characterId} href={zkillCharacter(pilot.characterId)} target="_blank" rel="noopener noreferrer" title={`${pilot.name} · ${t.intel.score.explanation} ${cynoDetails}`} style={{ backgroundColor: `color-mix(in srgb, ${alliance.color} 14%, transparent)` }} className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-surface-contrast/5 px-2 py-1 text-xs hover:bg-surface-contrast/10 focus-visible:outline-2 focus-visible:outline-accent">
                   <span className="min-w-0 break-words text-ink-2">{pilot.name}</span>
                   <span className="shrink-0 font-bold tabular-nums" style={{ color: TIER_COLOR[score?.tier ?? "unknown"] }}>{score && score.tier !== "unknown" ? f.number(score.composite / 10, 1) : "?"}</span>
                   {fits.length > 0 && <span title={cynoDetails} aria-label={cynoDetails} className="shrink-0 text-warning"><Radio className="size-3.5" aria-hidden /></span>}
                 </a>
               );
             })}
+            </div>)}
           </div>
+          <ul className="mt-3 space-y-1 border-t border-surface-contrast/6 pt-2 text-3xs text-ink-2" aria-label={e.allianceLegend}>
+            {groupedPilots.map(alliance => <li key={alliance.id ?? "none"} className="flex items-center gap-1.5"><span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: alliance.color }} aria-hidden /><span>{f.integer(alliance.number)} · {alliance.name}</span></li>)}
+          </ul>
           <p className="mt-2 text-3xs text-ink-3">{e.cynoTagLegend}</p>
         </div>
         <div className="glass-inset rounded-lg p-3">
