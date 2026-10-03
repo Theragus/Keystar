@@ -39,6 +39,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   The job now prices only ores in the mining ledgers and items appraised or valued in the field estimator in the last
   14 days, rather than every item ever appraised. When a background job fails part-way, its remaining ESI requests
   stop instead of running on into the retry. ([#15](https://github.com/Theragus/Keystar/issues/15))
+- The ESI client no longer pauses a whole rate-limit group for 15 seconds after a response that names the group but
+  doesn't report its remaining tokens.
 
 ## [0.6.0] - 2026-10-03
 
