@@ -6,6 +6,18 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Fleet access is opt-in per character.** Members are no longer asked for `esi-fleets.read_fleet.v1` when they join
+  or link a character: only the fleet boss's character can read a fleet's members, so pilots who run fleets turn it on
+  for that character with "Enable fleet access" on the Live fleet page (and can revoke it there). Characters that already
+  granted the scope keep it.
+
+### Fixed
+
+- The optional-scope badges on My Characters all linked to the mining P&L settings; the mail badge now opens EVE Mail
+  and the fleet badge the Live fleet page.
+
 ## [0.7.0] - 2026-10-03
 
 ### Changed
@@ -16,15 +28,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   filtered view can be bookmarked or shared.
 - The unregistered-members count on Mining Overview and the token warnings on Users & Roles now open the member audit
   already filtered to the characters concerned.
-- **Fleet access is opt-in per character.** Members are no longer asked for `esi-fleets.read_fleet.v1` when they join
-  or link a character: only the fleet boss's character can read a fleet's members, so pilots who run fleets turn it on
-  for that character with "Enable fleet access" on the Live fleet page (and can revoke it there). Characters that already
-  granted the scope keep it.
 
 ### Fixed
 
-- The optional-scope badges on My Characters all linked to the mining P&L settings; the mail badge now opens EVE Mail
-  and the fleet badge the Live fleet page.
 - Sign-in could redirect to another site when `returnTo` contained a tab, line feed or carriage return (for example
   `/%09/evil.example`). The return path is now resolved like the browser would and rejected unless it stays on Keystar.
   ([#14](https://github.com/Theragus/Keystar/issues/14))
