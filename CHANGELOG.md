@@ -6,26 +6,19 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
-### Upgrading
+**When updating:** Threat intel reads blues and reds from the corporation's and alliance's contacts, which needs two
+corporation scopes.
 
-- Threat intel reads blues and reds from the corporation's and alliance's contacts. Add the scopes
-  `esi-corporations.read_contacts.v1` and `esi-alliances.read_contacts.v1` to your EVE application
-  (developers.eveonline.com), then re-link a character with corporation access on My Characters. Without them,
-  only your own corporation and alliance count as friendly.
-- Optional: `INTEL_MODEL` picks the Claude model for intel briefings, dossiers and d-scan reads (default
-  `claude-sonnet-5-5`). Claude is only used when `ANTHROPIC_API_KEY` is set.
-- The update adds database tables; the app creates them on start, like every migration.
+1. Add `esi-corporations.read_contacts.v1` and `esi-alliances.read_contacts.v1` to the scopes of your EVE
+   application at <https://developers.eveonline.com/applications>.
+2. Update as usual; the database migrations run on start.
+3. One member of the corporation re-authorises a character under My Characters. Without the scopes, only your own
+   corporation and alliance count as friendly.
+4. Optional: `INTEL_MODEL` picks the Claude model for intel briefings, dossiers and d-scan reads (default
+   `claude-sonnet-5-5`); Claude is only used when `ANTHROPIC_API_KEY` is set.
 
 ### Added
 
-- **Live fleet** (Combat → Live fleet): a fleet boss clicks "Track fleet" on one of their characters and the worker
-  reads the fleet from ESI every 15 seconds. The page shows members by wing and squad with ship, system and role,
-  the composition by ship class and hull, who joined and left, and a list of past fleets with their participants.
-  Only the tracked character is polled, because ESI shows members and wings only to the fleet boss. Tracking
-  stops on its own when the character leaves the fleet. Texts are in English and German, and the demo data
-  includes a live and two past fleets.
-- New character scope `esi-fleets.read_fleet.v1`: enable it on the EVE application, then members re-authorise
-  under My Characters to share fleets.
 - **Threat intel** (Combat → Threat Intel): paste local, a fleet composition, chat lines or names, optionally with a
   d-scan, and get:
   - corporations, standings and **history with us** at once: kills on us, losses to us, the hulls they flew against
@@ -50,6 +43,27 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - The ESI client no longer pauses for a second after responses without error-limit headers.
 - A sync job triggered while it is running now runs again right after instead of waiting for its next interval.
 - Looking up ship or module types no longer fetches every type of their group (only ores, ice and gas need that).
+
+## [0.2.0] - 2026-10-03
+
+**When updating:** Live fleet needs the new character scope `esi-fleets.read_fleet.v1`.
+
+1. Add `esi-fleets.read_fleet.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>.
+2. Update as usual (`KEYSTAR_VERSION=0.2.0`, `docker compose pull`, `docker compose up -d`); the database
+   migrations run on start.
+3. Members who run fleets re-authorise their characters under My Characters, which shows the missing scope.
+
+### Added
+
+- **Live fleet** (Combat → Live fleet): a fleet boss clicks "Track fleet" on one of their characters and the worker
+  reads the fleet from ESI every 15 seconds. The page shows members by wing and squad with ship, system and role,
+  the composition by ship class and hull, who joined and left, and a list of past fleets with their participants.
+  Only the tracked character is polled, because ESI shows members and wings only to the fleet boss. Tracking
+  stops on its own when the character leaves the fleet. Texts are in English and German, and the demo data
+  includes a live and two past fleets.
+- New character scope `esi-fleets.read_fleet.v1`: enable it on the EVE application, then members re-authorise
+  under My Characters to share fleets.
 
 ## [0.1.5] - 2026-10-03
 

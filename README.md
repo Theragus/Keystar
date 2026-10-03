@@ -70,7 +70,7 @@ situation report, and an **appraisal** tool for Jita prices.
   error-limit and per-group rate-limit back-off.
 - **English and German**: the language follows the browser (English for everything else) and can be switched in the
   sidebar footer; numbers and dates use the language's conventions (e.g. "9,87 Mio. ISK").
-- **Design**: dark, EVE-flavoured "liquid glass" UI with Supabase-style docked navigation, made for large screens.
+- **Design**: dark, EVE-flavoured UI.
 
 See [ROADMAP.md](ROADMAP.md) for what's next (skills, assets, wallets, mining P&L).
 
