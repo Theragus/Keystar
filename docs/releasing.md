@@ -6,7 +6,7 @@ Keystar's version lives in `package.json`. Every version that reaches `main` is 
 
 1. In the pull request, bump `"version"` in `package.json` and add a section for it at the top of
    [CHANGELOG.md](../CHANGELOG.md). While Keystar is below 1.0:
-   - a release with new features bumps the minor number and resets the patch (0.1.3 → 0.2.0),
+   - a release with new features bumps the minor number and resets the patch (0.1.5 → 0.2.0),
    - a release with only fixes bumps the patch number (0.2.0 → 0.2.1),
    - a change that needs action on the server when updating (a new or renamed `.env` variable, an edit to the
      compose file, characters to re-link for new ESI scopes) also bumps the minor number; spell out the steps at the
