@@ -80,7 +80,8 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
         />
 
         <PendingFrame>
-          <LedgerDaysProvider dates={days.map((d) => d.date)}>
+          {/* Keyed by the query: every page and filter change starts with all days expanded. */}
+          <LedgerDaysProvider key={miningQueryString(filters)} dates={days.map((d) => d.date)}>
             <Glass className="overflow-hidden">
               <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-2 text-xs text-ink-3">
                 <span>

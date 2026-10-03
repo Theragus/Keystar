@@ -10,8 +10,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - **Mining ledger grouped by day.** Ledger entries sit under a header for each day showing its date, weekday,
   entry and character counts, and the day's units, volume and value. The totals cover the whole day even when its
-  entries run onto the next page; the header then says how many of them the current page shows. Click a day to
-  collapse or expand it, or use "Collapse all" for a day-by-day summary that stays collapsed as you page through.
+  entries run onto the next page; the header then says how many of them the current page shows. Days start
+  expanded; click one to collapse it, or use "Collapse all" for a day-by-day summary of the page.
 
 ### Changed
 

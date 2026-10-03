@@ -7,16 +7,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * Collapsible day groups for the mining ledger. Rows are rendered on the
- * server and passed in; only the open/closed state lives here.
- *
- * State is "all collapsed or not" plus the days toggled against that, so
- * "Collapse all" also holds for days on the next page.
+ * server and passed in; only the open/closed state lives here. Days start
+ * expanded; the page re-keys the provider so each page and filter change does too.
  */
-interface DaysState {
-  allCollapsed: boolean;
-  toggled: ReadonlySet<string>;
-}
-
 interface DaysContextValue {
   isCollapsed(date: string): boolean;
   toggle(date: string): void;
@@ -34,17 +27,17 @@ function useDays(): DaysContextValue {
 }
 
 export function LedgerDaysProvider({ dates, children }: { dates: string[]; children: ReactNode }) {
-  const [state, setState] = useState<DaysState>({ allCollapsed: false, toggled: new Set() });
-  const isCollapsed = (date: string) => state.allCollapsed !== state.toggled.has(date);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const isCollapsed = (date: string) => collapsed.has(date);
   const value: DaysContextValue = {
     isCollapsed,
     toggle: (date) =>
-      setState((s) => {
-        const toggled = new Set(s.toggled);
-        if (!toggled.delete(date)) toggled.add(date);
-        return { ...s, toggled };
+      setCollapsed((c) => {
+        const next = new Set(c);
+        if (!next.delete(date)) next.add(date);
+        return next;
       }),
-    setAll: (collapsed) => setState({ allCollapsed: collapsed, toggled: new Set() }),
+    setAll: (all) => setCollapsed(new Set(all ? dates : [])),
     everyCollapsed: dates.length > 0 && dates.every(isCollapsed),
   };
   return <DaysContext value={value}>{children}</DaysContext>;
