@@ -58,7 +58,7 @@ export async function GroupSummaryPanel({ summary, names, pilotNames }: { summar
                     <Portrait id={id} size={22} />
                   </span>
                 ))}
-                <span className="ml-1 text-xs text-ink-3">{g.clusterPilots(c.length)}</span>
+                <span className="ml-1 text-xs text-ink-3">{c.map(id => pilotNames.get(id) ?? id).join(" · ")}</span>
               </li>
             ))}
           </ul>

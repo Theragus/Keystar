@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { ButtonLink } from "@/components/ui/button";
 import { CopyField } from "@/components/ui/copy-button";
 import { Panel } from "@/components/ui/glass";
-import { StatTile } from "@/components/ui/stat-tile";
+import { SituationPanel, ObservedGroupsPanel } from "@/modules/intel/components/situation";
 import { requirePermission } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { getI18n } from "@/i18n/server";
@@ -22,7 +22,7 @@ import { ScanProgressPoller } from "@/modules/intel/components/scan-progress";
 import { DeleteScanButton, ProfileRemainingButton, RescanButton } from "@/modules/intel/components/scan-buttons";
 import { INTEL_PERMISSIONS } from "@/modules/intel/module";
 import { getScan, scanProgress } from "@/modules/intel/scans";
-import { isFriendly, isHostile } from "@/modules/intel/standings";
+import { isFriendly } from "@/modules/intel/standings";
 import { loadScanView } from "@/modules/intel/view";
 import { deleteScan, profileScanPilots, readDscan, rescan, rewriteBriefing, setDscan } from "../actions";
 
@@ -49,8 +49,6 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
   const { home, pilots, rows, engagements, names, summary, totals, pilotNames, system } = view;
   const friendly = rows.filter((r) => isFriendly(r.standing));
   const others = rows.filter((r) => !isFriendly(r.standing));
-  const hostiles = rows.filter((r) => isHostile(r.standing)).length;
-  const highThreat = summary.tiers.high + summary.tiers.extreme;
   const unprofiled = pilots.filter((p) => !p.profiled).length;
   const dscanRows = scan.dscan
     ? matchDscan(
@@ -70,7 +68,9 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
       pilotNames={pilotNames}
       form={
         <details open={!dscanRows}>
-          <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">{dscanRows ? text.replaceDscan : text.pasteDscan}</summary>
+          <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">
+            {dscanRows ? text.replaceDscan : text.pasteDscan}
+          </summary>
           <div className="mt-2">
             <DscanForm scanId={scan.id} action={setDscan} replace={!!scan.dscan} />
           </div>
@@ -97,28 +97,26 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatTile label={text.pilots} value={f.integer(scan.pilotCount)} hint={scan.unresolved.length ? text.unknownNames(scan.unresolved.length) : undefined} />
-        <StatTile label={text.highThreat} value={f.integer(highThreat)} hint={text.hostileStandings(hostiles)} />
-        <StatTile label={text.friendly} value={f.integer(friendly.length)} hint={text.friendlyHint} />
-        <StatTile
-          label={text.foughtUs}
-          value={f.integer(totals.pilots)}
-          hint={totals.engagements ? text.engagements(totals.engagements) : text.noFights}
-        />
-      </div>
+      <SituationPanel view={view} scannedAt={scan.createdAt} dscanAt={scan.dscanAt} />
+      {dscanPanel}
+      <ObservedGroupsPanel view={view} now={new Date()} />
 
       <ScanProgressPoller scanId={scan.id} initial={progress} />
 
       {summary.hostiles > 0 && (
-        <BriefingPanel
-          note={briefing}
-          pending={scan.briefingStatus === "pending"}
-          scanId={scan.id}
-          pilotNames={pilotNames}
-          claudeHint={claudeHint}
-          actions={canAi && scan.status === "ready" ? <RewriteBriefingButton scanId={scan.id} action={rewriteBriefing} /> : undefined}
-        />
+        <details>
+          <summary className="cursor-pointer text-xs text-ink-3">{t.intel.evidence.writtenBriefing}</summary>
+          <div className="mt-3">
+            <BriefingPanel
+              note={briefing}
+              pending={scan.briefingStatus === "pending"}
+              scanId={scan.id}
+              pilotNames={pilotNames}
+              claudeHint={claudeHint}
+              actions={canAi && scan.status === "ready" ? <RewriteBriefingButton scanId={scan.id} action={rewriteBriefing} /> : undefined}
+            />
+          </div>
+        </details>
       )}
 
       {summary.hostiles > 0 && (
@@ -134,8 +132,6 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
         </p>
       )}
 
-      {dscanRows && dscanPanel}
-
       <Panel
         title={text.pilotsTitle}
         subtitle={others.length ? undefined : text.allFriendly}
@@ -143,24 +139,34 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
       >
         <div className="space-y-1.5">
           {others.map((r) => (
-            <PilotRow key={r.pilot.characterId} pilot={r.pilot} standing={r.standing} names={names} pilotNames={pilotNames} scanId={scan.id} />
+            <PilotRow
+              key={r.pilot.characterId}
+              pilot={r.pilot}
+              standing={r.standing}
+              names={names}
+              pilotNames={pilotNames}
+              scanId={scan.id}
+            />
           ))}
         </div>
         {friendly.length > 0 && (
           <details className="mt-4">
-            <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">
-              {text.friendlyPilots(friendly.length)}
-            </summary>
+            <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">{text.friendlyPilots(friendly.length)}</summary>
             <div className="mt-2 space-y-1.5">
               {friendly.map((r) => (
-                <PilotRow key={r.pilot.characterId} pilot={r.pilot} standing={r.standing} names={names} pilotNames={pilotNames} scanId={scan.id} />
+                <PilotRow
+                  key={r.pilot.characterId}
+                  pilot={r.pilot}
+                  standing={r.standing}
+                  names={names}
+                  pilotNames={pilotNames}
+                  scanId={scan.id}
+                />
               ))}
             </div>
           </details>
         )}
       </Panel>
-
-      {!dscanRows && summary.hostiles > 0 && dscanPanel}
 
       {home && engagements.length > 0 && (
         <Panel
@@ -177,7 +183,9 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
           <EngagementList engagements={engagements.slice(0, 5)} names={names} pilotNames={pilotNames} />
           {engagements.length > 5 && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">{text.olderEngagements(engagements.length - 5)}</summary>
+              <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">
+                {text.olderEngagements(engagements.length - 5)}
+              </summary>
               <div className="mt-2">
                 <EngagementList engagements={engagements.slice(5)} names={names} pilotNames={pilotNames} />
               </div>
