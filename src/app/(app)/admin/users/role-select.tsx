@@ -50,7 +50,7 @@ export function RoleSelect({
     startTransition(async () => {
       let result: Awaited<ReturnType<typeof updateUserRole>> | null = null;
       try {
-        result = await updateUserRole(userId, to);
+        result = await updateUserRole(userId, to, from);
       } catch {
         // Signed out or lost the permission mid-session; the message covers both.
       }

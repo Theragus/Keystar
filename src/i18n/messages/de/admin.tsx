@@ -45,6 +45,7 @@ export const admin: typeof en = {
         notFound: "Dieses Konto existiert nicht mehr.",
         higherRole: "Nur eine höhere Rolle kann dieses Konto ändern.",
         unassignable: "Diese Rolle kannst du nicht vergeben.",
+        changed: "Jemand hat diese Rolle inzwischen geändert. Die Tabelle zeigt jetzt die aktuelle Rolle.",
         unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
       },
     },

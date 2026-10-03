@@ -51,6 +51,7 @@ export const admin = {
         notFound: "This account no longer exists.",
         higherRole: "Only a higher role can change this account.",
         unassignable: "You can't assign that role.",
+        changed: "Someone changed this role in the meantime. The table now shows the current role.",
         unknown: "Something went wrong. Reload the page and try again.",
       },
     },

@@ -10,23 +10,33 @@ import { isRole, type Role } from "@/core/rbac/roles";
 import { getSettings, setSetting, type Settings } from "@/core/settings";
 import { triggerJobs } from "@/core/sync/scheduler";
 
-export type RoleChangeResult = { ok: true; from: Role } | { ok: false; error: UserAccessErrorCode };
+export type RoleChangeResult = { ok: true; from: Role } | { ok: false; error: UserAccessErrorCode | "changed" };
 
 /**
  * Returns a result instead of throwing so the role picker can show a translated
  * message and put the previous role back. The lockout guards live in `changeUserAccess`.
+ * `expected` is the role the page showed: if someone changed it since (or an old
+ * Undo comes in late), nothing is overwritten. Every refusal refreshes the page,
+ * since it usually means the page is out of date.
  */
-export async function updateUserRole(userId: string, role: Role): Promise<RoleChangeResult> {
+export async function updateUserRole(userId: string, role: Role, expected: Role): Promise<RoleChangeResult> {
   const actor = await assertPermission("users.manage").catch(() => null);
-  if (!actor) return { ok: false, error: "forbidden" };
-  if (!isRole(role)) throw new Error("Unknown role");
+  if (!actor) {
+    refresh();
+    return { ok: false, error: "forbidden" };
+  }
+  if (!isRole(role) || !isRole(expected)) throw new Error("Unknown role");
   if (actor.id === userId) return { ok: false, error: "self" };
   let from: Role;
   try {
-    ({ from } = await changeUserAccess(actor.id, userId, { role }));
+    const result = await changeUserAccess(actor.id, userId, { role }, { onlyFromRole: expected });
+    if (!result.changed) {
+      refresh();
+      return { ok: false, error: "changed" };
+    }
+    from = result.from;
   } catch (err) {
     if (!(err instanceof UserAccessError)) throw err;
-    // A refusal usually means the page is out of date (another admin got there first).
     refresh();
     return { ok: false, error: err.code };
   }
@@ -107,7 +117,10 @@ export type SettingsSaveResult =
 /** Returns a result instead of throwing so the settings page can confirm or explain in a toast. */
 export async function saveSettings(formData: FormData): Promise<SettingsSaveResult> {
   const actor = await assertPermission("app.settings.manage").catch(() => null);
-  if (!actor) return { ok: false, error: "forbidden" };
+  if (!actor) {
+    refresh();
+    return { ok: false, error: "forbidden" };
+  }
   const before = await getSettings();
 
   const corpRaw = String(formData.get("homeCorporationId") ?? "").trim();
