@@ -126,7 +126,7 @@ Edit `.env` (`nano .env`) and set at least:
 | `EVE_CLIENT_ID` / `EVE_CLIENT_SECRET` | from step 5                                                        |
 | `ESI_CONTACT`                     | your email or EVE character name (sent to CCP in the User-Agent)       |
 | `ADMIN_CHARACTER_IDS`             | optional: your character ID(s). If empty, the **first** pilot to sign in becomes admin |
-| `KEYSTAR_VERSION`                 | release to run, e.g. `0.2.0`, or `latest` (default) — see [releases](https://github.com/theragus/keystar/releases) |
+| `KEYSTAR_VERSION`                 | release to run, e.g. `0.1.1`, or `latest` (default) — see [releases](https://github.com/theragus/keystar/releases). `main` follows unreleased, possibly unstable changes |
 | `ANTHROPIC_API_KEY`               | optional: a [Claude API key](https://console.anthropic.com) so Claude writes the killboard's weekly situation report (≈ one call a day, one to two US cents each with the default model) and threat intel briefings. Without it both are written from templates |
 | `KILLBOARD_REPORT_MODEL`          | optional: Claude model for the report, default `claude-sonnet-5-5` (`claude-haiku-4-5-20251001` is about half the cost) |
 | `INTEL_MODEL`                     | optional: Claude model for threat intel briefings, dossiers and d-scan reads, default `claude-sonnet-5-5`. Uses the same `ANTHROPIC_API_KEY`; a briefing of a 30-pilot local costs a few US cents. Calls are capped at 20 per user and 120 per instance per hour, and only roles with **Use Claude for intel** can trigger them |
@@ -169,7 +169,7 @@ once a full week has been imported, shortly after 02:00 EVE time. The server nee
 
 Releases are listed on the [releases page](https://github.com/theragus/keystar/releases) with their changes
 (also in `CHANGELOG.md`). With `KEYSTAR_VERSION=latest` every pull takes the newest release; pin a version such as
-`0.2.0` to update deliberately.
+`0.1.1` to update deliberately.
 
 ```bash
 cd /opt/keystar
