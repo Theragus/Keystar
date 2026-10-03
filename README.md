@@ -22,9 +22,15 @@ local, fleets and d-scans, and an **appraisal** tool for Jita prices.
 
 ![Killboard](docs/screenshots/killboard.png)
 
+![Threat intel](docs/screenshots/intel.png)
+
 <table>
   <tr>
     <td><img src="docs/screenshots/overview.png" alt="Dashboard" /></td>
+    <td><img src="docs/screenshots/pnl.png" alt="Mining P&amp;L" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fleet.png" alt="Live fleet" /></td>
     <td><img src="docs/screenshots/appraisal.png" alt="Appraisal" /></td>
   </tr>
   <tr>
