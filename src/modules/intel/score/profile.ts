@@ -199,7 +199,7 @@ export function buildProfile(input: ProfileInput): PilotProfile {
   // --- Character ------------------------------------------------------------
   const birthday = input.birthday ?? (stats?.info.birthday ? new Date(stats.info.birthday) : null);
   const hops = (input.corpHistory ?? []).filter((c) => age(new Date(c.startDate)) <= 365 * DAY_MS).length;
-  const latest: LatestEvent[] = rows.slice(0, 10).map((r) => ({
+  const latest: LatestEvent[] = [...kills.slice(0, 5), ...losses.slice(0, 5)].sort((a, b) => b.killmailTime.getTime() - a.killmailTime.getTime()).map((r) => ({
     killmailId: r.killmailId,
     time: r.killmailTime.toISOString(),
     isLoss: r.isLoss,

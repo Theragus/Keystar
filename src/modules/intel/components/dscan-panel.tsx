@@ -30,6 +30,7 @@ export async function DscanPanel({
   const ships = rows?.reduce((n, r) => n + r.count, 0) ?? 0;
   return (
     <Panel title={d.title} subtitle={rows ? d.subtitle(ships) : d.empty} actions={actions}>
+      <p className="mb-3 text-xs text-ink-3">{t.intel.evidence.dscanCaution}</p>
       {rows && rows.length > 0 && (
         <ul className="mb-4 divide-y divide-white/6">
           {rows.map((r) => (

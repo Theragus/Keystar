@@ -7,7 +7,8 @@ import { zkillCharacter } from "@/modules/killboard/links";
 import type { DisplayNames } from "../names";
 import type { ScanPilot } from "../scans";
 import type { PilotHistory, PilotProfile, PilotScore, Standing } from "../types";
-import { LastSeen, LatestKills } from "./latest-kills";
+import { PilotEvidence } from "./pilot-evidence";
+import { LatestKills } from "./latest-kills";
 import { DimensionBreakdown, ScoreBadge, TagList } from "./score";
 import { StandingBadge } from "./standing-badge";
 
@@ -60,7 +61,7 @@ export async function PilotRow({
   const flyingWith = (profile?.associates ?? []).filter((a) => pilotNames.has(a.characterId) && a.characterId !== pilot.characterId);
   return (
     <details className="group glass-inset rounded-lg">
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-start gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
         <ChevronRight className="size-4 shrink-0 text-ink-3 transition-transform group-open:rotate-90" aria-hidden />
         <Portrait id={pilot.characterId} size={36} />
         <div className="min-w-0 flex-1">
@@ -68,38 +69,46 @@ export async function PilotRow({
             <span className="truncate text-sm font-medium text-ink">{pilot.name}</span>
             <StandingBadge standing={standing} />
             <HistoryChip history={history} />
-            {score && <TagList tags={score.tags} />}
           </div>
           <div className="mt-0.5 truncate text-xs text-ink-3">
             {ticker && <span className="text-ink-2">{ticker} </span>}
             {pilot.corporationName ?? (pilot.corporationId ? p.corporation(pilot.corporationId) : p.unknownCorporation)}
             {pilot.allianceId && <> · {pilot.allianceName ?? p.alliance(pilot.allianceId)}</>}
           </div>
-          {profile && (
-            <div className="mt-1">
-              <LastSeen profile={profile} names={names} />
-            </div>
-          )}
-          {profile && profile.recent.latest.length > 0 && (
-            <div className="mt-1.5 hidden md:block">
-              <LatestKills events={profile.recent.latest} names={names} limit={4} />
-            </div>
-          )}
+          <PilotEvidence profile={profile} names={names} associates={flyingWith.length} />
         </div>
         <ProfileStatus pilot={pilot} />
         <ScoreBadge score={score} />
       </summary>
       <div className="space-y-4 border-t border-white/6 px-4 py-3">
+        <p className="text-xs text-ink-3">
+          {t.intel.evidence.sampleHint} {profile ? t.intel.evidence.profileBuilt(f.relativeTime(profile.builtAt)) : ""}{" "}
+          {pilot.statsAt ? t.intel.evidence.statsChecked(f.relativeTime(pilot.statsAt)) : t.intel.evidence.statsUnknown}
+        </p>
         {profile && profile.recent.latest.length > 0 && (
           <div>
             <h4 className="eve-label mb-1.5 text-2xs text-ink-3">{p.latestTitle}</h4>
-            <LatestKills events={profile.recent.latest} names={names} limit={10} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <h5 className="mb-2 text-xs text-ink-2">{t.intel.evidence.recentKills}</h5>
+                <LatestKills events={profile.recent.latest.filter((e) => !e.isLoss)} names={names} limit={5} />
+              </div>
+              <div>
+                <h5 className="mb-2 text-xs text-ink-2">{t.intel.evidence.recentLosses}</h5>
+                <LatestKills events={profile.recent.latest.filter((e) => e.isLoss)} names={names} limit={5} />
+              </div>
+            </div>
           </div>
         )}
         {score && score.dimensions.length > 0 && (
           <div>
-            <h4 className="eve-label mb-1.5 text-2xs text-ink-3">{p.whyTitle}</h4>
-            <DimensionBreakdown dimensions={score.dimensions} recencyGate={score.recencyGate} />
+            <details>
+              <summary className="cursor-pointer text-xs text-ink-2">{p.whyTitle}</summary>
+              <div className="mt-3 space-y-3">
+                <TagList tags={score.tags} />
+                <DimensionBreakdown dimensions={score.dimensions} recencyGate={score.recencyGate} />
+              </div>
+            </details>
           </div>
         )}
         {flyingWith.length > 0 && (
