@@ -38,7 +38,8 @@ import { WeekDelta } from "@/components/ui/deltas";
 import { KillsChart } from "@/modules/killboard/components/kills-chart";
 import { RecentActivity } from "@/modules/killboard/components/recent-activity";
 import { MvpCard, RunnersUp } from "@/modules/killboard/components/top-pilots";
-import { killboardWindows } from "@/modules/killboard/filters";
+import { killboardQueryString, killboardWindows } from "@/modules/killboard/filters";
+import { zkillCorporation } from "@/modules/killboard/links";
 import { KILLBOARD_PERMISSIONS } from "@/modules/killboard/module";
 import { efficiency, getDailyActivity, getPilots, getRecentActivity, getTotals } from "@/modules/killboard/queries";
 import { toChartClasses } from "@/modules/mining/class-colors";
@@ -66,6 +67,7 @@ export default async function OverviewPage() {
   const settings = await getSettings();
   const today = isoDate(new Date());
   const canMining = user.canAny(MINING_PERMISSIONS.viewOwn, MINING_PERMISSIONS.viewCorp);
+  const canSync = user.can("sync.view");
   const range = DATE_PRESETS.find((p) => p.id === "30d")!.range(today);
   const filters = parseMiningFilters(range, today);
   const valuation = { source: settings["mining.valuationSource"], mode: settings["mining.valuationMode"] };
@@ -91,7 +93,7 @@ export default async function OverviewPage() {
     user.characterIds.length
       ? getDb().select().from(esiTokens).where(inArray(esiTokens.characterId, user.characterIds))
       : Promise.resolve([]),
-    user.can("sync.view")
+    canSync
       ? getDb().execute<{ total: number; failing: number }>(
           sql`SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE last_status = 'error')::int AS failing
               FROM sync_jobs WHERE enabled`,
@@ -120,68 +122,54 @@ export default async function OverviewPage() {
     return token?.status === "active" && required.every((s) => token.scopes.includes(s));
   }).length;
 
+  // Tiles open the killboard on the same 30 days rather than its 90-day default.
+  const killboardHref = `/killboard?${killboardQueryString(range)}`;
+
   return (
     <div className="space-y-6">
-      <div className="grid items-stretch gap-8 xl:grid-cols-12">
-        <div className="flex flex-col justify-center xl:col-span-6">
-          <PageHeader
-            eyebrow={d.header.eyebrow}
-            title={d.header.welcome(user.main?.name ?? d.header.fallbackName)}
-            description={d.header.description}
-          />
-          <div className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2">
-            <InfoItem icon={Building2} label={d.info.homeCorp}>
-              {homeCorp ? homeCorp.name : d.info.notConfigured}
-            </InfoItem>
-            <InfoItem icon={Users} label={d.info.registered}>
-              {members ? d.info.registeredOfMembers(stats.registered, members) : d.info.registeredOnly(stats.registered)}
-            </InfoItem>
-            <InfoItem icon={KeyRound} label={d.info.esiAccess}>
-              {d.info.esiComplete(healthy, user.characters.length)}
-            </InfoItem>
-            <InfoItem icon={Server} label={d.info.syncWorker}>
-              <span className="inline-flex items-center gap-2">
-                <span className={workerOnline ? "size-2 rounded-full bg-good" : "size-2 rounded-full bg-critical"} aria-hidden />
-                {workerOnline ? d.info.workerOnline : d.info.workerOffline}
-              </span>
-            </InfoItem>
-          </div>
-        </div>
-        <Glass className="dot-grid relative grid min-h-[300px] place-items-center overflow-hidden xl:col-span-6">
+      <div>
+        <PageHeader
+          eyebrow={d.header.eyebrow}
+          title={d.header.welcome(user.main?.name ?? d.header.fallbackName)}
+          description={d.header.description}
+        />
+        {/* Content-sized columns so longer (German) values fit before they truncate. */}
+        <div className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2 2xl:grid-cols-[repeat(4,minmax(0,auto))] 2xl:justify-between">
           {homeCorp ? (
-            <div className="glass-chip w-[min(400px,90%)] rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <CorpLogo id={homeCorp.corporationId} size={44} className="rounded-lg ring-1 ring-white/10" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold">{homeCorp.name}</div>
-                  <div className="text-xs text-ink-3">
-                    {combat ? d.corpCard.activePilots(activePilots) : d.corpCard.homeCorp}
-                    {members ? <span className="text-ink-3/70"> · {d.corpCard.members(members)}</span> : null}
-                  </div>
-                </div>
-                <span className="rounded border border-white/10 px-1.5 py-px font-mono text-3xs text-ink-2">
-                  {homeCorp.ticker}
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/[0.08] pt-3 text-xs">
-                <div>
-                  <div className="eve-label text-2xs text-ink-3">{d.corpCard.kills}</div>
-                  <div className="mt-0.5 font-medium tabular-nums">{killsNow ? f.integer(killsNow.kills) : "—"}</div>
-                </div>
-                <div>
-                  <div className="eve-label text-2xs text-ink-3">{d.corpCard.losses}</div>
-                  <div className="mt-0.5 font-medium tabular-nums">{killsNow ? f.integer(killsNow.losses) : "—"}</div>
-                </div>
-                <div>
-                  <div className="eve-label text-2xs text-ink-3">{d.corpCard.efficiency}</div>
-                  <div className="mt-0.5 font-medium tabular-nums">{eff === null ? "—" : f.percent(eff, 1)}</div>
-                </div>
-              </div>
-            </div>
+            <InfoItem
+              media={<CorpLogo id={homeCorp.corporationId} size={44} className="rounded-lg ring-1 ring-white/10" />}
+              label={d.info.homeCorp}
+              href={zkillCorporation(homeCorp.corporationId)}
+              newTabLabel={t.common.opensInNewTab}
+            >
+              {homeCorp.name} <span className="text-ink-3">[{homeCorp.ticker}]</span>
+            </InfoItem>
           ) : (
-            <p className="text-sm text-ink-3">{d.corpCard.noHomeCorp}</p>
+            <InfoItem
+              icon={Building2}
+              label={d.info.homeCorp}
+              href={user.can("app.settings.manage") ? "/admin/settings" : undefined}
+            >
+              {d.info.notConfigured}
+            </InfoItem>
           )}
-        </Glass>
+          <InfoItem
+            icon={Users}
+            label={d.info.registered}
+            href={user.can("members.audit") ? "/admin/members" : undefined}
+          >
+            {members ? d.info.registeredOfMembers(stats.registered, members) : d.info.registeredOnly(stats.registered)}
+          </InfoItem>
+          <InfoItem icon={KeyRound} label={d.info.esiAccess} href="/characters">
+            {d.info.esiComplete(healthy, user.characters.length)}
+          </InfoItem>
+          <InfoItem icon={Server} label={d.info.syncWorker} href={canSync ? "/admin/sync" : undefined}>
+            <span className="inline-flex items-center gap-2">
+              <span className={workerOnline ? "size-2 rounded-full bg-good" : "size-2 rounded-full bg-critical"} aria-hidden />
+              {workerOnline ? d.info.workerOnline : d.info.workerOffline}
+            </span>
+          </InfoItem>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -199,7 +187,8 @@ export default async function OverviewPage() {
                   emptyText={d.prior.empty}
                 />
               }
-              hint={d.tiles.losses(killsNow.losses)}
+              hint={`${d.tiles.losses(killsNow.losses)} · ${d.tiles.activePilots(activePilots)}`}
+              href={killboardHref}
             />
             <StatTile
               icon={Coins}
@@ -207,6 +196,7 @@ export default async function OverviewPage() {
               value={f.compact(killsNow.iskDestroyed)}
               unit="ISK"
               delta={<Delta value={delta(killsNow.iskDestroyed, killsBefore.iskDestroyed)} period={d.prior.period} />}
+              href={`${killboardHref}#isk`}
             />
             <StatTile
               icon={Target}
@@ -221,6 +211,7 @@ export default async function OverviewPage() {
                 />
               }
               hint={d.tiles.iskLost(f.compact(killsNow.iskLost))}
+              href={`${killboardHref}#pilot-efficiency`}
             />
           </>
         )}
@@ -231,6 +222,7 @@ export default async function OverviewPage() {
             value={f.compact(corp.current.value)}
             unit="ISK"
             delta={<Delta value={delta(corp.current.value, corp.previous.value)} period={d.prior.period} />}
+            href="/mining"
           />
         ) : own ? (
           <StatTile
@@ -239,6 +231,7 @@ export default async function OverviewPage() {
             value={f.compact(own.current.value)}
             unit="ISK"
             delta={<Delta value={delta(own.current.value, own.previous.value)} period={d.prior.period} />}
+            href="/mining"
           />
         ) : null}
         {!combat && (
@@ -253,6 +246,7 @@ export default async function OverviewPage() {
                 <StatusBadge status="warning" label={d.tiles.needAttention(user.characters.length - healthy)} />
               )
             }
+            href="/characters"
           />
         )}
         {!combat && syncStats && (
@@ -267,10 +261,15 @@ export default async function OverviewPage() {
                 <StatusBadge status="ok" label={d.tiles.healthy} />
               )
             }
+            href="/admin/sync"
           />
         )}
         {!combat && !syncStats && pendingUsers && (
-          <StatTile label={d.tiles.awaitingApproval} value={f.integer(pendingUsers[0]?.n ?? 0)} />
+          <StatTile
+            label={d.tiles.awaitingApproval}
+            value={f.integer(pendingUsers[0]?.n ?? 0)}
+            href={user.can("users.view") ? "/admin/users?role=guest" : undefined}
+          />
         )}
       </div>
 

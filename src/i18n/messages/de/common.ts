@@ -7,6 +7,7 @@ export const common: typeof en = {
   appTagline: "Selbst gehostetes Dashboard für EVE-Online-Corporations",
   unknown: "unbekannt",
   never: "nie",
+  opensInNewTab: "(öffnet in neuem Tab)",
   status: {
     ok: "OK",
     error: "Fehler",

@@ -207,6 +207,32 @@ select option:disabled {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
+/* A glass surface that is a link: brighter on hover, accent rim when it is the
+   current selection. :hover / [aria-current] outrank .glass, so order is irrelevant. */
+@utility glass-link {
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+
+  &:hover {
+    background-color: rgba(32, 36, 43, 0.8);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 0 0 1px rgba(92, 200, 255, 0.22),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 12px 32px -18px rgba(0, 0, 0, 0.7);
+  }
+
+  &[aria-current="true"] {
+    background-color: rgba(24, 40, 52, 0.85);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 0 0 1px rgba(92, 200, 255, 0.7),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 12px 32px -18px rgba(0, 0, 0, 0.7);
+  }
+}
+
 /* Monospace micro-label (STATUS, COMPUTE …) used for section and field labels. */
 @utility eve-label {
   font-family: var(--font-mono);

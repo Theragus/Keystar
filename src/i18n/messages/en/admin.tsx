@@ -33,11 +33,30 @@ export const admin = {
       revoked: (count: number) => `${n(count)} revoked`,
       missingScopes: (count: number) => `${n(count)} char${count > 1 ? "s" : ""} missing scopes`,
       allGood: "All good",
+      /** Tooltip when the badge links to where the token problem gets fixed. */
+      fixOwn: "Fix on My Characters",
+      openAudit: "Open Member Audit",
     },
     roleFor: (name: string | null) => `Role for ${name ?? "user"}`,
     saveRole: "Save role",
     enable: "Enable",
     disable: "Disable",
+    /** Why a row has no actions. */
+    noAction: {
+      self: "You can't disable your own account",
+      higher: "Only a higher role can change this account",
+    },
+    /** Header shortcut to the permission matrix in Settings (admins only). */
+    rolePermissions: "Role permissions",
+    /** The role cards filter the table (`?role=`). */
+    filter: {
+      showing: (count: number, role: string) => `Showing ${n(count)} ${count === 1 ? "user" : "users"} with role ${role}`,
+      showAll: "Show all",
+      onlyRole: "Show only this role",
+      allUsers: "Show all users",
+      empty: "No users with this role.",
+    },
+    zkill: (name: string) => `${name} on zKillboard`,
   },
   members: {
     metaTitle: "Member audit",

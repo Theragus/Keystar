@@ -9,6 +9,8 @@ export const common = {
   appTagline: "Self-hosted EVE Online corporation dashboard",
   unknown: "unknown",
   never: "never",
+  /** Screen-reader note on links that open in a new tab. */
+  opensInNewTab: "(opens in a new tab)",
   status: {
     ok: "OK",
     error: "Error",
