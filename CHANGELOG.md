@@ -6,10 +6,12 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
-**When updating:** corporation wallets need two corporation scopes.
+**When updating:** corporation wallets need two corporation scopes, EVE Mail one optional character scope.
 
-1. Add `esi-wallet.read_corporation_wallets.v1` and `esi-corporations.read_divisions.v1` to the scopes of your EVE
-   application at <https://developers.eveonline.com/applications>.
+1. Add `esi-wallet.read_corporation_wallets.v1`, `esi-corporations.read_divisions.v1` and `esi-mail.read_mail.v1` to
+   the scopes of your EVE application at <https://developers.eveonline.com/applications>. Nobody is asked for the mail
+   scope unless they enable mail on the EVE Mail page, but without it on the application that EVE login fails with
+   `invalid_scope`.
 2. Update as usual; the database migrations run on start.
 3. A member with the in-game Accountant or Junior Accountant role re-links their character with corporation access
    (My Characters → Link with corporation access); a Director also brings the division names. ESI only keeps about
@@ -25,6 +27,20 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   - Long-term archive: the worker imports new journal entries, market transactions and daily balances every hour and
     never deletes them, so history grows beyond the ~30 days ESI keeps. Periods it could not import (no token with the
     Accountant role for over a month) are shown as gaps.
+- **EVE Mail** (new Social section, German "EVE-Mail"): read your characters' EVE mail in Keystar, in English and
+  German. It is read-only: Keystar never sends, deletes or marks mail as read in game.
+  - Opt-in per character from the mail page (`esi-mail.read_mail.v1`). Only you can read your mail; no role, admins
+    included, can read another account's mail. Mail is deleted when you remove or transfer the character, and can be
+    deleted once mail access is off.
+  - Inbox, Sent, Corporation, Alliance, mailing lists and your own labels (in their EVE colours), with unread counts,
+    search by subject or sender, and all characters at once or one at a time. A corp mail received by several of your
+    alts is listed once.
+  - Mail bodies render the way the EVE client shows them: fonts, sizes and colours, links to characters,
+    corporations, alliances and systems (with portraits and logos, opening zKillboard), item types (everef.net), kill
+    reports, fittings (with a copy button for the DNA) and web links. Client-only links are labelled. Malformed
+    markup can't break the page or inject anything.
+  - New mail, read state and in-game deletions sync every five minutes. The first import brings in the newest
+    1,000 mails.
 
 ### Changed
 

@@ -101,6 +101,20 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - 💡 Corporation tax income per member (bounty and mission tax by `context_id`)
 - 💡 CSV export of the journal
 
+## Social
+
+Everything ESI groups as "social" (`char-social`: mail, calendar, contacts, standings) shares one rate budget per
+character, so it lives in one module.
+
+- ✅ **EVE Mail** (read-only, opt-in per character, `esi-mail.read_mail.v1`): inbox, sent, corporation, alliance,
+  mailing lists and custom labels with unread counts; bodies rendered from EVE HTML with resolved links (portraits,
+  zKillboard, everef, kill reports, fittings); search; mail shared by several alts listed once; private to the account
+- 💡 Organise mail from Keystar: mark read, labels, delete (`esi-mail.organize_mail.v1`)
+- 💡 Write and reply to mail (`esi-mail.send_mail.v1`)
+- 💡 Calendar: corp ops and events with attendance (`esi-calendar.read_calendar_events.v1`)
+- 💡 Personal contacts and standings (`esi-characters.read_contacts.v1`, `esi-characters.read_standings.v1`)
+
+## Planned modules
 
 ### 📝 Skills & corporation skill plans
 

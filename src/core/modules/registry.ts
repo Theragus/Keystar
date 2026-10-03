@@ -2,6 +2,7 @@ import { fleetModule } from "@/modules/fleet/module";
 import { intelModule } from "@/modules/intel/module";
 import { killboardModule } from "@/modules/killboard/module";
 import { miningModule } from "@/modules/mining/module";
+import { socialModule } from "@/modules/social/module";
 import { tradeModule } from "@/modules/trade/module";
 import { walletModule } from "@/modules/wallet/module";
 import type { PermissionDef } from "@/core/rbac/permissions";
@@ -21,6 +22,7 @@ export const MODULES: KeystarModule[] = [
   intelModule,
   tradeModule,
   walletModule,
+  socialModule,
 ];
 
 export function allPermissions(): PermissionDef[] {

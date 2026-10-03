@@ -250,6 +250,7 @@ export default async function CharactersPage({ searchParams }: PageProps<"/chara
               <li>{m.privacy.readOnly}</li>
               <li>{m.privacy.removal}</li>
               <li>{m.privacy.wallet}</li>
+              <li>{m.privacy.mail}</li>
               <li>{m.privacy.revoke}</li>
             </ul>
           </Panel>
