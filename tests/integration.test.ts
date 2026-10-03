@@ -1683,7 +1683,7 @@ describe.skipIf(!enabled)("integration", async () => {
       // Bravo shares; Bravo Alt doesn't; Alpha Abroad shares but is in another corporation.
       expect(corp.characters.map((c) => [c.characterId, c.ownerName, c.isOwn])).toEqual([[2, "Bravo", false]]);
       const queue = corp.queues.get(2)!;
-      expect(queue.map((e) => [e.skillName, e.groupName, e.trainedLevel])).toEqual([["Skill 3300", "Gunnery", 3], ["Skill 3301", "Gunnery", null]]);
+      expect(queue.map((e) => [e.skillName, e.groupName, e.finishedLevel])).toEqual([["Skill 3300", "Gunnery", 4], ["Skill 3301", "Gunnery", 5]]);
       expect(corp.characters[0]).toMatchObject({ totalSp: 5_000_000, attributes: { intelligence: 27 } });
 
       // Without a home corporation the corporation view falls back to the viewer's own characters.
@@ -1694,7 +1694,6 @@ describe.skipIf(!enabled)("integration", async () => {
       expect((await skills.getSkillsOverview(skills.skillsScope(director, 100, "corp"))).characters).toEqual([]);
       const queueOnly = await skills.getSkillsOverview(skills.skillsScope(user(userB, ["skills.view.own"]), 100, "own"));
       expect(queueOnly.characters[0]).toMatchObject({ characterId: 2, queueEnabled: true, skillsEnabled: false, totalSp: null, attributes: null });
-      expect(queueOnly.queues.get(2)!.map((e) => e.trainedLevel)).toEqual([null, null]);
 
       // Turning sharing off hides the stored queue at once.
       await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);

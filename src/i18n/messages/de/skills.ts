@@ -85,8 +85,6 @@ export const skills: typeof en = {
   table: {
     position: "#",
     skill: "Skill",
-    level: "Stufe",
-    trained: "Trainiert",
     finishes: "Fertig am",
     timeLeft: "In",
     spLeft: "Fehlende SP",

@@ -82,8 +82,6 @@ export interface QueueRow extends QueueEntry {
   characterId: number;
   skillName: string | null;
   groupName: string | null;
-  /** Level currently trained, when trained skills are imported. */
-  trainedLevel: number | null;
 }
 
 export interface SkillsOverview {
@@ -149,19 +147,15 @@ export async function getSkillsOverview(scope: SkillsScope, characterIds: number
 
   // A queue is only shown while it is shared: turning the scope off hides it at once, also from the corporation view.
   const shown = characters.filter((c) => c.queueEnabled).map((c) => c.characterId);
-  // Trained levels likewise only for characters that still grant the skills scope.
-  const withSkills = characters.filter((c) => c.queueEnabled && c.skillsEnabled).map((c) => c.characterId);
   const queues = new Map<number, QueueRow[]>();
   if (shown.length) {
     const queueRows = await db.execute<Record<string, unknown>>(sql`
       SELECT q.character_id, q.queue_position, q.skill_id, q.finished_level, q.start_date, q.finish_date,
              q.training_start_sp, q.level_start_sp, q.level_end_sp,
-             ty.name AS skill_name, g.name AS group_name, cs.trained_level
+             ty.name AS skill_name, g.name AS group_name
       FROM skills_queue q
       LEFT JOIN eve_types ty ON ty.type_id = q.skill_id
       LEFT JOIN eve_groups g ON g.group_id = ty.group_id
-      LEFT JOIN skills_character_skills cs ON cs.character_id = q.character_id AND cs.skill_id = q.skill_id
-        AND cs.character_id IN (${withSkills.length ? list(withSkills) : sql`NULL`})
       WHERE q.character_id IN (${list(shown)})
       ORDER BY q.character_id, q.queue_position`);
     for (const r of queueRows) {
@@ -178,7 +172,6 @@ export async function getSkillsOverview(scope: SkillsScope, characterIds: number
         levelEndSp: numOrNull(r.level_end_sp),
         skillName: str(r.skill_name),
         groupName: str(r.group_name),
-        trainedLevel: numOrNull(r.trained_level),
       };
       const queue = queues.get(id);
       if (queue) queue.push(entry);

@@ -85,8 +85,6 @@ export const skills = {
   table: {
     position: "#",
     skill: "Skill",
-    level: "Level",
-    trained: "Trained",
     finishes: "Finishes",
     timeLeft: "In",
     spLeft: "SP to go",
