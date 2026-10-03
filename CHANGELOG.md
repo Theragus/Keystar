@@ -6,6 +6,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Member audit** lists registered characters first, and sorts names without regard to upper and lower case.
+
 ## [0.7.0] - 2026-10-03
 
 ### Changed
