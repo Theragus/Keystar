@@ -23,6 +23,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
   dashboard's killboard button now read "Combat Report".
+- **"Corp wallet journal" instead of "Wallet journal".** The sidebar entry, the journal page heading and the button
+  on the corporation wallet page now make clear that the journal covers the corporation's wallets, not your own.
 - **"Moon drills" instead of "Moon Observers" and "Refineries".** The mining menu entry and the ledger source option
   now use the same name, so it is clear they show the same corporation moon-mining data. The mining overview and
   ledger only show the Combined / Member ledgers / Moon drills choice when the corporation has moon drills on record,
