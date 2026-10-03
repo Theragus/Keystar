@@ -54,7 +54,7 @@ export const ConnectionEdgeView = memo(function ConnectionEdgeView({
           type="button"
           onClick={data.onSelect}
           className={cn(
-            "nodrag nopan pointer-events-auto absolute rounded-full border bg-space-900 px-2 py-0.5 font-mono text-3xs whitespace-nowrap text-ink",
+            "nodrag nopan pointer-events-auto absolute rounded-full border bg-space-900 px-2.5 py-0.5 font-sans text-2xs font-medium whitespace-nowrap text-ink tabular-nums",
             selected ? "border-accent" : "border-white/12",
             look.collapsed && "opacity-50",
           )}

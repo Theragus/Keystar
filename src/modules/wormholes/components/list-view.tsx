@@ -81,8 +81,8 @@ export function ListView({
                       ))}
                   </td>
                 ))}
-                <td className="font-mono">{c.type ?? "?"}</td>
-                <td className="font-mono tabular-nums">{tw.timeLeft(left)}</td>
+                <td className="font-medium">{c.type ?? "?"}</td>
+                <td className="tabular-nums">{tw.timeLeft(left)}</td>
                 <td className={cn(look.band !== "fresh" && look.band !== "lt1d" && "text-warning")}>{tw.life[look.band]}</td>
                 <td className={cn(c.mass === "critical" && "text-critical-text")}>{tw.mass[c.mass]}</td>
                 <td title={size ? tw.sizes[size] : undefined}>{size ?? "—"}</td>

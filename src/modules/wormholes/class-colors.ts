@@ -2,20 +2,24 @@ import { displaySecurity, securityColor } from "@/core/eve/images";
 import { shortClass, type ClassKey } from "./static";
 
 /**
- * Badge fills for system classes. C1–C6 are ordinal, so they use one violet
- * ramp (blue, green and yellow are taken by the security colours shown next to
- * them): validated with the dataviz validator, `--ordinal --mode dark` on
- * #15171b: monotone lightness, adjacent ΔL ≥ 0.06, darkest step 2.45:1.
- * Higher classes are lighter, i.e. more salient. Specials get a neutral chip
- * with their name; k-space shows its security status in the EVE colours.
+ * Badge fills for system classes, in the colours wormholers know from the game and Pathfinder: C1–C3 green, C4–C5
+ * yellow, C6 red. Checked with the dataviz validator (`--mode dark`, surface #15171b): every fill clears 3:1, and
+ * green/yellow/red stay apart for normal vision (ΔE ≥ 27) and colour-vision deficiency (adjacent ΔE ≥ 20; green↔red
+ * 7.1 for protans). The class code is always written in the badge, so colour is never the only cue. C6 and null-sec
+ * share "red = dangerous" on purpose. Specials get a neutral chip with their name; k-space shows its security
+ * status in the security colours (`securityColor`).
  */
-export const WSPACE_RAMP: Record<"c1" | "c2" | "c3" | "c4" | "c5" | "c6", string> = {
-  c1: "#6343a4",
-  c2: "#795fb7",
-  c3: "#907bca",
-  c4: "#a896dd",
-  c5: "#c1b3ef",
-  c6: "#dacfff",
+const GREEN = "#2a8f3d";
+const YELLOW = "#ecc94b";
+const RED = "#e5534b";
+
+export const WSPACE_COLORS: Record<"c1" | "c2" | "c3" | "c4" | "c5" | "c6", string> = {
+  c1: GREEN,
+  c2: GREEN,
+  c3: GREEN,
+  c4: YELLOW,
+  c5: YELLOW,
+  c6: RED,
 };
 
 const NEUTRAL = "#3a3f48";
@@ -36,8 +40,8 @@ export function inkOn(hex: string): string {
 
 /** `text` is null when the caller should print the translated class name (specials). */
 export function classBadgeStyle(cls: ClassKey, sec: number | null): ClassBadgeStyle {
-  if (cls in WSPACE_RAMP) {
-    const background = WSPACE_RAMP[cls as keyof typeof WSPACE_RAMP];
+  if (cls in WSPACE_COLORS) {
+    const background = WSPACE_COLORS[cls as keyof typeof WSPACE_COLORS];
     return { background, color: inkOn(background), text: cls.toUpperCase() };
   }
   if (sec !== null && (cls === "hs" || cls === "ls" || cls === "ns" || cls === "pochven")) {

@@ -12,7 +12,7 @@
       .muted { fill: #6f7581; font-size: 11px; }
       .badge-t { font-size: 11px; font-weight: 700; text-anchor: middle; }
       .chip { fill: #101114; stroke: #2a2e36; }
-      .chip-t { fill: #ededee; font-size: 11px; text-anchor: middle; }
+      .chip-t { fill: #ededee; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; text-anchor: middle; }
       .edge { fill: none; stroke: #a3a8b2; stroke-linecap: round; }
       .h { fill: #ededee; font-size: 13px; font-weight: 600; }
       .btn { fill: #1d2026; stroke: #2a2e36; }
@@ -59,7 +59,7 @@
   <!-- Nodes: fixed size so the layout is predictable -->
   <g transform="translate(36 300)">
     <rect width="200" height="58" rx="10" class="card"/>
-    <rect x="10" y="10" width="34" height="20" rx="5" fill="#6da7ec"/><text x="27" y="24" class="badge-t" fill="#06101c">C4</text>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#ecc94b"/><text x="27" y="24" class="badge-t" fill="#06101c">C4</text>
     <text x="52" y="25" class="name">J113551 ★</text>
     <circle cx="182" cy="20" r="9" fill="#2a2e36"/><text x="182" y="24" class="badge-t" fill="#ededee">3</text>
     <text x="10" y="47" class="sub">Red Giant</text>
@@ -67,14 +67,14 @@
   </g>
   <g transform="translate(386 170)">
     <rect width="200" height="58" rx="10" class="card"/>
-    <rect x="10" y="10" width="34" height="20" rx="5" fill="#256abf"/><text x="27" y="24" class="badge-t" fill="#ffffff">C2</text>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#2a8f3d"/><text x="27" y="24" class="badge-t" fill="#ffffff">C2</text>
     <text x="52" y="25" class="name">J160941</text>
     <text x="10" y="47" class="sub">—</text>
     <text x="190" y="47" class="sub mono" text-anchor="end">HS·B274 C3·O477</text>
   </g>
   <g transform="translate(386 430)">
     <rect width="200" height="58" rx="10" class="card"/>
-    <rect x="10" y="10" width="34" height="20" rx="5" fill="#3987e5"/><text x="27" y="24" class="badge-t" fill="#ffffff">C3</text>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#2a8f3d"/><text x="27" y="24" class="badge-t" fill="#ffffff">C3</text>
     <text x="52" y="25" class="name">J153546</text>
     <circle cx="182" cy="20" r="9" fill="#2a2e36"/><text x="182" y="24" class="badge-t" fill="#ededee">1</text>
     <text x="10" y="47" class="sub">Wolf-Rayet</text>
@@ -88,24 +88,24 @@
   </g>
   <g transform="translate(736 240)">
     <rect width="200" height="58" rx="10" class="card"/>
-    <rect x="10" y="10" width="34" height="20" rx="5" fill="#184f95"/><text x="27" y="24" class="badge-t" fill="#ffffff">C1</text>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#2a8f3d"/><text x="27" y="24" class="badge-t" fill="#ffffff">C1</text>
     <text x="52" y="25" class="name">J105443</text>
     <text x="10" y="47" class="sub">—</text>
     <text x="190" y="47" class="sub mono" text-anchor="end">NS·Z060</text>
   </g>
   <g transform="translate(736 430)">
     <rect width="200" height="58" rx="10" class="card"/>
-    <rect x="10" y="10" width="34" height="20" rx="5" fill="#8f2f69"/><text x="27" y="24" class="badge-t" fill="#ffffff">-0.4</text>
+    <rect x="10" y="10" width="34" height="20" rx="5" fill="#d0342c"/><text x="27" y="24" class="badge-t" fill="#ffffff">-0.4</text>
     <text x="52" y="25" class="name">1DQ1-A</text>
     <text x="10" y="47" class="sub">Delve · nullsec</text>
   </g>
 
   <!-- Edge labels: centred in the column gap, drawn last so nothing covers them -->
-  <g transform="translate(311 264)"><rect x="-46" y="-10" width="92" height="20" rx="10" class="chip"/><text y="4" class="chip-t mono">N766 · ≤14h</text></g>
-  <g transform="translate(311 394)"><rect x="-58" y="-10" width="116" height="20" rx="10" class="chip" stroke="#fab219"/><text y="4" class="chip-t mono">C247 · EOL ≤3h</text></g>
-  <g transform="translate(661 164)"><rect x="-64" y="-10" width="128" height="20" rx="10" class="chip"/><text y="4" class="chip-t mono">B274 · ≤21h · ½m</text></g>
-  <g transform="translate(661 234)"><rect x="-46" y="-10" width="92" height="20" rx="10" class="chip"/><text y="4" class="chip-t mono">K162 · &lt;1d</text></g>
-  <g transform="translate(661 459)"><rect x="-68" y="-10" width="136" height="20" rx="10" class="chip" stroke="#f07a7a"/><text y="4" class="chip-t mono">K346 · ≤9h · crit</text></g>
+  <g transform="translate(311 264)"><rect x="-46" y="-10" width="92" height="20" rx="10" class="chip"/><text y="4" class="chip-t">N766 · ≤14h</text></g>
+  <g transform="translate(311 394)"><rect x="-58" y="-10" width="116" height="20" rx="10" class="chip" stroke="#fab219"/><text y="4" class="chip-t">C247 · EOL ≤3h</text></g>
+  <g transform="translate(661 164)"><rect x="-64" y="-10" width="128" height="20" rx="10" class="chip"/><text y="4" class="chip-t">B274 · ≤21h · ½m</text></g>
+  <g transform="translate(661 234)"><rect x="-46" y="-10" width="92" height="20" rx="10" class="chip"/><text y="4" class="chip-t">K162 · &lt;1d</text></g>
+  <g transform="translate(661 459)"><rect x="-68" y="-10" width="136" height="20" rx="10" class="chip" stroke="#f07a7a"/><text y="4" class="chip-t">K346 · ≤9h · crit</text></g>
 
   <!-- Legend -->
   <g transform="translate(36 588)">

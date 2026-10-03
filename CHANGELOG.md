@@ -10,8 +10,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - **Wormhole chain map** (Exploration → Chain map, German "Chain-Karte"): a shared map of the corporation's wormhole
   chain. No new scopes; the migration runs on start. A director chooses the home system on first use.
-  - Systems show class (C1–C6 on a violet scale, known space in its security colour), effect and statics; the
-    details panel adds the effect's modifiers at the system's strength and links to anoik.is, DOTLAN and zKillboard.
+  - Systems show class (C1–C3 green, C4–C5 yellow, C6 red, known space in its security colour), effect and
+    statics; the details panel adds the effect's modifiers at the system's strength and links to anoik.is, DOTLAN
+    and zKillboard.
   - Connections carry the wormhole type (picked from those that spawn in the system's class, statics first), which
     side shows it, lifetime band (more than a day … closing), mass (stable, reduced, critical) and largest ship.
     Lifetime is drawn as the line style and mass as its width, and the label spells both out with an upper bound of
@@ -26,6 +27,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   the wormholes that can appear there (lifetime, mass, largest ship) and links.
 - Wormhole data is bundled (CCP's static data export and anoik.is, credited in the app); `pnpm wh:data` regenerates
   it.
+
+### Changed
+
+- Null-sec security status (0.0 and below) is shown in red instead of purple everywhere, so the security colours run
+  from blue at 1.0 to red.
 
 ## [0.6.0] - 2026-10-03
 

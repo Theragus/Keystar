@@ -161,7 +161,7 @@ Pathfinder leaves the layout entirely to its users, and busy chains turn into sp
 
 | Element          | Encoding                                                                                          |
 | ---------------- | ------------------------------------------------------------------------------------------------- |
-| System class     | badge with text (`C4`, `0.5`, `Thera`). C1–C6 are ordinal, so one lightness ramp (like moon rarity) instead of six hues; k-space uses the existing `securityColor`. |
+| System class     | badge with text (`C4`, `0.5`, `Thera`) in the colours wormholers know: C1–C3 green, C4–C5 yellow, C6 red; k-space uses `securityColor` (blue at 1.0 to red for null-sec). |
 | Effect           | name on the node; modifiers (scaled to the class's effect strength) in the side panel             |
 | Statics          | `C3·C247 C2·N766` on the node                                                                     |
 | Home             | ★                                                                                                 |

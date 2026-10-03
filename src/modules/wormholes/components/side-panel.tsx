@@ -143,7 +143,7 @@ function SystemPanel({
                     className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs hover:bg-white/6"
                   >
                     <span className="truncate text-ink">{nameOf(c.a === system.id ? c.b : c.a)}</span>
-                    <span className="ml-auto shrink-0 font-mono text-3xs text-ink-2">{connectionLabel(c, types, now, tw)}</span>
+                    <span className="ml-auto shrink-0 text-2xs font-medium text-ink-2 tabular-nums">{connectionLabel(c, types, now, tw)}</span>
                   </button>
                 </li>
               ))}
