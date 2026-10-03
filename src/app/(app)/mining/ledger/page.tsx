@@ -12,9 +12,15 @@ import { cn } from "@/lib/utils";
 import { oreClassColor } from "@/modules/mining/class-colors";
 import { MiningFilterBar } from "@/modules/mining/components/filter-bar";
 import { miningQueryString } from "@/modules/mining/filters";
+import { groupLedgerByDay } from "@/modules/mining/ledger-groups";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { miningPageContext } from "@/modules/mining/page-context";
-import { canViewCorpMining, getFilterOptions, getLedgerRows } from "@/modules/mining/queries";
+import {
+  canViewCorpMining,
+  getFilterOptions,
+  getLedgerDayTotals,
+  getLedgerRows,
+} from "@/modules/mining/queries";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -29,10 +35,15 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
   const l = t.mining.ledger;
   const col = t.mining.columns;
   const { filters, scope, valuation, user } = ctx;
-  const [{ rows, total }, options] = await Promise.all([
-    getLedgerRows(filters, scope, valuation, { limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
+  const offset = (filters.page - 1) * PAGE_SIZE;
+  // The day totals also give the row count, so the rows query can skip its own COUNT.
+  const [{ rows }, dayTotals, options] = await Promise.all([
+    getLedgerRows(filters, scope, valuation, { limit: PAGE_SIZE, offset, count: false }),
+    getLedgerDayTotals(filters, scope, valuation),
     getFilterOptions(scope),
   ]);
+  const total = dayTotals.reduce((sum, d) => sum + d.entries, 0);
+  const days = groupLedgerByDay(rows, dayTotals);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageLink = (page: number) => `?${miningQueryString(filters, { page })}`;
 
@@ -80,7 +91,6 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
               <table className="ks-table">
                 <thead>
                   <tr>
-                    <th>{col.date}</th>
                     <th>{col.character}</th>
                     <th>{col.ore}</th>
                     <th>{col.location}</th>
@@ -91,61 +101,82 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
                     <th className="num">{col.value}</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {rows.length === 0 && (
+                {rows.length === 0 && (
+                  <tbody>
                     <tr>
-                      <td colSpan={9} className="py-10 text-center text-ink-3">
+                      <td colSpan={8} className="py-10 text-center text-ink-3">
                         {l.empty}
                       </td>
                     </tr>
-                  )}
-                  {rows.map((r, i) => (
-                    <tr key={`${r.date}-${r.characterId}-${r.typeId}-${r.systemId}-${r.source}-${i}`}>
-                      <td className="text-ink-2 tabular-nums">{r.date}</td>
-                      <td>
-                        <div className="flex items-center gap-2.5">
-                          <Portrait id={r.characterId} size={26} />
-                          <div className="min-w-0 leading-tight">
-                            <div className="truncate font-medium">{r.characterName}</div>
-                            {r.ownerName && r.ownerName !== r.characterName && (
-                              <div className="truncate text-2xs text-ink-3">{r.ownerName}</div>
-                            )}
-                          </div>
+                  </tbody>
+                )}
+                {days.map((day) => (
+                  <tbody key={day.date}>
+                    <tr className="ks-group-row">
+                      <th scope="rowgroup" colSpan={4}>
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                          <span className="font-semibold text-ink tabular-nums">{day.date}</span>
+                          <span className="text-ink-2">{f.weekday(day.date)}</span>
+                          <span className="text-xs text-ink-3">
+                            {l.dayMeta(day.totals.entries, day.totals.characters)}
+                            {day.rows.length < day.totals.entries && ` · ${l.dayPartial(day.rows.length, day.totals.entries)}`}
+                          </span>
                         </div>
+                      </th>
+                      <td className="num">{f.integer(day.totals.quantity)}</td>
+                      <td className="num">{f.volume(day.totals.volume, { compact: false })}</td>
+                      <td />
+                      <td className="num">
+                        <span className="font-semibold text-ink">{f.isk(day.totals.value)}</span>
                       </td>
-                      <td>
-                        <div className="flex items-center gap-2.5">
-                          <TypeIcon id={r.typeId} size={24} />
-                          <div className="leading-tight">
-                            <div className="font-medium">{r.typeName}</div>
-                            <div className="flex items-center gap-1 text-2xs text-ink-3">
-                              <span className="size-1.5 rounded-full" style={{ background: oreClassColor(r.oreClass) }} aria-hidden />
-                              {t.eve.oreClasses[r.oreClass].short}
+                    </tr>
+                    {day.rows.map((r, i) => (
+                      <tr key={`${r.characterId}-${r.typeId}-${r.systemId}-${r.source}-${i}`}>
+                        <td>
+                          <div className="flex items-center gap-2.5">
+                            <Portrait id={r.characterId} size={26} />
+                            <div className="min-w-0 leading-tight">
+                              <div className="truncate font-medium">{r.characterName}</div>
+                              {r.ownerName && r.ownerName !== r.characterName && (
+                                <div className="truncate text-2xs text-ink-3">{r.ownerName}</div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <SecurityStatus value={r.security} />
-                          <div className="leading-tight">
-                            <div>{r.systemName ?? l.unknownSystem}</div>
-                            {r.observerName && <div className="text-2xs text-ink-3">{r.observerName}</div>}
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2.5">
+                            <TypeIcon id={r.typeId} size={24} />
+                            <div className="leading-tight">
+                              <div className="font-medium">{r.typeName}</div>
+                              <div className="flex items-center gap-1 text-2xs text-ink-3">
+                                <span className="size-1.5 rounded-full" style={{ background: oreClassColor(r.oreClass) }} aria-hidden />
+                                {t.eve.oreClasses[r.oreClass].short}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <Badge tone={r.source === "observer" ? "accent" : "neutral"}>
-                          {l.sourceBadge[r.source]}
-                        </Badge>
-                      </td>
-                      <td className="num">{f.integer(r.quantity)}</td>
-                      <td className="num">{f.volume(r.volume, { compact: false })}</td>
-                      <td className="num text-ink-2">{r.unitPrice ? f.unitPrice(r.unitPrice) : "—"}</td>
-                      <td className="num font-semibold">{f.isk(r.value)}</td>
-                    </tr>
-                  ))}
-                </tbody>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <SecurityStatus value={r.security} />
+                            <div className="leading-tight">
+                              <div>{r.systemName ?? l.unknownSystem}</div>
+                              {r.observerName && <div className="text-2xs text-ink-3">{r.observerName}</div>}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <Badge tone={r.source === "observer" ? "accent" : "neutral"}>
+                            {l.sourceBadge[r.source]}
+                          </Badge>
+                        </td>
+                        <td className="num">{f.integer(r.quantity)}</td>
+                        <td className="num">{f.volume(r.volume, { compact: false })}</td>
+                        <td className="num text-ink-2">{r.unitPrice ? f.unitPrice(r.unitPrice) : "—"}</td>
+                        <td className="num font-semibold">{f.isk(r.value)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                ))}
               </table>
             </div>
             {pages > 1 && (

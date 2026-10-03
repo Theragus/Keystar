@@ -6,6 +6,12 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Mining ledger grouped by day.** Ledger entries sit under a header for each day showing its date, weekday,
+  entry and character counts, and the day's units, volume and value. The totals cover the whole day even when its
+  entries run onto the next page; the header then says how many of them the current page shows.
+
 ### Changed
 
 - **Threat Intel puts evidence first.** A compact Local Situation summary, early D-scan input, timestamped
@@ -13,6 +19,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   briefing-led layout. Historical ship profiles and optional score details are clearly separated from scanner
   observations; missing data and incomplete fitting history stay explicit. Latest records retain five kills and
   five losses, and loss chips now name the lost hull rather than the final-blow attacker’s hull.
+
+### Fixed
+
+- **Mining class filter lists only mined classes.** Like the ore, system and member pickers, the class picker now
+  offers only ore classes that appear in the ledgers you can see, instead of every class.
 
 ## [0.8.0] - 2026-10-03
 

@@ -217,6 +217,9 @@ export const mining: typeof en = {
       personal: "Persönlich",
       observer: "Raffinerie",
     },
+    dayMeta: (entries: number, characters: number) =>
+      `${plural(entries, "Eintrag", "Einträge")} · ${plural(characters, "Charakter", "Charaktere")}`,
+    dayPartial: (shown: number, entries: number) => `${n(shown)} von ${n(entries)} auf dieser Seite`,
     pagination: "Seitennavigation",
     previous: "Zurück",
     next: "Weiter",

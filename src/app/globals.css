@@ -323,6 +323,26 @@ select option:disabled {
 .ks-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.025);
 }
+/* Group header row (e.g. a day in the mining ledger): body text, not column-header styling. */
+.ks-table .ks-group-row > th,
+.ks-table .ks-group-row > td {
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  font-size: 0.8125rem;
+  color: var(--color-ink-2);
+  white-space: normal;
+  background: rgba(255, 255, 255, 0.035);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+.ks-table tbody:first-of-type .ks-group-row > * {
+  border-top: 0;
+}
+.ks-table tbody tr.ks-group-row:hover {
+  background: transparent;
+}
 .ks-table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
