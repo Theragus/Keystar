@@ -67,6 +67,84 @@ function Cell({ row, col }: { row: EntityRow; col: Column }) {
   }
 }
 
+export type SortDir = "asc" | "desc";
+export interface SortState {
+  key: string;
+  dir: SortDir;
+}
+
+/**
+ * Sort state plus the sorted rows, for tables that render their own cells.
+ * `value` maps a row and a column key to what it sorts by; strings compare
+ * by locale, missing numbers sort last when descending. Ties fall back to
+ * `name`. A newly picked column starts descending, except "name".
+ */
+export function useSortedRows<T>(
+  rows: T[],
+  defaultSort: string,
+  value: (row: T, key: string) => number | string | null | undefined,
+  name: (row: T) => string,
+) {
+  const [sort, setSort] = useState<SortState>({ key: defaultSort, dir: "desc" });
+  const sorted = useMemo(() => {
+    const dir = sort.dir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const av = value(a, sort.key);
+      const bv = value(b, sort.key);
+      if (typeof av === "string" || typeof bv === "string") return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
+      const an = av ?? -Infinity;
+      const bn = bv ?? -Infinity;
+      return an === bn ? name(a).localeCompare(name(b)) : (an - bn) * dir;
+    });
+  }, [rows, sort, value, name]);
+  const toggle = (key: string) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "desc" ? "asc" : "desc" } : { key, dir: key === "name" ? "asc" : "desc" }));
+  return { sorted, sort, toggle };
+}
+
+/** A column header that sorts its table on click; marks the active column with `aria-sort` and an arrow. */
+export function SortHeader({
+  sortKey,
+  label,
+  title,
+  sort,
+  onSort,
+  align = "right",
+}: {
+  sortKey: string;
+  label: string;
+  title?: string;
+  sort: SortState;
+  onSort: (key: string) => void;
+  align?: "left" | "right";
+}) {
+  const active = sort.key === sortKey;
+  const Icon = sort.dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <th
+      className={align === "right" ? "text-right" : undefined}
+      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <button
+        type="button"
+        title={title}
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          "inline-flex items-center gap-1 whitespace-nowrap uppercase hover:text-ink",
+          active && "text-ink",
+          align === "right" && "flex-row-reverse",
+        )}
+      >
+        {label}
+        {active && <Icon className="size-3" aria-hidden />}
+      </button>
+    </th>
+  );
+}
+
+const entityValue = (r: EntityRow, key: string) => (key === "name" ? r.name : r.values[key]);
+const entityName = (r: EntityRow) => r.name;
+
 export function SortableTable({
   columns,
   rows,
@@ -83,49 +161,15 @@ export function SortableTable({
   emptyText?: string;
 }) {
   const { t } = useI18n();
-  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: defaultSort, dir: "desc" });
+  const { sorted, sort, toggle } = useSortedRows(rows, defaultSort, entityValue, entityName);
   const [expanded, setExpanded] = useState(false);
-
-  const sorted = useMemo(() => {
-    const dir = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      if (sort.key === "name") return a.name.localeCompare(b.name) * dir;
-      const av = a.values[sort.key] ?? -Infinity;
-      const bv = b.values[sort.key] ?? -Infinity;
-      return av === bv ? a.name.localeCompare(b.name) : (av - bv) * dir;
-    });
-  }, [rows, sort]);
 
   if (!rows.length) return <p className="py-6 text-center text-sm text-ink-3">{emptyText ?? t.common.table.empty}</p>;
   const shown = expanded ? sorted : sorted.slice(0, initialRows);
 
-  const header = (key: string, label: string, title?: string, align: "left" | "right" = "right") => {
-    const active = sort.key === key;
-    const Icon = sort.dir === "asc" ? ArrowUp : ArrowDown;
-    return (
-      <th
-        key={key}
-        className={align === "right" ? "text-right" : undefined}
-        aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
-      >
-        <button
-          type="button"
-          title={title}
-          onClick={() =>
-            setSort((s) => (s.key === key ? { key, dir: s.dir === "desc" ? "asc" : "desc" } : { key, dir: key === "name" ? "asc" : "desc" }))
-          }
-          className={cn(
-            "inline-flex items-center gap-1 whitespace-nowrap uppercase hover:text-ink",
-            active && "text-ink",
-            align === "right" && "flex-row-reverse",
-          )}
-        >
-          {label}
-          {active && <Icon className="size-3" aria-hidden />}
-        </button>
-      </th>
-    );
-  };
+  const header = (key: string, label: string, title?: string, align: "left" | "right" = "right") => (
+    <SortHeader key={key} sortKey={key} label={label} title={title} align={align} sort={sort} onSort={toggle} />
+  );
 
   return (
     <div>

@@ -10,6 +10,14 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - **"Today" and "Yesterday" date ranges.** The date-range picker on the mining, P&L, finances and killboard pages
   offers single-day presets for the current and the previous EVE day, above "7 days".
+- **Sortable ore breakdown.** Click any column header of the mining dashboard's ore breakdown to sort by it; click
+  again to reverse the order.
+- **Grouped ore types.** The ore breakdown combines the grades and variants of each ore (Scordite, Scordite
+  II-Grade, Scordite III-Grade; Blue Ice and Thick Blue Ice; Zeolites and Glistening Zeolites) into one row, with
+  the unit price averaged by units. Clicking a grouped row filters the dashboard to all of its types. "Group ore
+  types" in the panel header switches back to one row per type.
+- **Survey scanner groups ice and anomaly ore variants.** The field estimator now counts Thick Blue Ice, Pristine
+  White Glaze, Hadal Talassonite and similar variants under their base ore.
 
 ### Changed
 
