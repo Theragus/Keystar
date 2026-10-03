@@ -34,6 +34,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - Name lookups no longer multiply ESI requests during an outage. Keystar splits a batch only when ESI rejects it for
   an invalid id; a server error, timeout or rate limit now fails the job, so the scheduler backs off instead of
   sending about two failing requests per id and reporting success. ([#19](https://github.com/Theragus/Keystar/issues/19))
+- The hourly market price job no longer throws away a whole run, including the ore values the mining dashboard uses,
+  when a single item can't be priced. Items that fail keep their previous values and are counted in the job summary.
+  The job now prices only ores in the mining ledgers and items appraised or valued in the field estimator in the last
+  14 days, rather than every item ever appraised. When a background job fails part-way, its remaining ESI requests
+  stop instead of running on into the retry. ([#15](https://github.com/Theragus/Keystar/issues/15))
 
 ## [0.6.0] - 2026-10-03
 
