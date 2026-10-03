@@ -181,6 +181,25 @@ Current jobs:
 | `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
 | `social.character-mail`          | 5 min    | EVE mail, labels and mailing lists of characters that opted in to mail |
 
+## Live alerts
+
+Modules declare live alerts in their manifest (`alerts`; today `killboard.kills` and `social.mail`) and register a
+feed component for each in `src/modules/alerts.ts`. The **Alerts** menu in the top bar
+(`src/components/shell/live-alerts.tsx`) shows a per-browser switch (localStorage) for every alert the user may get
+(`availableAlerts`: permissions and settings), plus one for desktop notifications. Each feed polls its endpoint
+through `useLiveFeed` (`src/components/shell/live-feed.ts`), with a cursor from `src/core/live-cursor.ts`. How to
+add one is described in docs/modules.md.
+
+- A tab the user is looking at (visible and focused) shows new events as toasts. A hidden tab stops polling, and
+  after 2 minutes hidden it starts over from "now" instead of replaying what it missed.
+- With **desktop notifications** on (the browser's Notification API; needs permission and HTTPS), a tab the user
+  isn't looking at keeps polling and shows each event as a native notification (Windows notification center, macOS
+  Notification Center) instead. Focused tabs record a heartbeat in localStorage, and unfocused tabs leave events
+  to a focused one so they show as toasts there. Browsers slow timers in background tabs (Chrome to about once a
+  minute), so a notification can arrive later. There is no service worker or Web Push: with no Keystar tab open,
+  nothing is announced.
+- Tabs claim each event in a shared localStorage record under a Web Lock, so one browser announces it once.
+
 ## EVE mail
 
 Social → EVE Mail lets pilots read their characters' mail in Keystar. It is **read-only**: Keystar never
@@ -205,6 +224,10 @@ character (enabled from the mail page). The page only ever shows the signed-in a
 - **Folders**: Inbox, Sent, Corporation and Alliance are the built-in labels 1, 2, 4 and 8. Sent means sent by the
   mailbox's character. Mailing lists come from the recipients, and custom labels are merged by name across
   characters. A mail in several of the account's mailboxes is listed once, with the characters that received it.
+- **Live alerts**: the top bar polls `/api/mail/live` every 30 s and shows a toast for each unread mail stored after
+  its cursor (same cursor format as the killboard). Mail sent more than 3 h ago (a first import), mail sent from one
+  of the account's own characters, and a mail already announced for another of its mailboxes are left out. The toast
+  opens the mail in Keystar.
 - **Rendering**: bodies are EVE HTML, not HTML (`<font size= color=>`, `<color=0xAARRGGBB>`, `<url=…>`, unquoted
   attributes, tags that are never closed). `src/modules/social/eve-html.ts` follows
   [CCP's reference](https://developers.eveonline.com/docs/guides/eve-html/): it tokenises, re-nests (an unclosed
@@ -311,14 +334,14 @@ without schema changes.
   pilot, corporation tickers and regions) are resolved right away. A missing number below the published pointer is
   skipped as a gap; a position older than 20 h (files are kept for at least 24 h) or for another corporation starts
   over at the pointer, and the hourly sweep fills anything in between. A 403/429 keeps it away for 10 minutes.
-- **Live notifications**: for users with `killboard.view`, the top bar polls `/api/killboard/live` every 15 s while
-  the tab is visible and shows a toast for each kill or loss stored after its cursor (`first_seen_at` to the
-  microsecond plus the killmail id, since one insert stores many rows with the same timestamp; killmails older than
-  3 h are never announced, so backfills stay quiet). A toast shows
+- **Live notifications**: for users with `killboard.view`, the top bar polls `/api/killboard/live` every 15 s and
+  shows a toast for each kill or loss stored after its cursor (`first_seen_at` to the microsecond plus the killmail
+  id, since one insert stores many rows with the same timestamp; killmails older than 3 h are never announced, so
+  backfills stay quiet). A toast shows
   the destroyed hull, the corporation's pilot (loss: the victim; kill: the final blow, or top damage when an outsider
   landed it), the other side, system and ISK value, stays 30 s (the countdown bar pauses on hover) and opens the
-  killmail on zKillboard. The bell beside it mutes them per browser (localStorage). Tabs claim each killmail in a
-  shared localStorage record under a Web Lock, so one browser announces it once. Demo mode doesn't run the live job.
+  killmail on zKillboard. Demo mode doesn't run the live job. The polling, the per-browser switches and the desktop
+  notifications are shared with the mail alerts; see "Live alerts" below.
 - The first sync imports 90 days month by month (`/corporationID/{id}/year/{y}/month/{m}/`); afterwards an hourly
   7-day sweep (`/pastSeconds/604800/`) also catches killmails zKillboard receives late. A gap longer than six days,
   or a new home corporation, triggers another backfill.

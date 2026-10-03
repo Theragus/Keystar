@@ -133,7 +133,8 @@ dims the previous render while new data loads).
 To confirm an action or report a refusal from a client component, call `useToast().toast({ tone, title,
 description, action, durationMs })` (`src/components/ui/toast.tsx`). The app layout already mounts the
 `ToastProvider`. A feature that keeps its own list of richer cards, like the live kills, renders `<Toast>`s
-inside a `<ToastViewport>`; they join the same stack. Server actions behind a toast return a result object, not an exception, so the message can be
+inside a `<ToastViewport>`; they join the same stack. To announce new events as they
+happen, declare a live alert (section 6). Server actions behind a toast return a result object, not an exception, so the message can be
 translated. For a `<select>` whose value the server can change, avoid `<form action>` plus `defaultValue`.
 React 19 resets the form after the action, and a select resets to the value it was first rendered with. Control
 the value in a client component, or give the form a `key` that changes with the saved value.
@@ -146,6 +147,39 @@ typecheck fails until both languages have exactly the same keys. In pages use `c
 (`@/i18n/server`), in client components `useI18n()` (`@/i18n/client`), and format numbers and dates with `f`
 (`f.isk`, `f.compact`, `f.relativeTime`, …) — the English helpers in `@/lib/format` are for logs and exports only.
 
+## 6. Live alerts (optional)
+
+A module can announce new events live, the way the killboard announces kills and losses and EVE mail announces new
+mail. Users get a switch for every alert they may receive in the top bar's **Alerts** menu. In a tab they are
+looking at, alerts show as toasts; with desktop notifications on, they show as system notifications while Keystar
+is in the background. The shared engine handles polling, the per-browser switches, focus, cross-tab
+de-duplication and desktop notifications. A module supplies four pieces:
+
+1. **Declaration** in the manifest. Its `label` and `hint` appear in the Alerts menu:
+   ```ts
+   alerts: [
+     {
+       id: "skills.queue", // <module>.<name>
+       label: (t) => t.skills.module.alerts.queue.label,
+       hint: (t) => t.skills.module.alerts.queue.hint,
+       anyPermission: ["skills.view.own"],
+       available: (settings) => true, // optional extra condition on the app settings
+     },
+   ],
+   ```
+2. **Query and endpoint**: a route such as `src/app/api/skills/live/route.ts` that answers `GET ?since=<cursor>`
+   with `{ events, cursor }`. Without a valid `since`, it returns no events and `liveCursorNow()`, so a fresh page
+   never replays old events. Cursors come from `src/core/live-cursor.ts`: the row's `first_seen_at` plus an id,
+   formatted with `CURSOR_FORMAT` and compared as `(first_seen_at, id) > (cursor)`. The table needs a
+   `first_seen_at` column for this. Also leave out old rows (a first import or backfill) and check permissions
+   like any API route. `getLiveEvents` (killboard) and `getLiveMail` (social) are worked examples.
+3. **Feed component**: a client component that calls `useLiveFeed` (`src/components/shell/live-feed.ts`) with
+   the endpoint, a poll interval, a `claimsKey` (localStorage), `idOf`, `onToasts` (keep a list and render
+   `<Toast>`s in a `<ToastViewport>`) and `native` (title, body, icon, tag and click action of the desktop
+   notification). See `src/modules/social/components/live-mail.tsx`.
+4. **Registration** of the feed under the alert's id in `src/modules/alerts.ts`. `tests/alerts.test.ts` fails when
+   a declared alert has no feed or a feed has no declaration.
+
 ## Checklist
 
 - [ ] Manifest registered in `MODULES`
@@ -154,5 +188,6 @@ typecheck fails until both languages have exactly the same keys. In pages use `c
 - [ ] Pages check permissions; member views scoped to own characters
 - [ ] New scopes added to the EVE application and listed in `docs/deployment.md`
 - [ ] Texts in both dictionaries (`src/i18n/messages/en` and `de`), no hard-coded UI strings
+- [ ] Live alerts (if any) declared in the manifest and their feeds registered in `src/modules/alerts.ts`
 - [ ] Tests for parsing/aggregation logic (`tests/`)
 - [ ] ROADMAP.md updated
