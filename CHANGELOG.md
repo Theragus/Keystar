@@ -37,8 +37,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - Sign-in could redirect to another site when `returnTo` contained a tab, line feed or carriage return (for example
   `/%09/evil.example`). The return path is now resolved like the browser would and rejected unless it stays on Keystar.
+  ([#14](https://github.com/Theragus/Keystar/issues/14))
 - The mining CSV export no longer turns negative security status (`-0.45`) into text, so null-sec and wormhole rows
   stay numeric in spreadsheets. Names starting with `=`, `+`, `-` or `@` are still neutralised.
+  ([#18](https://github.com/Theragus/Keystar/issues/18))
 
 ## [0.6.0] - 2026-10-03
 
