@@ -33,8 +33,10 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
       </Link>
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label={t.shell.mainNav}>
         {sections.map((section) => (
-          <div key={section.id}>
-            <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3">{section.label(t)}</div>
+          <div key={section.id} className="group">
+            <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))]">
+              {section.label(t)}
+            </div>
             <ul className="space-y-0.5">
               {section.items.map((item) => (
                 <li key={item.href}>

@@ -33,6 +33,7 @@ export const killboardModule: KeystarModule = {
       id: "combat",
       label: (t) => t.killboard.module.navSection,
       order: 15,
+      tone: "combat",
       items: [{ href: "/killboard", label: (t) => t.killboard.module.nav.killboard, icon: Swords, anyPermission: [KILLBOARD_PERMISSIONS.view] }],
     },
   ],

@@ -66,6 +66,7 @@ export const miningModule: KeystarModule = {
       id: "industry",
       label: (t) => t.mining.module.navSection,
       order: 10,
+      tone: "industry",
       items: [
         { href: "/mining", label: (t) => t.mining.module.nav.overview, icon: Pickaxe, anyPermission: ["mining.view.own", "mining.view.corp"] },
         { href: "/mining/ledger", label: (t) => t.mining.module.nav.ledger, icon: TableProperties, anyPermission: ["mining.view.own", "mining.view.corp"] },

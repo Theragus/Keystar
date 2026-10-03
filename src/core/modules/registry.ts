@@ -105,8 +105,10 @@ export function navSections(): NavSection[] {
   for (const m of MODULES) {
     for (const section of m.nav) {
       const existing = byId.get(section.id);
-      if (existing) existing.items.push(...section.items);
-      else byId.set(section.id, { ...section, items: [...section.items] });
+      if (existing) {
+        existing.items.push(...section.items);
+        existing.tone ??= section.tone;
+      } else byId.set(section.id, { ...section, items: [...section.items] });
     }
   }
   return [...byId.values()].sort((a, b) => a.order - b.order);
