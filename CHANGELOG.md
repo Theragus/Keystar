@@ -6,6 +6,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Fixed
+
+- Scrolling the sidebar navigation past its top or bottom no longer scrolls the page behind it.
+
 ## [0.11.0] - 2026-10-03
 
 **When updating:** skill queues need two optional character scopes.
