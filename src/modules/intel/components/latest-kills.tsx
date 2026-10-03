@@ -1,5 +1,4 @@
 import { eventTargetHull, newestEvents } from "../evidence";
-import { typeIcon } from "@/core/eve/images";
 import { TypeIcon } from "@/components/ui/eve-image";
 import { getI18n } from "@/i18n/server";
 import { KILL_COLOR, LOSS_COLOR } from "@/modules/killboard/colors";
@@ -13,25 +12,25 @@ export async function LatestKills({ events, names, limit = 5, compact = false }:
   const { t, f } = await getI18n();
   const l = t.intel.latest;
   return (
-    <ol className={compact ? "grid grid-cols-[repeat(3,minmax(0,3rem))] gap-1.5" : "flex flex-wrap gap-1.5"}>
+    <ol className="flex flex-wrap gap-x-2 gap-y-1.5">
       {newestEvents(events).slice(0, limit).map((e) => {
         const color = e.isLoss ? LOSS_COLOR : KILL_COLOR;
         const targetHull = eventTargetHull(e);
         const other = targetHull ? (names.types.get(targetHull)?.name ?? null) : null;
         const system = names.systems.get(e.systemId)?.name ?? null;
         return (
-          <li key={e.killmailId}>
+          <li key={e.killmailId} className="min-w-0 max-w-full">
             <a
               href={zkillKill(e.killmailId)}
               target="_blank"
               rel="noopener noreferrer"
-              className={compact ? "glass-chip relative flex aspect-square min-w-0 items-end overflow-hidden rounded-md border-t-2 bg-cover bg-center text-center text-xs transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-accent" : "glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-surface-contrast/8"}
-              style={compact ? { borderTopColor: color, backgroundImage: targetHull ? `url("${typeIcon(targetHull, 64)}")` : undefined } : { borderLeftColor: color }}
+              className={compact ? "inline-flex max-w-full items-center gap-1 rounded text-xs text-ink-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-accent" : "glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-surface-contrast/8"}
+              style={compact ? undefined : { borderLeftColor: color }}
               title={`${l.title({ isLoss: e.isLoss, ship: other, system, isk: f.compact(e.value), attackers: e.attackerCount })} · ${f.relativeTime(e.time)}`}
             >
-              {!compact && targetHull ? <TypeIcon id={targetHull} size={22} className="rounded" /> : null}
-              <span className={compact ? "sr-only" : "min-w-0"}>
-                <span className={compact ? "block truncate font-medium" : "block max-w-36 truncate text-ink"}>
+              {targetHull ? <TypeIcon id={targetHull} size={compact ? 18 : 22} className="shrink-0 rounded" /> : null}
+              <span className="min-w-0">
+                <span className={compact ? "block break-words" : "block max-w-36 truncate text-ink"}>
                   <span className="sr-only">{l.srKind(e.isLoss)}</span>
                   {other ?? t.intel.pilot.unknownHull}
                 </span>
