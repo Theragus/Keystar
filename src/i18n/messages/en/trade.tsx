@@ -86,6 +86,7 @@ Nanite Repair Paste x 50
       `That paste has ${n(lines)} lines; appraise at most ${n(max)} at a time.`,
     tooManyTypes: (types: number, max: number) =>
       `That paste contains ${n(types)} different items; appraise at most ${n(max)} at a time.`,
+    esiUnavailable: "EVE's ESI is unavailable right now, so the items couldn't be identified or priced. Nothing was saved; try again in a few minutes.",
     noItems: "No known items found. Paste item names from EVE (inventory, contract, fitting, d-scan or a list).",
   },
 };

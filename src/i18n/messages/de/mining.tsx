@@ -278,6 +278,7 @@ export const mining: typeof en = {
     asteroidCount: (count: number) => plural(count, "Asteroid", "Asteroiden"),
     oreTypes: (count: number) => plural(count, "Erzsorte", "Erzsorten"),
     priceError: "Keystar-Preise konnten nicht geladen werden – es werden nur die Scanner-Werte angezeigt.",
+    esiUnavailable: "EVEs ESI ist gerade nicht erreichbar, daher konnten einige Erze nicht bewertet werden – für sie werden die Scanner-Werte angezeigt.",
     empty: "Füge einen Survey-Scan ein, um das Feld nach Erz und Stufe aufgeschlüsselt zu sehen.",
     grades: (count: number) => plural(count, "Stufe", "Stufen"),
     baseGrade: "Basis",

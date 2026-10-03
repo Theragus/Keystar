@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 import { assertPermission } from "@/core/auth/dal";
 import { getI18n } from "@/i18n/server";
 import { TRADE_PERMISSIONS } from "@/modules/trade/module";
-import { appraise, AppraisalLimitError, MAX_INPUT_CHARS, saveAppraisal } from "@/modules/trade/appraisal/appraise";
+import {
+  appraise,
+  AppraisalLimitError,
+  AppraisalUnavailableError,
+  MAX_INPUT_CHARS,
+  saveAppraisal,
+} from "@/modules/trade/appraisal/appraise";
 import { countItemLines, MAX_LINES } from "@/modules/trade/appraisal/parse";
 
 export interface AppraisalFormState {
@@ -29,6 +35,7 @@ export async function createAppraisal(_prev: AppraisalFormState, formData: FormD
     result = await appraise(input);
   } catch (err) {
     if (err instanceof AppraisalLimitError) return { error: errors.tooManyTypes(err.types, err.max) };
+    if (err instanceof AppraisalUnavailableError) return { error: errors.esiUnavailable };
     throw err;
   }
   if (!result.items.length) return { error: errors.noItems };
