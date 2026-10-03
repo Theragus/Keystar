@@ -1,0 +1,50 @@
+name: Feature request or idea
+description: Suggest a new feature or an improvement.
+type: Feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome, rough ones too. Please search the
+        [open feature requests](https://github.com/Theragus/Keystar/issues?q=is%3Aissue%20is%3Aopen%20type%3AFeature)
+        and the [roadmap](https://github.com/Theragus/Keystar/blob/main/ROADMAP.md) first; if your idea is already
+        there, add a 👍 to the issue instead of opening a new one. Votes help decide what comes next.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you or your corporation trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposed idea
+      description: How could Keystar help? Screenshots or links to similar tools are welcome.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Mining
+        - Killboard
+        - Fleet
+        - Threat Intel
+        - Trade / appraisal
+        - Wallets
+        - Social / EVE Mail
+        - Sign-in, roles and permissions
+        - Self-hosting / deployment
+        - New module
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: esi
+    attributes:
+      label: ESI scopes and in-game roles
+      description: |
+        If you know them: which ESI endpoints or scopes the feature needs, and which in-game corporation roles
+        (e.g. Director, Accountant). Leave empty if unsure.

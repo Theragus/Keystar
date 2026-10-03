@@ -3,6 +3,7 @@ import { getSetting } from "@/core/settings";
 import type { JobDefinition } from "@/core/sync/types";
 import { addDays } from "@/lib/dates";
 import { reportWindow } from "./filters";
+import { liveFeedJob } from "./live";
 import { getKillboardStatus } from "./queries";
 import { generateSituationReport } from "./report/generate";
 import { planSync, syncCorporationKillmails, type KillboardSyncState } from "./sync";
@@ -55,4 +56,4 @@ export const situationReportJob: JobDefinition = {
   },
 };
 
-export const killboardJobs: JobDefinition[] = [zkillSyncJob, situationReportJob];
+export const killboardJobs: JobDefinition[] = [zkillSyncJob, liveFeedJob, situationReportJob];

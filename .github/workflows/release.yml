@@ -3,6 +3,9 @@
 # that CI passed on that commit, builds and pushes
 # ghcr.io/<owner>/keystar:<version>, <major.minor> and latest, then creates the
 # vX.Y.Z tag and GitHub release with the matching CHANGELOG.md section.
+# :latest and :<major.minor> only move when the version is newer than every
+# earlier release (or every earlier one in that minor line), so releasing an
+# older line never moves them back.
 # Merging to main releases nothing on its own. See docs/releasing.md.
 name: Release
 
@@ -25,6 +28,8 @@ jobs:
     outputs:
       sha: ${{ steps.v.outputs.sha }}
       version: ${{ steps.v.outputs.version }}
+      latest: ${{ steps.v.outputs.latest }}
+      minor_latest: ${{ steps.v.outputs.minor_latest }}
     steps:
       - name: Only from main
         if: github.ref != 'refs/heads/main'
@@ -50,9 +55,18 @@ jobs:
             echo "::error::CI has not passed on $sha (main) yet. Wait for it to finish, or fix it, and run Release again."
             exit 1
           fi
-          echo "Releasing v$version from $sha."
+          # True when $version sorts above every existing tag matching the pattern.
+          newest() {
+            highest=$(git tag --list "$1" --sort=-v:refname | head -n1)
+            [ -z "$highest" ] || [ "$(printf '%s\n%s\n' "${highest#v}" "$version" | sort -V | tail -n1)" = "$version" ]
+          }
+          latest=false; newest 'v*' && latest=true
+          minor_latest=false; newest "v${version%.*}.*" && minor_latest=true
+          echo "Releasing v$version from $sha (latest: $latest, ${version%.*}: $minor_latest)."
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "minor_latest=$minor_latest" >> "$GITHUB_OUTPUT"
 
   release:
     needs: check
@@ -63,6 +77,7 @@ jobs:
     env:
       VERSION: ${{ needs.check.outputs.version }}
       SHA: ${{ needs.check.outputs.sha }}
+      LATEST: ${{ needs.check.outputs.latest }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -98,8 +113,9 @@ jobs:
           images: ${{ steps.image.outputs.name }}
           tags: |
             type=semver,pattern={{version}},value=v${{ env.VERSION }}
-            type=semver,pattern={{major}}.{{minor}},value=v${{ env.VERSION }}
-            type=raw,value=latest
+            type=semver,pattern={{major}}.{{minor}},value=v${{ env.VERSION }},enable=${{ needs.check.outputs.minor_latest }}
+            type=raw,value=latest,enable=${{ env.LATEST }}
+          flavor: latest=false
           labels: |
             org.opencontainers.image.version=${{ env.VERSION }}
             org.opencontainers.image.revision=${{ env.SHA }}
@@ -116,4 +132,4 @@ jobs:
       - name: Tag and GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "v$VERSION" --target "$SHA" --title "Keystar v$VERSION" --notes-file notes.md
+        run: gh release create "v$VERSION" --target "$SHA" --title "Keystar v$VERSION" --notes-file notes.md --latest="$LATEST"

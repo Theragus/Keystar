@@ -39,6 +39,22 @@ export const admin = {
     },
     roleFor: (name: string | null) => `Role for ${name ?? "user"}`,
     saveRole: "Save role",
+    /** Toasts after a role change from the table. */
+    roleChange: {
+      changed: (name: string, role: string) => `${name} is now ${role}`,
+      from: (role: string) => `Previously ${role}`,
+      restored: (name: string, role: string) => `${name} is back to ${role}`,
+      failed: (name: string) => `Couldn't change the role of ${name}`,
+      errors: {
+        self: "You can't change your own role.",
+        forbidden: "You no longer have permission to manage users.",
+        notFound: "This account no longer exists.",
+        higherRole: "Only a higher role can change this account.",
+        unassignable: "You can't assign that role.",
+        changed: "Someone changed this role in the meantime. The table now shows the current role.",
+        unknown: "Something went wrong. Reload the page and try again.",
+      },
+    },
     enable: "Enable",
     disable: "Disable",
     /** Why a row has no actions. */
@@ -173,11 +189,34 @@ export const admin = {
     disabled: "Disabled",
     errorCount: (count: number) => `Error ×${n(count)}`,
     runNow: "Run now",
+    sections: {
+      corporation: (name: string | null) => (name ? `Corporation · ${name}` : "Corporation"),
+      characters: "Characters",
+      system: "System",
+      jobCount: (count: number) => `${n(count)} ${count === 1 ? "job" : "jobs"}`,
+      characterCount: (characters: number, jobs: number) =>
+        `${n(characters)} ${characters === 1 ? "character" : "characters"} · ${n(jobs)} ${jobs === 1 ? "job" : "jobs"}`,
+      charactersHint:
+        "Only characters linked to Keystar with the needed ESI scopes get their own jobs. Other members appear here once they sign in and grant them.",
+      account: (main: string) => `Account: ${main}`,
+      failingCount: (count: number) => `${n(count)} failing`,
+      nextRun: (when: string) => `next ${when}`,
+      empty: "No jobs yet.",
+    },
   },
   settings: {
     metaTitle: "Settings",
     description: "Application-wide configuration. Changes apply immediately and are recorded in the audit log.",
     save: "Save settings",
+    /** Toasts after saving. */
+    saved: "Settings saved",
+    savedHomeChanged: "Importing the new home corporation's killboard in the background.",
+    saveFailed: "Settings not saved",
+    errors: {
+      forbidden: "You no longer have permission to change settings.",
+      invalidCorporation: "The home corporation must be a numeric corporation ID, e.g. 98765432.",
+      unknown: "Something went wrong. Reload the page and check which changes were kept.",
+    },
     home: {
       title: "Home corporation",
       subtitle: "Whose members, roster and refineries Keystar tracks",

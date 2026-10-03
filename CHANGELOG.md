@@ -12,14 +12,40 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   entry and character counts, and the day's units, volume and value. The totals cover the whole day even when its
   entries run onto the next page; the header then says how many of them the current page shows. Days start
   expanded; click one to collapse it, or use "Collapse all" for a day-by-day summary of the page.
+- **Live kill notifications.** When a corporation member gets a kill or loses a ship, a notification appears in the
+  top-right corner, usually 10–30 seconds after zKillboard posts it, for everyone who can view the killboard. It
+  shows the destroyed ship (the one you lost, or the one you killed) with your pilot's portrait, the victim, who
+  landed the final blow (on kills your pilot, or your top-damage pilot when someone else landed it), the system with
+  its security and region, and the ISK value. It stays for 30 seconds with a countdown bar (paused while you hover
+  it) and opens the killmail on zKillboard when clicked; with several tabs open, only one of them shows it. A bell in
+  the top bar mutes them for your browser. The worker reads zKillboard's R2Z2 live feed every 10 seconds (not in demo
+  mode), so these killmails also reach the killboard right away instead of with the hourly sync.
 - **Light mode.** Switch between light and dark beside the language selector in the sidebar or on sign-in, join,
   and setup pages. The preference is remembered for a year and applied before rendering, with matching glass
   surfaces, readable status colours, controls, tables, chart chrome, and keyboard focus. Charts get their own
   colour-vision-checked series and rarity/threat colours for the light surface, and EVE mail colours that would be too
   pale on it are darkened. Dark remains the default.
+- **Collapsible sidebar.** The menu button at the left of the top bar shrinks the sidebar to a narrow icon rail
+  and back with a short slide and fade (instant when reduced motion is requested). On the rail, hovering or focusing
+  an icon opens its section as a menu beside it, and hovering the portrait shows the pilot's name, role and corp.
+  The choice is remembered for a year and applied before rendering.
+- **Notifications for your own actions.** Short toasts confirm actions, in the same stack and style as the live
+  kill notifications, closing after six seconds unless hovered or focused. Changing a user's role now
+  confirms the new role and offers Undo, and a refused change says why. Saving Settings confirms the save, or
+  says why it was refused and keeps what you entered.
 
 ### Changed
 
+- **Dropdowns match the theme.** In Chrome, Edge and Safari 27+, the open list of every dropdown is a glass panel
+  in the current theme with an accent check mark, instead of the system's list. Other browsers keep their native
+  list. On Users & Roles the save button only appears once a different role is picked.
+- **Sync status is grouped by who a job syncs for.** Corporation jobs, character jobs and app-wide system jobs now
+  sit in their own sections. Character jobs collapse to one row per character (portrait, account, job count, worst
+  status, next run) and open automatically when one of them fails. Long results such as a character's in-game roles
+  are clipped to two lines, with the full text on hover.
+- **Releasing an older version line no longer moves `:latest` back.** The Release workflow now tags an image
+  `:latest` (and marks the GitHub release *Latest*) only when its version is newer than every earlier release, and
+  moves `:<major.minor>` only to the newest patch of that line.
 - **Threat Intel puts evidence first.** A compact Local Situation summary, early D-scan input, timestamped
   local co-attacker observations, and always-visible latest kill, loss and cyno-history fields replace the dense
   briefing-led layout. Historical ship profiles and optional score details are clearly separated from scanner
@@ -32,6 +58,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   offers only ore classes that appear in the ledgers you can see, instead of every class.
 - Extend the sidebar surface to the bottom of long pages while keeping navigation and footer controls in the viewport.
 - Preserve the original dark-mode table separators and scrollbar colours when adding light mode.
+- After a role change on Users & Roles, the dropdown no longer jumps back to the old role. After saving
+  Settings, the valuation and permission dropdowns no longer show the old values.
 
 ## [0.8.0] - 2026-10-03
 

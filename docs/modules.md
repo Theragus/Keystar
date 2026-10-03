@@ -130,6 +130,14 @@ Reuse the UI kit in `src/components/ui` (`Panel`, `StatTile`, `MultiSelect`, `Da
 `StatusBadge`, `Portrait`, `TypeIcon`, …) and keep filters in the URL like the mining pages do (`PendingProvider`
 dims the previous render while new data loads).
 
+To confirm an action or report a refusal from a client component, call `useToast().toast({ tone, title,
+description, action, durationMs })` (`src/components/ui/toast.tsx`). The app layout already mounts the
+`ToastProvider`. A feature that keeps its own list of richer cards, like the live kills, renders `<Toast>`s
+inside a `<ToastViewport>`; they join the same stack. Server actions behind a toast return a result object, not an exception, so the message can be
+translated. For a `<select>` whose value the server can change, avoid `<form action>` plus `defaultValue`.
+React 19 resets the form after the action, and a select resets to the value it was first rendered with. Control
+the value in a client component, or give the form a `key` that changes with the saved value.
+
 ## 5. Texts — `src/i18n/messages/{en,de}/skills.ts`
 
 Add a `skills` namespace to the English dictionary (`src/i18n/messages/en/skills.ts`, registered in

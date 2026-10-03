@@ -386,3 +386,141 @@ export async function getDailyActivity(corp: number, r: DateRange): Promise<Dail
   }
   return out;
 }
+
+/** How old a killmail may be and still be announced live (older ones arrive through backfills). */
+const LIVE_MAX_AGE_HOURS = 3;
+const LIVE_LIMIT = 10;
+/** Postgres timestamps keep microseconds; the cursor carries all of them so `>` never repeats a row. */
+const CURSOR_FORMAT = `YYYY-MM-DD"T"HH24:MI:SS.US"Z"`;
+const CURSOR_PATTERN = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z)_(\d{1,15})$/;
+
+/**
+ * Position in the live stream: `first_seen_at` plus the killmail id, since one
+ * insert stores many killmails with the same timestamp. Written `<ISO time>_<id>`.
+ */
+export interface LiveCursor {
+  at: string;
+  id: number;
+}
+
+export const formatLiveCursor = (c: LiveCursor) => `${c.at}_${c.id}`;
+
+/** A cursor from the browser, or null unless it is well formed and names a real instant. */
+export function parseLiveCursor(value: string | null | undefined): LiveCursor | null {
+  const m = value ? CURSOR_PATTERN.exec(value) : null;
+  if (!m) return null;
+  const [, at, id] = m;
+  const parsed = new Date(at!);
+  // Out-of-range parts (month 13, 30 February, …) either fail to parse or roll over.
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 19) !== at!.slice(0, 19)) return null;
+  return { at: at!, id: Number(id) };
+}
+
+export interface LiveEvent {
+  killmailId: number;
+  kind: "kill" | "loss";
+  time: string;
+  /** The destroyed hull: lost by the corporation (loss) or destroyed by it (kill). */
+  shipTypeId: number;
+  shipName: string | null;
+  victimId: number | null;
+  victimName: string | null;
+  victimTicker: string | null;
+  /**
+   * Loss: the final blow (an outsider). Kill: the corporation's pilot who landed
+   * the final blow, or did the most damage when an outsider landed it.
+   */
+  attacker: {
+    characterId: number | null;
+    name: string | null;
+    ticker: string | null;
+    shipTypeId: number | null;
+    shipName: string | null;
+    finalBlow: boolean;
+  } | null;
+  attackerCount: number;
+  systemId: number;
+  systemName: string | null;
+  security: number | null;
+  regionName: string | null;
+  value: number;
+  solo: boolean;
+}
+
+/** Database time as a live cursor: announce what arrives after this. */
+export async function liveCursorNow(): Promise<string> {
+  const [row] = await getDb().execute<{ now: string }>(sql`SELECT to_char(now() AT TIME ZONE 'UTC', ${CURSOR_FORMAT}) AS now`);
+  return formatLiveCursor({ at: String(row?.now), id: 0 });
+}
+
+/** Kills and losses stored after the cursor (oldest first), with everything a notification shows. */
+export async function getLiveEvents(corp: number, since: LiveCursor): Promise<{ events: LiveEvent[]; cursor: string }> {
+  const fresh = sql`(k.first_seen_at, k.killmail_id) > (${since.at}::timestamptz, ${since.id})
+    AND k.killmail_time > now() - make_interval(hours => ${LIVE_MAX_AGE_HOURS})`;
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    WITH ev AS (
+      SELECT 'kill'::text AS kind, k.* FROM killmails k
+      WHERE ${fresh}
+        AND k.victim_corporation_id IS DISTINCT FROM ${corp}
+        AND EXISTS (SELECT 1 FROM killmail_attackers a WHERE a.killmail_id = k.killmail_id AND a.corporation_id = ${corp})
+      UNION ALL
+      SELECT 'loss'::text AS kind, k.* FROM killmails k WHERE ${fresh} AND k.victim_corporation_id = ${corp}
+    )
+    SELECT ev.kind, ev.killmail_id::float8 AS id, ev.killmail_time AS time,
+           to_char(ev.first_seen_at AT TIME ZONE 'UTC', ${CURSOR_FORMAT}) AS seen,
+           ev.victim_ship_type_id AS ship_id, st.name AS ship,
+           ev.victim_character_id::float8 AS victim_id, ve.name AS victim, vc.ticker AS victim_ticker,
+           a.idx IS NOT NULL AS has_attacker, a.character_id::float8 AS attacker_id, ae.name AS attacker,
+           ac.ticker AS attacker_ticker, a.ship_type_id AS attacker_ship_id, ast.name AS attacker_ship, a.final_blow,
+           ev.attacker_count, ev.solar_system_id::float8 AS system_id, s.name AS system,
+           s.security_status::float8 AS security, re.name AS region, ev.total_value::float8 AS value, ev.solo
+    FROM ev
+    LEFT JOIN LATERAL (
+      SELECT a.* FROM killmail_attackers a
+      WHERE a.killmail_id = ev.killmail_id AND (ev.kind = 'loss' OR a.corporation_id = ${corp})
+      ORDER BY a.final_blow DESC, a.damage_done DESC, a.idx
+      LIMIT 1
+    ) a ON true
+    LEFT JOIN eve_types st ON st.type_id = ev.victim_ship_type_id
+    LEFT JOIN eve_entities ve ON ve.id = ev.victim_character_id
+    LEFT JOIN eve_corporations vc ON vc.corporation_id = ev.victim_corporation_id
+    LEFT JOIN eve_entities ae ON ae.id = a.character_id
+    LEFT JOIN eve_corporations ac ON ac.corporation_id = a.corporation_id
+    LEFT JOIN eve_types ast ON ast.type_id = a.ship_type_id
+    LEFT JOIN eve_systems s ON s.system_id = ev.solar_system_id
+    LEFT JOIN eve_constellations c ON c.constellation_id = s.constellation_id
+    LEFT JOIN eve_entities re ON re.id = c.region_id
+    ORDER BY ev.first_seen_at, ev.killmail_id
+    LIMIT ${LIVE_LIMIT}`);
+  const events = rows.map(
+    (r): LiveEvent => ({
+      killmailId: num(r.id),
+      kind: r.kind === "loss" ? "loss" : "kill",
+      time: new Date(String(r.time)).toISOString(),
+      shipTypeId: num(r.ship_id),
+      shipName: str(r.ship),
+      victimId: r.victim_id === null ? null : num(r.victim_id),
+      victimName: str(r.victim),
+      victimTicker: str(r.victim_ticker),
+      attacker: r.has_attacker
+        ? {
+            characterId: r.attacker_id === null ? null : num(r.attacker_id),
+            name: str(r.attacker),
+            ticker: str(r.attacker_ticker),
+            shipTypeId: r.attacker_ship_id === null ? null : num(r.attacker_ship_id),
+            shipName: str(r.attacker_ship),
+            finalBlow: r.final_blow === true,
+          }
+        : null,
+      attackerCount: num(r.attacker_count),
+      systemId: num(r.system_id),
+      systemName: str(r.system),
+      security: r.security === null ? null : num(r.security),
+      regionName: str(r.region),
+      value: num(r.value),
+      solo: r.solo === true,
+    }),
+  );
+  const last = rows.at(-1);
+  return { events, cursor: formatLiveCursor(last ? { at: String(last.seen), id: num(last.id) } : since) };
+}
