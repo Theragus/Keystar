@@ -12,6 +12,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   separation in both themes like the existing ones. Finances shares Trade's teal. Overview, Account and
   Administration keep the cyan accent.
 
+### Fixed
+
+- Scrolling the sidebar navigation or the system and multi-select picker lists past their top or bottom no longer
+  scrolls the page behind them.
+
 ## [0.11.0] - 2026-10-03
 
 **When updating:** skill queues need two optional character scopes.
