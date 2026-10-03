@@ -177,6 +177,20 @@ export const admin: typeof en = {
     disabled: "Deaktiviert",
     errorCount: (count: number) => `Fehler ×${n(count)}`,
     runNow: "Jetzt ausführen",
+    sections: {
+      corporation: (name: string | null) => (name ? `Corporation · ${name}` : "Corporation"),
+      characters: "Charaktere",
+      system: "System",
+      jobCount: (count: number) => `${n(count)} ${count === 1 ? "Job" : "Jobs"}`,
+      characterCount: (characters: number, jobs: number) =>
+        `${n(characters)} ${characters === 1 ? "Charakter" : "Charaktere"} · ${n(jobs)} ${jobs === 1 ? "Job" : "Jobs"}`,
+      charactersHint:
+        "Nur Charaktere, die mit Keystar verknüpft sind und die nötigen ESI-Scopes freigegeben haben, bekommen eigene Jobs. Andere Mitglieder erscheinen hier, sobald sie sich anmelden und die Scopes erteilen.",
+      account: (main: string) => `Konto: ${main}`,
+      failingCount: (count: number) => `${n(count)} fehlgeschlagen`,
+      nextRun: (when: string) => `nächster Lauf ${when}`,
+      empty: "Noch keine Jobs.",
+    },
   },
   settings: {
     metaTitle: "Einstellungen",
