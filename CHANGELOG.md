@@ -21,6 +21,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Align the universe map with Threat Intel’s glass panels and compact controls; batch canvas rendering, cache geometry and labels, and virtualize the system list for smoother rotation.
+
 - Keep browser-fetched zKillboard counters in a private, temporary preview only. Remove browser uploads to the shared pilot cache; the worker verifies statistics before shared profiles and danger scores use them.
 
 - Remove the retired rescan action, button, translations and scan-parent metadata; users create a new Local snapshot with New scan.

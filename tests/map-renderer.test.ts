@@ -1,0 +1,25 @@
+import { afterEach, expect, it, vi } from "vitest";
+import { createMapRenderer } from "../src/modules/map/renderer";
+import type { MapSystem } from "../src/modules/map/model";
+afterEach(() => vi.unstubAllGlobals());
+it("coalesces input and draws thousands of stars in bounded batches without repeated text measurement", () => {
+ let callback: FrameRequestCallback = () => {}; let dragging = true;
+ const raf = vi.fn((cb: FrameRequestCallback) => { callback=cb; return 1; });
+ vi.stubGlobal("requestAnimationFrame",raf);vi.stubGlobal("cancelAnimationFrame",vi.fn());
+ vi.stubGlobal("window",{devicePixelRatio:1});vi.stubGlobal("document",{documentElement:{}});
+ vi.stubGlobal("getComputedStyle",()=>({color:"white",getPropertyValue:()=>"green"}));
+ vi.stubGlobal("ResizeObserver",class {observe(){} disconnect(){}});
+ vi.stubGlobal("MutationObserver",class {observe(){} disconnect(){}});
+ vi.stubGlobal("Path2D",class {rect(){}});
+ const ctx={measureText:vi.fn(()=>({width:60})),setTransform:vi.fn(),clearRect:vi.fn(),fill:vi.fn(),fillText:vi.fn(),beginPath:vi.fn(),arc:vi.fn(),stroke:vi.fn()};
+ const canvas={clientWidth:1000,clientHeight:700,getContext:()=>ctx} as unknown as HTMLCanvasElement;
+ const systems:MapSystem[]=Array.from({length:8490},(_,i)=>[i,`System ${i}`,i%3===0?.8:i%3===1?.2:-.5,i%100,Math.floor(i/100),0]);
+ const renderer=createMapRenderer(canvas,systems,{camera:()=>({yaw:0,pitch:0,zoom:1}),dragging:()=>dragging,selected:null,query:"",labels:true,format:String,onHits:vi.fn()});
+ for(let i=0;i<100;i++)renderer.schedule();
+ expect(raf).toHaveBeenCalledTimes(1);
+ callback(0); expect(ctx.fill.mock.calls.length).toBeLessThanOrEqual(6);expect(ctx.fillText).not.toHaveBeenCalled();
+ expect(ctx.measureText).toHaveBeenCalledTimes(8490);
+ dragging=false;renderer.schedule();callback(16);
+ expect(ctx.measureText).toHaveBeenCalledTimes(8490);expect(ctx.fillText).toHaveBeenCalled();
+ expect(ctx.fillText.mock.calls.length).toBeLessThanOrEqual(100);renderer.destroy();
+});

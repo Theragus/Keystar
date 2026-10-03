@@ -1,5 +1,6 @@
 import type { map as en } from "../en/map";
 export const map: typeof en = {
+ universe: "Universum",
  title: "Karte", description: "Erkunde das EVE-Universum in 3D. Wähle ein System für Name und Sicherheitsstatus.",
  search: "System suchen", all: "Gesamter Weltraum", known: "Bekannter Weltraum", wormholes: "Wurmlochraum", reset: "Ansicht zurücksetzen",
  controls: "Ziehen zum Drehen · Scrollen zum Zoomen · System anklicken zum Fokussieren", security: "Sicherheitsstatus", systems: "Systeme",
