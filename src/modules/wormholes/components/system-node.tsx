@@ -33,7 +33,7 @@ export const SystemNodeView = memo(function SystemNodeView({ data, selected }: N
       )}
       <div className="flex min-w-0 items-center gap-2">
         <ClassBadge cls={s.cls} sec={s.sec} />
-        <span className="truncate text-[13px] font-semibold text-ink">{s.name}</span>
+        <span className="truncate text-xs font-semibold text-ink">{s.name}</span>
         {data.home && <Star className="size-3.5 shrink-0 fill-gold text-gold" aria-label={data.homeLabel} />}
         {s.pinned && <Pin className="ml-auto size-3 shrink-0 text-ink-3" aria-hidden />}
       </div>

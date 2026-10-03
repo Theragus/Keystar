@@ -161,6 +161,18 @@ describe.skipIf(!enabled)("wormholes integration", async () => {
     expect((await maps.loadMapState(db(), mapId)).systems.map((s) => s.id)).toContain(HEK);
   });
 
+  it("judges a re-added system by its own connections, not older collapses", async () => {
+    await maps.addSystem(db(), mapId, actor, { systemId: HEK, connectTo: HOME, connId: uuid(1) }, t0);
+    await maps.updateConnection(db(), mapId, actor, uuid(1), { life: "lt1h" }, t0);
+    await housekeeping(db(), new Date(t0.getTime() + 2.5 * H));
+    expect(await housekeeping(db(), new Date(t0.getTime() + 4 * H))).toMatchObject({ orphans: 1 });
+    // Mapped again with a new hole, which a pilot then deletes by hand: Hek stays until someone removes it.
+    await maps.addSystem(db(), mapId, actor, { systemId: HEK, connectTo: HOME, connId: uuid(2) }, new Date(t0.getTime() + 5 * H));
+    await maps.removeConnection(db(), mapId, uuid(2), new Date(t0.getTime() + 6 * H));
+    expect(await housekeeping(db(), new Date(t0.getTime() + 9 * H))).toMatchObject({ orphans: 0 });
+    expect((await maps.loadMapState(db(), mapId)).systems.map((s) => s.id)).toContain(HEK);
+  });
+
   it("serves the polled state to signed-in viewers only", async () => {
     const call = (since: number, id = mapId) =>
       GET(new Request(`http://localhost/api/wormholes/maps/${id}/state?since=${since}`), {

@@ -72,6 +72,16 @@ export function MapShell({
   const addSystem = (system: SystemSummary) => {
     if (!canEdit) return;
     const connectTo = selectedSystem && selectedSystem.id !== system.id ? selectedSystem.id : null;
+    // A system already on the map is only connected to the selected one (as the search box says); with nothing
+    // selected, or when the two are already connected, picking it just selects it.
+    const onMap = view.systems.some((s) => s.id === system.id);
+    const linked =
+      connectTo !== null &&
+      view.connections.some((c) => (c.a === system.id && c.b === connectTo) || (c.b === system.id && c.a === connectTo));
+    if (onMap && (connectTo === null || linked)) {
+      setSelection({ kind: "system", id: system.id });
+      return;
+    }
     const connId = crypto.randomUUID();
     dispatch({ kind: "addSystem", system, connectTo, connId }, () =>
       addSystemAction({ systemId: system.id, connectTo, connId }),

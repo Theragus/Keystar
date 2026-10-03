@@ -38,20 +38,20 @@ export async function housekeeping(db: Db, now = new Date()) {
             select 1 from wh_connections c
             where c.map_id = s.map_id and c.removed_at is null
               and (c.a_system_id = s.system_id or c.b_system_id = s.system_id))
+          -- Its most recent removed connection is what stranded it: only a collapse counts (a hole a pilot deleted
+          -- leaves the system to them), only one after the system was added (older history belongs to an earlier
+          -- time it was on the map), and only once the grace period is over.
           and exists (
-            select 1 from wh_connections c
-            where c.map_id = s.map_id and c.removed_reason = 'collapsed'
-              and (c.a_system_id = s.system_id or c.b_system_id = s.system_id))
-          and (
-            select max(c.removed_at) from wh_connections c
-            where c.map_id = s.map_id and (c.a_system_id = s.system_id or c.b_system_id = s.system_id)
-          ) < ${graceAgo.toISOString()}::timestamptz
-          -- Only systems that were on the map when they lost their last connection: one a pilot added again
-          -- afterwards, even without a connection, is meant to be there.
-          and s.added_at <= (
-            select max(c.removed_at) from wh_connections c
-            where c.map_id = s.map_id and (c.a_system_id = s.system_id or c.b_system_id = s.system_id)
-          )
+            select 1 from (
+              select c.removed_at, c.removed_reason from wh_connections c
+              where c.map_id = s.map_id and c.removed_at is not null
+                and (c.a_system_id = s.system_id or c.b_system_id = s.system_id)
+              order by c.removed_at desc
+              limit 1
+            ) last
+            where last.removed_reason = 'collapsed'
+              and last.removed_at >= s.added_at
+              and last.removed_at < ${graceAgo.toISOString()}::timestamptz)
         returning s.system_id`);
 
       if (collapsed.length || orphans.length) {

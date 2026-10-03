@@ -180,19 +180,22 @@ function SystemPanel({
         </Section>
         <DataCredit />
       </div>
-      {canEdit && (
+      {(canEdit || (canManage && !home)) && (
         <div className="flex flex-wrap gap-2 border-t border-white/6 px-4 py-3">
-          <Button size="sm" variant="ghost" onClick={() => onPin(system.id, !system.pinned)} title={tw.panel.pinned}>
-            {system.pinned ? <PinOff className="size-3.5" aria-hidden /> : <Pin className="size-3.5" aria-hidden />}
-            {system.pinned ? tw.panel.unpin : tw.panel.pin}
-          </Button>
+          {canEdit && (
+            <Button size="sm" variant="ghost" onClick={() => onPin(system.id, !system.pinned)} title={tw.panel.pinned}>
+              {system.pinned ? <PinOff className="size-3.5" aria-hidden /> : <Pin className="size-3.5" aria-hidden />}
+              {system.pinned ? tw.panel.unpin : tw.panel.pin}
+            </Button>
+          )}
+          {/* Choosing home is its own permission (manage), independent of editing. */}
           {canManage && !home && (
             <Button size="sm" variant="ghost" onClick={() => onSetHome(system)}>
               <Star className="size-3.5" aria-hidden />
               {tw.panel.setHome}
             </Button>
           )}
-          {!home && (
+          {canEdit && !home && (
             <Button size="sm" variant="danger" className="ml-auto" onClick={() => onRemoveSystem(system)}>
               <Trash2 className="size-3.5" aria-hidden />
               {tw.panel.remove}
