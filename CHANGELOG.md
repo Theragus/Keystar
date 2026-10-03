@@ -30,13 +30,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - Engagement ship rows support alliance/corporation highlighting and per-side legends, initially selecting the affiliation with the most recorded pilots on each side.
 
 - Reorganize Threat Intel Local Situation around wrapping pilot affiliation tags, last combat evidence, recent observed co-attacks, and the latest engagement with us. Pilot and legend selection highlights matching alliance members, falling back to corporation membership.
-- Show both sides of the latest engagement with observed ships, loss counts and ISK lost; highlight destroyed hulls in red and identify incomplete evidence. Give the engagement column more width than the observed-group column and show recorded pilot names beneath each hull.
+- Show both sides of the latest engagement with observed ships, loss counts and ISK lost; highlight destroyed hulls in red and identify incomplete evidence. Give the engagement column more width than the observed-group column and show recorded pilot names inline beside each hull.
 - Use compact equal-height pilot cards, direct character/corporation/alliance killboard links, and the three latest kills and losses as ship tags with detailed tooltips.
 - Calculate danger from combat capability and local relevance, with confidence and escalation evidence kept separate. Show explanatory 0–10 badges (green below 5, orange from 5 to below 8, red from 8); no recent sample is unknown.
 - Move D-scan input and matching results into a header dropdown and generate optional written briefings from the blue Briefing button in a dialog.
 - Replace loading prose with evidence overlays and independent loading indicators for each pending pilot tag/card.
-- Fetch pending statistics from the scan creator’s browser at 100 ms intervals with at most four concurrent requests, validation, cache reuse, rate-limit backoff and worker fallback. Server zKillboard calls are spaced by 200 ms; statistics requests avoid a redirect.
-- Keep sidebar icons and abbreviated headings stationary when collapsing; move branding to the top bar and the toggle into the sidebar, remove fade flicker, disable collapsed scrolling, and use a 300 ms width transition.
+- Fetch pending statistics from the scan creator’s browser at 100 ms intervals with at most four concurrent requests for private provisional previews and rate-limit backoff. Only server-verified results enter the shared cache and danger scores. Server zKillboard calls are spaced by 200 ms; statistics requests avoid a redirect.
+- Keep sidebar icons and section-heading prefixes fixed while labels expand to the right. Show three-character collapsed headings, remove fade flicker, use a 300 ms width animation, disable collapsed navigation scrolling, and move branding to the top bar with the toggle in the sidebar.
 
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
   dashboard's killboard button now read "Combat Report".
