@@ -58,6 +58,10 @@ describe("oauth state cookie", () => {
     expect(safeReturnTo("https://evil.example")).toBe("/");
     expect(safeReturnTo("//evil.example")).toBe("/");
     expect(safeReturnTo("/\\evil.example")).toBe("/");
+    expect(safeReturnTo("/\t/evil.example")).toBe("/");
+    expect(safeReturnTo("/\n/evil.example")).toBe("/");
+    expect(safeReturnTo("/\r/evil.example")).toBe("/");
+    expect(safeReturnTo("/characters?tab=a#top")).toBe("/characters?tab=a#top");
     expect(safeReturnTo(null, "/x")).toBe("/x");
   });
 });
