@@ -8,6 +8,7 @@ export const social = {
   module: {
     navSection: "Social",
     nav: { mail: "EVE Mail" },
+    alerts: { mail: { label: "EVE mail", hint: "When one of your characters with mail access receives mail" } },
     permissionGroup: "Social",
     permissions: {
       mail: {
@@ -152,5 +153,19 @@ export const social = {
     folder: { title: "No mail here", body: "Nothing in this folder yet." },
     search: { title: "No matches", body: "No mail matches your search." },
     importing: { title: "Importing mail", body: "The first import is running. Mail shows up here within a few minutes." },
+  },
+  /** Live notifications for new mail (top bar). */
+  live: {
+    api: { unauthorized: "Not signed in", forbidden: "Forbidden" },
+    region: "New mail notifications",
+    title: "New mail",
+    from: (name: string) => `From ${name}`,
+    to: (name: string) => `To ${name}`,
+    unknownSender: "Unknown sender",
+    yourCharacter: "your character",
+    noSubject: "(no subject)",
+    kind: { corp: "Corporation", alliance: "Alliance", list: "Mailing list" } satisfies Record<"corp" | "alliance" | "list", string>,
+    open: "Open this mail",
+    dismiss: "Dismiss",
   },
 };

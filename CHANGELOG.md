@@ -16,6 +16,14 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   types" in the panel header switches back to one row per type.
 - **Survey scanner groups ice and anomaly ore variants.** The field estimator now counts Thick Blue Ice, Pristine
   White Glaze, Hadal Talassonite and similar variants under their base ore.
+- **Mail alerts.** New EVE mail for your characters now shows a notification in Keystar, like kills and
+  losses. It shows the subject, sender and receiving character (with the corporation, alliance or mailing list it
+  went to), and clicking it opens the mail. It needs mail access for the character and checks every 30 seconds.
+  Mail usually reaches Keystar within five minutes of arriving in game.
+- **Desktop notifications.** Kill, loss and mail alerts can also appear as system notifications (Windows notification
+  center, macOS Notification Center) while Keystar is open but not in focus, for example in a background tab or
+  behind the EVE client. Clicking one opens the killmail on zKillboard or the mail in Keystar. While a Keystar tab is
+  in focus, alerts stay in-page toasts. This needs the browser's permission and an HTTPS address.
 
 ### Changed
 
@@ -32,12 +40,18 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   now only accept the character they are for. Picking another character on the EVE login used to give that
   character the wrong set of permissions, which could drop its corporation access and stop the corporation sync
   jobs. Now nothing is changed, and a message says which character to pick.
+- **Alerts menu.** The kill alert button in the top bar is now an "Alerts" menu with switches for kills and losses,
+  EVE mail and desktop notifications. Each choice is saved per browser; an earlier "kill alerts off" choice is kept.
 - Keep sidebar icons and section-heading prefixes fixed while labels expand to the right. Show three-character collapsed headings, remove fade flicker, use a 300 ms width animation, disable collapsed navigation scrolling, and move branding to the top bar with the toggle in the sidebar.
 
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
   dashboard's killboard button now read "Combat Report".
 - **"Corp wallet journal" instead of "Wallet journal".** The sidebar entry, the journal page heading and the button
   on the corporation wallet page now make clear that the journal covers the corporation's wallets, not your own.
+- **"Moon drills" instead of "Moon Observers" and "Refineries".** The mining menu entry and the ledger source option
+  now use the same name, so it is clear they show the same corporation moon-mining data. The mining overview and
+  ledger only show the Combined / Member ledgers / Moon drills choice when the corporation has moon drills on record,
+  since without them all three show the same entries.
 
 ### Fixed
 

@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { eveEntities, eveGroups, eveTypes, getDb, mailLabels, mailLists, mailMessages } from "@/core/db";
+import { CURSOR_FORMAT, formatLiveCursor, type LiveCursor } from "@/core/live-cursor";
 import { BUILTIN_LABELS, labelColor } from "./esi";
 import { collectLinks, mailPreview, parseEveHtml, type EveNode } from "./eve-html";
 import { PAGE_SIZE, type MailFolder } from "./filters";
@@ -332,4 +333,82 @@ export async function getLabelMap(userId: string): Promise<Map<string, { name: s
       .filter((r) => !BUILTIN_LABEL_IDS.has(r.labelId) && r.name)
       .map((r) => [`${r.characterId}:${r.labelId}`, { name: r.name, color: labelColor(r.color) }]),
   );
+}
+
+/** How old a mail may be and still be announced live (the first import of a mailbox brings older ones). */
+const LIVE_MAX_AGE_HOURS = 3;
+const LIVE_LIMIT = 10;
+
+export interface LiveMail {
+  mailId: number;
+  /** The mailbox it arrived in: one of the viewer's characters. */
+  characterId: number;
+  characterName: string | null;
+  fromId: number;
+  fromName: string | null;
+  /** /universe/names category of the sender, for the avatar. */
+  fromCategory: string | null;
+  subject: string;
+  sentAt: string;
+  /** Who it was addressed to: the character itself, its corporation or alliance, or a mailing list. */
+  kind: "direct" | "corp" | "alliance" | "list";
+  listName: string | null;
+}
+
+/**
+ * Unread mail the worker stored after the cursor (oldest first), for the live
+ * notifications. A mail in several of the viewer's mailboxes is announced once
+ * (with the mailbox that got it first), and mail the viewer sent from one of
+ * their own characters not at all.
+ */
+export async function getLiveMail(userId: string, since: LiveCursor): Promise<{ mails: LiveMail[]; cursor: string }> {
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    SELECT m.mail_id, m.character_id, c.name AS character_name, m.from_id, e.name AS from_name, e.category AS from_category,
+           m.subject, m.sent_at, m.labels, m.recipients,
+           to_char(m.first_seen_at AT TIME ZONE 'UTC', ${CURSOR_FORMAT}) AS seen,
+           (SELECT ml.name FROM mail_lists ml, jsonb_array_elements(m.recipients) r
+            WHERE ml.user_id = m.user_id AND ml.character_id = m.character_id
+              AND r->>'type' = 'mailing_list' AND (r->>'id')::bigint = ml.mailing_list_id
+            LIMIT 1) AS list_name
+    FROM mail_messages m
+    LEFT JOIN characters c ON c.character_id = m.character_id
+    LEFT JOIN eve_entities e ON e.id = m.from_id
+    WHERE m.user_id = ${userId}::uuid
+      AND (m.first_seen_at, m.mail_id) > (${since.at}::timestamptz, ${since.id})
+      AND m.sent_at > now() - make_interval(hours => ${LIVE_MAX_AGE_HOURS})
+      AND NOT m.is_read
+      -- Sent by one of the account's own characters, whether or not that character shares its mail.
+      AND NOT EXISTS (SELECT 1 FROM characters own WHERE own.user_id = m.user_id AND own.character_id = m.from_id)
+      AND NOT EXISTS (
+        SELECT 1 FROM mail_messages o
+        WHERE o.user_id = m.user_id AND o.mail_id = m.mail_id
+          AND (o.first_seen_at, o.character_id) < (m.first_seen_at, m.character_id)
+      )
+    ORDER BY m.first_seen_at, m.mail_id
+    LIMIT ${LIVE_LIMIT}`);
+  const mails = rows.map((r): LiveMail => {
+    const labels = numArray(r.labels);
+    const recipients = (Array.isArray(r.recipients) ? r.recipients : []) as MailRecipient[];
+    const kind = recipients.some((x) => x.type === "mailing_list")
+      ? "list"
+      : labels.includes(BUILTIN_LABELS.corp)
+        ? "corp"
+        : labels.includes(BUILTIN_LABELS.alliance)
+          ? "alliance"
+          : "direct";
+    return {
+      mailId: num(r.mail_id),
+      characterId: num(r.character_id),
+      characterName: str(r.character_name),
+      fromId: num(r.from_id),
+      fromName: str(r.from_name),
+      fromCategory: str(r.from_category),
+      subject: String(r.subject ?? ""),
+      sentAt: (toDate(r.sent_at) ?? new Date(0)).toISOString(),
+      kind,
+      listName: str(r.list_name),
+    };
+  });
+  const last = rows.at(-1);
+  return { mails, cursor: formatLiveCursor(last ? { at: String(last.seen), id: num(last.mail_id) } : since) };
 }

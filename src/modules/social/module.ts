@@ -38,6 +38,14 @@ export const socialModule: KeystarModule = {
       defaultMinRole: "member",
     },
   ],
+  alerts: [
+    {
+      id: "social.mail",
+      label: (t) => t.social.module.alerts.mail.label,
+      hint: (t) => t.social.module.alerts.mail.hint,
+      anyPermission: [SOCIAL_PERMISSIONS.mail],
+    },
+  ],
   nav: [
     {
       id: "social",

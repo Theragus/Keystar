@@ -6,9 +6,10 @@ import { socialModule } from "@/modules/social/module";
 import { tradeModule } from "@/modules/trade/module";
 import { walletModule } from "@/modules/wallet/module";
 import type { PermissionDef } from "@/core/rbac/permissions";
+import type { Settings } from "@/core/settings";
 import type { Messages } from "@/i18n/messages";
 import { coreModule } from "./core-module";
-import type { KeystarModule, NavSection, ScopeRequirement } from "./types";
+import type { AlertDef, KeystarModule, NavSection, ScopeRequirement } from "./types";
 
 /**
  * Every enabled module. To add a feature (skills, assets, wallets …) create
@@ -127,4 +128,11 @@ export function navSections(): NavSection[] {
     }
   }
   return [...byId.values()].sort((a, b) => a.order - b.order);
+}
+
+/** Live alerts a user may switch on: their permissions and the app settings allow them. */
+export function availableAlerts(user: { can: (permission: string) => boolean }, settings: Settings): AlertDef[] {
+  return MODULES.flatMap((m) => m.alerts ?? []).filter(
+    (a) => (!a.anyPermission || a.anyPermission.some((p) => user.can(p))) && (!a.available || a.available(settings)),
+  );
 }
