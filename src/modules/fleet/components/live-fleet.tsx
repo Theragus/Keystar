@@ -60,7 +60,7 @@ export async function LiveFleet({ fleet, members, now }: { fleet: FleetSummary; 
                   <span>{g.label ?? t.fleet.fallback.group}</span>
                   <span className="tabular-nums text-ink-2">{f.integer(g.count)}</span>
                 </div>
-                <div className="mt-1 h-1.5 rounded-full bg-white/6">
+                <div className="mt-1 h-1.5 rounded-full bg-surface-contrast/6">
                   <div className="h-full rounded-full bg-accent" style={{ width: `${(g.count / maxGroup) * 100}%` }} />
                 </div>
               </li>
@@ -132,7 +132,7 @@ async function MemberGroup({ title, members }: { title: string; members: FleetMe
         </thead>
         <tbody>
           {members.map((m) => (
-            <tr key={m.characterId} className="border-t border-white/5 first:border-t-0">
+            <tr key={m.characterId} className="border-t border-surface-contrast/5 first:border-t-0">
               <td className="px-3 py-1.5">
                 <span className="flex items-center gap-2">
                   <Portrait id={m.characterId} size={22} />

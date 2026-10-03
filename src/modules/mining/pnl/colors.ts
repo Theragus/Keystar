@@ -6,4 +6,4 @@ import { CHART_CLASS_COLOR } from "../class-colors";
  * introduces no new hues.
  */
 export const EXPENSE_COLOR = CHART_CLASS_COLOR.other;
-export const NET_COLOR = "#ededee";
+export const NET_COLOR = "var(--series-net)";

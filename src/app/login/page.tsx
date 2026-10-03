@@ -119,7 +119,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           {t.auth.login.trademark}
           <br />
           {t.auth.login.license} ·{" "}
-          <a href={env().SOURCE_URL} className="underline decoration-white/20 underline-offset-2 hover:text-ink">
+          <a href={env().SOURCE_URL} className="underline decoration-surface-contrast/20 underline-offset-2 hover:text-ink">
             {t.auth.login.sourceCode}
           </a>
         </p>

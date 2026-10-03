@@ -32,8 +32,8 @@ function NavRow({ href, active, children }: { href: string; active: boolean; chi
       scroll={false}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-white/6 hover:text-ink",
-        active && "bg-white/8 text-ink",
+        "flex min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-contrast/6 hover:text-ink",
+        active && "bg-surface-contrast/8 text-ink",
       )}
     >
       {children}
@@ -174,7 +174,7 @@ export function FolderPanel({ counts, params, t }: { counts: FolderCounts; param
         {row({ kind: "lists" }, icon(Users), m.lists, counts.unread.lists)}
         {counts.lists.length > 0 && (
           <li>
-            <ul className="ml-4 space-y-0.5 border-l border-white/8 pl-2">
+            <ul className="ml-4 space-y-0.5 border-l border-surface-contrast/8 pl-2">
               {counts.lists.map((l) => row({ kind: "list", id: l.id }, null, l.name, l.unread))}
             </ul>
           </li>

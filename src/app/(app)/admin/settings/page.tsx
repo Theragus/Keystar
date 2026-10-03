@@ -20,7 +20,7 @@ export async function generateMetadata() {
   return { title: t.admin.settings.metaTitle };
 }
 
-const selectClass = "glass-inset h-9 rounded-lg px-3 text-sm text-ink [color-scheme:dark]";
+const selectClass = "glass-inset h-9 rounded-lg px-3 text-sm text-ink";
 
 export default async function SettingsPage() {
   await requirePermission("app.settings.manage");
@@ -90,7 +90,7 @@ export default async function SettingsPage() {
                 type="checkbox"
                 name="autoApproveCorpMembers"
                 defaultChecked={settings["access.autoApproveCorpMembers"]}
-                className="mt-0.5 size-4 accent-[#5cc8ff]"
+                className="mt-0.5 size-4 accent-accent"
               />
               <span>
                 <span className="font-medium">{ts.access.autoCorp}</span>
@@ -104,7 +104,7 @@ export default async function SettingsPage() {
                 type="checkbox"
                 name="autoApproveAllianceMembers"
                 defaultChecked={settings["access.autoApproveAllianceMembers"]}
-                className="mt-0.5 size-4 accent-[#5cc8ff]"
+                className="mt-0.5 size-4 accent-accent"
               />
               <span>
                 <span className="font-medium">{ts.access.autoAlliance}</span>

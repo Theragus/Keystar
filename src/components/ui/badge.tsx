@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 type Tone = "neutral" | "accent" | "gold" | "good" | "warning" | "critical";
 
 const tones: Record<Tone, string> = {
-  neutral: "bg-white/7 text-ink-2 ring-white/10",
+  neutral: "bg-surface-contrast/7 text-ink-2 ring-surface-contrast/10",
   accent: "bg-accent/12 text-accent ring-accent/25",
   gold: "bg-gold/12 text-gold ring-gold/25",
   good: "bg-good/15 text-good-text ring-good/30",

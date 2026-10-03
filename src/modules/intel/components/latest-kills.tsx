@@ -24,7 +24,7 @@ export async function LatestKills({ events, names, limit = 5 }: { events: Latest
               href={zkillKill(e.killmailId)}
               target="_blank"
               rel="noopener noreferrer"
-              className="glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-white/8"
+              className="glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-surface-contrast/8"
               style={{ borderLeftColor: color }}
               title={l.title({ isLoss: e.isLoss, ship: other, system, isk: f.compact(e.value), attackers: e.attackerCount })}
             >

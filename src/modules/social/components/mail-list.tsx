@@ -72,7 +72,7 @@ export function MailList({
   const from = (params.page - 1) * PAGE_SIZE + 1;
   return (
     <div>
-      <ul className="-mx-2 divide-y divide-white/5">
+      <ul className="-mx-2 divide-y divide-surface-contrast/5">
         {items.map((m) => {
           const open = params.open?.mailId === m.mailId;
           const firstRecipient = m.recipients[0];
@@ -93,7 +93,7 @@ export function MailList({
                 scroll={false}
                 aria-current={open ? "true" : undefined}
                 className={cn(
-                  "relative flex gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-white/5",
+                  "relative flex gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-surface-contrast/5",
                   open && "bg-accent/10 hover:bg-accent/12",
                 )}
               >
@@ -129,7 +129,7 @@ export function MailList({
         })}
       </ul>
       {total > PAGE_SIZE && (
-        <nav className="mt-3 flex items-center justify-between gap-2 border-t border-white/5 pt-3 text-xs text-ink-3">
+        <nav className="mt-3 flex items-center justify-between gap-2 border-t border-surface-contrast/5 pt-3 text-xs text-ink-3">
           {params.page > 1 ? (
             <Link href={mailHref(params, { page: params.page - 1, open: null })} className="inline-flex items-center gap-1 hover:text-ink">
               <ChevronLeft className="size-3.5" aria-hidden /> {t.list.newer}

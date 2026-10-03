@@ -16,7 +16,7 @@ function CompositionBar({ values, max, t, f }: { values: ClassValues; max: numbe
   const total = Object.values(byClass).reduce((a, b) => a + b, 0);
   const widthPct = max > 0 ? (total / max) * 100 : 0;
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-white/4">
+    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-contrast/4">
       <div className="flex h-full gap-[2px]" style={{ width: `${Math.max(widthPct, 0.5)}%` }}>
         {CHART_CLASSES.filter((c) => byClass[c.id] > 0).map((c) => (
           <div
@@ -80,7 +80,7 @@ export async function MemberLeaderboard({
               <Link
                 href={`?${miningQueryString(filters, { characters: drillIds, page: 1 })}`}
                 scroll={false}
-                className="flex items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-white/5"
+                className="flex items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-surface-contrast/5"
               >
                 {content}
               </Link>
@@ -114,7 +114,7 @@ export async function ClassComposition({ byClass, metric }: { byClass: ClassValu
                 <span className="ml-2 text-xs text-ink-3">{f.percent(chart[c.id] / total)}</span>
               </span>
             </div>
-            <div className="mt-1.5 h-1.5 rounded-full bg-white/5">
+            <div className="mt-1.5 h-1.5 rounded-full bg-surface-contrast/5">
               <div className="h-full rounded-full" style={{ width: `${(chart[c.id] / total) * 100}%`, background: c.color }} />
             </div>
           </li>

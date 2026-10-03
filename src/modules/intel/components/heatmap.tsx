@@ -30,7 +30,7 @@ export async function ActivityHeatmap({ heat, peakHours }: { heat: number[][] | 
               {row.map((v, i) => (
                 <td
                   key={i}
-                  className="size-4 rounded-sm bg-white/4"
+                  className="size-4 rounded-sm bg-surface-contrast/4"
                   style={{ background: v ? heatColor(v / max) : undefined }}
                   title={h.cell(h.days[d], hour(i), v)}
                 >

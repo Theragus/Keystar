@@ -2,7 +2,7 @@ import { Crosshair, ExternalLink, Gamepad2 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { TypeIcon } from "@/components/ui/eve-image";
 import type { Messages } from "@/i18n/messages";
-import { plainText, type EveNode } from "../eve-html";
+import { isPaleOnLight, plainText, type EveNode } from "../eve-html";
 import { classifyLink, killReportUrl, resolveShowinfo, webUrlFor } from "../links";
 import type { LinkContext } from "../queries";
 import { CopyChip } from "./copy-chip";
@@ -49,12 +49,17 @@ function render(nodes: EveNode[], links: LinkContext, t: T): ReactNode[] {
           </span>
         );
       case "style": {
-        const style: CSSProperties = {};
-        if (node.color) style.color = node.color;
+        const style: CSSProperties & { "--mail-color"?: string } = {};
+        if (node.color) style["--mail-color"] = node.color;
         if (node.size) style.fontSize = `${node.size}em`;
         if (node.letterSpacing) style.letterSpacing = `${node.letterSpacing}px`;
         return (
-          <span key={i} style={style}>
+          <span
+            key={i}
+            style={style}
+            className={node.color ? "mail-color" : undefined}
+            data-pale={node.color && isPaleOnLight(node.color) ? "" : undefined}
+          >
             {render(node.children, links, t)}
           </span>
         );

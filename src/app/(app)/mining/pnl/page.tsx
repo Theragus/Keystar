@@ -178,7 +178,7 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                         <span className="font-semibold tabular-nums">{f.compact(c.amount)}</span>
                       </li>
                     ))}
-                    <li className="flex items-center justify-between gap-3 border-t border-white/8 pt-2.5 text-xs text-ink-3">
+                    <li className="flex items-center justify-between gap-3 border-t border-surface-contrast/8 pt-2.5 text-xs text-ink-3">
                       <span>{m.expenses.split}</span>
                       <span className="tabular-nums">
                         {f.compact(totals.wallet)} · {f.compact(totals.manual)}
@@ -187,7 +187,7 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                   </ul>
                 )}
                 {walletOn === 0 && (
-                  <p className="mt-4 flex items-start gap-1.5 border-t border-white/8 pt-3 text-xs text-ink-3">
+                  <p className="mt-4 flex items-start gap-1.5 border-t border-surface-contrast/8 pt-3 text-xs text-ink-3">
                     <Wallet className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                     <span>
                       {m.expenses.walletOff(

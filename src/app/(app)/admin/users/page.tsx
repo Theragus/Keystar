@@ -119,7 +119,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
 
       {pending.length > 0 && canManage && (
         <Panel title={tu.awaitingApproval(pending.length)} subtitle={tu.awaitingApprovalHint}>
-          <ul className="divide-y divide-white/6">
+          <ul className="divide-y divide-surface-contrast/6">
             {pending.map((u) => (
               <li key={u.id} className="flex items-center gap-3 py-2.5">
                 {u.main_id && <Portrait id={Number(u.main_id)} size={32} />}
@@ -248,7 +248,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                           <select
                             name="role"
                             defaultValue={u.role}
-                            className="glass-inset h-8 rounded-lg px-2.5 text-xs text-ink [color-scheme:dark]"
+                            className="glass-inset h-8 rounded-lg px-2.5 text-xs text-ink"
                             aria-label={tu.roleFor(u.main_name)}
                           >
                             {ROLES.filter((r) => assignable.includes(r) || r === u.role).map((r) => (

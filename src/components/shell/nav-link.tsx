@@ -20,8 +20,8 @@ export function NavLink({ href, exact, children }: { href: string; exact?: boole
       className={cn(
         "relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[0.84rem] transition-colors",
         isActive
-          ? "bg-white/[0.07] text-ink [&_svg]:text-(--section) [&_svg]:opacity-100"
-          : "text-ink-2 hover:bg-white/[0.04] hover:text-ink",
+          ? "bg-surface-contrast/[0.07] text-ink [&_svg]:text-(--section) [&_svg]:opacity-100"
+          : "text-ink-2 hover:bg-surface-contrast/[0.04] hover:text-ink",
       )}
     >
       {isActive && <span className="absolute top-1.5 bottom-1.5 -left-3 w-[2px] rounded-full bg-(--section)" aria-hidden />}

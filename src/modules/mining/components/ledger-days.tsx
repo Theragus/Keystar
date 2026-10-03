@@ -51,7 +51,7 @@ export function LedgerDaysToggleAll() {
     <button
       type="button"
       onClick={() => setAll(!everyCollapsed)}
-      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-ink-3 transition hover:bg-white/6 hover:text-ink"
+      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-ink-3 transition hover:bg-surface-contrast/6 hover:text-ink"
     >
       <Icon className="size-3.5" aria-hidden />
       {everyCollapsed ? t.mining.ledger.expandAll : t.mining.ledger.collapseAll}

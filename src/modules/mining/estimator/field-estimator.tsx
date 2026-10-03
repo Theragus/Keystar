@@ -142,14 +142,14 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
             <button
               type="button"
               onClick={() => setText(EXAMPLE)}
-              className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-ink-3 hover:bg-white/6 hover:text-ink"
+              className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-ink-3 hover:bg-surface-contrast/6 hover:text-ink"
             >
               <ClipboardPaste className="size-3.5" aria-hidden /> {m.scan.example}
             </button>
             <button
               type="button"
               onClick={() => setText("")}
-              className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-ink-3 hover:bg-white/6 hover:text-ink"
+              className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-ink-3 hover:bg-surface-contrast/6 hover:text-ink"
             >
               <Eraser className="size-3.5" aria-hidden /> {m.scan.clear}
             </button>
@@ -310,7 +310,7 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
                               <tr key={g.name} className="text-ink-2">
                                 <td>
                                   <div className="flex items-center gap-2 pl-9 whitespace-nowrap" title={g.name}>
-                                    <span className="rounded border border-white/10 px-1.5 py-px font-mono text-3xs text-ink-2">
+                                    <span className="rounded border border-surface-contrast/10 px-1.5 py-px font-mono text-3xs text-ink-2">
                                       {g.grade === "Base" ? m.baseGrade : g.grade}
                                     </span>
                                     {g.minDistanceKm !== null && (
@@ -349,7 +349,7 @@ function ShareBar({ value, subtle }: { value: number; subtle?: boolean }) {
   const { f } = useI18n();
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 flex-1 rounded-full bg-white/5">
+      <div className="h-1.5 flex-1 rounded-full bg-surface-contrast/5">
         <div
           className={cn("h-full rounded-full", subtle ? "bg-accent/45" : "bg-accent")}
           style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%` }}

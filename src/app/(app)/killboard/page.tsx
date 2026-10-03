@@ -179,7 +179,7 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
             href={zkillCorporation(corpId)}
             target="_blank"
             rel="noopener noreferrer"
-            className="glass-chip inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium hover:bg-white/10"
+            className="glass-chip inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium hover:bg-surface-contrast/10"
           >
             zKillboard <ExternalLink className="size-3.5" aria-hidden />
           </a>
