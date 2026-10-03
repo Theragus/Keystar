@@ -12,6 +12,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   and setup pages. The preference is remembered for a year and applied before rendering, with matching glass
   surfaces, readable status colours, controls, tables, chart chrome, and keyboard focus. Dark remains the default.
 
+### Fixed
+
+- Extend the sidebar surface to the bottom of long pages while keeping navigation and footer controls in the viewport.
+- Preserve the original dark-mode table separators and scrollbar colours when adding light mode.
+
 ## [0.8.0] - 2026-10-03
 
 ### Added

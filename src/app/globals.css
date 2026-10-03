@@ -316,12 +316,12 @@ select option:disabled {
   color: var(--color-ink-3);
   text-align: left;
   padding: 0.6rem 0.9rem;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
   white-space: nowrap;
 }
 .ks-table td {
   padding: 0.6rem 0.9rem;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
   vertical-align: middle;
 }
 .ks-table tbody tr {
@@ -339,7 +339,7 @@ select option:disabled {
 /* Scrollbars that fit the theme. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(var(--surface-rgb), 0.3) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
 /* Keyboard focus that is always visible on glass. */
@@ -417,3 +417,6 @@ select option:disabled {
 [data-theme="light"] .dot-grid {
   background-image: radial-gradient(rgba(24, 35, 50, 0.09) 1px, transparent 1px);
 }
+
+[data-theme="light"] .ks-table td { border-bottom-color: var(--hairline); }
+[data-theme="light"] * { scrollbar-color: rgba(24, 35, 50, 0.3) transparent; }
