@@ -40,6 +40,13 @@ export const common = {
     to: "To",
     apply: "Apply range",
   },
+  systemPicker: {
+    loading: "Loading systems…",
+    noMatches: "No system by that name yet — it is looked up when you scan",
+    empty: "The system list is still loading in the background; type the name",
+    failed: "Could not load the system list; type the name",
+    wormhole: "W-space",
+  },
   multiSelect: {
     all: "All",
     search: (label: string) => `Search ${label.toLowerCase()}…`,

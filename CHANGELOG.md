@@ -6,6 +6,12 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Threat Intel system picker.** The current-system field suggests systems as you type, every known-space and
+  wormhole system with its security status. A new background job loads the system list from ESI once (about 20
+  minutes on a new install) and checks for new systems every 30 days.
+
 ### Changed
 
 - **Fleet access is opt-in per character.** Members are no longer asked for `esi-fleets.read_fleet.v1` when they join

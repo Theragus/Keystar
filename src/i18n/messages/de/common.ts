@@ -37,6 +37,13 @@ export const common: typeof en = {
     to: "Bis",
     apply: "Zeitraum übernehmen",
   },
+  systemPicker: {
+    loading: "Systeme werden geladen …",
+    noMatches: "Kein System mit diesem Namen bekannt – es wird beim Scan nachgeschlagen",
+    empty: "Die Systemliste lädt noch im Hintergrund; gib den Namen ein",
+    failed: "Die Systemliste konnte nicht geladen werden; gib den Namen ein",
+    wormhole: "W-Space",
+  },
   multiSelect: {
     all: "Alle",
     search: (label: string) => `${label} durchsuchen …`,

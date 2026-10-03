@@ -1,15 +1,17 @@
-import { eq, lt, sql } from "drizzle-orm";
+import { eq, inArray, lt, sql } from "drizzle-orm";
 import {
   characterCorpRoles,
   characters,
   corporationMembers,
   esiCache,
+  eveSystems,
   workerHeartbeats,
 } from "@/core/db";
 import { purgeExpiredSessions } from "@/core/auth/session";
 import { fetchAffiliations } from "@/core/eve/affiliation";
 import { recentPriceInterest, syncPrices } from "@/core/eve/prices";
-import { ensureNames, refreshCorporations } from "@/core/eve/resolver";
+import { ensureNames, ensureSystems, refreshCorporations } from "@/core/eve/resolver";
+import { isListedSystem } from "@/core/eve/systems";
 import { setSetting } from "@/core/settings";
 import { trackedCorporations } from "./scheduler";
 import type { JobDefinition, PriceInterestProvider } from "./types";
@@ -128,6 +130,43 @@ export function marketPricesJob(providers: PriceInterestProvider[]): JobDefiniti
     },
   };
 }
+
+/** Systems fetched per run while the list fills; the first full load spreads over a couple of hours. */
+const SYSTEMS_PER_RUN = 500;
+/** New systems are rare (a handful per decade); unknown names are still looked up on demand. */
+const SYSTEMS_RECHECK_MS = 30 * 24 * 3600 * 1000;
+/** A batch that resolved nothing (ESI trouble) waits this long before the next try. */
+const SYSTEMS_STALLED_MS = 6 * 3600 * 1000;
+
+/** Every known-space and wormhole system, so the system picker can offer them all. */
+export const universeSystemsJob: JobDefinition = {
+  key: "core.universe-systems",
+  label: (t) => t.core.jobs.universeSystems,
+  module: "core",
+  owner: "global",
+  // A floor only: while systems are missing the job runs again a minute later, then nextRunAt spaces it out.
+  intervalSeconds: 60,
+  async run({ esi, db }) {
+    const res = await esi.get<number[]>("/universe/systems");
+    const listed = res.data.filter(isListedSystem);
+    const known = new Set((await db.select({ id: eveSystems.systemId }).from(eveSystems)).map((r) => r.id));
+    const missing = listed.filter((id) => !known.has(id));
+    if (!missing.length) {
+      return { summary: `All ${listed.length} systems known`, nextRunAt: new Date(Date.now() + SYSTEMS_RECHECK_MS) };
+    }
+    const batch = missing.slice(0, SYSTEMS_PER_RUN);
+    await ensureSystems(batch);
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(eveSystems)
+      .where(inArray(eveSystems.systemId, batch));
+    const remaining = missing.length - count;
+    return {
+      summary: `Loaded ${count} systems, ${remaining} remaining`,
+      nextRunAt: count === 0 ? new Date(Date.now() + SYSTEMS_STALLED_MS) : null,
+    };
+  },
+};
 
 export const housekeepingJob: JobDefinition = {
   key: "core.housekeeping",

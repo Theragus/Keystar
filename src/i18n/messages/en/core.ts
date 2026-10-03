@@ -42,5 +42,6 @@ export const core = {
     corporationMembers: "Corporation roster",
     marketPrices: "Market prices",
     housekeeping: "Housekeeping",
+    universeSystems: "Solar system list",
   },
 };
