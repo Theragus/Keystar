@@ -1,0 +1,68 @@
+# Dependabot version updates. Docs:
+# https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+version: 2
+
+updates:
+  # pnpm: Dependabot uses the "npm" ecosystem and picks up pnpm-lock.yaml.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    # Give new releases a few days to get yanked or patched before we pick them up.
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+    groups:
+      # One PR for all non-breaking updates; majors still arrive one per PR.
+      minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      # Node types follow the runtime (node:22 in the Dockerfile and CI).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "docker"
+    ignore:
+      # Node majors are a deliberate runtime upgrade, not a routine bump.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "docker"
+    ignore:
+      # A Postgres major needs a dump/restore or pg_upgrade of existing volumes.
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
+      # Our own image is versioned by releases, not by Dependabot.
+      - dependency-name: "ghcr.io/theragus/keystar"
