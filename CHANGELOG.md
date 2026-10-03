@@ -3,7 +3,7 @@
 All notable changes to Keystar. Versions follow [Semantic Versioning](https://semver.org/); while Keystar is below
 1.0, new features bump the patch version. Releasing is described in [docs/releasing.md](docs/releasing.md).
 
-## [0.1.4] - 2026-10-03
+## [0.1.5] - 2026-10-03
 
 ### Changed
 
@@ -27,6 +27,13 @@ All notable changes to Keystar. Versions follow [Semantic Versioning](https://se
   kills tile.
 - The up/down "switcher" icon next to the corporation name in the top bar. Keystar has one home corporation, so
   there was nothing to switch.
+
+## [0.1.4] - 2026-10-03
+
+### Fixed
+
+- German: changes in killboard tables and the top-systems lists (e.g. "+1.234") now use German digit grouping.
+- The ore field estimator's example placeholder uses the number format of the EVE client in the chosen language.
 
 ## [0.1.3] - 2026-10-02
 

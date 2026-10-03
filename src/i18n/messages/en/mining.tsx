@@ -251,6 +251,8 @@ export const mining = {
       example: "Example",
       clear: "Clear",
       input: "Survey scanner result",
+      /** Sample line in the number format of the EVE client in this language. */
+      placeholder: "Scordite III-Grade\t8,904\t1,335 m3\t168,000.00 ISK\t25 km\n…",
     },
     skipped: (count: number, lines: string) =>
       `Skipped ${plural(count, "line", "lines")} that didn't look like asteroids (line ${lines}).`,
