@@ -52,7 +52,7 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
         <span className="text-ink-2">{t.intel.scan.friendlyPilots(view.rows.length - others.length)}</span>
       </div>
     }>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <div className="glass-inset relative rounded-lg p-3 sm:col-span-2">
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{t.intel.scan.pilotsTitle}</h3>
           <PilotTags legend={groupedPilots.map(({ id, name, color }) => ({ id, name, color }))} legendLabel={e.allianceLegend} items={sortedPilots.map(({ pilot, profile }) => {
