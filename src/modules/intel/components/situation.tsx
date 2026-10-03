@@ -1,3 +1,5 @@
+import { TypeIcon } from "@/components/ui/eve-image";
+import { zkillRelated } from "@/modules/killboard/links";
 import { CHART_CLASSES } from "@/modules/mining/class-colors";
 import { Radio } from "lucide-react";
 import { TIER_COLOR } from "../colors";
@@ -70,6 +72,7 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
             {groupedPilots.map(alliance => <li key={alliance.id ?? "none"} className="flex items-center gap-1.5"><span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: alliance.color }} aria-hidden /><span>{alliance.name}</span></li>)}
           </ul>
         </div>
+        <div className="space-y-3">
         <div className="glass-inset rounded-lg p-3">
           <h3 className="eve-label mb-2 text-2xs text-ink-3" title={e.groupsHint}>{e.groups}</h3>
           {group ? (
@@ -101,6 +104,28 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
             <p className="text-xs text-ink-3">{e.noEvent}</p>
           )}
         </div>
+        </div>
+        <div className="glass-inset rounded-lg p-3">
+          <h3 className="eve-label mb-2 text-2xs text-ink-3">{t.intel.scan.historyTitle}</h3>
+          {!view.home ? <p className="text-xs text-ink-3">{t.intel.scan.noHome}</p> : !view.engagements.length ? <p className="text-xs text-ink-3">{t.intel.scan.noFights}</p> : <>
+            <p className="mb-2 text-xs text-ink-2">{t.intel.scan.engagements(view.totals.engagements)}</p>
+            <div className="mb-3 space-y-1 text-xs text-ink-2">
+              <p>{t.intel.engagements.killed(view.totals.ourKills, f.compact(view.totals.iskKilled))}</p>
+              <p>{t.intel.engagements.lost(view.totals.ourLosses, f.compact(view.totals.iskLost))}</p>
+            </div>
+            <ol className="space-y-3">
+              {view.engagements.slice(0, 3).map(fight => <li key={fight.key} className="border-t border-surface-contrast/6 pt-2 text-xs">
+                <a href={zkillRelated(fight.systemId, fight.start)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">{view.names.systems.get(fight.systemId)?.name ?? e.unknown} · {f.relativeTime(fight.start)}</a>
+                <p className="mt-1 text-ink-2">{t.intel.engagements.killed(fight.ourKills, f.compact(fight.iskKilled))}</p>
+                <p className="text-ink-2">{t.intel.engagements.lost(fight.ourLosses, f.compact(fight.iskLost))}</p>
+                <p className="mt-1 text-ink-3">{fight.pilots.map(pilot => view.pilotNames.get(pilot.characterId) ?? e.unknown).join(" · ")}</p>
+                {fight.brought.length > 0 && <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-ink-2"><span className="text-ink-3">{t.intel.engagements.brought}</span>{fight.brought.slice(0, 5).map(ship => <span key={ship.shipTypeId} className="inline-flex items-center gap-1"><TypeIcon id={ship.shipTypeId} size={16} className="rounded" />{ship.count > 1 && `${f.integer(ship.count)}× `}{view.names.types.get(ship.shipTypeId)?.name ?? e.unknown}</span>)}</div>}
+              </li>)}
+            </ol>
+            <p className="mt-2 text-3xs text-ink-3">{e.historyHint}</p>
+          </>}
+        </div>
+
 
       </div>
       <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-3">

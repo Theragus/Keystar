@@ -312,7 +312,7 @@ export const intel = {
     situation: "Local situation",
     snapshotHint: "Presence in the pasted snapshot. Combat and fittings below are historical evidence.",
     interest: "Pilots to review",
-    newest: "Newest combat evidence",
+    newest: "Last combat evidence",
     lastKill: "Latest known kill",
     lastLoss: "Latest known loss",
     cyno: "Cyno fit history",

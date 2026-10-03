@@ -307,7 +307,7 @@ export const intel: typeof en = {
     situation: "Lage im Local",
     snapshotHint: "Anwesenheit in der eingefügten Momentaufnahme. Kämpfe und Ausrüstung sind historische Belege.",
     interest: "Piloten zur Prüfung",
-    newest: "Neuester Kampfbeleg",
+    newest: "Letzter Kampfbeleg",
     lastKill: "Letzter bekannter Kill",
     lastLoss: "Letzter bekannter Verlust",
     cyno: "Cyno-Ausrüstungshistorie",

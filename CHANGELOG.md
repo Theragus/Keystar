@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Stack observed group and last combat evidence beside Pilots, and add a compact History with us overview with totals and the latest three encounters.
+
 - Group Local Situation pilot tags by alliance with matching colored backgrounds and a numbered alliance legend; retain danger/cyno sorting within each group.
 
 - Anchor navigation headings at the centered rail abbreviation, revealing the rest to the right on expansion.
