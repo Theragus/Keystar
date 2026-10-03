@@ -103,7 +103,6 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
           <ul className="mt-3 space-y-1 border-t border-surface-contrast/6 pt-2 text-3xs text-ink-2" aria-label={e.allianceLegend}>
             {groupedPilots.map(alliance => <li key={alliance.id ?? "none"} className="flex items-center gap-1.5"><span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: alliance.color }} aria-hidden /><span>{f.integer(alliance.number)} · {alliance.name}</span></li>)}
           </ul>
-          <p className="mt-2 text-3xs text-ink-3">{e.cynoTagLegend}</p>
         </div>
         <div className="glass-inset rounded-lg p-3">
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{t.intel.scan.foughtUs}</h3>
