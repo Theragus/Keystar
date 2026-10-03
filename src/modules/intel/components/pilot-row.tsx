@@ -1,7 +1,6 @@
-import { ChevronRight, ExternalLink, Swords } from "lucide-react";
-import Link from "next/link";
+import { Swords } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Portrait, TypeIcon } from "@/components/ui/eve-image";
+import { Portrait } from "@/components/ui/eve-image";
 import { getI18n } from "@/i18n/server";
 import { zkillCharacter } from "@/modules/killboard/links";
 import type { DisplayNames } from "../names";
@@ -9,7 +8,7 @@ import type { ScanPilot } from "../scans";
 import type { PilotHistory, PilotProfile, PilotScore, Standing } from "../types";
 import { PilotEvidence } from "./pilot-evidence";
 import { LatestKills } from "./latest-kills";
-import { DimensionBreakdown, ScoreBadge, TagList } from "./score";
+import { ScoreBadge } from "./score";
 import { StandingBadge } from "./standing-badge";
 
 export async function HistoryChip({ history }: { history: PilotHistory | null }) {
@@ -38,13 +37,12 @@ async function ProfileStatus({ pilot }: { pilot: ScanPilot }) {
   return null;
 }
 
-/** One scanned pilot: identity, score, tags and latest kills in the row; the evidence when expanded. */
+/** A scanned pilot with historical evidence and direct killboard links. */
 export async function PilotRow({
   pilot,
   standing,
   names,
   pilotNames,
-  scanId,
 }: {
   pilot: ScanPilot;
   standing: Standing;
@@ -52,7 +50,7 @@ export async function PilotRow({
   pilotNames: Map<number, string>;
   scanId: string;
 }) {
-  const { t, f } = await getI18n();
+  const { t } = await getI18n();
   const p = t.intel.pilot;
   const ticker = pilot.corporationTicker ? `[${pilot.corporationTicker}]` : null;
   const history = pilot.history;
@@ -60,12 +58,12 @@ export async function PilotRow({
   const profile = (pilot.profile as PilotProfile | null) ?? null;
   const flyingWith = (profile?.associates ?? []).filter((a) => pilotNames.has(a.characterId) && a.characterId !== pilot.characterId);
   return (
-    <details className="group glass-inset min-w-0 rounded-xl open:md:col-span-2 open:xl:col-span-3">
-      <summary className="flex cursor-pointer list-none flex-col gap-3 p-3 [&::-webkit-details-marker]:hidden">
+    <article className="glass-inset min-w-0 rounded-xl">
+      <div className="flex flex-col gap-3 p-3">
         <div className="flex w-full items-start gap-2">
-          <Portrait id={pilot.characterId} size={40} />
+          <a href={zkillCharacter(pilot.characterId)} target="_blank" rel="noopener noreferrer" aria-label={pilot.name} className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-accent"><Portrait id={pilot.characterId} size={40} /></a>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold text-ink" title={pilot.name}>{pilot.name}</div>
+            <a href={zkillCharacter(pilot.characterId)} target="_blank" rel="noopener noreferrer" className="block truncate text-sm font-semibold text-ink hover:text-accent hover:underline" title={pilot.name}>{pilot.name}</a>
             <div className="mt-0.5 truncate text-xs text-ink-3" title={pilot.corporationName ?? undefined}>
               {ticker ?? pilot.corporationName ?? p.unknownCorporation}
               {pilot.allianceId && <> · {pilot.allianceName ?? p.alliance(pilot.allianceId)}</>}
@@ -81,103 +79,18 @@ export async function PilotRow({
         <div className="w-full border-y border-surface-contrast/6 py-3">
           <PilotEvidence profile={profile} names={names} associates={flyingWith.length} />
         </div>
-        <div className="grid w-full grid-cols-2 gap-3">
+        <div className="grid w-full gap-3">
           {[{ label: t.intel.evidence.recentKills, loss: false }, { label: t.intel.evidence.recentLosses, loss: true }].map(({ label, loss }) => {
             const events = profile?.recent.latest.filter(event => event.isLoss === loss) ?? [];
             return (
               <div key={label} className="min-w-0">
-                <h5 className="mb-1.5 text-3xs text-ink-3">{label}</h5>
+                <h5 className="mb-1.5 text-xs text-ink-2">{label}</h5>
                 {events.length ? <LatestKills events={events} names={names} limit={3} compact /> : <p className="text-3xs text-ink-3">{t.intel.evidence.noEvent}</p>}
               </div>
             );
           })}
         </div>
-        <div className="mt-auto flex items-center gap-1 text-xs text-accent">
-          <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden />
-          {p.latestTitle}
-        </div>
-      </summary>
-      <div className="space-y-4 border-t border-surface-contrast/6 px-4 py-3">
-        <p className="text-xs text-ink-3">
-          {t.intel.evidence.sampleHint} {profile ? t.intel.evidence.profileBuilt(f.relativeTime(profile.builtAt)) : ""}{" "}
-          {pilot.statsAt ? t.intel.evidence.statsChecked(f.relativeTime(pilot.statsAt)) : t.intel.evidence.statsUnknown}
-        </p>
-        {profile && profile.recent.latest.length > 0 && (
-          <div>
-            <h4 className="eve-label mb-1.5 text-2xs text-ink-3">{p.latestTitle}</h4>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <h5 className="mb-2 text-xs text-ink-2">{t.intel.evidence.recentKills}</h5>
-                <LatestKills events={profile.recent.latest.filter((e) => !e.isLoss)} names={names} limit={5} />
-              </div>
-              <div>
-                <h5 className="mb-2 text-xs text-ink-2">{t.intel.evidence.recentLosses}</h5>
-                <LatestKills events={profile.recent.latest.filter((e) => e.isLoss)} names={names} limit={5} />
-              </div>
-            </div>
-          </div>
-        )}
-        {score && score.dimensions.length > 0 && (
-          <div>
-            <details>
-              <summary className="cursor-pointer text-xs text-ink-2">{p.whyTitle}</summary>
-              <div className="mt-3 space-y-3">
-                <TagList tags={score.tags} />
-                <DimensionBreakdown dimensions={score.dimensions} recencyGate={score.recencyGate} />
-              </div>
-            </details>
-          </div>
-        )}
-        {flyingWith.length > 0 && (
-          <p className="text-xs text-ink-2">
-            {p.fliesWith(
-              flyingWith
-                .slice(0, 6)
-                .map((a) => `${pilotNames.get(a.characterId)} (${f.integer(a.sharedKills)})`)
-                .join(", "),
-            )}
-          </p>
-        )}
-        {history && history.killsOnUs + history.lossesToUs > 0 && (
-          <div>
-            <h4 className="eve-label mb-1.5 text-2xs text-ink-3">{p.againstUs}</h4>
-            <p className="text-xs text-ink-2">
-              {p.againstUsText({
-                killsOnUs: history.killsOnUs,
-                iskOnUs: f.compact(history.iskDestroyedOnUs),
-                lossesToUs: history.lossesToUs,
-                iskToUs: f.compact(history.iskLostToUs),
-                first: f.relativeTime(history.firstAt),
-                last: f.relativeTime(history.lastAt),
-              })}
-            </p>
-            {history.ships.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                {history.ships.map((s) => (
-                  <span key={s.shipTypeId} className="inline-flex items-center gap-1 text-xs text-ink-2">
-                    <TypeIcon id={s.shipTypeId} size={20} className="rounded" />
-                    {names.types.get(s.shipTypeId)?.name ?? p.unknownHull}
-                    <span className="text-ink-3 tabular-nums">×{f.integer(s.count)}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <div className="flex gap-4 text-xs">
-          <Link href={`/intel/${scanId}/pilot/${pilot.characterId}`} className="text-accent hover:underline">
-            {p.fullProfile}
-          </Link>
-          <a
-            href={zkillCharacter(pilot.characterId)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-ink-2 hover:text-accent"
-          >
-            zKillboard <ExternalLink className="size-3" aria-hidden />
-          </a>
-        </div>
       </div>
-    </details>
+    </article>
   );
 }

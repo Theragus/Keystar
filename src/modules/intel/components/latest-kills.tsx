@@ -24,17 +24,21 @@ export async function LatestKills({ events, names, limit = 5, compact = false }:
               href={zkillKill(e.killmailId)}
               target="_blank"
               rel="noopener noreferrer"
-              className={compact ? "glass-chip flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-md border-t-2 p-1 text-center text-3xs hover:bg-surface-contrast/8" : "glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-surface-contrast/8"}
+              className={compact ? "glass-chip flex min-h-28 min-w-0 flex-col items-center justify-center gap-1 rounded-md border-t-2 p-2 text-center text-xs hover:bg-surface-contrast/8" : "glass-chip flex items-center gap-2 rounded-lg border-l-[3px] py-1 pr-2.5 pl-1.5 text-xs hover:bg-surface-contrast/8"}
               style={compact ? { borderTopColor: color } : { borderLeftColor: color }}
               title={l.title({ isLoss: e.isLoss, ship: other, system, isk: f.compact(e.value), attackers: e.attackerCount })}
             >
-              {targetHull ? <TypeIcon id={targetHull} size={compact ? 28 : 22} className="rounded" /> : null}
+              {targetHull ? <TypeIcon id={targetHull} size={compact ? 32 : 22} className="rounded" /> : null}
               <span className={compact ? "min-w-0 w-full" : "min-w-0"}>
                 <span className="block max-w-36 truncate text-ink">
                   <span className="sr-only">{l.srKind(e.isLoss)}</span>
                   {other ?? t.intel.pilot.unknownHull}
                 </span>
-                {!compact && <span className="block text-3xs text-ink-3">
+                {compact ? <span className="mt-1 block space-y-0.5 text-xs text-ink-3">
+                  <span className="block">{f.relativeTime(e.time)}</span>
+                  <span className="block">{system ?? t.intel.evidence.unknown}</span>
+                  <span className="block">{l.pilots(e.attackerCount)}</span>
+                </span> : <span className="block text-3xs text-ink-3">
                   {f.relativeTime(e.time)} · {system ?? "?"} · {e.solo ? l.solo : l.pilots(e.attackerCount)}
                 </span>}
               </span>
