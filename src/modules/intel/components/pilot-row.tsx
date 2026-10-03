@@ -2,7 +2,7 @@ import { Swords } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Portrait } from "@/components/ui/eve-image";
 import { getI18n } from "@/i18n/server";
-import { zkillCharacter } from "@/modules/killboard/links";
+import { zkillAlliance, zkillCharacter, zkillCorporation } from "@/modules/killboard/links";
 import type { DisplayNames } from "../names";
 import type { ScanPilot } from "../scans";
 import type { PilotHistory, PilotProfile, PilotScore, Standing } from "../types";
@@ -63,8 +63,12 @@ export async function PilotRow({
           <div className="min-w-0 flex-1">
             <a href={zkillCharacter(pilot.characterId)} target="_blank" rel="noopener noreferrer" className="block truncate text-sm font-semibold text-ink hover:text-accent hover:underline" title={pilot.name}>{pilot.name}</a>
             <div className="mt-0.5 truncate text-xs text-ink-3" title={pilot.corporationName ?? undefined}>
-              {ticker ?? pilot.corporationName ?? p.unknownCorporation}
-              {pilot.allianceId && <> · {pilot.allianceName ?? p.alliance(pilot.allianceId)}</>}
+              {pilot.corporationId ? (
+                <a href={zkillCorporation(pilot.corporationId)} target="_blank" rel="noopener noreferrer" className="hover:text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent" title={pilot.corporationName ?? undefined}>
+                  {ticker ?? pilot.corporationName ?? p.unknownCorporation}
+                </a>
+              ) : (ticker ?? pilot.corporationName ?? p.unknownCorporation)}
+              {pilot.allianceId && <> · <a href={zkillAlliance(pilot.allianceId)} target="_blank" rel="noopener noreferrer" className="hover:text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent" title={pilot.allianceName ?? undefined}>{pilot.allianceName ?? p.alliance(pilot.allianceId)}</a></>}
             </div>
           </div>
           <ScoreBadge score={score} />
