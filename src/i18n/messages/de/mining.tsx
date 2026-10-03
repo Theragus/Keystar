@@ -220,6 +220,14 @@ export const mining: typeof en = {
     dayMeta: (entries: number, characters: number) =>
       `${plural(entries, "Eintrag", "Einträge")} · ${plural(characters, "Charakter", "Charaktere")}`,
     dayPartial: (shown: number, entries: number) => `${n(shown)} von ${n(entries)} auf dieser Seite`,
+    groupEntries: (entries: number) => plural(entries, "Eintrag", "Einträge"),
+    groupBy: {
+      label: "Jeden Tag gruppieren nach",
+      none: "Nur Tag",
+      members: "Mitglieder",
+      characters: "Charaktere",
+      systems: "Systeme",
+    },
     collapseAll: "Alle einklappen",
     expandAll: "Alle ausklappen",
     pagination: "Seitennavigation",

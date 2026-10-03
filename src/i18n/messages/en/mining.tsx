@@ -223,6 +223,14 @@ export const mining = {
     dayMeta: (entries: number, characters: number) =>
       `${plural(entries, "entry", "entries")} · ${plural(characters, "character", "characters")}`,
     dayPartial: (shown: number, entries: number) => `${n(shown)} of ${n(entries)} on this page`,
+    groupEntries: (entries: number) => plural(entries, "entry", "entries"),
+    groupBy: {
+      label: "Group each day by",
+      none: "Day only",
+      members: "Members",
+      characters: "Characters",
+      systems: "Systems",
+    },
     collapseAll: "Collapse all",
     expandAll: "Expand all",
     pagination: "Pagination",

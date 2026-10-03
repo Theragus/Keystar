@@ -184,6 +184,36 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(byChar.find((r) => r.key === "3")?.ownerName).toBe("Bravo");
     });
 
+    it("groups ledger days by pilot, biggest first, with whole-group totals", async () => {
+      const { days, groups } = await q.getLedgerTotals(filters(), corp, val, "pilot");
+      expect(days.reduce((s, d) => s + d.entries, 0)).toBe(4);
+      const tenth = groups.filter((g) => g.date === "2026-09-10");
+      // Bravo (character 2), the unregistered outsider (9) and Alpha (1); Bravo's alt mined on the 11th.
+      expect(tenth.map((g) => [g.value, g.characters])).toEqual(
+        expect.arrayContaining([
+          [100 * 600, 1],
+          [50 * 600, 1],
+          [1000 * 10, 1],
+        ]),
+      );
+      expect(tenth).toHaveLength(3);
+      expect(tenth.find((g) => g.key === "char:9")?.entries).toBe(1);
+
+      const { rows } = await q.getLedgerRows(filters(), corp, val, { limit: 10, offset: 0, count: false, grouping: "pilot" });
+      expect(rows.filter((r) => r.date === "2026-09-10").map((r) => r.characterId)).toEqual([2, 9, 1]);
+      expect(rows.find((r) => r.characterId === 9)?.groupKey).toBe("char:9");
+      // Bravo's main names the pilot for both of Bravo's characters.
+      const bravo = rows.filter((r) => r.characterId === 2 || r.characterId === 3);
+      expect(new Set(bravo.map((r) => r.groupKey)).size).toBe(1);
+      expect(bravo.every((r) => r.mainCharacterId === bravo[0].mainCharacterId && r.mainCharacterId !== null)).toBe(true);
+
+      const bySystem = await q.getLedgerTotals(filters(), corp, val, "system");
+      expect(bySystem.groups.map((g) => [g.date, g.key, g.entries])).toEqual([
+        ["2026-09-11", "30000180", 1],
+        ["2026-09-10", "30000180", 3],
+      ]);
+    });
+
     it("values at the historical price when configured", async () => {
       const hist = await q.getMiningSummary(filters({ classes: "moon_r4" }), corp, { ...val, mode: "historical" });
       expect(hist.current.value).toBe(150 * 500);
@@ -203,11 +233,12 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(keys).toHaveLength(4);
       expect(new Set(keys).size).toBe(4);
       // The ledger's day groups: entry counts add up to the row count, values to the summary.
-      const days = await q.getLedgerDayTotals(filters(), corp, val);
-      expect(days.reduce((s, d) => s + d.entries, 0)).toBe(4);
-      expect(days.map((d) => d.date)).toEqual([...days.map((d) => d.date)].sort().reverse());
+      const totals = await q.getLedgerTotals(filters(), corp, val);
+      expect(totals.days.map((d) => d.date)).toEqual(["2026-09-11", "2026-09-10"]);
+      expect(totals.days.reduce((s, d) => s + d.entries, 0)).toBe(4);
+      expect(totals.groups).toEqual([]);
       const summary = await q.getMiningSummary(filters(), corp, val);
-      expect(days.reduce((s, d) => s + d.value, 0)).toBeCloseTo(summary.current.value);
+      expect(totals.days.reduce((s, d) => s + d.value, 0)).toBeCloseTo(summary.current.value);
       const observers = await q.getObserverSummaries(filters(), val, 100);
       expect(observers[0].name).toBe("Osmon Athanor");
       expect(observers[0].foreignMiners).toBe(1);

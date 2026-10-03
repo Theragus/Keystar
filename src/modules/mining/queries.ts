@@ -2,7 +2,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/core/db";
 import type { ValuationSource } from "@/core/db/schema/eve";
 import { ORE_CLASSES, oreClassSqlCase, type OreClass } from "@/core/eve/ore";
-import { addDays, daysBetween, type MiningFilters, type MiningView } from "./filters";
+import { addDays, daysBetween, type LedgerGrouping, type MiningFilters, type MiningView } from "./filters";
 
 /**
  * Aggregation queries for the mining dashboards. Every query starts from the
@@ -384,7 +384,11 @@ export interface LedgerRow {
   source: "personal" | "observer";
   characterId: number;
   characterName: string;
+  /** The owning pilot's main character, for registered characters. */
   ownerName: string | null;
+  mainCharacterId: number | null;
+  /** The row's second-level group within its day (see `ledgerGroupKey`), or null when not grouped. */
+  groupKey: string | null;
   typeId: number;
   typeName: string;
   oreClass: OreClass;
@@ -398,19 +402,42 @@ export interface LedgerRow {
   value: number;
 }
 
+/**
+ * The key of a ledger row's group within its day, over `ledger l` joined to
+ * `characters c`. Unregistered characters are their own pilot. Null when not grouped.
+ */
+function ledgerGroupKey(grouping: LedgerGrouping): SQL | null {
+  switch (grouping) {
+    case "pilot":
+      return sql`COALESCE(c.user_id::text, 'char:' || l.character_id)`;
+    case "character":
+      return sql`l.character_id::text`;
+    case "system":
+      return sql`COALESCE(l.solar_system_id::text, 'none')`;
+    case "none":
+      return null;
+  }
+}
+
 export async function getLedgerRows(
   f: MiningFilters,
   scope: MiningScope,
   val: Valuation,
-  opts: { limit: number; offset: number; count?: boolean },
+  opts: { limit: number; offset: number; count?: boolean; grouping?: LedgerGrouping },
 ): Promise<{ rows: LedgerRow[]; total: number }> {
   const db = getDb();
   const withCount = opts.count ?? true;
+  const groupKey = ledgerGroupKey(opts.grouping ?? "none");
+  // Grouped, each day's groups come biggest first and keep their rows together.
+  const groupOrder = groupKey
+    ? sql`SUM(l.quantity * l.unit_price) OVER (PARTITION BY l.date, ${groupKey}) DESC, group_key,`
+    : sql``;
   const [rows, count] = await Promise.all([
     db.execute<Record<string, unknown>>(sql`
       WITH ${ledgerCte(f, scope, val)}
       SELECT to_char(l.date, 'YYYY-MM-DD') AS date, l.source, l.character_id::float8 AS character_id,
              COALESCE(c.name, e.name) AS character_name, mc.name AS owner_name,
+             u.main_character_id::float8 AS main_character_id, ${groupKey ?? sql`NULL::text`} AS group_key,
              l.type_id::int AS type_id, l.type_name, l.ore_class,
              l.solar_system_id::float8 AS system_id, s.name AS system_name, s.security_status::float8 AS security,
              obs.name AS observer_name,
@@ -425,7 +452,7 @@ export async function getLedgerRows(
       LEFT JOIN mining_observers obs ON obs.observer_id = l.observer_id
       -- Fully deterministic order (a row's identity is source + observer + character + day + system + ore)
       -- so OFFSET paging (UI pages, streamed CSV export) never skips or repeats rows.
-      ORDER BY l.date DESC, value DESC, l.character_id, l.type_id, l.solar_system_id NULLS LAST, l.source,
+      ORDER BY l.date DESC, ${groupOrder} value DESC, l.character_id, l.type_id, l.solar_system_id NULLS LAST, l.source,
                l.observer_id NULLS FIRST
       LIMIT ${opts.limit} OFFSET ${opts.offset}`),
     withCount
@@ -440,6 +467,8 @@ export async function getLedgerRows(
       characterId: num(r.character_id),
       characterName: (r.character_name as string | null) ?? `Character ${r.character_id}`,
       ownerName: (r.owner_name as string | null) ?? null,
+      mainCharacterId: r.main_character_id === null ? null : num(r.main_character_id),
+      groupKey: (r.group_key as string | null) ?? null,
       typeId: num(r.type_id),
       typeName: (r.type_name as string | null) ?? `Type ${r.type_id}`,
       oreClass: (r.ore_class as OreClass) ?? "other",
@@ -455,7 +484,7 @@ export async function getLedgerRows(
   };
 }
 
-export interface LedgerDayTotals {
+export interface LedgerTotals {
   date: string;
   entries: number;
   characters: number;
@@ -464,30 +493,53 @@ export interface LedgerDayTotals {
   value: number;
 }
 
+export interface LedgerGroupTotals extends LedgerTotals {
+  key: string;
+}
+
 /**
- * Per-day totals for the ledger's day groups, newest first. Rows are paged, so a
- * day can straddle pages; its header still sums every entry of that day. The
- * entry counts add up to the ledger's row count.
+ * Totals for the ledger's day groups (newest first) and, when grouped, for each
+ * group within a day. Rows are paged, so a day or group can straddle pages; its
+ * header still sums all of its entries. The days' entry counts add up to the
+ * ledger's row count.
  */
-export async function getLedgerDayTotals(f: MiningFilters, scope: MiningScope, val: Valuation): Promise<LedgerDayTotals[]> {
+export async function getLedgerTotals(
+  f: MiningFilters,
+  scope: MiningScope,
+  val: Valuation,
+  grouping: LedgerGrouping = "none",
+): Promise<{ days: LedgerTotals[]; groups: LedgerGroupTotals[] }> {
+  const groupKey = ledgerGroupKey(grouping);
   const rows = await getDb().execute<Record<string, unknown>>(sql`
-    WITH ${ledgerCte(f, scope, val)}
-    SELECT to_char(l.date, 'YYYY-MM-DD') AS date, COUNT(*)::int AS entries,
-           COUNT(DISTINCT l.character_id)::int AS characters,
-           SUM(l.quantity)::float8 AS quantity,
-           SUM(l.quantity * l.unit_volume)::float8 AS volume,
-           SUM(l.quantity * l.unit_price)::float8 AS value
-    FROM ledger l
-    GROUP BY l.date
-    ORDER BY l.date DESC`);
-  return rows.map((r) => ({
-    date: String(r.date),
-    entries: num(r.entries),
-    characters: num(r.characters),
-    quantity: num(r.quantity),
-    volume: num(r.volume),
-    value: num(r.value),
-  }));
+    WITH ${ledgerCte(f, scope, val)},
+    keyed AS (
+      SELECT l.*, ${groupKey ?? sql`NULL::text`} AS group_key
+      FROM ledger l LEFT JOIN characters c ON c.character_id = l.character_id
+    )
+    SELECT to_char(k.date, 'YYYY-MM-DD') AS date, k.group_key, GROUPING(k.group_key) AS is_day,
+           COUNT(*)::int AS entries,
+           COUNT(DISTINCT k.character_id)::int AS characters,
+           SUM(k.quantity)::float8 AS quantity,
+           SUM(k.quantity * k.unit_volume)::float8 AS volume,
+           SUM(k.quantity * k.unit_price)::float8 AS value
+    FROM keyed k
+    GROUP BY ${groupKey ? sql`GROUPING SETS ((k.date), (k.date, k.group_key))` : sql`k.date, k.group_key`}
+    ORDER BY k.date DESC`);
+  const days: LedgerTotals[] = [];
+  const groups: LedgerGroupTotals[] = [];
+  for (const r of rows) {
+    const totals: LedgerTotals = {
+      date: String(r.date),
+      entries: num(r.entries),
+      characters: num(r.characters),
+      quantity: num(r.quantity),
+      volume: num(r.volume),
+      value: num(r.value),
+    };
+    if (!groupKey || num(r.is_day) === 1) days.push(totals);
+    else groups.push({ ...totals, key: String(r.group_key) });
+  }
+  return { days, groups };
 }
 
 export interface FilterOptions {
