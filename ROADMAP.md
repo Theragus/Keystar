@@ -7,6 +7,12 @@ core.
 
 Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 
+> **Moving to GitHub.** Plans and ideas are moving, a few at a time, to
+> [issues](https://github.com/Theragus/Keystar/issues?q=is%3Aissue%20type%3AFeature) and the
+> [Keystar Roadmap](https://github.com/Theragus/Keystar/projects) project, which becomes the source of truth. Items
+> with an issue link are tracked there; vote with a 👍 on the issue. New ideas go in as a
+> [feature request](https://github.com/Theragus/Keystar/issues/new?template=feature_request.yml), not into this file.
+
 ## Foundation (MVP)
 
 - ✅ EVE SSO login (OAuth2 + PKCE, JWT validation), multiple characters per account
