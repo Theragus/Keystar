@@ -57,9 +57,9 @@ export async function PilotRow({
   const score = (pilot.scoreDetail as PilotScore | null) ?? null;
   const profile = (pilot.profile as PilotProfile | null) ?? null;
   return (
-    <article className="glass-inset relative min-w-0 rounded-xl">
+    <article className="glass-inset relative h-full min-w-0 rounded-xl">
       <IntelLoadingOverlay pilotId={pilot.characterId} />
-      <div className="flex flex-col gap-3 p-3">
+      <div className="flex h-full flex-col gap-3 p-3">
         <div className="flex w-full items-start gap-2">
           <a href={zkillCharacter(pilot.characterId)} target="_blank" rel="noopener noreferrer" aria-label={pilot.name} className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-accent"><Portrait id={pilot.characterId} size={40} /></a>
           <div className="min-w-0 flex-1">
@@ -80,7 +80,7 @@ export async function PilotRow({
           <HistoryChip history={history} />
           <ProfileStatus pilot={pilot} />
         </div>
-        <div className="w-full border-y border-surface-contrast/6 py-3">
+        <div className="w-full flex-1 border-y border-surface-contrast/6 py-3">
           <PilotEvidence profile={profile} names={names} />
         </div>
         <div className="grid w-full grid-cols-2 gap-2">

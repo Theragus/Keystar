@@ -9,7 +9,7 @@ import { useI18n } from "@/i18n/client";
 function Submit() {
   const { pending } = useFormStatus();
   const { t } = useI18n();
-  return <Button size="sm" type="submit" disabled={pending}><Sparkles className="size-4" aria-hidden />{pending ? t.intel.buttons.writing : t.intel.buttons.briefing}</Button>;
+  return <Button variant="primary" size="sm" type="submit" disabled={pending}><Sparkles className="size-4" aria-hidden />{pending ? t.intel.buttons.writing : t.intel.buttons.briefing}</Button>;
 }
 
 export function BriefingControl({ scanId, action, children }: { scanId: string; action: (data: FormData) => Promise<void>; children: ReactNode }) {

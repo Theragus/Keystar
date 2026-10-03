@@ -112,7 +112,7 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
         subtitle={others.length ? undefined : text.allFriendly}
         actions={unprofiled > 0 ? <ProfileRemainingButton scanId={scan.id} count={unprofiled} action={profileScanPilots} /> : undefined}
       >
-        <div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid auto-rows-fr items-stretch gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {others.map((r) => (
             <PilotRow
               key={r.pilot.characterId}
@@ -127,7 +127,7 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
         {friendly.length > 0 && (
           <details className="mt-4">
             <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">{text.friendlyPilots(friendly.length)}</summary>
-            <div className="mt-2 grid items-start gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-2 grid auto-rows-fr items-stretch gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {friendly.map((r) => (
                 <PilotRow
                   key={r.pilot.characterId}
