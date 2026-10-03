@@ -146,13 +146,22 @@ export function countBy<M>(members: M[], key: (m: M) => number, label: (m: M) =>
   return [...rows.values()].sort((a, b) => b.count - a.count || (a.label ?? "").localeCompare(b.label ?? ""));
 }
 
-/** The MOTD is EVE rich text (`<font>`, `<a href=showinfo:…>`); show it as plain text. */
+const ENTITIES: Record<string, string> = { lt: "<", gt: ">", amp: "&", quot: '"', "#39": "'" };
+
+/**
+ * The MOTD is EVE rich text (`<font>`, `<a href=showinfo:…>`); show it as plain text.
+ * Tags are removed until none are left (so `<<b>script>` can't leave `<script` behind),
+ * stray angle brackets are dropped, and entities are decoded last, in a single pass.
+ */
 export function stripMarkup(motd: string): string {
-  return motd
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
+  let text = motd.replace(/<br\s*\/?>/gi, "\n");
+  let previous;
+  do {
+    previous = text;
+    text = text.replace(/<[^<>]*>/g, "");
+  } while (text !== previous);
+  return text
+    .replace(/[<>]/g, "")
+    .replace(/&(lt|gt|amp|quot|#39);/g, (_, name: string) => ENTITIES[name])
     .trim();
 }

@@ -59,4 +59,10 @@ describe("stripMarkup", () => {
     expect(stripMarkup('<font size="12" color="#ffffffff">Form up in </font><a href="showinfo:5//30000142">Jita</a><br>x-up &amp; align'))
       .toBe("Form up in Jita\nx-up & align");
   });
+
+  it("leaves no tag behind from nested or broken markup", () => {
+    expect(stripMarkup("<<b>script>alert(1)<</b>/script>")).toBe("alert(1)");
+    expect(stripMarkup("a <scr<script>ipt> b")).toBe("a  b");
+    expect(stripMarkup("1 &lt; 2 &amp;lt;")).toBe("1 < 2 &lt;");
+  });
 });
