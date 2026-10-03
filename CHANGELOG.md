@@ -20,6 +20,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- **Releasing an older version line no longer moves `:latest` back.** The Release workflow now tags an image
+  `:latest` (and marks the GitHub release *Latest*) only when its version is newer than every earlier release, and
+  moves `:<major.minor>` only to the newest patch of that line.
 - **Threat Intel puts evidence first.** A compact Local Situation summary, early D-scan input, timestamped
   local co-attacker observations, and always-visible latest kill, loss and cyno-history fields replace the dense
   briefing-led layout. Historical ship profiles and optional score details are clearly separated from scanner
