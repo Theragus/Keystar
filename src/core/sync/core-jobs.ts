@@ -1,16 +1,17 @@
-import { eq, inArray, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import {
   characterCorpRoles,
   characters,
   corporationMembers,
   esiCache,
+  eveConstellations,
   eveSystems,
   workerHeartbeats,
 } from "@/core/db";
 import { purgeExpiredSessions } from "@/core/auth/session";
 import { fetchAffiliations } from "@/core/eve/affiliation";
 import { recentPriceInterest, syncPrices } from "@/core/eve/prices";
-import { ensureNames, ensureSystems, refreshCorporations } from "@/core/eve/resolver";
+import { ensureConstellations, ensureNames, ensureSystems, refreshCorporations } from "@/core/eve/resolver";
 import { isListedSystem } from "@/core/eve/systems";
 import { setSetting } from "@/core/settings";
 import { trackedCorporations } from "./scheduler";
@@ -131,39 +132,54 @@ export function marketPricesJob(providers: PriceInterestProvider[]): JobDefiniti
   };
 }
 
-/** Systems fetched per run while the list fills; the first full load spreads over a couple of hours. */
+/** Systems and constellations fetched per run while the list fills; the first load spreads over about half an hour. */
 const SYSTEMS_PER_RUN = 500;
+const CONSTELLATIONS_PER_RUN = 300;
 /** New systems are rare (a handful per decade); unknown names are still looked up on demand. */
 const SYSTEMS_RECHECK_MS = 30 * 24 * 3600 * 1000;
-/** A batch that resolved nothing (ESI trouble) waits this long before the next try. */
+/** A run that resolved nothing (ESI trouble) waits this long before the next try. */
 const SYSTEMS_STALLED_MS = 6 * 3600 * 1000;
 
-/** Every known-space and wormhole system, so the system picker can offer them all. */
+/** Every known-space and wormhole system with its region, so the system picker can offer them all. */
 export const universeSystemsJob: JobDefinition = {
   key: "core.universe-systems",
   label: (t) => t.core.jobs.universeSystems,
   module: "core",
   owner: "global",
-  // A floor only: while systems are missing the job runs again a minute later, then nextRunAt spaces it out.
+  // A floor only: while anything is missing the job runs again a minute later, then nextRunAt spaces it out.
   intervalSeconds: 60,
   async run({ esi, db }) {
     const res = await esi.get<number[]>("/universe/systems");
     const listed = res.data.filter(isListedSystem);
     const known = new Set((await db.select({ id: eveSystems.systemId }).from(eveSystems)).map((r) => r.id));
-    const missing = listed.filter((id) => !known.has(id));
-    if (!missing.length) {
+    const missingSystems = listed.filter((id) => !known.has(id));
+    const systemBatch = missingSystems.slice(0, SYSTEMS_PER_RUN);
+    await ensureSystems(systemBatch);
+
+    // Constellations carry the region; ensureConstellations also names new regions.
+    const missingConstellations = await db
+      .selectDistinct({ id: eveSystems.constellationId })
+      .from(eveSystems)
+      .leftJoin(eveConstellations, eq(eveConstellations.constellationId, eveSystems.constellationId))
+      .where(and(isNotNull(eveSystems.constellationId), isNull(eveConstellations.constellationId)))
+      .then((rows) => rows.map((r) => r.id!));
+    const constellationBatch = missingConstellations.slice(0, CONSTELLATIONS_PER_RUN);
+    await ensureConstellations(constellationBatch);
+    // Region names an earlier run could not fetch; known names are skipped.
+    await ensureNames((await db.selectDistinct({ id: eveConstellations.regionId }).from(eveConstellations)).map((r) => r.id));
+
+    const systems = systemBatch.length ? await db.$count(eveSystems, inArray(eveSystems.systemId, systemBatch)) : 0;
+    const constellations = constellationBatch.length
+      ? await db.$count(eveConstellations, inArray(eveConstellations.constellationId, constellationBatch))
+      : 0;
+    if (!missingSystems.length && !missingConstellations.length) {
       return { summary: `All ${listed.length} systems known`, nextRunAt: new Date(Date.now() + SYSTEMS_RECHECK_MS) };
     }
-    const batch = missing.slice(0, SYSTEMS_PER_RUN);
-    await ensureSystems(batch);
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(eveSystems)
-      .where(inArray(eveSystems.systemId, batch));
-    const remaining = missing.length - count;
     return {
-      summary: `Loaded ${count} systems, ${remaining} remaining`,
-      nextRunAt: count === 0 ? new Date(Date.now() + SYSTEMS_STALLED_MS) : null,
+      summary:
+        `Loaded ${systems} systems (${missingSystems.length - systems} remaining), ` +
+        `${constellations} constellations (${missingConstellations.length - constellations} remaining)`,
+      nextRunAt: systems + constellations === 0 ? new Date(Date.now() + SYSTEMS_STALLED_MS) : null,
     };
   },
 };

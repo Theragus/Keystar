@@ -10,8 +10,28 @@ export const isListedSystem = (id: number) => id >= KSPACE_MIN && id < LISTED_MA
 
 export const isWormholeSystem = (id: number) => id >= WORMHOLE_MIN && id < LISTED_MAX;
 
-/** [system id, name, security status], as served by /api/universe/systems. */
-export type SystemOption = [id: number, name: string, security: number];
+/** [system id, name, security status, region name], as served by /api/universe/systems. */
+export type SystemOption = [id: number, name: string, security: number, region: string | null];
+
+export type WormholeClass = "c1" | "c2" | "c3" | "c4" | "c5" | "c6" | "thera" | "c13" | "drifter";
+
+/** Wormhole regions are named for their class: A-R00001 holds C1 systems, G-R00031 is Thera, K-R00033 Drifter space. */
+const WORMHOLE_CLASS_BY_LETTER: Record<string, WormholeClass> = {
+  A: "c1",
+  B: "c2",
+  C: "c3",
+  D: "c4",
+  E: "c5",
+  F: "c6",
+  G: "thera",
+  H: "c13",
+  K: "drifter",
+};
+
+export function wormholeClass(region: string | null): WormholeClass | null {
+  if (!region || !/^[A-Z]-R\d{5}$/.test(region)) return null;
+  return WORMHOLE_CLASS_BY_LETTER[region[0]] ?? null;
+}
 
 /** Systems whose name starts with the query, then those that contain it, each in list order. */
 export function matchSystems(systems: readonly SystemOption[], query: string, limit = 50): SystemOption[] {

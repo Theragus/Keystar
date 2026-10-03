@@ -1,5 +1,6 @@
 import type { Role } from "@/core/rbac/roles";
 import type { DatePresetId } from "@/lib/dates";
+import type { WormholeClass } from "@/core/eve/systems";
 import { FORMATTERS } from "@/lib/format";
 
 const n = FORMATTERS.en.integer;
@@ -46,6 +47,18 @@ export const common = {
     empty: "The system list is still loading in the background; type the name",
     failed: "Could not load the system list; type the name",
     wormhole: "W-space",
+    /** Short tag for a wormhole system's class, read from its region. */
+    wormholeClass: {
+      c1: "C1",
+      c2: "C2",
+      c3: "C3",
+      c4: "C4",
+      c5: "C5",
+      c6: "C6",
+      thera: "Thera",
+      c13: "C13",
+      drifter: "Drifter",
+    } satisfies Record<WormholeClass, string>,
   },
   multiSelect: {
     all: "All",

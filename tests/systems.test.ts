@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { isListedSystem, isWormholeSystem, matchSystems, type SystemOption } from "@/core/eve/systems";
+import { isListedSystem, isWormholeSystem, matchSystems, wormholeClass, type SystemOption } from "@/core/eve/systems";
 
 const SYSTEMS: SystemOption[] = [
-  [30002537, "Amamake", 0.4],
-  [30000142, "Jita", 0.9],
-  [31000005, "Thera", -1],
-  [31002238, "J121006", -1],
-  [31001554, "J123456", -1],
-  [30004608, "Ohmahailen", 0.2],
-  [30003504, "Niarja", 0],
+  [30002537, "Amamake", 0.4, "Heimatar"],
+  [30000142, "Jita", 0.9, "The Forge"],
+  [31000005, "Thera", -1, "G-R00031"],
+  [31002238, "J121006", -1, "K-R00033"],
+  [31001554, "J123456", -1, "E-R00026"],
+  [30004608, "Ohmahailen", 0.2, "Metropolis"],
+  [30003504, "Niarja", 0, null],
 ];
 
 describe("system id ranges", () => {
@@ -23,6 +23,22 @@ describe("system id ranges", () => {
     expect(isWormholeSystem(31002238)).toBe(true);
     expect(isWormholeSystem(30002537)).toBe(false);
     expect(isWormholeSystem(32000001)).toBe(false);
+  });
+});
+
+describe("wormholeClass", () => {
+  it("reads the class from the region's first letter", () => {
+    expect(wormholeClass("A-R00001")).toBe("c1");
+    expect(wormholeClass("F-R00030")).toBe("c6");
+    expect(wormholeClass("G-R00031")).toBe("thera");
+    expect(wormholeClass("H-R00032")).toBe("c13");
+    expect(wormholeClass("K-R00033")).toBe("drifter");
+  });
+
+  it("knows nothing for known-space or missing regions", () => {
+    expect(wormholeClass("The Forge")).toBeNull();
+    expect(wormholeClass("Z-R00099")).toBeNull();
+    expect(wormholeClass(null)).toBeNull();
   });
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { isWormholeSystem, matchSystems, type SystemOption } from "@/core/eve/systems";
+import { isWormholeSystem, matchSystems, wormholeClass, type SystemOption } from "@/core/eve/systems";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { SecurityStatus } from "./security";
@@ -84,6 +84,11 @@ export function SystemPicker({
     }
   };
 
+  const wormholeTag = (region: string | null) => {
+    const whClass = wormholeClass(region);
+    return whClass ? s.wormholeClass[whClass] : s.wormhole;
+  };
+
   const status =
     systems === "failed"
       ? s.failed
@@ -119,7 +124,7 @@ export function SystemPicker({
         className={cn("glass-inset h-9 w-48 rounded-lg px-3 text-sm text-ink placeholder:text-ink-3", className)}
       />
       {showList && (
-        <div className="absolute top-[calc(100%+6px)] left-0 z-50 w-64 rounded-xl border border-white/10 bg-space-800 p-1 shadow-2xl">
+        <div className="absolute top-[calc(100%+6px)] left-0 z-50 w-72 rounded-xl border border-white/10 bg-space-800 p-1 shadow-2xl">
           {status ? (
             <p className="px-2 py-3 text-xs text-ink-3">{status}</p>
           ) : (
@@ -140,10 +145,13 @@ export function SystemPicker({
                     i === active && "bg-white/8",
                   )}
                 >
-                  <span className="truncate">{option[1]}</span>
+                  <span className="min-w-0 truncate">
+                    {option[1]}
+                    {option[3] && <span className="ml-2 text-xs text-ink-3">{option[3]}</span>}
+                  </span>
                   {isWormholeSystem(option[0]) ? (
                     <span className="shrink-0 rounded-md px-1.5 py-0.5 text-2xs font-semibold text-ink-2 ring-1 ring-white/20">
-                      {s.wormhole}
+                      {wormholeTag(option[3])}
                     </span>
                   ) : (
                     <SecurityStatus value={option[2]} />
