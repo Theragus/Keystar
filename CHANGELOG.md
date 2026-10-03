@@ -20,6 +20,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- **Sync status is grouped by who a job syncs for.** Corporation jobs, character jobs and app-wide system jobs now
+  sit in their own sections. Character jobs collapse to one row per character (portrait, account, job count, worst
+  status, next run) and open automatically when one of them fails. Long results such as a character's in-game roles
+  are clipped to two lines, with the full text on hover.
 - **Releasing an older version line no longer moves `:latest` back.** The Release workflow now tags an image
   `:latest` (and marks the GitHub release *Latest*) only when its version is newer than every earlier release, and
   moves `:<major.minor>` only to the newest patch of that line.

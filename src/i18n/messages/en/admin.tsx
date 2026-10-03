@@ -173,6 +173,20 @@ export const admin = {
     disabled: "Disabled",
     errorCount: (count: number) => `Error ×${n(count)}`,
     runNow: "Run now",
+    sections: {
+      corporation: (name: string | null) => (name ? `Corporation · ${name}` : "Corporation"),
+      characters: "Characters",
+      system: "System",
+      jobCount: (count: number) => `${n(count)} ${count === 1 ? "job" : "jobs"}`,
+      characterCount: (characters: number, jobs: number) =>
+        `${n(characters)} ${characters === 1 ? "character" : "characters"} · ${n(jobs)} ${jobs === 1 ? "job" : "jobs"}`,
+      charactersHint:
+        "Only characters linked to Keystar with the needed ESI scopes get their own jobs. Other members appear here once they sign in and grant them.",
+      account: (main: string) => `Account: ${main}`,
+      failingCount: (count: number) => `${n(count)} failing`,
+      nextRun: (when: string) => `next ${when}`,
+      empty: "No jobs yet.",
+    },
   },
   settings: {
     metaTitle: "Settings",
