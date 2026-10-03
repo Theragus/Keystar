@@ -8,6 +8,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- **Threat Intel system picker.** The current-system field suggests systems as you type, every known-space and
+  wormhole system with its region and its security status (wormholes show their class, C1–C6, C13, Thera or Drifter).
+  A new background job loads the system list from ESI once (about 20 minutes on a new install) and checks for new
+  systems every 30 days.
 - **My characters view on the mining pages.** Viewers with corporation-wide mining access can switch the overview,
   the ledger and the CSV export between **Corporation** and **My characters**. The latter shows all of their linked
   characters, so alts in another corporation show up next to their main without counting towards the home

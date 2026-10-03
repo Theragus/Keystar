@@ -44,5 +44,6 @@ export const core: typeof en = {
     corporationMembers: "Mitgliederliste der Corporation",
     marketPrices: "Marktpreise",
     housekeeping: "Aufräumarbeiten",
+    universeSystems: "Sonnensystemliste",
   },
 };

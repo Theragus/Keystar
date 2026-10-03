@@ -3,6 +3,7 @@
 import { ScanEye } from "lucide-react";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { SystemPicker } from "@/components/ui/system-picker";
 import { useI18n } from "@/i18n/client";
 import type { ScanFormState } from "@/app/(app)/intel/actions";
 
@@ -44,14 +45,7 @@ export function ScanForm({
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm text-ink-2">
           {s.system}
-          <input
-            name="system"
-            defaultValue={defaultSystem}
-            placeholder={s.systemPlaceholder}
-            autoComplete="off"
-            spellCheck={false}
-            className="glass-inset h-9 w-48 rounded-lg px-3 text-sm text-ink placeholder:text-ink-3"
-          />
+          <SystemPicker name="system" defaultValue={defaultSystem} placeholder={s.systemPlaceholder} />
         </label>
         <Button type="submit" variant="primary" disabled={pending} className="ml-auto">
           <ScanEye className="size-4" aria-hidden />

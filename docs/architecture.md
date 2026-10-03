@@ -164,6 +164,7 @@ Current jobs:
 | `core.corporation-members`       | 1 h      | Corp roster for the member audit                           |
 | `core.market-prices`             | 1 h      | ESI average + Jita 4-4 buy/sell, valuations, daily history |
 | `core.housekeeping`              | 6 h      | Expired sessions and cache entries                         |
+| `core.universe-systems`          | 30 days  | Every known-space and wormhole system with its region for the system picker (500 a minute until complete) |
 | `mining.character-ledger`        | 15 min   | Personal mining ledgers; records mining activity windows   |
 | `mining.corporation-observers`   | 1 h      | Moon-refinery observer ledgers (Accountant)                |
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
@@ -351,6 +352,10 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
   reused for unchanged facts in the same language. Facts are always English; Claude writes in the language of
   whoever asked (the scan creator's for automatic briefings, `intel_scans.locale`). Template notes are stored as
   drafts (keys, numbers, names) and written out in each reader's language.
+- The **current system** field suggests systems as you type from `eve_systems`, which `core.universe-systems` fills
+  with every known-space and wormhole system and its constellation and region (`/api/universe/systems`, filtered in
+  the browser). Wormholes show their class, read from the region name (A-R… is C1, G-R00031 Thera, K-R00033 Drifter). Any typed name
+  still works: it resolves on submit, through ESI if it is not cached yet.
 - The **recently seen hostiles** feed lists pilots from anyone's scans in the last 7 days, without friendlies.
 
 ## Security notes
