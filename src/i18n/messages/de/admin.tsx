@@ -68,6 +68,30 @@ export const admin: typeof en = {
     },
     columns: { character: "Charakter", status: "Status", account: "Konto", esi: "ESI" },
     characterFallback: (id: string) => `Charakter ${id}`,
+    search: {
+      label: "Mitglieder durchsuchen",
+      placeholder: "Nach Charakter, Konto oder Charakter-ID suchen…",
+      clear: "Suche löschen",
+    },
+    filter: {
+      onlyThese: "Nur diese anzeigen",
+      showAll: "Alle anzeigen",
+      labels: {
+        roster: "in der Mitgliederliste im Spiel",
+        registered: "registriert",
+        unregistered: "nicht registriert",
+        esi: "mit fehlendem oder widerrufenem ESI",
+      },
+    },
+    results: (count: number, filter: string | null, q: string | null, account: string | null) =>
+      `${n(count)} ${count === 1 ? "Charakter" : "Charaktere"}${account ? ` ${account}` : ""}${filter ? ` ${filter}` : ""}${q ? `, Suche „${q}“` : ""}`,
+    ofAccount: (main: string | null) => (main ? `des Kontos ${main}` : "eines unbekannten Kontos"),
+    clearAll: "Suche und Filter zurücksetzen",
+    empty: "Keine passenden Charaktere.",
+    pageOf: (page: number, pages: number) => `Seite ${n(page)} von ${n(pages)}`,
+    pagination: "Seitennavigation",
+    previous: "Zurück",
+    next: "Weiter",
     status: {
       notRegistered: "Nicht registriert",
       notInRoster: "Nicht in der Mitgliederliste",

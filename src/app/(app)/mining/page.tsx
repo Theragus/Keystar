@@ -7,6 +7,7 @@ import { Glass, Panel } from "@/components/ui/glass";
 import { PendingFrame, PendingProvider } from "@/components/ui/pending";
 import { Delta, StatTile } from "@/components/ui/stat-tile";
 import type { OreClass } from "@/core/eve/ore";
+import { memberAuditHref } from "@/core/member-audit-filters";
 import { getI18n } from "@/i18n/server";
 import { delta } from "@/lib/format";
 import { toChartClasses } from "@/modules/mining/class-colors";
@@ -216,7 +217,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
                   {coverage.unregisteredMembers !== null && (
                     <li className="flex justify-between gap-4">
                       <span className="text-ink-2">{m.coverage.unregistered}</span>
-                      <Link href="/admin/members" className="font-semibold tabular-nums hover:text-accent">
+                      <Link href={memberAuditHref(undefined, { filter: "unregistered" })} className="font-semibold tabular-nums hover:text-accent">
                         {f.integer(coverage.unregisteredMembers)}
                       </Link>
                     </li>
