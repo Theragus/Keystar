@@ -44,7 +44,7 @@ export default async function IntelPage() {
         </Panel>
         <Panel title={text.recentTitle} className="xl:col-span-4">
           {recent.length ? (
-            <ul className="divide-y divide-white/6">
+            <ul className="divide-y divide-surface-contrast/6">
               {recent.map((scan) => (
                 <li key={scan.id}>
                   <Link href={`/intel/${scan.id}`} className="flex items-center gap-3 py-2.5 hover:text-accent">

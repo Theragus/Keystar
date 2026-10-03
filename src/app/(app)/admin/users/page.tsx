@@ -119,7 +119,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
 
       {pending.length > 0 && canManage && (
         <Panel title={tu.awaitingApproval(pending.length)} subtitle={tu.awaitingApprovalHint}>
-          <ul className="divide-y divide-white/6">
+          <ul className="divide-y divide-surface-contrast/6">
             {pending.map((u) => (
               <li key={u.id} className="flex items-center gap-3 py-2.5">
                 {u.main_id && <Portrait id={Number(u.main_id)} size={32} />}

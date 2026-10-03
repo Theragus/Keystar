@@ -104,7 +104,7 @@ function ChartTooltip({ active, payload, bucket }: { active?: boolean; payload?:
           {Number(row.expenses) ? `−${f.compact(Number(row.expenses))}` : "0"}
         </span>
       </div>
-      <div className="mt-1.5 flex items-center gap-2 border-t border-white/10 pt-1.5">
+      <div className="mt-1.5 flex items-center gap-2 border-t border-surface-contrast/10 pt-1.5">
         <span className="h-0.5 w-3 rounded-full" style={{ background: NET_COLOR }} aria-hidden />
         <span className="text-ink-3">{t.pnl.chart.netShort}</span>
         <span className="ml-auto">

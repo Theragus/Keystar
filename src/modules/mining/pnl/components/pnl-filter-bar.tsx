@@ -49,7 +49,7 @@ export function PnlFilterBar({
         <button
           type="button"
           onClick={() => apply({ characters: [] })}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs text-ink-3 transition hover:bg-white/6 hover:text-ink"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs text-ink-3 transition hover:bg-surface-contrast/6 hover:text-ink"
         >
           <RotateCcw className="size-3.5" aria-hidden /> {t.pnl.filters.reset}
         </button>

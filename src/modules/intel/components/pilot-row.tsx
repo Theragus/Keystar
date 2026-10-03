@@ -89,7 +89,7 @@ export async function PilotRow({
         <ProfileStatus pilot={pilot} />
         <ScoreBadge score={score} />
       </summary>
-      <div className="space-y-4 border-t border-white/6 px-4 py-3">
+      <div className="space-y-4 border-t border-surface-contrast/6 px-4 py-3">
         {profile && profile.recent.latest.length > 0 && (
           <div>
             <h4 className="eve-label mb-1.5 text-2xs text-ink-3">{p.latestTitle}</h4>

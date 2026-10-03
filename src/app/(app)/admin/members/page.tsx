@@ -209,7 +209,7 @@ export default async function MemberAuditPage({ searchParams }: PageProps<"/admi
               </table>
             </PendingFrame>
             {pages > 1 && (
-              <nav className="flex items-center justify-end gap-2 border-t border-white/6 px-5 py-3" aria-label={tm.pagination}>
+              <nav className="flex items-center justify-end gap-2 border-t border-surface-contrast/6 px-5 py-3" aria-label={tm.pagination}>
                 <PageLink href={params.page > 1 ? pageLink(params.page - 1) : null}>
                   <ChevronLeft className="size-4" aria-hidden /> {tm.previous}
                 </PageLink>

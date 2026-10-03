@@ -101,7 +101,7 @@ export function MailReader({
               <dt className="pt-0.5 text-ink-3">{r.labels}</dt>
               <dd className="flex flex-wrap gap-1.5">
                 {labels.map((l) => (
-                  <span key={l.id} className="inline-flex items-center gap-1.5 rounded-full bg-white/6 px-2 py-0.5 text-ink-2">
+                  <span key={l.id} className="inline-flex items-center gap-1.5 rounded-full bg-surface-contrast/6 px-2 py-0.5 text-ink-2">
                     <LabelDot color={l.color} />
                     {l.name}
                   </span>

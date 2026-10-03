@@ -6,6 +6,12 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Light mode.** Switch between light and dark beside the language selector in the sidebar or on sign-in, join,
+  and setup pages. The preference is remembered for a year and applied before rendering, with matching glass
+  surfaces, readable status colours, controls, tables, chart chrome, and keyboard focus. Dark remains the default.
+
 ## [0.8.0] - 2026-10-03
 
 ### Added

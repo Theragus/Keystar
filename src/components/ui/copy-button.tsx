@@ -22,7 +22,7 @@ export function CopyField({ value }: { value: string }) {
           setTimeout(() => setState("idle"), ok ? 1500 : 3000);
         }}
         title={state === "failed" ? t.common.copy.failedHint : undefined}
-        className="glass-chip inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-xs hover:bg-white/10"
+        className="glass-chip inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-xs hover:bg-surface-contrast/10"
       >
         {state === "copied" ? (
           <Check className="size-3.5 text-good-text" aria-hidden />

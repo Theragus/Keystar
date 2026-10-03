@@ -35,7 +35,7 @@ export default async function AppraisalPage() {
         </Panel>
         <Panel title={m.recent} className="xl:col-span-4">
           {recent.length ? (
-            <ul className="divide-y divide-white/6">
+            <ul className="divide-y divide-surface-contrast/6">
               {recent.map((a) => {
                 const totals = a.totals as AppraisalTotals;
                 const items = a.items as AppraisalItem[];

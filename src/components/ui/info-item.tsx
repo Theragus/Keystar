@@ -29,7 +29,7 @@ export function InfoItem({
     <>
       {media ??
         (Icon && (
-          <span className="grid size-11 shrink-0 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.025]">
+          <span className="grid size-11 shrink-0 place-items-center rounded-lg border border-surface-contrast/[0.08] bg-surface-contrast/[0.025]">
             <Icon className="size-[18px] text-ink-2" aria-hidden />
           </span>
         ))}
@@ -45,7 +45,7 @@ export function InfoItem({
 
   if (!href) return <div className="flex items-center gap-3.5">{body}</div>;
   // Negative margin keeps linked and plain items aligned while the hover area gets some padding.
-  const className = "group -m-2 flex items-center gap-3.5 rounded-xl p-2 transition-colors hover:bg-white/[0.04]";
+  const className = "group -m-2 flex items-center gap-3.5 rounded-xl p-2 transition-colors hover:bg-surface-contrast/[0.04]";
   return newTabLabel ? (
     <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
       {body}

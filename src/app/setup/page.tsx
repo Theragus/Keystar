@@ -62,7 +62,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
               title={m.steps[id]}
               className={cn(
                 "h-1.5 rounded-full transition-all",
-                i + 1 === step ? "w-8 bg-accent" : i + 1 < step ? "w-4 bg-accent/50" : "w-4 bg-white/12",
+                i + 1 === step ? "w-8 bg-accent" : i + 1 < step ? "w-4 bg-accent/50" : "w-4 bg-surface-contrast/12",
               )}
             />
           ))}
@@ -224,7 +224,7 @@ function StepHeader({
 }) {
   return (
     <div className="text-center">
-      <span className="mx-auto grid size-12 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
+      <span className="mx-auto grid size-12 place-items-center rounded-xl border border-surface-contrast/[0.08] bg-surface-contrast/[0.03]">
         <Icon className="size-5 text-accent" aria-hidden />
       </span>
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">{title}</h1>

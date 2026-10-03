@@ -50,7 +50,7 @@ export function DateRangePicker({
             setCustomTo(to);
             setOpen((o) => !o);
           }}
-          className="glass-chip flex h-8 items-center gap-2 rounded-lg pr-3 pl-3.5 text-xs transition hover:bg-white/10"
+          className="glass-chip flex h-8 items-center gap-2 rounded-lg pr-3 pl-3.5 text-xs transition hover:bg-surface-contrast/10"
         >
           <CalendarRange className="size-3.5 text-accent" aria-hidden />
           <span className="font-medium text-ink">{active ? active.label : `${f.shortDate(from)} – ${f.shortDate(to)}`}</span>
@@ -71,14 +71,14 @@ export function DateRangePicker({
               key={p.id}
               type="button"
               onClick={() => choose(p)}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm hover:bg-white/6"
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm hover:bg-surface-contrast/6"
             >
               <span className="w-4">{selected && <Check className="size-4 text-accent" strokeWidth={3} aria-hidden />}</span>
               <span className={cn("flex-1", selected ? "font-semibold text-ink" : "text-ink-2")}>{p.label}</span>
             </button>
           );
         })}
-        <div className="mt-1 border-t border-white/8 px-2 pt-3 pb-1">
+        <div className="mt-1 border-t border-surface-contrast/8 px-2 pt-3 pb-1">
           <div className="eve-label mb-2 text-2xs text-ink-3">{t.common.dateRange.custom}</div>
           <div className="flex items-center gap-2">
             <input

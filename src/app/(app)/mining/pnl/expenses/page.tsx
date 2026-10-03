@@ -121,7 +121,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                         title={s === "mining" ? undefined : t.pnl.statuses[s].hint}
                         className={cn(
                           "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition",
-                          active ? "glass-chip text-ink" : "text-ink-3 hover:bg-white/5 hover:text-ink",
+                          active ? "glass-chip text-ink" : "text-ink-3 hover:bg-surface-contrast/5 hover:text-ink",
                         )}
                       >
                         {t.pnl.statusFilters[s]}

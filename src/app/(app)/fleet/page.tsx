@@ -69,7 +69,7 @@ export default async function FleetPage() {
           {user.characters.length === 0 ? (
             <p className="text-sm text-ink-3">{tf.tracking.noCharacters}</p>
           ) : (
-            <ul className="divide-y divide-white/5">
+            <ul className="divide-y divide-surface-contrast/5">
               {user.characters.map((c) => {
                 const tracker = trackerOf.get(c.characterId);
                 const granted = scopesOf.get(c.characterId) ?? [];
@@ -154,7 +154,7 @@ export default async function FleetPage() {
         {past.length === 0 ? (
           <p className="py-4 text-center text-sm text-ink-3">{tf.history.empty}</p>
         ) : (
-          <ul className="divide-y divide-white/5">
+          <ul className="divide-y divide-surface-contrast/5">
             {past.map((p) => {
               const end = p.endedAt ?? p.lastSeenAt;
               const pilots = pastMembers.filter((m) => m.fleetId === p.fleetId);

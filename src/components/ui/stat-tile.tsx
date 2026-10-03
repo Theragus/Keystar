@@ -65,7 +65,7 @@ export function StatTile({
     <>
       <div className="flex items-center gap-2.5">
         {Icon && (
-          <span className="grid size-7 shrink-0 place-items-center rounded-md border border-white/[0.08] bg-white/[0.03]">
+          <span className="grid size-7 shrink-0 place-items-center rounded-md border border-surface-contrast/[0.08] bg-surface-contrast/[0.03]">
             <Icon className="size-3.5 text-ink-2" aria-hidden />
           </span>
         )}

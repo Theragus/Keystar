@@ -14,6 +14,9 @@ export const shell: typeof en = {
     title: "Freischaltung ausstehend.",
     body: "Ein Direktor muss dein Konto freischalten, bevor du Corporation-Daten sehen kannst. Deine Charaktere kannst du schon jetzt verknüpfen und ESI-Zugriff erteilen.",
   },
+  theme: {
+    toggle: "Heller Modus", light: "Hell", dark: "Dunkel", toLight: "Zum hellen Modus wechseln", toDark: "Zum dunklen Modus wechseln",
+  },
   language: {
     label: "Sprache",
     change: "Sprache ändern",

@@ -2,7 +2,7 @@
 
 /*
  * Keystar design system — EVE Online inspired deep-space backdrop with
- * Apple "Liquid Glass" style translucent surfaces. Dark only by design.
+ * Apple "Liquid Glass" style translucent surfaces. Dark by default, with an explicit light palette.
  */
 
 @theme {
@@ -22,6 +22,7 @@
   --text-xs--line-height: calc(1.125 / 0.8125);
 
   /* Neutral near-black base (Supabase-like), with a faint cool tint for EVE. */
+  --color-surface-contrast: #ffffff;
   --color-space-950: #0b0c0e;
   --color-space-900: #101114;
   --color-space-800: #15171b;
@@ -66,6 +67,12 @@
 
 :root {
   color-scheme: dark;
+  --surface-rgb: 255, 255, 255;
+  --glass-background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)), rgba(21, 23, 27, 0.72);
+  --chip-background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03)), rgba(28, 31, 36, 0.7);
+  --inset-background: rgba(0, 0, 0, 0.22);
+  --link-hover: rgba(32, 36, 43, 0.8);
+  --link-current: rgba(24, 40, 52, 0.85);
   --chart-surface: #14161a;
   --hairline: rgba(255, 255, 255, 0.075);
   --hairline-strong: rgba(255, 255, 255, 0.13);
@@ -178,7 +185,7 @@ select option:disabled {
   position: relative;
   isolation: isolate;
   border-radius: var(--radius-glass);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.015) 100%), rgba(21, 23, 27, 0.72);
+  background: var(--glass-background);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   box-shadow:
@@ -214,7 +221,7 @@ select option:disabled {
 @utility glass-chip {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03)), rgba(28, 31, 36, 0.7);
+  background: var(--chip-background);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
   box-shadow:
@@ -224,7 +231,7 @@ select option:disabled {
 }
 
 @utility glass-inset {
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--inset-background);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
@@ -236,7 +243,7 @@ select option:disabled {
     box-shadow 150ms ease;
 
   &:hover {
-    background-color: rgba(32, 36, 43, 0.8);
+    background-color: var(--link-hover);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       inset 0 0 0 1px rgba(92, 200, 255, 0.22),
@@ -245,7 +252,7 @@ select option:disabled {
   }
 
   &[aria-current="true"] {
-    background-color: rgba(24, 40, 52, 0.85);
+    background-color: var(--link-current);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       inset 0 0 0 1px rgba(92, 200, 255, 0.7),
@@ -314,14 +321,14 @@ select option:disabled {
 }
 .ks-table td {
   padding: 0.6rem 0.9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  border-bottom: 1px solid var(--hairline);
   vertical-align: middle;
 }
 .ks-table tbody tr {
   transition: background-color 120ms ease;
 }
 .ks-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(var(--surface-rgb), 0.025);
 }
 .ks-table .num {
   text-align: right;
@@ -332,7 +339,7 @@ select option:disabled {
 /* Scrollbars that fit the theme. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(var(--surface-rgb), 0.3) transparent;
 }
 
 /* Keyboard focus that is always visible on glass. */
@@ -347,4 +354,66 @@ select option:disabled {
 }
 .recharts-text {
   fill: var(--color-ink-3);
+}
+
+/* Light mode uses the same semantic tokens as the dark interface. Literal
+   white (e.g. text on an image) remains white; surface overlays have their own token. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-space-950: #f3f5f8;
+  --color-space-900: #ffffff;
+  --color-space-800: #edf1f6;
+  --color-space-700: #dde4ed;
+  --color-ink: #182332;
+  --color-ink-2: #435268;
+  --color-ink-3: #58677a;
+  --color-surface-contrast: #182332;
+  --surface-rgb: 24, 35, 50;
+  --color-accent: #006b9d;
+  --color-accent-strong: #005880;
+  --color-gold: #865800;
+  --color-good: #16713a;
+  --color-good-text: #146b36;
+  --color-warning: #865600;
+  --color-serious: #a5430b;
+  --color-critical: #b32632;
+  --color-critical-text: #b32632;
+  --color-section-industry: #865600;
+  --color-section-combat: #ae2847;
+  --color-section-trade: #00705c;
+  --chart-surface: #ffffff;
+  --hairline: rgba(24, 35, 50, 0.12);
+  --hairline-strong: rgba(24, 35, 50, 0.2);
+  --grid: #d9e0e9;
+  --axis: #aab5c3;
+  --glass-background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.8));
+  --chip-background: linear-gradient(180deg, #ffffff, #edf1f6);
+  --inset-background: rgba(24, 35, 50, 0.035);
+  --link-hover: #e5edf5;
+  --link-current: #dcecf7;
+}
+
+[data-theme="light"] .space-backdrop {
+  background:
+    radial-gradient(1100px 700px at 100% -10%, rgba(70, 128, 188, 0.09), transparent 60%),
+    linear-gradient(180deg, #f6f8fb, #edf1f6);
+}
+[data-theme="light"] .space-backdrop::after { opacity: 0; }
+[data-theme="light"] .glass {
+  box-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(24, 35, 50, 0.08), 0 12px 32px -18px rgba(24, 35, 50, 0.18);
+}
+[data-theme="light"] .glass::before {
+  background: linear-gradient(160deg, rgba(24, 35, 50, 0.18), rgba(24, 35, 50, 0.08));
+}
+[data-theme="light"] .glass-chip {
+  box-shadow: inset 0 0 0 1px var(--hairline), 0 4px 12px -6px rgba(24, 35, 50, 0.16);
+}
+[data-theme="light"] .glass-inset { box-shadow: inset 0 0 0 1px var(--hairline); }
+[data-theme="light"] .glass-link:hover,
+[data-theme="light"] .glass-link[aria-current="true"] {
+  background-image: none;
+  box-shadow: inset 0 0 0 1px var(--color-accent), 0 4px 12px -6px rgba(24, 35, 50, 0.16);
+}
+[data-theme="light"] .dot-grid {
+  background-image: radial-gradient(rgba(24, 35, 50, 0.09) 1px, transparent 1px);
 }

@@ -51,7 +51,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
               {user.can(MINING_PERMISSIONS.export) && (
                 <a
                   href={`/mining/export?${miningQueryString(filters, { page: 1 })}`}
-                  className="glass-chip inline-flex h-8 items-center gap-2 rounded-lg px-3.5 text-xs font-medium hover:bg-white/10"
+                  className="glass-chip inline-flex h-8 items-center gap-2 rounded-lg px-3.5 text-xs font-medium hover:bg-surface-contrast/10"
                 >
                   <Download className="size-4" aria-hidden /> {t.mining.exportCsv}
                 </a>
@@ -149,7 +149,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
               </table>
             </div>
             {pages > 1 && (
-              <nav className="flex items-center justify-end gap-2 border-t border-white/6 px-5 py-3" aria-label={l.pagination}>
+              <nav className="flex items-center justify-end gap-2 border-t border-surface-contrast/6 px-5 py-3" aria-label={l.pagination}>
                 <Link
                   href={pageLink(Math.max(1, filters.page - 1))}
                   aria-disabled={filters.page <= 1}

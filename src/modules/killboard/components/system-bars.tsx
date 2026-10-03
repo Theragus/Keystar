@@ -27,7 +27,7 @@ export async function SystemBars({
             href={zkillSystem(r.systemId)}
             target="_blank"
             rel="noopener noreferrer"
-            className="group -mx-2 grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 rounded-md px-2 py-1.5 hover:bg-white/5"
+            className="group -mx-2 grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 rounded-md px-2 py-1.5 hover:bg-surface-contrast/5"
             title={t.killboard.systems.tooltip({
               system: r.name ?? String(r.systemId),
               side: unit,
@@ -41,7 +41,7 @@ export async function SystemBars({
               <SecurityStatus value={r.security} />
               <span className="truncate font-medium text-ink group-hover:text-accent">{r.name ?? `#${r.systemId}`}</span>
             </span>
-            <span className="h-2.5 overflow-hidden rounded-full bg-white/4">
+            <span className="h-2.5 overflow-hidden rounded-full bg-surface-contrast/4">
               <span
                 className="block h-full rounded-full"
                 style={{ width: `${Math.max(2, (r.count / max) * 100)}%`, background: color }}

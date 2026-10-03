@@ -7,6 +7,7 @@ import { KEYSTAR_VERSION } from "@/core/version";
 import { getI18n } from "@/i18n/server";
 import { Portrait } from "@/components/ui/eve-image";
 import { RoleBadge } from "@/components/ui/badge";
+import { ThemeSwitcher } from "./theme-switcher";
 import { LanguageSwitcher } from "./language-switcher";
 import { KeystarMark } from "./logo";
 import { NavLink } from "./nav-link";
@@ -26,8 +27,8 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
   const { t } = await getI18n();
 
   return (
-    <aside className="sticky top-0 flex h-screen w-[232px] shrink-0 flex-col border-r border-white/[0.07] bg-space-900/70 backdrop-blur-xl">
-      <Link href="/" className="flex h-14 items-center gap-2.5 border-b border-white/[0.07] px-4">
+    <aside className="sticky top-0 flex h-screen w-[232px] shrink-0 flex-col border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl">
+      <Link href="/" className="flex h-14 items-center gap-2.5 border-b border-surface-contrast/[0.07] px-4">
         <KeystarMark className="size-7" />
         <span className="font-display text-[1.05rem] font-bold tracking-[0.2em] text-ink">KEYSTAR</span>
       </Link>
@@ -50,8 +51,11 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
           </div>
         ))}
       </nav>
-      <div className="flex items-center justify-between gap-2 px-3 pb-2">
-        <LanguageSwitcher />
+      <div className="space-y-1 px-3 pb-2">
+        <div className="flex flex-wrap items-center gap-1">
+          <LanguageSwitcher />
+          <ThemeSwitcher />
+        </div>
         <a
           href={`${env().SOURCE_URL}/releases`}
           target="_blank"
@@ -62,13 +66,9 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
           Keystar v{KEYSTAR_VERSION}
         </a>
       </div>
-      <div className="border-t border-white/[0.07] p-3">
+      <div className="border-t border-surface-contrast/[0.07] p-3">
         <div className="flex items-center gap-2.5">
-          {user.main ? (
-            <Portrait id={user.main.characterId} size={32} />
-          ) : (
-            <div className="size-8 rounded-full bg-space-700" />
-          )}
+          {user.main ? <Portrait id={user.main.characterId} size={32} /> : <div className="size-8 rounded-full bg-space-700" />}
           <div className="min-w-0 flex-1">
             <div className="truncate text-[0.82rem] font-medium">{user.main?.name ?? t.shell.unknownPilot}</div>
             <div className="mt-0.5 flex items-center gap-1.5">
@@ -81,7 +81,7 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
               type="submit"
               title={t.shell.signOut}
               aria-label={t.shell.signOut}
-              className="grid size-7 place-items-center rounded-md text-ink-3 transition hover:bg-white/[0.06] hover:text-ink"
+              className="grid size-7 place-items-center rounded-md text-ink-3 transition hover:bg-surface-contrast/[0.06] hover:text-ink"
             >
               <LogOut className="size-3.5" aria-hidden />
             </button>

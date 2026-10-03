@@ -31,7 +31,7 @@ export async function ScoreBadge({ score }: { score: PilotScore | null }) {
 
 export function ScoreBar({ value, tier, className }: { value: number; tier: Tier | "unknown"; className?: string }) {
   return (
-    <div className={cn("h-1 w-16 overflow-hidden rounded-full bg-white/8", className)} aria-hidden>
+    <div className={cn("h-1 w-16 overflow-hidden rounded-full bg-surface-contrast/8", className)} aria-hidden>
       <div className="h-full rounded-full" style={{ width: `${Math.max(3, value)}%`, background: TIER_COLOR[tier] }} />
     </div>
   );

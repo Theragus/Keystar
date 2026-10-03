@@ -22,7 +22,7 @@ export function CopyChip({ value, label }: { value: string; label: string }) {
       }}
       title={state === "failed" ? t.common.copy.failedHint : label}
       aria-label={label}
-      className="inline-grid size-5 place-items-center rounded text-ink-3 hover:bg-white/10 hover:text-ink"
+      className="inline-grid size-5 place-items-center rounded text-ink-3 hover:bg-surface-contrast/10 hover:text-ink"
     >
       {state === "copied" ? <Check className="size-3 text-good-text" aria-hidden /> : <Copy className="size-3" aria-hidden />}
     </button>
