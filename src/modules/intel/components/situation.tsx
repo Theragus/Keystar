@@ -31,12 +31,13 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
     .filter((at): at is Date => at !== null)
     .sort((a, b) => a.getTime() - b.getTime());
   return (
-    <Panel title={e.situation} subtitle={e.snapshotHint}>
-      <div className="mb-4 flex flex-wrap gap-x-6 gap-y-2 text-lg font-semibold text-ink">
+    <Panel title={e.situation} subtitle={e.snapshotHint} actions={
+      <div className="flex max-w-[40vw] flex-wrap justify-end gap-x-4 gap-y-1 text-sm font-semibold text-ink sm:max-w-none">
         <span>{t.intel.scan.title(view.pilots.length, null)}</span>
         <span>{t.intel.scan.nonFriendly(others.length)}</span>
         <span className="text-ink-2">{t.intel.scan.friendlyPilots(view.rows.length - others.length)}</span>
       </div>
+    }>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="glass-inset rounded-lg p-3">
           <h3 className="eve-label mb-2 text-2xs text-ink-3" title={e.groupsHint}>{e.groups}</h3>
