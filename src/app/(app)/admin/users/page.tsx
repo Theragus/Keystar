@@ -8,6 +8,7 @@ import { Portrait } from "@/components/ui/eve-image";
 import { Glass, Panel } from "@/components/ui/glass";
 import { requirePermission } from "@/core/auth/dal";
 import { getDb } from "@/core/db";
+import { memberAuditHref } from "@/core/member-audit-filters";
 import { characterScopes } from "@/core/modules/registry";
 import { assignableRoles, canManageRole, isRole, ROLES, type Role } from "@/core/rbac/roles";
 import { getI18n } from "@/i18n/server";
@@ -175,7 +176,13 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                 const canChange = manageable(u);
                 const tokenTrouble = !u.is_disabled && (invalid > 0 || missing > 0);
                 // Where a token problem gets fixed: your own characters page, or the member audit for others.
-                const fixHref = !tokenTrouble ? null : own ? "/characters" : canAudit ? "/admin/members" : null;
+                const fixHref = !tokenTrouble
+                  ? null
+                  : own
+                    ? "/characters"
+                    : canAudit
+                      ? memberAuditHref(undefined, { filter: "esi", q: u.main_name ?? "" })
+                      : null;
                 const health = u.is_disabled ? (
                   <StatusBadge status="error" label={tu.health.disabled} />
                 ) : invalid ? (

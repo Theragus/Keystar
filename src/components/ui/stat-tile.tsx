@@ -37,6 +37,8 @@ export function StatTile({
   trend,
   icon: Icon,
   href,
+  active,
+  title,
   className,
 }: {
   label: string;
@@ -50,6 +52,12 @@ export function StatTile({
   icon?: LucideIcon;
   /** Makes the whole tile a link to the page behind the number. */
   href?: string;
+  /**
+   * For tiles that filter the page they sit on (set on every such tile): marks
+   * the applied filter and keeps the scroll position.
+   */
+  active?: boolean;
+  title?: string;
   className?: string;
 }) {
   const classes = cn("flex flex-col gap-3 px-5 py-4", href && "glass-link group", className);
@@ -84,7 +92,14 @@ export function StatTile({
     </>
   );
   return href ? (
-    <Glass as={Link} href={href} className={classes}>
+    <Glass
+      as={Link}
+      href={href}
+      scroll={active === undefined ? undefined : false}
+      aria-current={active ? "true" : undefined}
+      title={title}
+      className={classes}
+    >
       {body}
     </Glass>
   ) : (

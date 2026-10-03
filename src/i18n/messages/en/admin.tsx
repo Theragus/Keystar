@@ -76,6 +76,31 @@ export const admin = {
     },
     columns: { character: "Character", status: "Status", account: "Account", esi: "ESI" },
     characterFallback: (id: string) => `Character ${id}`,
+    search: {
+      label: "Search members",
+      placeholder: "Search by character, account or character ID…",
+      clear: "Clear search",
+    },
+    /** The stat tiles filter the table (`?filter=`); counts always cover the whole corporation. */
+    filter: {
+      onlyThese: "Show only these",
+      showAll: "Show everyone",
+      labels: {
+        roster: "in the in-game roster",
+        registered: "registered",
+        unregistered: "not registered",
+        esi: "with missing or revoked ESI",
+      },
+    },
+    /** Line above the table: how many rows match, and which page is shown. */
+    results: (count: number, filter: string | null, q: string | null) =>
+      `${n(count)} ${count === 1 ? "character" : "characters"}${filter ? ` ${filter}` : ""}${q ? ` matching “${q}”` : ""}`,
+    clearAll: "Clear search and filter",
+    empty: "No characters match.",
+    pageOf: (page: number, pages: number) => `Page ${n(page)} of ${n(pages)}`,
+    pagination: "Pagination",
+    previous: "Previous",
+    next: "Next",
     status: {
       notRegistered: "Not registered",
       notInRoster: "Not in roster",

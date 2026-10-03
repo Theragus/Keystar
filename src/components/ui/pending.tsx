@@ -6,8 +6,11 @@ import { cn } from "@/lib/utils";
 
 interface PendingContextValue {
   isPending: boolean;
-  /** Navigate to a new query string for the current page inside a transition. */
-  navigate: (query: string) => void;
+  /**
+   * Navigate to a new query string for the current page inside a transition.
+   * `replace` skips the history entry, for state that changes as you type.
+   */
+  navigate: (query: string, options?: { replace?: boolean }) => void;
 }
 
 const PendingContext = createContext<PendingContextValue>({ isPending: false, navigate: () => {} });
@@ -20,8 +23,12 @@ export function PendingProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
-  const navigate = (query: string) =>
-    startTransition(() => router.push(query ? `${pathname}?${query}` : pathname, { scroll: false }));
+  const navigate = (query: string, options?: { replace?: boolean }) =>
+    startTransition(() => {
+      const href = query ? `${pathname}?${query}` : pathname;
+      if (options?.replace) router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
+    });
   return <PendingContext.Provider value={{ isPending, navigate }}>{children}</PendingContext.Provider>;
 }
 
