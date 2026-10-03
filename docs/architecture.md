@@ -165,7 +165,8 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
 - **Wallet import** is opt-in per character (optional `esi-wallet.read_character_wallet.v1` scope). The wallet job
   pages back with `from_id` until it reaches stored transactions and stores personal transactions in
   `wallet_transactions` with the owning account (`user_id`), so wallet data never follows a sold character and is
-  deleted with the account or when the character is removed.
+  deleted with the account or when the character is removed. Wallet responses bypass the ESI response cache, so
+  deleting the history leaves no copy behind.
 - **Expenses**: buys are auto-tagged by item group/type (`src/modules/mining/pnl/categories.ts`, with an SQL twin):
   mining crystals, Heavy Water, Mining Foreman burst charges, mining drones, mining hulls and fittings. A tagged
   purchase is *suggested* until the user includes it, or counted automatically for characters where the user

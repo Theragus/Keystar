@@ -67,10 +67,11 @@ describe("wallet transaction import", () => {
     expect(cursors).toEqual([null, "3501", "1001", "1"]);
   });
 
-  it("only caches the first request", async () => {
+  it("keeps wallet responses out of the ESI response cache", async () => {
     const { esi, cache } = wallet(3000);
-    await fetchNewTransactions(esi, 1, null);
-    expect([...cache.map.keys()]).toEqual(["1:GET /characters/1/wallet/transactions"]);
+    const res = await fetchNewTransactions(esi, 1, null);
+    expect(cache.map.size).toBe(0);
+    expect(res.expiresAt).not.toBeNull();
   });
 
   it("stops at the page limit and says so", async () => {

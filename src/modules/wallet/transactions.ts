@@ -26,9 +26,9 @@ export interface FetchedTransactions {
  * Wallet transactions newer than `newestStoredId`. ESI returns the latest
  * transactions (up to 2500, last 30 days); older ones are paged with
  * `from_id` ("only transactions before this id") until a batch reaches
- * transactions already stored, comes back empty or `maxPages` is hit. Only
- * the first request is cached: every cursor would otherwise get its own
- * cache row.
+ * transactions already stored, comes back empty or `maxPages` is hit. Wallet
+ * responses bypass the ESI response cache, so deleting imported history
+ * leaves no copy behind (the job runs at ESI's hourly cache interval anyway).
  */
 export async function fetchNewTransactions(
   esi: EsiClient,
@@ -37,7 +37,7 @@ export async function fetchNewTransactions(
   maxPages = 10,
 ): Promise<FetchedTransactions> {
   const path = `/characters/${characterId}/wallet/transactions`;
-  const first = await esi.get<EsiWalletTransaction[]>(path, { characterId });
+  const first = await esi.get<EsiWalletTransaction[]>(path, { characterId, noCache: true });
   let batch = first.data ?? [];
   const rows = [...batch];
   let pages = 1;
