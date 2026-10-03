@@ -129,6 +129,17 @@ describe.skipIf(!enabled)("integration", async () => {
       // The owner still sees their own character, whatever its corporation.
       const mine = await q.getMiningSummary(filters({ source: "personal" }), own([1, 4]), val);
       expect(mine.current.value).toBe(1000 * 10 + 7000 * 10);
+
+      // A viewer with corporation access finds that alt in the "My characters" view only.
+      const viewer = { can: (perm: string) => perm === "mining.view.corp", characterIds: [1, 4] };
+      const corpScope = q.miningScope(viewer, 100);
+      expect(corpScope.corp).toBe(true);
+      const ownScope = q.miningScope(viewer, 100, "own");
+      expect(ownScope.corp).toBe(false);
+      const ownView = await q.getMiningSummary(filters({ source: "personal", view: "own" }), ownScope, val);
+      expect(ownView.current.value).toBe(1000 * 10 + 7000 * 10);
+      const ownOptions = await q.getFilterOptions(ownScope);
+      expect(ownOptions.characters.map((c) => c.id)).toContain(4);
     });
 
     it("shows no corporation-wide data until a home corporation is set", async () => {

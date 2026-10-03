@@ -26,6 +26,7 @@ import {
   getMiningSummary,
   getSystemBreakdown,
   getTypeBreakdown,
+  canViewCorpMining,
 } from "@/modules/mining/queries";
 
 export async function generateMetadata() {
@@ -55,6 +56,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
   const byClass: Partial<Record<OreClass, number>> = {};
   for (const type of types) byClass[type.oreClass] = (byClass[type.oreClass] ?? 0) + type[filters.metric];
   const hasAnyData = options.characters.length > 0;
+  const canSwitchView = canViewCorpMining(user, ctx.homeCorporationId);
 
   return (
     <PendingProvider>
@@ -65,7 +67,9 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
           description={
             scope.corp
               ? m.description.corp
-              : user.can(MINING_PERMISSIONS.viewCorp)
+              : canSwitchView
+                ? m.description.ownView
+                : user.can(MINING_PERMISSIONS.viewCorp)
                 ? m.description.noHomeCorp
                 : m.description.own
           }
@@ -86,7 +90,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
           }
         />
 
-        <MiningFilterBar filters={filters} options={options} presets={ctx.presets} />
+        <MiningFilterBar filters={filters} options={options} presets={ctx.presets} showView={canSwitchView} />
 
         {!hasAnyData ? (
           <Glass>

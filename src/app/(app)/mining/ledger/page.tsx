@@ -14,7 +14,7 @@ import { MiningFilterBar } from "@/modules/mining/components/filter-bar";
 import { miningQueryString } from "@/modules/mining/filters";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { miningPageContext } from "@/modules/mining/page-context";
-import { getFilterOptions, getLedgerRows } from "@/modules/mining/queries";
+import { canViewCorpMining, getFilterOptions, getLedgerRows } from "@/modules/mining/queries";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -59,7 +59,13 @@ export default async function LedgerPage({ searchParams }: PageProps<"/mining/le
             </>
           }
         />
-        <MiningFilterBar filters={filters} options={options} presets={ctx.presets} showMetric={false} />
+        <MiningFilterBar
+          filters={filters}
+          options={options}
+          presets={ctx.presets}
+          showMetric={false}
+          showView={canViewCorpMining(user, ctx.homeCorporationId)}
+        />
 
         <PendingFrame>
           <Glass className="overflow-hidden">
