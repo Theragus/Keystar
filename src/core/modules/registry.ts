@@ -1,3 +1,4 @@
+import { fleetModule } from "@/modules/fleet/module";
 import { intelModule } from "@/modules/intel/module";
 import { killboardModule } from "@/modules/killboard/module";
 import { miningModule } from "@/modules/mining/module";
@@ -11,7 +12,7 @@ import type { KeystarModule, NavSection, ScopeRequirement } from "./types";
  * src/modules/<name>/module.ts and list it here; register its jobs in
  * src/modules/jobs.ts. See docs/modules.md.
  */
-export const MODULES: KeystarModule[] = [coreModule, miningModule, killboardModule, intelModule, tradeModule];
+export const MODULES: KeystarModule[] = [coreModule, miningModule, killboardModule, fleetModule, intelModule, tradeModule];
 
 export function allPermissions(): PermissionDef[] {
   return MODULES.flatMap((m) => m.permissions);

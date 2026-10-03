@@ -42,6 +42,12 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
   - Weekly **situation report**, written by Claude (optional API key) or from a template
   - Top systems by kills and losses, ISK breakdown, recent activity with zKillboard links
   - Most effective / most used / most lost ships and pilot efficiency (final blows, solo, net ISK), all sortable
+- ✅ **Live fleet** from the ESI fleet endpoints (`esi-fleets.read_fleet.v1`): the fleet boss starts tracking on the
+  fleet page and the worker reads the fleet every 15 seconds:
+  - Members by wing and squad with ship, system and role; composition by ship class and hull; joins and leaves
+  - Past fleets with duration and participants
+- 📝 Fleet doctrine compliance check (allowed hulls per doctrine) and logi/DPS/tackle counts
+- 📝 Fleet participation history per pilot (PAP-style tracking)
 - 💡 Post the weekly situation report to Discord
 - 💡 Doctrine tags for hulls and per-doctrine performance
 - 💡 Track additional corporations or the alliance alongside the home corporation
@@ -73,15 +79,6 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 - 💡 Corp buyback: a configured percentage per item group, contract instructions for members
 
 ## Planned modules
-
-### 📝 Live fleet tool (own branch)
-
-EVE now lets fleet bosses share fleet information through ESI
-(`/fleets/{fleet_id}`, `/fleets/{fleet_id}/members`, scope `esi-fleets.read_fleet.v1`).
-
-- Live fleet composition (ships, roles, wings/squads), refreshed on a short interval.
-- Doctrine compliance check, logi/DPS/tackle counts, who joined/left.
-- Fleet participation history for the corp (PAP-style tracking).
 
 ### 📝 Skills & corporation skill plans
 

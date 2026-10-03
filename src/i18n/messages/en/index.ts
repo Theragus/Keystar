@@ -5,6 +5,7 @@ import { common } from "./common";
 import { core } from "./core";
 import { dashboard } from "./dashboard";
 import { eve } from "./eve";
+import { fleet } from "./fleet";
 import { intel } from "./intel";
 import { killboard } from "./killboard";
 import { mining } from "./mining";
@@ -16,6 +17,6 @@ import { trade } from "./trade";
  * English source dictionary, one namespace per area. Its shape is the
  * `Messages` type every other language must match exactly.
  */
-export const en = { common, shell, auth, setup, core, eve, dashboard, characters, admin, mining, killboard, intel, trade };
+export const en = { common, shell, auth, setup, core, eve, dashboard, characters, admin, mining, killboard, fleet, intel, trade };
 
 export type Messages = typeof en;

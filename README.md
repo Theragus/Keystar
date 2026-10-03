@@ -54,6 +54,8 @@ situation report, and an **appraisal** tool for Jita prices.
 - **Killboard** for the home corporation from zKillboard (no extra scopes): kills, losses, ISK efficiency with
   week-over-week changes, a weekly **situation report** written by Claude (optional API key) or from a template, top
   systems, recent activity, most effective / used / lost ships and pilot efficiency.
+- **Live fleet**: the fleet boss shares their fleet from ESI; members by wing and squad with ship, system and role,
+  composition by ship class, joins and leaves, refreshed every 15 seconds, plus a list of past fleets.
 - **Threat intel** (Combat): paste local, a fleet composition or names (plus an optional d-scan) and see who they
   are, whether they fought your corporation and what they brought, and how dangerous each pilot is *right now*:
   explained scores weighted toward recent kills, the latest kills and losses per pilot, role tags (cyno, hunter,
@@ -70,7 +72,7 @@ situation report, and an **appraisal** tool for Jita prices.
   sidebar footer; numbers and dates use the language's conventions (e.g. "9,87 Mio. ISK").
 - **Design**: dark, EVE-flavoured "liquid glass" UI with Supabase-style docked navigation, made for large screens.
 
-See [ROADMAP.md](ROADMAP.md) for what's next (live fleet, skills, assets, wallets, mining P&L).
+See [ROADMAP.md](ROADMAP.md) for what's next (skills, assets, wallets, mining P&L).
 
 ## Deploy
 

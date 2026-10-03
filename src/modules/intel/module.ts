@@ -1,4 +1,4 @@
-import { Radar } from "lucide-react";
+import { ScanEye } from "lucide-react";
 import type { KeystarModule } from "@/core/modules/types";
 
 export const INTEL_PERMISSIONS = {
@@ -51,7 +51,7 @@ export const intelModule: KeystarModule = {
       id: "combat",
       label: (t) => t.killboard.module.navSection,
       order: 15,
-      items: [{ href: "/intel", label: (t) => t.intel.module.navItem, icon: Radar, anyPermission: [INTEL_PERMISSIONS.use] }],
+      items: [{ href: "/intel", label: (t) => t.intel.module.navItem, icon: ScanEye, anyPermission: [INTEL_PERMISSIONS.use] }],
     },
   ],
 };

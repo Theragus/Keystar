@@ -1,6 +1,6 @@
 "use client";
 
-import { Radar } from "lucide-react";
+import { ScanEye } from "lucide-react";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/client";
@@ -54,7 +54,7 @@ export function ScanForm({
           />
         </label>
         <Button type="submit" variant="primary" disabled={pending} className="ml-auto">
-          <Radar className="size-4" aria-hidden />
+          <ScanEye className="size-4" aria-hidden />
           {pending ? s.submitting : s.submit}
         </Button>
       </div>

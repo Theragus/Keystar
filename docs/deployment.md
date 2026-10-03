@@ -87,6 +87,7 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    esi-corporations.read_contacts.v1
    esi-corporations.read_corporation_membership.v1
    esi-corporations.read_structures.v1
+   esi-fleets.read_fleet.v1
    esi-industry.read_character_mining.v1
    esi-industry.read_corporation_mining.v1
    ```
@@ -96,7 +97,7 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    not configured yet.)
 5. Save and keep the **Client ID** and **Secret Key** for the next step.
 
-When future modules (skills, assets, wallets, fleets) are added, add their scopes to the application as well.
+When future modules (skills, assets, wallets) are added, add their scopes to the application as well.
 
 ## 6. Get Keystar and configure it
 
