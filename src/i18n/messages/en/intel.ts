@@ -368,6 +368,7 @@ export const intel = {
     tileAssociates: "Shared Local pilots",
     latestGroupFight: "Latest recorded fight",
     destroyedHull: (ship: string) => `Destroyed: ${ship}`,
+    involvedLocalPilots: "Involved local pilots",
     oneVictim: "1 victim",
     groupCount: (pilots: number, kills: number) => `${count(pilots, "Local pilot", "Local pilots")} · ${count(kills, "shared killmail", "shared killmails")}`,
     killmail: (id: number) => `Killmail ${id}`,

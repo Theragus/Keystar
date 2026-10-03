@@ -363,6 +363,7 @@ export const intel: typeof en = {
     tileAssociates: "Gemeinsame Local-Piloten",
     latestGroupFight: "Letzter erfasster Kampf",
     destroyedHull: (ship) => `Zerstört: ${ship}`,
+    involvedLocalPilots: "Beteiligte Local-Piloten",
     oneVictim: "1 Opfer",
     groupCount: (pilots, kills) => `${count(pilots, "Local-Pilot", "Local-Piloten")} · ${count(kills, "gemeinsame Killmail", "gemeinsame Killmails")}`,
     killmail: (id) => `Killmail ${id}`,

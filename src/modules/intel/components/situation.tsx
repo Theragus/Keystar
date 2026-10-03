@@ -82,6 +82,7 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
               <p className="text-ink">{e.destroyedHull(group.events[0].otherShipTypeId ? (view.names.types.get(group.events[0].otherShipTypeId)?.name ?? e.unknown) : e.unknown)}</p>
               <p className="text-ink-2">{e.attackers(group.events[0].attackerCount)} · {e.oneVictim}</p>
               <p className="text-ink-3">{f.compact(group.events[0].value)} ISK</p>
+              <h4 className="pt-1 font-medium text-ink">{e.involvedLocalPilots}</h4>
               <ul className="space-y-0.5 text-ink-2">
                 {group.members.map(m => <li key={m.characterId}>{view.pilotNames.get(m.characterId)} · {m.shipTypeId ? (view.names.types.get(m.shipTypeId)?.name ?? e.unknown) : e.unknown}{m.changed ? " · " + e.changed : ""}</li>)}
               </ul>
