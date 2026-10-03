@@ -80,7 +80,7 @@ export async function PilotRow({
         <ProfileStatus pilot={pilot} />
         <ScoreBadge score={score} />
       </summary>
-      <div className="space-y-4 border-t border-white/6 px-4 py-3">
+      <div className="space-y-4 border-t border-surface-contrast/6 px-4 py-3">
         <p className="text-xs text-ink-3">
           {t.intel.evidence.sampleHint} {profile ? t.intel.evidence.profileBuilt(f.relativeTime(profile.builtAt)) : ""}{" "}
           {pilot.statsAt ? t.intel.evidence.statsChecked(f.relativeTime(pilot.statsAt)) : t.intel.evidence.statsUnknown}

@@ -73,7 +73,7 @@ export function SwitchButton({ on, label }: { on: boolean; label: string }) {
       <span
         className={cn(
           "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full ring-1 transition-colors ring-inset",
-          on ? "bg-accent/80 ring-accent/60" : "bg-white/8 ring-white/15",
+          on ? "bg-accent/80 ring-accent/60" : "bg-surface-contrast/8 ring-surface-contrast/15",
         )}
         aria-hidden
       >

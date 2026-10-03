@@ -128,7 +128,7 @@ export function MiningFilterBar({
           onClick={() =>
             apply({ characters: [], types: [], classes: [], systems: [], source: "all" })
           }
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs text-ink-3 transition hover:bg-white/6 hover:text-ink"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs text-ink-3 transition hover:bg-surface-contrast/6 hover:text-ink"
         >
           <RotateCcw className="size-3.5" aria-hidden /> {t.mining.filters.reset}
         </button>

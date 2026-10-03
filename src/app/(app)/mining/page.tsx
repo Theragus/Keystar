@@ -81,7 +81,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
               {user.can(MINING_PERMISSIONS.export) && (
                 <a
                   href={`/mining/export?${miningQueryString(filters)}`}
-                  className="glass-chip inline-flex h-8 items-center gap-2 rounded-lg px-3.5 text-xs font-medium hover:bg-white/10"
+                  className="glass-chip inline-flex h-8 items-center gap-2 rounded-lg px-3.5 text-xs font-medium hover:bg-surface-contrast/10"
                 >
                   <Download className="size-4" aria-hidden /> {t.mining.exportCsv}
                 </a>
@@ -244,7 +244,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
                       {m.coverage.unpriced(current.unpricedRows)}
                     </li>
                   )}
-                  <li className="flex items-start gap-1.5 border-t border-white/8 pt-3 text-xs text-ink-3">
+                  <li className="flex items-start gap-1.5 border-t border-surface-contrast/8 pt-3 text-xs text-ink-3">
                     <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                     {m.coverage.note(ctx.valuationLabel)}
                   </li>

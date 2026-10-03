@@ -234,7 +234,7 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
             </form>
           )}
 
-          <div className="mt-5 border-t border-white/8 pt-4">
+          <div className="mt-5 border-t border-surface-contrast/8 pt-4">
             <div className="eve-label mb-2 text-2xs text-ink-3">{m.prices.hints.title(HINT_DAYS)}</div>
             {saleHints.length === 0 ? (
               <p className="text-xs text-ink-3">{m.prices.hints.empty}</p>

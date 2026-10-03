@@ -135,7 +135,7 @@ export default async function OverviewPage() {
         <div className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2 2xl:grid-cols-[repeat(4,minmax(0,auto))] 2xl:justify-between">
           {homeCorp ? (
             <InfoItem
-              media={<CorpLogo id={homeCorp.corporationId} size={44} className="rounded-lg ring-1 ring-white/10" />}
+              media={<CorpLogo id={homeCorp.corporationId} size={44} className="rounded-lg ring-1 ring-surface-contrast/10" />}
               label={d.info.homeCorp}
               href={zkillCorporation(homeCorp.corporationId)}
               newTabLabel={t.common.opensInNewTab}
@@ -374,7 +374,7 @@ export default async function OverviewPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {ROADMAP.map((r) => (
             <Glass key={r.id} className="flex items-start gap-3 px-5 py-4 opacity-80">
-              <div className="grid size-9 shrink-0 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.025]">
+              <div className="grid size-9 shrink-0 place-items-center rounded-lg border border-surface-contrast/[0.08] bg-surface-contrast/[0.025]">
                 <r.icon className="size-4 text-ink-2" aria-hidden />
               </div>
               <div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ThemeSwitcher } from "./theme-switcher";
 import { Check, ChevronUp, Languages } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Popover } from "@/components/ui/popover";
@@ -31,7 +32,7 @@ export function LanguageSwitcher() {
           title={t.shell.language.change}
           onClick={() => setOpen((o) => !o)}
           className={cn(
-            "flex h-7 items-center gap-1.5 rounded-md px-2 text-2xs text-ink-3 transition hover:bg-white/[0.06] hover:text-ink",
+            "flex h-7 items-center gap-1.5 rounded-md px-2 text-2xs text-ink-3 transition hover:bg-surface-contrast/[0.06] hover:text-ink",
             pending && "opacity-60",
           )}
         >
@@ -52,7 +53,7 @@ export function LanguageSwitcher() {
             setOpen(false);
             switchTo(l);
           }}
-          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-white/6"
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-surface-contrast/6"
         >
           <span className="w-4">{l === locale && <Check className="size-4 text-accent" strokeWidth={3} aria-hidden />}</span>
           <span className={cn("flex-1", l === locale ? "font-semibold text-ink" : "text-ink-2")}>{LOCALE_META[l].label}</span>
@@ -70,27 +71,26 @@ export function LanguageSwitcher() {
 export function LanguageLinks({ className }: { className?: string }) {
   const { locale, t } = useI18n();
   return (
-    <form
-      action={setLocaleFromForm}
-      aria-label={t.shell.language.label}
-      className={cn("inline-flex items-center gap-2 text-2xs text-ink-3", className)}
-    >
-      <Languages className="size-3.5" aria-hidden />
-      {LOCALES.map((l, i) => (
-        <span key={l} className="inline-flex items-center gap-2">
-          {i > 0 && <span aria-hidden>·</span>}
-          <button
-            type="submit"
-            name="locale"
-            value={l}
-            lang={l}
-            aria-pressed={l === locale}
-            className={l === locale ? "font-medium text-ink" : "hover:text-ink"}
-          >
-            {LOCALE_META[l].label}
-          </button>
-        </span>
-      ))}
-    </form>
+    <div className={cn("inline-flex flex-wrap items-center gap-3", className)}>
+      <form action={setLocaleFromForm} aria-label={t.shell.language.label} className="inline-flex items-center gap-2 text-2xs text-ink-3">
+        <Languages className="size-3.5" aria-hidden />
+        {LOCALES.map((l, i) => (
+          <span key={l} className="inline-flex items-center gap-2">
+            {i > 0 && <span aria-hidden>·</span>}
+            <button
+              type="submit"
+              name="locale"
+              value={l}
+              lang={l}
+              aria-pressed={l === locale}
+              className={l === locale ? "font-medium text-ink" : "hover:text-ink"}
+            >
+              {LOCALE_META[l].label}
+            </button>
+          </span>
+        ))}
+      </form>
+      <ThemeSwitcher />
+    </div>
   );
 }

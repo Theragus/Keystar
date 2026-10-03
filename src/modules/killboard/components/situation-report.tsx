@@ -41,7 +41,7 @@ export async function SituationReportPanel({
         )}
         <ChevronDown className="ml-auto size-4 text-ink-3 transition-transform group-open:rotate-180" aria-hidden />
       </summary>
-      <div className="border-t border-white/6 px-5 pt-4 pb-5">
+      <div className="border-t border-surface-contrast/6 px-5 pt-4 pb-5">
         {stored ? (
           <article className="max-w-4xl space-y-3">
             <h3 className="text-lg font-semibold tracking-tight text-ink">{stored.report.headline}</h3>

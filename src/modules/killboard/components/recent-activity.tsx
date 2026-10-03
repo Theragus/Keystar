@@ -23,7 +23,7 @@ export async function RecentActivity({ rows }: { rows: ActivityRow[] }) {
               href={zkillKill(r.killmailId)}
               target="_blank"
               rel="noopener noreferrer"
-              className="glass-inset flex items-center gap-3 rounded-lg border-l-[3px] py-2 pr-4 pl-3 hover:bg-white/5"
+              className="glass-inset flex items-center gap-3 rounded-lg border-l-[3px] py-2 pr-4 pl-3 hover:bg-surface-contrast/5"
               style={{ borderLeftColor: color }}
             >
               <TypeIcon id={r.shipTypeId} size={36} />

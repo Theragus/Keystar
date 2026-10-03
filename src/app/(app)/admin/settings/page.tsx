@@ -90,7 +90,7 @@ export default async function SettingsPage() {
                 type="checkbox"
                 name="autoApproveCorpMembers"
                 defaultChecked={settings["access.autoApproveCorpMembers"]}
-                className="mt-0.5 size-4 accent-[#5cc8ff]"
+                className="mt-0.5 size-4 accent-accent"
               />
               <span>
                 <span className="font-medium">{ts.access.autoCorp}</span>
@@ -104,7 +104,7 @@ export default async function SettingsPage() {
                 type="checkbox"
                 name="autoApproveAllianceMembers"
                 defaultChecked={settings["access.autoApproveAllianceMembers"]}
-                className="mt-0.5 size-4 accent-[#5cc8ff]"
+                className="mt-0.5 size-4 accent-accent"
               />
               <span>
                 <span className="font-medium">{ts.access.autoAlliance}</span>

@@ -62,7 +62,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
               title={m.steps[id]}
               className={cn(
                 "h-1.5 rounded-full transition-all",
-                i + 1 === step ? "w-8 bg-accent" : i + 1 < step ? "w-4 bg-accent/50" : "w-4 bg-white/12",
+                i + 1 === step ? "w-8 bg-accent" : i + 1 < step ? "w-4 bg-accent/50" : "w-4 bg-surface-contrast/12",
               )}
             />
           ))}
@@ -85,7 +85,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
                       name="corporationId"
                       value={c.corporationId}
                       defaultChecked={c.corporationId === (home?.corporationId ?? ownCorps[0]?.corporationId)}
-                      className="accent-[#5cc8ff]"
+                      className="accent-accent"
                     />
                     <CorpLogo id={c.corporationId} size={36} />
                     <div className="min-w-0 flex-1">
@@ -224,7 +224,7 @@ function StepHeader({
 }) {
   return (
     <div className="text-center">
-      <span className="mx-auto grid size-12 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
+      <span className="mx-auto grid size-12 place-items-center rounded-xl border border-surface-contrast/[0.08] bg-surface-contrast/[0.03]">
         <Icon className="size-5 text-accent" aria-hidden />
       </span>
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">{title}</h1>
@@ -236,7 +236,7 @@ function StepHeader({
 function Toggle({ name, checked, title, hint }: { name: string; checked: boolean; title: string; hint: string }) {
   return (
     <label className="flex cursor-pointer items-start gap-3 rounded-xl glass-inset px-4 py-3">
-      <input type="checkbox" name={name} defaultChecked={checked} className="mt-0.5 size-4 accent-[#5cc8ff]" />
+      <input type="checkbox" name={name} defaultChecked={checked} className="mt-0.5 size-4 accent-accent" />
       <span>
         <span className="font-medium">{title}</span>
         <span className="block text-xs text-ink-3">{hint}</span>

@@ -107,7 +107,7 @@ export async function RunnersUp({ pilots, start = 2 }: { pilots: PilotRow[]; sta
   return (
     <ol className="space-y-1.5">
       {pilots.map((p, i) => (
-        <li key={p.characterId} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/[0.04]">
+        <li key={p.characterId} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-surface-contrast/[0.04]">
           <span className="w-5 text-right text-sm font-semibold text-ink-3 tabular-nums">{f.integer(start + i)}</span>
           <Portrait id={p.characterId} size={44} />
           <div className="min-w-0 flex-1">

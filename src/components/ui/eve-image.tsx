@@ -24,7 +24,7 @@ export function Portrait({
       width={size}
       height={size}
       loading="lazy"
-      className={cn("shrink-0 rounded-full bg-space-700 ring-1 ring-white/15", className)}
+      className={cn("shrink-0 rounded-full bg-space-700 ring-1 ring-surface-contrast/15", className)}
       style={{ width: size, height: size }}
     />
   );

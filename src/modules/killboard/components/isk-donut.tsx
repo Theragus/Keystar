@@ -17,7 +17,7 @@ export function IskDonut({ destroyed, lost }: { destroyed: number; lost: number 
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={total > 0 ? data : [{ name: t.killboard.breakdown.noData, value: 1, color: "rgba(255,255,255,0.06)" }]}
+            data={total > 0 ? data : [{ name: t.killboard.breakdown.noData, value: 1, color: "var(--chart-empty)" }]}
             dataKey="value"
             innerRadius="68%"
             outerRadius="100%"
@@ -27,7 +27,7 @@ export function IskDonut({ destroyed, lost }: { destroyed: number; lost: number 
             stroke="none"
             isAnimationActive={false}
           >
-            {(total > 0 ? data : [{ color: "rgba(255,255,255,0.06)" }]).map((d, i) => (
+            {(total > 0 ? data : [{ color: "var(--chart-empty)" }]).map((d, i) => (
               <Cell key={i} fill={d.color} />
             ))}
           </Pie>

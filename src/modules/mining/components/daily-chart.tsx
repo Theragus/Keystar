@@ -68,7 +68,7 @@ function ChartTooltip({
         </div>
       ))}
       {rows.length > 1 && (
-        <div className="mt-1.5 flex items-center gap-2 border-t border-white/10 pt-1.5">
+        <div className="mt-1.5 flex items-center gap-2 border-t border-surface-contrast/10 pt-1.5">
           <span className="font-semibold text-ink tabular-nums">{f.formatMetric(metric, Number(row.total))}</span>
           <span className="text-ink-3">{t.mining.chart.total}</span>
         </div>
@@ -132,7 +132,7 @@ export function DailyChart({ rows, metric }: { rows: DailyChartRow[]; metric: Me
                 tick={{ fontSize: 12 }}
               />
               <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.045)" }}
+                cursor={{ fill: "var(--chart-cursor)" }}
                 content={<ChartTooltip metric={metric} />}
                 isAnimationActive={false}
               />

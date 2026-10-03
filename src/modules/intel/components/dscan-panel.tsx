@@ -32,7 +32,7 @@ export async function DscanPanel({
     <Panel title={d.title} subtitle={rows ? d.subtitle(ships) : d.empty} actions={actions}>
       <p className="mb-3 text-xs text-ink-3">{t.intel.evidence.dscanCaution}</p>
       {rows && rows.length > 0 && (
-        <ul className="mb-4 divide-y divide-white/6">
+        <ul className="mb-4 divide-y divide-surface-contrast/6">
           {rows.map((r) => (
             <li key={r.typeId} className="flex flex-wrap items-center gap-3 py-2">
               <TypeIcon id={r.typeId} size={28} className="rounded" />

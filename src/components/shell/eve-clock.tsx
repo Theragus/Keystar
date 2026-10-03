@@ -21,7 +21,7 @@ export function EveClock() {
   const time = now ? now.toISOString().slice(11, 16) : "--:--";
   return (
     <div
-      className="flex h-8 items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-xs"
+      className="flex h-8 items-center gap-2 rounded-md border border-surface-contrast/[0.08] bg-surface-contrast/[0.03] px-3 text-xs"
       title={t.shell.eveTime}
     >
       <Clock3 className="size-3.5 text-accent" aria-hidden />

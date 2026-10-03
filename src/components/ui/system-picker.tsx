@@ -126,7 +126,7 @@ export function SystemPicker({
         className={cn("glass-inset h-9 w-48 rounded-lg px-3 text-sm text-ink placeholder:text-ink-3", className)}
       />
       {showList && (
-        <div className="absolute top-[calc(100%+6px)] left-0 z-50 w-72 rounded-xl border border-white/10 bg-space-800 p-1 shadow-2xl">
+        <div className="absolute top-[calc(100%+6px)] left-0 z-50 w-72 rounded-xl border border-surface-contrast/10 bg-space-800 p-1 shadow-2xl">
           {status ? (
             <p role="status" className="px-2 py-3 text-xs text-ink-3">
               {status}
@@ -146,7 +146,7 @@ export function SystemPicker({
                   onClick={() => pick(option)}
                   className={cn(
                     "flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm text-ink",
-                    i === active && "bg-white/8",
+                    i === active && "bg-surface-contrast/8",
                   )}
                 >
                   <span className="min-w-0 truncate">
@@ -154,7 +154,7 @@ export function SystemPicker({
                     {option[3] && <span className="ml-2 text-xs text-ink-3">{option[3]}</span>}
                   </span>
                   {isWormholeSystem(option[0]) ? (
-                    <span className="shrink-0 rounded-md px-1.5 py-0.5 text-2xs font-semibold text-ink-2 ring-1 ring-white/20">
+                    <span className="shrink-0 rounded-md px-1.5 py-0.5 text-2xs font-semibold text-ink-2 ring-1 ring-surface-contrast/20">
                       {wormholeTag(option[3])}
                     </span>
                   ) : (

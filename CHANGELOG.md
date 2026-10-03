@@ -6,6 +6,14 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Light mode.** Switch between light and dark beside the language selector in the sidebar or on sign-in, join,
+  and setup pages. The preference is remembered for a year and applied before rendering, with matching glass
+  surfaces, readable status colours, controls, tables, chart chrome, and keyboard focus. Charts get their own
+  colour-vision-checked series and rarity/threat colours for the light surface, and EVE mail colours that would be too
+  pale on it are darkened. Dark remains the default.
+
 ### Changed
 
 - **Threat Intel puts evidence first.** A compact Local Situation summary, early D-scan input, timestamped
@@ -13,6 +21,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   briefing-led layout. Historical ship profiles and optional score details are clearly separated from scanner
   observations; missing data and incomplete fitting history stay explicit. Latest records retain five kills and
   five losses, and loss chips now name the lost hull rather than the final-blow attacker’s hull.
+
+### Fixed
+
+- Extend the sidebar surface to the bottom of long pages while keeping navigation and footer controls in the viewport.
+- Preserve the original dark-mode table separators and scrollbar colours when adding light mode.
 
 ## [0.8.0] - 2026-10-03
 

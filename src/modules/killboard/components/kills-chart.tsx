@@ -124,7 +124,7 @@ export function KillsChart({ rows }: { rows: DailyActivity[] }) {
                 tick={{ fontSize: 12 }}
               />
               <ReferenceLine y={0} stroke="var(--axis)" />
-              <Tooltip cursor={{ fill: "rgba(255,255,255,0.045)" }} content={<ChartTooltip />} isAnimationActive={false} />
+              <Tooltip cursor={{ fill: "var(--chart-cursor)" }} content={<ChartTooltip />} isAnimationActive={false} />
               <Bar dataKey="kills" stackId="day" fill={KILL_COLOR} maxBarSize={24} isAnimationActive={false} shape={<KillShape />} name={t.killboard.terms.kills} />
               <Bar dataKey="lossesNeg" stackId="day" fill={LOSS_COLOR} maxBarSize={24} isAnimationActive={false} shape={<LossShape />} name={t.killboard.terms.losses} />
             </BarChart>
