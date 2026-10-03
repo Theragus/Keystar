@@ -29,15 +29,12 @@ export const BRIEFING_JOB = "intel.briefings";
 export interface StartScanInput {
   text: string;
   systemName?: string;
-  /** Used when no system name is given (rescans). */
-  systemId?: number | null;
   dscan?: DscanEntry[] | null;
   userId: string;
   userName: string | null;
   aiAllowed: boolean;
   /** The creator's language (for the automatic briefing). */
   locale?: Locale;
-  rescanOf?: string | null;
 }
 
 /** Why a paste was refused; the action writes it out in the user's language (t.intel.errors). */
@@ -78,7 +75,7 @@ export async function startScan(input: StartScanInput, deps: { now?: Date; db?: 
     return { ok: false, error: { code: "rateLimited" } };
   }
 
-  let systemId: number | null = input.systemId ?? null;
+  let systemId: number | null = null;
   if (input.systemName?.trim()) {
     const system = await resolveSystem(input.systemName);
     if (!system) return { ok: false, error: { code: "unknownSystem", name: input.systemName.trim() } };
@@ -144,7 +141,6 @@ export async function startScan(input: StartScanInput, deps: { now?: Date; db?: 
       pilotCount: pilots.length,
       aiAllowed: input.aiAllowed,
       locale: input.locale ?? "en",
-      rescanOf: input.rescanOf ?? null,
       // Nothing to wait for when no pilot gets profiled.
       status: profiled.size ? "running" : "ready",
       readyAt: profiled.size ? null : now,

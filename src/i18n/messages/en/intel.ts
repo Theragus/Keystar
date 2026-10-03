@@ -258,8 +258,6 @@ export const intel = {
   buttons: {
     briefing: "Briefing",
     closeBriefing: "Close briefing",
-    rescan: "Rescan",
-    scanning: "Scanning…",
     profileMore: (more: number) => `Profile ${n(more)} more`,
     queuing: "Queuing…",
     confirmDelete: "Delete this scan for everyone?",

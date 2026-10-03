@@ -255,8 +255,6 @@ export const intel: typeof en = {
   buttons: {
     briefing: "Briefing",
     closeBriefing: "Briefing schließen",
-    rescan: "Neu scannen",
-    scanning: "Wird gescannt …",
     profileMore: (more) => `${n(more)} weitere analysieren`,
     queuing: "Wird eingereiht …",
     confirmDelete: "Diesen Scan für alle löschen?",

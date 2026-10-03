@@ -19,6 +19,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Remove the retired rescan action, button, translations and scan-parent metadata; users create a new Local snapshot with New scan.
+
 - Widen the Local Situation engagement report and compact ship rows to ship and pilot names inline; remove hull counts and loss labels while retaining red loss backgrounds.
 
 - Add bottom page indicators to the Local Situation engagement report to slide between recorded fights, newest first.
