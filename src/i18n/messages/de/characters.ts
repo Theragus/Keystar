@@ -59,6 +59,7 @@ export const characters: typeof en = {
       "Wenn du einen Charakter entfernst, wird sein Token gelöscht und bei CCP widerrufen. Der Mining-Verlauf bleibt bei der Corp.",
     wallet:
       "Wallet-Zugriff ist optional und gilt pro Charakter (Mining-GuV → Einstellungen). Importierte Wallet-Transaktionen siehst nur du, und sie werden gelöscht, wenn du den Charakter entfernst.",
+    mail: "Mail-Zugriff ist optional und gilt pro Charakter (EVE-Mail). Importierte Mails siehst nur du, und sie werden gelöscht, wenn du den Charakter entfernst.",
     revoke: "Du kannst den Zugriff jederzeit auf der EVE-Online-Website unter „Third-Party Applications“ widerrufen.",
   },
 };

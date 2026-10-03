@@ -6,7 +6,7 @@ import { audit } from "@/core/audit";
 import { getCurrentUser } from "@/core/auth/dal";
 import { revokeRefreshToken } from "@/core/auth/sso";
 import { decryptToken } from "@/core/crypto";
-import { characters, esiTokens, getDb, users, walletTransactions } from "@/core/db";
+import { characters, esiTokens, getDb, mailLabels, mailLists, mailMessages, users, walletTransactions } from "@/core/db";
 import { triggerJobs } from "@/core/sync/scheduler";
 
 async function ownedCharacter(characterId: number) {
@@ -30,7 +30,7 @@ export async function syncCharacterNow(characterId: number) {
 
 /**
  * Unlinks a character, deletes its token and revokes it at CCP. Mining history
- * is kept; the character's imported wallet transactions are deleted.
+ * is kept; the character's imported wallet transactions and mail are deleted.
  */
 export async function removeCharacter(characterId: number) {
   const user = await ownedCharacter(characterId);
@@ -41,6 +41,9 @@ export async function removeCharacter(characterId: number) {
   await db
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, user.id)));
+  await db.delete(mailMessages).where(and(eq(mailMessages.characterId, characterId), eq(mailMessages.userId, user.id)));
+  await db.delete(mailLabels).where(and(eq(mailLabels.characterId, characterId), eq(mailLabels.userId, user.id)));
+  await db.delete(mailLists).where(and(eq(mailLists.characterId, characterId), eq(mailLists.userId, user.id)));
   if (user.main?.characterId === characterId) {
     const next = user.characterIds.find((id) => id !== characterId) ?? null;
     await db.update(users).set({ mainCharacterId: next }).where(eq(users.id, user.id));
