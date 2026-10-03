@@ -16,6 +16,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - Scrolling the sidebar navigation or the system and multi-select picker lists past their top or bottom no longer
   scrolls the page behind them.
+- **Desktop notifications switch that did nothing.** When the browser or an extension turns the request down without
+  asking (Safari with websites not allowed to ask, or AdGuard's "Block Push API"), the switch now shows it as blocked
+  instead of silently staying off. The blocked hint also names system settings and extensions, which can block
+  notifications for every site.
+  ([#90](https://github.com/Theragus/Keystar/issues/90))
 
 ## [0.11.0] - 2026-10-03
 
