@@ -183,6 +183,18 @@ export function typesForClass(
     });
 }
 
+/** System effect modifiers at the strength of the given class (none for k-space, Thera and unknown effects). */
+export function effectModifiers(
+  effects: StaticFile["effects"],
+  effect: string | null,
+  cls: ClassKey,
+): EffectModifier[] {
+  const power = EFFECT_POWER[cls];
+  const table = effect ? effects[effect] : undefined;
+  if (!table || !power) return [];
+  return table.map(([name, steps]) => ({ name, value: steps[power - 1] ?? "" }));
+}
+
 export function createStaticIndex(file: StaticFile): StaticIndex {
   const systems = new Map<number, SystemInfo>();
   const names = new Map<string, SystemInfo>();
@@ -222,11 +234,36 @@ export function createStaticIndex(file: StaticFile): StaticIndex {
       return t ? { code: code.trim().toUpperCase(), ...t } : null;
     },
     typesFor: (cls, statics = []) => typesForClass(file.types, cls, statics),
-    effectFor(effect, cls) {
-      const power = EFFECT_POWER[cls];
-      const table = effect ? file.effects[effect] : undefined;
-      if (!table || !power) return [];
-      return table.map(([name, steps]) => ({ name, value: steps[power - 1] ?? "" }));
-    },
+    effectFor: (effect, cls) => effectModifiers(file.effects, effect, cls),
   };
+}
+
+/** What the client needs about a system: no ids it can't use, statics with their destination. */
+export interface SystemSummary {
+  id: number;
+  name: string;
+  cls: ClassKey;
+  sec: number | null;
+  region: string;
+  effect: string | null;
+  statics: { code: string; dest: ClassKey | null }[];
+}
+
+export function summarise(info: SystemInfo, types: Record<string, WormholeType>): SystemSummary {
+  return {
+    id: info.id,
+    name: info.name,
+    cls: info.cls,
+    sec: info.sec,
+    region: info.region,
+    effect: info.effect,
+    statics: info.statics.map((code) => ({ code, dest: types[code]?.dest ?? null })),
+  };
+}
+
+/** Compact class code used in wormhole jargon on every client language: C3, HS, NS, Thera. */
+export function shortClass(cls: ClassKey | null): string {
+  if (!cls) return "?";
+  if (/^c\d+$/.test(cls) || cls === "hs" || cls === "ls" || cls === "ns") return cls.toUpperCase();
+  return cls.charAt(0).toUpperCase() + cls.slice(1);
 }

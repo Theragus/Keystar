@@ -15,6 +15,7 @@ import { setup } from "./setup";
 import { shell } from "./shell";
 import { trade } from "./trade";
 import { wallet } from "./wallet";
+import { wormholes } from "./wormholes";
 
 /** German dictionary. Informal "du", EVE terms as German players use them (Corporation, Killboard, ISK, ESI). */
 export const de: Messages = {
@@ -34,4 +35,5 @@ export const de: Messages = {
   intel,
   trade,
   wallet,
+  wormholes,
 };

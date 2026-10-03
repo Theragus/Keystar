@@ -4,6 +4,7 @@ import { killboardModule } from "@/modules/killboard/module";
 import { miningModule } from "@/modules/mining/module";
 import { tradeModule } from "@/modules/trade/module";
 import { walletModule } from "@/modules/wallet/module";
+import { wormholesModule } from "@/modules/wormholes/module";
 import type { PermissionDef } from "@/core/rbac/permissions";
 import { coreModule } from "./core-module";
 import type { KeystarModule, NavSection, ScopeRequirement } from "./types";
@@ -21,6 +22,7 @@ export const MODULES: KeystarModule[] = [
   intelModule,
   tradeModule,
   walletModule,
+  wormholesModule,
 ];
 
 export function allPermissions(): PermissionDef[] {

@@ -45,7 +45,7 @@ const eslintConfig = defineConfig([
           ],
           patterns: [
             {
-              group: ["**/wormholes/data/*.json", "**/static-data"],
+              group: ["**/data/static.json", "../data/*.json", "./data/*.json", "**/static-data"],
               message: "Server only. Pass what the client needs as props or fetch /api/wormholes/systems.",
             },
           ],
