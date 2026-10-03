@@ -7,8 +7,9 @@ import * as sync from "./schema/sync";
 import * as killboard from "@/modules/killboard/schema";
 import * as mining from "@/modules/mining/schema";
 import * as trade from "@/modules/trade/schema";
+import * as wallet from "@/modules/wallet/schema";
 
-export const schema = { ...core, ...eve, ...sync, ...mining, ...killboard, ...trade };
+export const schema = { ...core, ...eve, ...sync, ...mining, ...killboard, ...trade, ...wallet };
 
 export type Db = PostgresJsDatabase<typeof schema>;
 
@@ -52,3 +53,4 @@ export * from "./schema/sync";
 export * from "@/modules/mining/schema";
 export * from "@/modules/killboard/schema";
 export * from "@/modules/trade/schema";
+export * from "@/modules/wallet/schema";

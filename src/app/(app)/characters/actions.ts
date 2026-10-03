@@ -6,7 +6,7 @@ import { audit } from "@/core/audit";
 import { getCurrentUser } from "@/core/auth/dal";
 import { revokeRefreshToken } from "@/core/auth/sso";
 import { decryptToken } from "@/core/crypto";
-import { characters, esiTokens, getDb, users } from "@/core/db";
+import { characters, esiTokens, getDb, users, walletTransactions } from "@/core/db";
 import { triggerJobs } from "@/core/sync/scheduler";
 
 async function ownedCharacter(characterId: number) {
@@ -28,13 +28,19 @@ export async function syncCharacterNow(characterId: number) {
   revalidatePath("/characters");
 }
 
-/** Unlinks a character, deletes its token and revokes it at CCP. Mining history is kept. */
+/**
+ * Unlinks a character, deletes its token and revokes it at CCP. Mining history
+ * is kept; the character's imported wallet transactions are deleted.
+ */
 export async function removeCharacter(characterId: number) {
   const user = await ownedCharacter(characterId);
   if (user.characterIds.length <= 1) throw new Error("You can't remove your only character");
   const db = getDb();
   const [token] = await db.select().from(esiTokens).where(eq(esiTokens.characterId, characterId));
   await db.delete(characters).where(and(eq(characters.characterId, characterId), eq(characters.userId, user.id)));
+  await db
+    .delete(walletTransactions)
+    .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, user.id)));
   if (user.main?.characterId === characterId) {
     const next = user.characterIds.find((id) => id !== characterId) ?? null;
     await db.update(users).set({ mainCharacterId: next }).where(eq(users.id, user.id));

@@ -2,6 +2,7 @@ import { inArray, sql } from "drizzle-orm";
 import { eveCorporations, eveEntities, eveGroups, eveSystems, eveTypes, getDb } from "@/core/db";
 import { getEsi } from "@/core/esi";
 import { createLogger } from "@/core/logger";
+import { classifyOre } from "@/core/eve/ore";
 import { mapLimit } from "@/lib/concurrency";
 
 /**
@@ -99,9 +100,16 @@ export async function ensureTypes(typeIds: Iterable<number>): Promise<void> {
     }
   });
   if (!fetched.length) return;
-  await ensureGroups(fetched.map((t) => t.group_id));
+  const groupIds = unique(fetched.map((t) => t.group_id));
+  await ensureGroups(groupIds);
   await upsertTypes(fetched);
-  await linkCompressedVariants(unique(fetched.map((t) => t.group_id)));
+  // Only mineable groups have compressed variants; fetching every type of a
+  // ship or charge group (wallet, appraisal, killboard) would waste requests.
+  const groups = await db
+    .select({ groupId: eveGroups.groupId, categoryId: eveGroups.categoryId })
+    .from(eveGroups)
+    .where(inArray(eveGroups.groupId, groupIds));
+  await linkCompressedVariants(groups.filter((g) => classifyOre(g.groupId, g.categoryId) !== "other").map((g) => g.groupId));
 }
 
 async function upsertTypes(types: EsiType[]): Promise<void> {
