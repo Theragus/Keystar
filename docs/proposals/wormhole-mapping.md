@@ -1,7 +1,14 @@
 # Proposal: Wormhole mapping
 
-Status: **proposal** — nothing here is built yet. This document describes a `wormholes` module for Keystar: a
-shared, live map of the corporation's wormhole chain, in the spirit of [Pathfinder], scoped to an MVP that can grow.
+Status: **Phases 0 and 1 built** (system lookup, corporation chain map); Phase 2 (location tracking) and later are
+still proposals. Decisions taken while building: one corporation map in the UI (the schema keeps a map id for later);
+anoik.is statics bundled with credit (the maintainer is to be asked before release); k-space system data bundled from
+the SDE too, since `eve_systems` only knows systems some job has seen; the polled route is
+`/api/wormholes/maps/[id]/state`; the expiry bound is stored on each connection so housekeeping needs no static data.
+See `docs/architecture.md` → "Wormhole mapping" for what was built.
+
+This document describes a `wormholes` module for Keystar: a shared, live map of the corporation's wormhole chain, in
+the spirit of [Pathfinder], scoped to an MVP that can grow.
 
 ![Mockup of the map: a home C4 on the left, its chain laid out in depth columns, a selected EOL connection with its
 details in the side panel](wormhole-mapping-mockup.svg)

@@ -87,15 +87,17 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 
 ## Planned modules
 
-### 📝 Wormhole mapping
+### 🚧 Wormhole mapping
 
 Proposal: [docs/proposals/wormhole-mapping.md](docs/proposals/wormhole-mapping.md).
 
-- Shared chain maps in the spirit of Pathfinder: systems with class, effect and statics; connections with wormhole
-  type, lifetime band and estimated time left, mass state and ship size.
-- Pan/zoom/drag canvas with a tree layout from the home system that stays readable on its own, plus a list view.
-- Opt-in location tracking (`esi-location.*`) that maps jumps automatically and shows pilots on the map.
-- Later: signatures, mass log and rolling, routes through the chain (`POST /route` with custom connections), kills in chain.
+- ✅ System lookup with bundled data (CCP SDE + anoik.is): class, effect at strength, statics, possible wormholes
+- ✅ Shared corporation chain map: systems, connections with type, lifetime band and time left, mass, ship size;
+  tree layout from home, drag to pin or connect, list view, keyboard shortcuts, live updates, housekeeping of
+  collapsed holes
+- 📝 Opt-in location tracking (`esi-location.*`): map jumps automatically, pilots on the map
+- 💡 Signatures (probe scanner paste), mass log and rolling calculator, routes through the chain (`POST /route` with
+  custom connections), kills in chain, Thera/Turnur connections from EVE-Scout, private maps
 
 ### 📝 Skills & corporation skill plans
 
