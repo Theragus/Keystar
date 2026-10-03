@@ -7,9 +7,9 @@ import type { Settings } from "@/core/settings";
 import { LiveKills } from "@/modules/killboard/components/live-kills";
 import { EveClock } from "./eve-clock";
 import { CurrentPageCrumb } from "./nav-link";
-import { SidebarToggle } from "./sidebar-state";
+import { KeystarMark } from "./logo";
 
-/** Docked top bar: sidebar toggle and breadcrumb on the left (corp / page), live EVE status on the right. */
+/** Docked top bar: KeyStar branding and breadcrumb on the left (corp / page), live EVE status on the right. */
 export async function TopBar({
   homeCorp,
   serverStatus,
@@ -29,7 +29,10 @@ export async function TopBar({
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-surface-contrast/[0.07] bg-space-950/70 px-6 backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-2.5 text-[0.84rem]">
-        <SidebarToggle />
+        <Link href="/" className="mr-2 flex shrink-0 items-center gap-2.5 rounded-md">
+          <KeystarMark className="size-7" />
+          <span className="font-display text-[1.05rem] font-bold tracking-[0.2em] text-ink">KEYSTAR</span>
+        </Link>
         {homeCorp ? (
           // Breadcrumb root: back to the dashboard.
           <Link href="/" className="group flex min-w-0 items-center gap-2 rounded-md">

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { isActivePath, matchNavItem } from "./nav-match";
-import { useSidebar } from "./sidebar-state";
 
 /**
  * Sidebar link. `exact` is set when another nav item is nested below this one
@@ -25,7 +24,6 @@ export function NavLink({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const { collapsed } = useSidebar();
   const isActive = isActivePath(pathname, href, exact);
   return (
     <Link
@@ -34,7 +32,6 @@ export function NavLink({
       tabIndex={inFlyout ? -1 : undefined}
       className={cn(
         "relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[0.84rem] transition-colors",
-        collapsed && !inFlyout && "justify-center px-0",
         isActive
           ? "bg-surface-contrast/[0.07] text-ink [&_svg]:text-(--section) [&_svg]:opacity-100"
           : "text-ink-2 hover:bg-surface-contrast/[0.04] hover:text-ink",
