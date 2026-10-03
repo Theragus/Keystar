@@ -6,6 +6,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-03
+
+### Changed
+
+- Each section has its own colour: Industry amber, Combat crimson, Trade teal (Overview, Account and Administration
+  keep the cyan accent). It shows in the page heading label, the sidebar marker and a faint glow at the top of the page.
+
 ## [0.5.0] - 2026-10-03
 
 **When updating:** corporation wallets need two corporation scopes, EVE Mail one optional character scope.
@@ -47,8 +54,6 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 ### Changed
 
 - The situation report on the killboard starts collapsed; click its header to read it.
-- Each section has its own colour: Industry amber, Combat crimson, Trade teal (Overview, Account and Administration
-  keep the cyan accent). It shows in the page heading label, the sidebar marker and a faint glow at the top of the page.
 
 ## [0.4.0] - 2026-10-03
 
