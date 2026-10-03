@@ -58,7 +58,7 @@ export interface Valuation {
   mode: "current" | "historical";
 }
 
-const ORE_CLASS_SQL = sql.raw(oreClassSqlCase("t.group_id", "g.category_id"));
+export const ORE_CLASS_SQL = sql.raw(oreClassSqlCase("t.group_id", "g.category_id"));
 
 function list(values: (number | string)[]): SQL {
   return sql.join(
@@ -67,7 +67,11 @@ function list(values: (number | string)[]): SQL {
   );
 }
 
-function ledgerCte(f: MiningFilters, scope: MiningScope, val: Valuation, range?: { from: string; to: string }): SQL {
+/**
+ * The `ledger` CTE every mining query builds on (also composed by the P&L in
+ * pnl/queries.ts): filtered, scoped, de-duplicated and valued ledger rows.
+ */
+export function ledgerCte(f: MiningFilters, scope: MiningScope, val: Valuation, range?: { from: string; to: string }): SQL {
   const from = range?.from ?? f.from;
   const to = range?.to ?? f.to;
 

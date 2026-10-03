@@ -1,6 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/core/db";
-import { addDays } from "@/lib/dates";
+import { addDays, utcDayBounds } from "@/lib/dates";
 import { spanOf, type DateRange, type KillboardWindows } from "./filters";
 
 /**
@@ -16,9 +16,8 @@ import { spanOf, type DateRange, type KillboardWindows } from "./filters";
 const num = (v: unknown) => (v === null || v === undefined ? 0 : Number(v));
 const str = (v: unknown) => (v === null || v === undefined ? null : String(v));
 
-/** Half-open UTC bounds of a day range, as ISO strings (raw Dates aren't valid query params here). */
 function bounds(r: DateRange) {
-  return { start: `${r.from}T00:00:00Z`, end: `${addDays(r.to, 1)}T00:00:00Z` };
+  return utcDayBounds(r.from, r.to);
 }
 
 function within(col: SQL, r: DateRange): SQL {

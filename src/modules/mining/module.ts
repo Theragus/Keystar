@@ -1,10 +1,11 @@
-import { Calculator, Gem, Pickaxe, TableProperties } from "lucide-react";
+import { Calculator, Gem, Pickaxe, ReceiptText, TableProperties } from "lucide-react";
 import type { KeystarModule } from "@/core/modules/types";
 
 export const MINING_PERMISSIONS = {
   viewOwn: "mining.view.own",
   viewCorp: "mining.view.corp",
   export: "mining.export",
+  pnl: "mining.pnl",
 } as const;
 
 export const miningModule: KeystarModule = {
@@ -52,6 +53,13 @@ export const miningModule: KeystarModule = {
       group: "Mining",
       defaultMinRole: "viewer",
     },
+    {
+      key: MINING_PERMISSIONS.pnl,
+      label: "Mining P&L",
+      description: "Personal income and expense sheet for your own characters (never other members').",
+      group: "Mining",
+      defaultMinRole: "member",
+    },
   ],
   nav: [
     {
@@ -68,6 +76,7 @@ export const miningModule: KeystarModule = {
           icon: Calculator,
           anyPermission: ["mining.view.own", "mining.view.corp"],
         },
+        { href: "/mining/pnl", label: "Mining P&L", icon: ReceiptText, anyPermission: ["mining.pnl"] },
       ],
     },
   ],
