@@ -6,6 +6,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-03
+
 **When updating:** Threat intel reads blues and reds from the corporation's and alliance's contacts, which needs two
 corporation scopes.
 
