@@ -6,6 +6,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-03
+
 ### Added
 
 - **Threat Intel system picker.** The current-system field suggests systems as you type, every known-space and
