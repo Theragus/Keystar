@@ -486,6 +486,7 @@ export const intel = {
     hidden: (pilots: number) => `${count(pilots, "more low-threat pilot", "more low-threat pilots")} not shown.`,
   },
   pilotPage: {
+    browserPreview: (kills: string, losses: string) => `Browser preview: ${kills} kills · ${losses} losses. Awaiting server verification.`,
     metaTitle: "Pilot profile",
     back: "Back to scan",
     noData: (queued: boolean) => `No zKillboard data for this pilot yet${queued ? " — it is on its way." : "."}`,

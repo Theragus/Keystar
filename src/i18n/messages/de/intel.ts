@@ -474,6 +474,7 @@ export const intel: typeof en = {
     hidden: (pilots) => `${count(pilots, "weiterer Pilot", "weitere Piloten")} mit geringer Bedrohung ausgeblendet.`,
   },
   pilotPage: {
+    browserPreview: (kills, losses) => `Browser-Vorschau: ${kills} Kills · ${losses} Verluste. Server-Bestätigung steht aus.`,
     metaTitle: "Pilotenprofil",
     back: "Zurück zum Scan",
     noData: (queued) => `Noch keine zKillboard-Daten für diesen Piloten${queued ? " – sie sind unterwegs." : "."}`,

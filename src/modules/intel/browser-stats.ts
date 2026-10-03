@@ -1,4 +1,4 @@
-/** Browser results are untrusted: require the requested entity and sane counters. */
+/** Browser results are untrusted: validate shape for display only, never shared-cache writes. */
 export function validBrowserStats(characterId: unknown, raw: unknown): raw is Record<string, unknown> {
   if (!Number.isSafeInteger(characterId) || Number(characterId) <= 0 || !raw || typeof raw !== "object" || Array.isArray(raw)) return false;
   const stats = raw as Record<string, unknown>;

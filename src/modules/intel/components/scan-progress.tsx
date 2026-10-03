@@ -4,6 +4,7 @@ import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
+import { validBrowserStats } from "../browser-stats";
 import type { ScanProgress } from "../scans";
 
 const MAX_POLL_MS = 20 * 60_000;
@@ -15,15 +16,18 @@ const busy = (p: ScanProgress["pending"]) => p.stats + p.newest + p.deeper > 0;
  * progress endpoint (faster while statistics are pending) and refreshes the
  * server-rendered page only when something changed.
  */
-const LoadingContext = createContext<{ busy: boolean; pilots: number[] }>({ busy: false, pilots: [] });
+type BrowserPreview = { kills: number; losses: number };
+const LoadingContext = createContext<{ busy: boolean; pilots: number[]; previews: Record<number, BrowserPreview> }>({ busy: false, pilots: [], previews: {} });
 
-export function IntelLoadingOverlay({ pilotId }: { pilotId?: number }) {
+export function IntelLoadingOverlay({ pilotId, showPreview = false }: { pilotId?: number; showPreview?: boolean }) {
   const progress = useContext(LoadingContext);
   const loading = pilotId === undefined ? progress.busy : progress.pilots.includes(pilotId);
-  const { t } = useI18n();
+  const { t, f } = useI18n();
+  const preview = showPreview && pilotId !== undefined ? progress.previews[pilotId] : undefined;
   if (!loading) return null;
-  return <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-space-900/60 backdrop-blur-[1px]" role="status">
+  return <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-lg bg-space-900/60 backdrop-blur-[1px]" role="status">
     <LoaderCircle className="size-5 animate-spin text-accent motion-reduce:animate-none" aria-hidden />
+    {preview && <p className="px-3 text-center text-3xs text-ink-2">{t.intel.pilotPage.browserPreview(f.integer(preview.kills), f.integer(preview.losses))}</p>}
     <span className="sr-only">{t.intel.pilotPage.loading}</span>
   </div>;
 }
@@ -31,6 +35,7 @@ export function IntelLoadingOverlay({ pilotId }: { pilotId?: number }) {
 export function ScanProgressPoller({ scanId, initial, children }: { scanId: string; initial: ScanProgress; children: ReactNode }) {
   const router = useRouter();
   const [progress, setProgress] = useState(initial);
+  const [previews, setPreviews] = useState<Record<number, BrowserPreview>>({});
   const [, startTransition] = useTransition();
   const version = useRef(initial.version);
   const pending = useRef(initial.pending);
@@ -46,6 +51,7 @@ export function ScanProgressPoller({ scanId, initial, children }: { scanId: stri
     const controller = new AbortController();
     const browserQueue: number[] = [];
     let active = 0;
+    let eligible = new Set<number>();
     let pausedUntil = 0;
     const browserTimer = setInterval(() => {
       if (cancelled || document.visibilityState !== "visible" || active >= 4 || Date.now() < pausedUntil) return;
@@ -62,7 +68,10 @@ export function ScanProgressPoller({ scanId, initial, children }: { scanId: stri
           if (!response.ok) return;
           const stats = await response.json();
           if (cancelled) return;
-          await fetch(`/api/intel/scans/${scanId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ characterId, stats }), signal: controller.signal });
+          // Private, ephemeral preview only: never upload browser data.
+          if (eligible.has(characterId) && validBrowserStats(characterId, stats)) {
+            setPreviews(previous => ({ ...previous, [characterId]: { kills: Number(stats.shipsDestroyed), losses: Number(stats.shipsLost) } }));
+          }
         }).catch(() => { /* Worker remains the fallback for blocked CORS or failed requests. */ })
         .finally(() => { active--; });
     }, 100);
@@ -73,6 +82,9 @@ export function ScanProgressPoller({ scanId, initial, children }: { scanId: stri
           const res = await fetch(`/api/intel/scans/${scanId}`, { cache: "no-store" });
           if (res.ok) {
             const next = (await res.json()) as ScanProgress;
+            eligible = new Set(next.browserStats ?? []);
+            // Worker-verified statistics supersede browser previews.
+            setPreviews(previous => Object.fromEntries(Object.entries(previous).filter(([id]) => eligible.has(Number(id)))));
             for (const id of next.browserStats ?? []) {
               if (!browserAttempted.current.has(id)) { browserAttempted.current.add(id); browserQueue.push(id); }
             }
@@ -107,5 +119,5 @@ export function ScanProgressPoller({ scanId, initial, children }: { scanId: stri
     };
   }, [scanId, stopped, router]);
 
-  return <LoadingContext.Provider value={{ busy: busy(progress.pending), pilots: progress.pendingPilots }}>{children}</LoadingContext.Provider>;
+  return <LoadingContext.Provider value={{ busy: busy(progress.pending), pilots: progress.pendingPilots, previews }}>{children}</LoadingContext.Provider>;
 }
