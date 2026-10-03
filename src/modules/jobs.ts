@@ -5,6 +5,7 @@ import {
   housekeepingJob,
   marketPricesJob,
   serverStatusJob,
+  universeSystemsJob,
 } from "@/core/sync/core-jobs";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
 import type { Messages } from "@/i18n/messages";
@@ -28,6 +29,7 @@ export const JOBS: JobDefinition[] = [
   corporationMembersJob,
   marketPricesJob(PRICE_INTEREST),
   housekeepingJob,
+  universeSystemsJob,
   ...miningJobs,
   ...killboardJobs,
   ...fleetJobs,

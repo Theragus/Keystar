@@ -1,4 +1,5 @@
 import type { common as en } from "../en/common";
+import type { WormholeClass } from "@/core/eve/systems";
 import { FORMATTERS } from "@/lib/format";
 
 const n = FORMATTERS.de.integer;
@@ -36,6 +37,25 @@ export const common: typeof en = {
     from: "Von",
     to: "Bis",
     apply: "Zeitraum übernehmen",
+  },
+  systemPicker: {
+    loading: "Systeme werden geladen …",
+    noMatches: "Kein System mit diesem Namen bekannt – es wird beim Scan nachgeschlagen",
+    empty: "Die Systemliste lädt noch im Hintergrund; gib den Namen ein",
+    failed: "Die Systemliste konnte nicht geladen werden; gib den Namen ein",
+    wormhole: "W-Space",
+    /** Short tag for a wormhole system's class, read from its region. */
+    wormholeClass: {
+      c1: "C1",
+      c2: "C2",
+      c3: "C3",
+      c4: "C4",
+      c5: "C5",
+      c6: "C6",
+      thera: "Thera",
+      c13: "C13",
+      drifter: "Drifter",
+    } satisfies Record<WormholeClass, string>,
   },
   multiSelect: {
     all: "Alle",
