@@ -6,6 +6,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-03
+
 ### Added
 
 - **"Today" and "Yesterday" date ranges.** The date-range picker on the mining, P&L, finances and killboard pages
