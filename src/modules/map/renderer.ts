@@ -1,8 +1,10 @@
 import type { MapSystem } from "./model";
+import type { MapOverlay } from "./travel";
 import { securityClass } from "./model";
 
 type Hit = { system: MapSystem; x: number; y: number };
 type Options = {
+ overlay?: () => MapOverlay;
  camera: () => { yaw: number; pitch: number; zoom: number };
  dragging: () => boolean; selected: number | null; query: string; labels: boolean;
  format: (value: number) => string; onHits: (hits: Hit[]) => void;
@@ -17,6 +19,8 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
  const focus = systems.find(s => s[0]===options.selected);
  const center = focus ? focus.slice(3) as number[] : min.map((v,i)=>(v+max[i])/2);
  const range = Math.max(...max.map((v,i)=>v-min[i]),1);
+ let lastOverlay: MapOverlay | undefined;
+ let route = new Set<number>(), inRange = new Set<number>();
  const query = options.query.trim().toLowerCase();
  ctx.font="11px Inter, sans-serif";
  const points = systems.map(s => {
@@ -29,7 +33,7 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
  let ink="", colors: Record<string,string>={};
  function theme() {
   const style=getComputedStyle(canvas); ink=style.color;
-  colors={high:style.getPropertyValue("--series-ice").trim(),low:style.getPropertyValue("--series-gas").trim(),null:style.getPropertyValue("--series-ore").trim()};
+  colors={high:style.getPropertyValue("--series-ice").trim(),low:style.getPropertyValue("--series-gas").trim(),null:style.getPropertyValue("--series-ore").trim(), red:style.getPropertyValue("--color-critical-text").trim(),green:style.getPropertyValue("--color-good-text").trim(),unknown:style.getPropertyValue("--color-ink-3").trim(),range:style.getPropertyValue("--color-accent").trim()};
  }
  function resize() {
   width=canvas.clientWidth; height=canvas.clientHeight;
@@ -40,6 +44,8 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
  }
  function draw() {
   frame=0;if(destroyed || !ctx)return;
+  const overlay = options.overlay?.();
+  if(overlay !== lastOverlay) { lastOverlay=overlay; route=new Set(overlay?.route ?? []);inRange=new Set(overlay?.inRange ?? []); }
   const c=options.camera(), sy=Math.sin(c.yaw),cy=Math.cos(c.yaw),sp=Math.sin(c.pitch),cp=Math.cos(c.pitch);
   const scale=Math.min(width,height)*.8/range*c.zoom;
   ctx.clearRect(0,0,width,height);
@@ -53,13 +59,25 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
    p.hit.x=x;p.hit.y=y;
    if(x<0||y<0||x>width||y>height)continue;
    hits.push(p.hit);onScreen.push(p);
-   const key=`${p.group}:${p.match}`;const path=paths[key]??(paths[key]=new Path2D());
-   path.rect(x-1.5,y-1.5,3,3);
+   const group=route.has(p.system[0]) ? overlay?.risks[p.system[0]] ?? "unknown" : inRange.has(p.system[0]) ? "range" : p.group;
+   const match=p.match && (!overlay?.range || inRange.has(p.system[0]) || p.system[0]===overlay.originId);
+   const key=`${group}:${route.has(p.system[0]) || match}`;const path=paths[key]??(paths[key]=new Path2D());
+   const size=route.has(p.system[0])||inRange.has(p.system[0])?5:3;
+   path.rect(x-size/2,y-size/2,size,size);
   }
   for(const [key,path] of Object.entries(paths)) {
    const [group,match]=key.split(":");ctx.fillStyle=colors[group]||ink;ctx.globalAlpha=match==="true"?.85:.12;ctx.fill(path);
   }
   options.onHits(hits);ctx.globalAlpha=1;
+  if(overlay?.route.length) {
+   const path=new Path2D();let previous=false;
+   for(const id of overlay.route) {const p=points.find(p=>p.system[0]===id);if(!p){previous=false;continue;}if(previous)path.lineTo(p.hit.x,p.hit.y);else path.moveTo(p.hit.x,p.hit.y);previous=true;}
+   ctx.strokeStyle=colors.range||ink;ctx.lineWidth=1.5;ctx.stroke(path);
+  }
+  if(overlay?.range) {
+   const origin=points.find(p=>p.system[0]===overlay?.originId);
+   if(origin){ctx.strokeStyle=colors.range||ink;ctx.lineWidth=1;ctx.beginPath();ctx.arc(origin.hit.x,origin.hit.y,overlay.range*scale,0,Math.PI*2);ctx.stroke();}
+  }
   if(focus) {
    ctx.strokeStyle=ink;ctx.beginPath();ctx.arc(width/2,height/2,7,0,Math.PI*2);ctx.stroke();
   }
@@ -69,7 +87,7 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
   const occupied=new Set<string>();let count=0;
   for(const p of onScreen) {
    const active=p.system[0]===options.selected;
-   if(!active && (!options.labels||!p.match||count>=100))continue;
+   if(!active && !route.has(p.system[0]) && (!options.labels||!p.match||count>=100 || (overlay?.range && !inRange.has(p.system[0]))))continue;
    const x=p.hit.x+7,y=p.hit.y-5;
    const cells:string[]=[];
    for(let col=Math.floor(x/32);col<=Math.floor((x+p.width+4)/32);col++)

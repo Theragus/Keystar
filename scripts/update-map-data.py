@@ -15,3 +15,20 @@ rows.sort(key=lambda row: row[1].lower())
 target = pathlib.Path(__file__).resolve().parents[1] / "public/data/map-systems.json"
 target.write_text(json.dumps(rows, separators=(",", ":")), encoding="utf8")
 print(f"Wrote {len(rows)} systems to {target}")
+
+gates = []
+for line in archive.open("mapStargates.jsonl"):
+    record = json.loads(line)
+    pos, dest = record["position"], record["destination"]
+    gates.append([record["_key"], record["solarSystemID"], dest["solarSystemID"],
+                  dest["stargateID"], pos["x"], pos["y"], pos["z"]])
+(target.parent / "map-gates.json").write_text(json.dumps(gates, separators=(",", ":")), encoding="utf8")
+dogma = {r["_key"]: r for line in archive.open("typeDogma.jsonl") for r in [json.loads(line)]}
+bases = {name: next(a["value"] for a in dogma[type_id]["dogmaAttributes"] if a["attributeID"] == 867)
+         for name, type_id in [("carrier", 23911), ("freighter", 28844), ("blackops", 22436)]}
+bonus = next(a["value"] / 100 for a in dogma[21611]["dogmaAttributes"] if a["attributeID"] == 870)
+restricted = [r["_key"] for line in archive.open("mapSolarSystems.jsonl") for r in [json.loads(line)]
+              if r.get("regionID") == 10000070 or r.get("name", {}).get("en") == "Zarzakh"]
+(target.parent / "map-jump-rules.json").write_text(
+    json.dumps({"bases": bases, "calibrationBonus": bonus, "restricted": restricted}, separators=(",", ":")), encoding="utf8")
+print(f"Wrote {len(gates)} gates and jump-drive rules")

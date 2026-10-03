@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- Add shortest stargate route planning with two-hour gate-kill evidence and linked killmails, plus carrier, jump freighter and Black Ops range highlighting with Jump Drive Calibration selection.
+
 - Add a searchable, interactive 3D EVE universe map under Combat, with real system positions and security status.
 
 - **Sortable ore breakdown.** Click any column header of the mining dashboard's ore breakdown to sort by it; click

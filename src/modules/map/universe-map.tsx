@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { type MapSystem } from "./model";
 import { createMapRenderer } from "./renderer";
+import { MapPlanning } from "./planning";
+import { EMPTY_OVERLAY } from "./travel";
 import { Panel } from "@/components/ui/glass";
 
 export function UniverseMap() {
@@ -20,6 +22,9 @@ export function UniverseMap() {
   camera.current = typeof update === "function" ? update(camera.current) : update;
   redraw.current();
  };
+ const [overlay, setOverlay] = useState(EMPTY_OVERLAY);
+ const overlayRef = useRef(EMPTY_OVERLAY);
+ useEffect(() => { overlayRef.current = overlay; redraw.current(); }, [overlay]);
  const canvas = useRef<HTMLCanvasElement>(null);
  const hits = useRef<{system: MapSystem; x: number; y: number}[]>([]);
  const drag = useRef<{x: number; y: number; moved: boolean} | null>(null);
@@ -38,7 +43,7 @@ export function UniverseMap() {
  useEffect(() => {
   const el = canvas.current; if (!el || !visible.length) return;
   const renderer = createMapRenderer(el, visible, {
-   camera: () => camera.current, dragging: () => !!drag.current?.moved,
+   overlay: () => overlayRef.current, camera: () => camera.current, dragging: () => !!drag.current?.moved,
    selected: selected?.[0] ?? null, query, labels, format: value => f.number(value, 1),
    onHits: points => { hits.current = points; },
   });
@@ -48,7 +53,7 @@ export function UniverseMap() {
  }, [visible, selected, query, labels, f]);
  const button = "glass-chip rounded-md px-3 py-1.5 text-xs text-ink-2 hover:text-ink transition-colors";
  const choose = (s: MapSystem) => { setSelected(s); setCamera(c => ({...c,zoom:Math.max(c.zoom,5)})); };
- return <Panel title={m.universe} subtitle={m.controls} actions={<span className="text-xs font-semibold tabular-nums text-ink-2">{f.integer(visible.length)} {m.systems}</span>} bodyClassName="px-3 pb-3">
+ return <div className="space-y-3"><Panel title={m.universe} subtitle={m.controls} actions={<span className="text-xs font-semibold tabular-nums text-ink-2">{f.integer(visible.length)} {m.systems}</span>} bodyClassName="px-3 pb-3">
   <div className="mb-3 flex flex-wrap items-center gap-2">
    <input aria-label={m.search} placeholder={m.search} value={query} onChange={e => {setQuery(e.target.value);setListTop(0);if(list.current)list.current.scrollTop=0;}} className="glass-inset min-w-48 rounded-md px-3 py-2 text-xs text-ink"/>
    <select aria-label={m.systems} value={space} onChange={e => {setSpace(e.target.value);setSelected(null);setListTop(0);if(list.current)list.current.scrollTop=0;setCamera({yaw:0,pitch:.6,zoom:1.4});}} className="glass-inset rounded-md px-3 py-2 text-xs text-ink"><option value="known">{m.known}</option><option value="wormholes">{m.wormholes}</option><option value="all">{m.all}</option></select>
@@ -74,6 +79,6 @@ export function UniverseMap() {
    </aside>
   </div>
   <div className="flex flex-wrap justify-between gap-3 border-t border-surface-contrast/10 p-3 text-xs text-ink-2"><div className="flex gap-4">{(["high","low","null"] as const).map((key,i) => <span key={key} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{background:`var(--series-${["ice","gas","ore"][i]})`}}/>{m[key]}</span>)}</div><a href="https://developers.eveonline.com/static-data/" target="_blank" rel="noreferrer">{m.source}</a></div>
- </Panel>;
+ </Panel><MapPlanning systems={systems} selected={selected} onFocus={choose} onOverlay={setOverlay}/></div>;
 }
 
