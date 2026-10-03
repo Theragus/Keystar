@@ -227,7 +227,8 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
   `intel.ai` permission of the creator, at least three non-friendly pilots), dossiers and d-scan reads on request.
   D-scan reads may only name pilots the deterministic matcher proposed. Output is sanitised and rendered through
   the killboard's safe markup. Without a key, without permission, over the hourly budget (20 per user, 120 per
-  instance) or on failure, templates write the same notes. Notes are stored with their facts in `intel_ai_notes` and
+  instance; every call counts, failed ones too, and is reserved in a locked transaction before it is made) or on
+  failure, templates write the same notes. Notes are stored with their facts in `intel_ai_notes` and
   reused for unchanged facts in the same language. Facts are always English; Claude writes in the language of
   whoever asked (the scan creator's for automatic briefings, `intel_scans.locale`). Template notes are stored as
   drafts (keys, numbers, names) and written out in each reader's language.

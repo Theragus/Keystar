@@ -138,8 +138,8 @@ export async function startScan(input: StartScanInput, deps: { now?: Date; db?: 
       updatedAt: now,
       names: parsed.names,
       unresolved,
-      skipped: parsed.skipped,
       dscan: input.dscan ?? null,
+      dscanAt: input.dscan ? now : null,
       systemId,
       pilotCount: pilots.length,
       aiAllowed: input.aiAllowed,
@@ -179,19 +179,33 @@ export async function startScan(input: StartScanInput, deps: { now?: Date; db?: 
   };
 }
 
-/** Queues pilots of a scan that were not profiled automatically (friendlies, very large lists). */
+/**
+ * Queues pilots of a scan that were not profiled automatically (friendlies,
+ * very large lists). The briefing is written again once they are read if any
+ * of them is not friendly.
+ */
 export async function profileRemaining(scanId: string, db: Db = getDb()): Promise<number> {
   const rows = await db
-    .select({ characterId: intelScanPilots.characterId })
+    .select({
+      characterId: intelScanPilots.characterId,
+      corporationId: intelScanPilots.corporationId,
+      allianceId: intelScanPilots.allianceId,
+      factionId: intelScanPilots.factionId,
+    })
     .from(intelScanPilots)
     .where(and(eq(intelScanPilots.scanId, scanId), eq(intelScanPilots.profiled, false)));
   if (!rows.length) return 0;
+  const standings = await loadStandings();
+  const rebrief = rows.some((r) => !isFriendly(standingOf(r, standings)));
   await db.transaction(async (tx) => {
     await tx
       .update(intelScanPilots)
       .set({ profiled: true })
       .where(and(eq(intelScanPilots.scanId, scanId), eq(intelScanPilots.profiled, false)));
-    await tx.update(intelScans).set({ status: "running", readyAt: null, updatedAt: new Date() }).where(eq(intelScans.id, scanId));
+    await tx
+      .update(intelScans)
+      .set({ status: "running", readyAt: null, updatedAt: new Date(), ...(rebrief ? { briefingStatus: "pending" as const } : {}) })
+      .where(eq(intelScans.id, scanId));
     await enqueuePilots(
       rows.map((r) => ({ characterId: r.characterId, priority: 0 })),
       tx,

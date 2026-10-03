@@ -12,6 +12,7 @@ CREATE TABLE "intel_ai_notes" (
 	"character_id" bigint,
 	"facts_hash" text NOT NULL,
 	"source" text NOT NULL,
+	"claude_called" boolean DEFAULT false NOT NULL,
 	"model" text,
 	"error" text,
 	"locale" text,
@@ -122,8 +123,8 @@ CREATE TABLE "intel_scans" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"names" text[] NOT NULL,
 	"unresolved" text[] DEFAULT '{}' NOT NULL,
-	"skipped" text[] DEFAULT '{}' NOT NULL,
 	"dscan" jsonb,
+	"dscan_at" timestamp with time zone,
 	"system_id" bigint,
 	"status" text DEFAULT 'running' NOT NULL,
 	"ready_at" timestamp with time zone,
@@ -139,7 +140,7 @@ ALTER TABLE "intel_scan_pilots" ADD CONSTRAINT "intel_scan_pilots_scan_id_intel_
 CREATE INDEX "intel_ai_notes_scan_idx" ON "intel_ai_notes" USING btree ("scan_id","kind","created_at");--> statement-breakpoint
 CREATE INDEX "intel_ai_notes_character_idx" ON "intel_ai_notes" USING btree ("character_id","kind","created_at");--> statement-breakpoint
 CREATE INDEX "intel_ai_notes_user_idx" ON "intel_ai_notes" USING btree ("created_by","created_at");--> statement-breakpoint
-CREATE INDEX "intel_ai_notes_source_idx" ON "intel_ai_notes" USING btree ("source","created_at");--> statement-breakpoint
+CREATE INDEX "intel_ai_notes_claude_idx" ON "intel_ai_notes" USING btree ("claude_called","created_at");--> statement-breakpoint
 CREATE INDEX "intel_contacts_contact_idx" ON "intel_contacts" USING btree ("contact_id");--> statement-breakpoint
 CREATE INDEX "intel_pilot_killmails_time_idx" ON "intel_pilot_killmails" USING btree ("character_id","killmail_time");--> statement-breakpoint
 CREATE INDEX "intel_pilot_killmails_prune_idx" ON "intel_pilot_killmails" USING btree ("killmail_time");--> statement-breakpoint

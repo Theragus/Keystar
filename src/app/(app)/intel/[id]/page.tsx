@@ -44,7 +44,7 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
     loadScanView(scan),
     scanProgress(scan),
     latestNote({ kind: "briefing", scanId: scan.id }),
-    latestNote({ kind: "dscan", scanId: scan.id }),
+    latestNote({ kind: "dscan", scanId: scan.id, since: scan.dscanAt }),
   ]);
   const { home, pilots, rows, engagements, names, summary, totals, pilotNames, system } = view;
   const friendly = rows.filter((r) => isFriendly(r.standing));

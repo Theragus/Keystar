@@ -180,9 +180,16 @@ describe.skipIf(!enabled)("intel integration", async () => {
       const cached = await db().select().from(schema.intelPilots);
       expect(cached.find((p) => p.characterId === 11)).toMatchObject({ corporationId: 101, allianceId: 200 });
 
-      // Profiling the rest on request queues the alliance mate too.
+      // Profiling the rest on request queues the alliance mate too; a friendly does not change the briefing.
+      const briefingBefore = (await db().select().from(schema.intelScans))[0].briefingStatus;
       expect(await profileRemaining(result.id)).toBe(1);
       expect((await db().select().from(schema.intelQueue)).length).toBe(4);
+      expect((await db().select().from(schema.intelScans))[0].briefingStatus).toBe(briefingBefore);
+      // A hostile left out (very large lists) is briefed once read.
+      await db().update(schema.intelScans).set({ briefingStatus: "done" });
+      await db().update(schema.intelScanPilots).set({ profiled: false }).where(sql`character_id = 12`);
+      expect(await profileRemaining(result.id)).toBe(1);
+      expect((await db().select().from(schema.intelScans))[0]).toMatchObject({ status: "running", briefingStatus: "pending" });
     } finally {
       spy.mockRestore();
     }
@@ -468,13 +475,55 @@ describe.skipIf(!enabled)("intel integration", async () => {
         expect(briefing).not.toHaveBeenCalled();
         // Budget used up: template with the reason.
         await db().insert(schema.intelAiNotes).values(
-          Array.from({ length: USER_HOURLY_LIMIT }, () => ({ kind: "dossier" as const, factsHash: "x", source: "claude", content: {}, facts: {}, createdBy: userId })),
+          Array.from({ length: USER_HOURLY_LIMIT }, () => ({ kind: "dossier" as const, factsHash: "x", source: "claude", claudeCalled: true, content: {}, facts: {}, createdBy: userId })),
         );
         const out = await writeBriefing(id, { createdBy: userId, automatic: false }, { briefing });
         expect(out).toMatchObject({ source: "template" });
         expect(out?.error).toBe("budget:user");
         expect(briefing).not.toHaveBeenCalled();
       });
+    });
+
+    it("counts failed and concurrent Claude calls against the hourly budget", async () => {
+      const id = await readyScan(true);
+      const dossierOut = {
+        content: { summary: "S", recentActivity: "R", playstyle: "P", watchFor: [], historyWithUs: null, confidence: "low" as const },
+        model: "m",
+        usage: { inputTokens: 1, outputTokens: 1 },
+      };
+      await withKey(async () => {
+        await db().insert(schema.intelAiNotes).values(
+          Array.from({ length: USER_HOURLY_LIMIT - 2 }, () => ({ kind: "dossier" as const, factsHash: "x", source: "claude", claudeCalled: true, content: {}, facts: {}, createdBy: userId })),
+        );
+        // A failed call uses a slot too.
+        const failing = vi.fn(async () => Promise.reject(new Error("overloaded")));
+        expect(await writeDossier(id, 9, { createdBy: userId, locale: "en" }, { dossier: failing })).toMatchObject({ source: "template", error: "overloaded" });
+        // One slot left: of three concurrent requests only one reaches Claude.
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => (release = resolve));
+        const slow = vi.fn(async () => {
+          await gate;
+          return dossierOut;
+        });
+        const runs = [9, 10, 12].map((cid) => writeDossier(id, cid, { createdBy: userId, locale: "en" }, { dossier: slow }));
+        await vi.waitFor(() => expect(slow).toHaveBeenCalledTimes(1));
+        release();
+        const out = await Promise.all(runs);
+        expect(slow).toHaveBeenCalledTimes(1);
+        expect(out.map((o) => o?.source).sort()).toEqual(["claude", "template", "template"]);
+        expect(out.filter((o) => o?.error === "budget:user")).toHaveLength(2);
+      });
+    });
+
+    it("shows neither notes still being written nor d-scan reads of an earlier d-scan", async () => {
+      const id = await readyScan(true);
+      const earlier = new Date(Date.now() - 60_000);
+      await db().insert(schema.intelAiNotes).values([
+        { kind: "dscan" as const, scanId: id, factsHash: "x", source: "template", content: {}, facts: {}, createdAt: earlier },
+        { kind: "dscan" as const, scanId: id, factsHash: "y", source: "pending", claudeCalled: true, content: {}, facts: {} },
+      ]);
+      expect(await latestNote({ kind: "dscan", scanId: id })).toMatchObject({ source: "template" });
+      expect(await latestNote({ kind: "dscan", scanId: id, since: new Date() })).toBeNull();
     });
 
     it("writes dossiers for pilots of a scan", async () => {

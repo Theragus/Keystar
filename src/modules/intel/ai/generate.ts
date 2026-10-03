@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull } from "drizzle-orm";
 import { getDb, intelAiNotes, intelScans, type Db } from "@/core/db";
 import { env } from "@/core/env";
 import { createLogger, errorMessage } from "@/core/logger";
@@ -20,7 +20,7 @@ import {
   type DscanFacts,
   type FactsPilot,
 } from "./facts";
-import { claudeBudget } from "./limits";
+import { reserveClaudeCall } from "./limits";
 import { templateBriefing, templateDossier, templateDscan } from "./template";
 import type { Briefing, Dossier, DscanRead, StoredNote } from "./types";
 
@@ -132,9 +132,33 @@ function toStored(row: typeof intelAiNotes.$inferSelect): StoredNote<unknown> {
   };
 }
 
+/** Completes a reserved note with what Claude, or the template after a failure, wrote. */
+async function complete(
+  db: Db,
+  id: number,
+  written: { content: unknown; source: "claude" | "template"; model: string | null; error: string | null; usage: unknown; locale: Locale | null },
+): Promise<StoredNote<unknown>> {
+  const [row] = await db
+    .update(intelAiNotes)
+    .set({
+      source: written.source,
+      model: written.model,
+      error: written.error,
+      locale: written.locale,
+      content: written.content as object,
+      usage: (written.usage ?? null) as object | null,
+    })
+    .where(eq(intelAiNotes.id, id))
+    .returning();
+  // The scan (and its notes) may have been deleted while Claude was writing.
+  return row ? toStored(row) : { ...written, createdAt: new Date().toISOString() };
+}
+
 /**
  * Asks Claude unless a recent note for the same facts and language exists;
  * falls back to the template draft without a key, over budget or on failure.
+ * A Claude call is reserved against the hourly budget before it is made, so
+ * failed and concurrent calls count too.
  */
 async function write<F>(
   db: Db,
@@ -149,18 +173,23 @@ async function write<F>(
   if (apiKey && note.useClaude) {
     const existing = await reusable(db, { ...key, locale: note.locale }, now);
     if (existing) return existing;
-    const budget = await claudeBudget(note.budgetUser, db, now);
-    if (budget.ok) {
+    const slot = await reserveClaudeCall(
+      db,
+      { kind: key.kind, scanId: key.scanId, characterId: key.characterId, factsHash: key.hash, facts: key.facts as object, createdBy: key.createdBy },
+      note.budgetUser,
+      now,
+    );
+    if (slot.ok) {
       try {
         const out = await claude(note.facts, { apiKey, model, locale: note.locale });
-        return await store(db, key, { content: out.content, source: "claude", model: out.model, error: null, usage: out.usage, locale: note.locale }, now);
+        return await complete(db, slot.id, { content: out.content, source: "claude", model: out.model, error: null, usage: out.usage, locale: note.locale });
       } catch (err) {
         error = errorMessage(err);
         log.warn("Claude failed, using the template", { kind: note.kind, scanId: note.scanId, characterId: note.characterId, error });
+        return complete(db, slot.id, { content: template(), source: "template", model: null, error, usage: null, locale: null });
       }
-    } else {
-      error = budget.reason;
     }
+    error = slot.reason;
   }
   return store(db, key, { content: template(), source: "template", model: null, error, usage: null, locale: null }, now);
 }
@@ -258,8 +287,14 @@ export async function writeDscanRead(
   );
 }
 
-/** The newest note of a kind, as stored; read it with readBriefing/readDossier/readDscan (template.ts). */
-export async function latestNote(where: { kind: AiNoteKind; scanId: string; characterId?: number }, db: Db = getDb()): Promise<StoredNote<unknown> | null> {
+/**
+ * The newest written note of a kind (written `since`, when given), as stored;
+ * read it with readBriefing/readDossier/readDscan (template.ts).
+ */
+export async function latestNote(
+  where: { kind: AiNoteKind; scanId: string; characterId?: number; since?: Date | null },
+  db: Db = getDb(),
+): Promise<StoredNote<unknown> | null> {
   const [row] = await db
     .select()
     .from(intelAiNotes)
@@ -268,6 +303,8 @@ export async function latestNote(where: { kind: AiNoteKind; scanId: string; char
         eq(intelAiNotes.kind, where.kind),
         eq(intelAiNotes.scanId, where.scanId),
         where.characterId ? eq(intelAiNotes.characterId, where.characterId) : isNull(intelAiNotes.characterId),
+        inArray(intelAiNotes.source, ["claude", "template"]),
+        where.since ? gte(intelAiNotes.createdAt, where.since) : undefined,
       ),
     )
     .orderBy(desc(intelAiNotes.createdAt))

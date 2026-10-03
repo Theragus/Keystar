@@ -1,5 +1,5 @@
 {
-  "id": "c8cd5075-fad4-40ad-bfdb-b3dc2cb7c602",
+  "id": "26b1bbc8-d7d6-402e-8cb0-851fd6d2525e",
   "prevId": "7e961e4d-dbcb-47e0-bd2a-e0b5f931852b",
   "version": "7",
   "dialect": "postgresql",
@@ -1357,6 +1357,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "claude_called": {
+          "name": "claude_called",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "model": {
           "name": "model",
           "type": "text",
@@ -1483,11 +1490,11 @@
           "method": "btree",
           "with": {}
         },
-        "intel_ai_notes_source_idx": {
-          "name": "intel_ai_notes_source_idx",
+        "intel_ai_notes_claude_idx": {
+          "name": "intel_ai_notes_claude_idx",
           "columns": [
             {
-              "expression": "source",
+              "expression": "claude_called",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2263,16 +2270,15 @@
           "notNull": true,
           "default": "'{}'"
         },
-        "skipped": {
-          "name": "skipped",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'"
-        },
         "dscan": {
           "name": "dscan",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dscan_at": {
+          "name": "dscan_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },

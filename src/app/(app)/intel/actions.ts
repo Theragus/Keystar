@@ -69,7 +69,9 @@ export async function setDscan(_prev: ScanFormState, formData: FormData): Promis
   if (text.length > MAX_DSCAN_CHARS) return { error: t.intel.errors.dscanTooLong };
   const parsed = await dscanShips(text);
   if (!parsed.lines) return { error: t.intel.errors.pasteDscan };
-  await getDb().update(intelScans).set({ dscan: parsed.ships, updatedAt: new Date() }).where(eq(intelScans.id, id));
+  // dscanAt hides d-scan reads of the previous d-scan.
+  const now = new Date();
+  await getDb().update(intelScans).set({ dscan: parsed.ships, dscanAt: now, updatedAt: now }).where(eq(intelScans.id, id));
   refresh();
   return { error: null };
 }

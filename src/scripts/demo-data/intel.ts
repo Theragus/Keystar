@@ -73,7 +73,7 @@ export async function seedIntel(
   // A finished scan of a busy local in Amamake.
   const local = [...hostilePilots().slice(0, 12), ...BLUES, ...NEUTRALS].map((p) => p.name);
   const scan = await startScan({ text: local.join("\n"), systemName: "Amamake", userId: opts.userId, userName: opts.userName, aiAllowed: true }, { now: opts.now, db });
-  if (!scan.ok) throw new Error(`Demo scan failed: ${scan.error}`);
+  if (!scan.ok) throw new Error(`Demo scan failed: ${scan.error.code}`);
   const source = demoSource({ db, delayMs: 0 });
   for (let i = 0; i < 20; i++) {
     const out = await runScanWorker({ db, esi: getEsi(), log }, { source, offline: true, budgetMs: 60_000 });
@@ -96,9 +96,9 @@ export async function seedIntel(
       .from(eveTypes)
       .where(inArray(eveTypes.typeId, [...counts.keys()]));
     for (const t of types) counts.get(t.id)!.name = t.name;
-    await db.update(intelScans).set({ dscan: [...counts.values()] }).where(eq(intelScans.id, scan.id));
+    await db.update(intelScans).set({ dscan: [...counts.values()], dscanAt: opts.now }).where(eq(intelScans.id, scan.id));
   }
   await writeBriefing(scan.id, { createdBy: null, automatic: true }, { db });
-  if (counts.size) await writeDscanRead(scan.id, { createdBy: opts.userId, locale: "en" }, { db });
+  if (counts.size) await writeDscanRead(scan.id, { createdBy: opts.userId, locale: "en" }, { db, now: opts.now });
   return { scanId: scan.id, pilots: scanned.length };
 }

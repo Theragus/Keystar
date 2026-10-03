@@ -46,9 +46,9 @@ export const intelScans = pgTable(
     names: text("names").array().notNull(),
     /** Names ESI does not know. */
     unresolved: text("unresolved").array().notNull().default([]),
-    /** Lines the parser could not read as a name (first few). */
-    skipped: text("skipped").array().notNull().default([]),
     dscan: jsonb("dscan").$type<DscanEntry[]>(),
+    /** When the d-scan was pasted; d-scan reads from before it are stale. */
+    dscanAt: timestamp("dscan_at", { withTimezone: true }),
     systemId: bigint("system_id", { mode: "number" }),
     status: text("status").$type<ScanStatus>().notNull().default("running"),
     readyAt: timestamp("ready_at", { withTimezone: true }),
@@ -222,8 +222,10 @@ export const intelAiNotes = pgTable(
     scanId: text("scan_id").references(() => intelScans.id, { onDelete: "cascade" }),
     characterId: bigint("character_id", { mode: "number" }),
     factsHash: text("facts_hash").notNull(),
-    /** "claude" or "template". */
+    /** "claude" or "template"; "pending" while Claude is writing it (never shown). */
     source: text("source").notNull(),
+    /** Claude was called for this note, whatever came of it; the hourly budget counts these (ai/limits.ts). */
+    claudeCalled: boolean("claude_called").notNull().default(false),
     model: text("model"),
     error: text("error"),
     /** Language of Claude's text (whoever asked for it); null for template drafts, written out per reader. */
@@ -239,6 +241,6 @@ export const intelAiNotes = pgTable(
     index("intel_ai_notes_scan_idx").on(t.scanId, t.kind, t.createdAt),
     index("intel_ai_notes_character_idx").on(t.characterId, t.kind, t.createdAt),
     index("intel_ai_notes_user_idx").on(t.createdBy, t.createdAt),
-    index("intel_ai_notes_source_idx").on(t.source, t.createdAt),
+    index("intel_ai_notes_claude_idx").on(t.claudeCalled, t.createdAt),
   ],
 );
