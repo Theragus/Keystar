@@ -248,7 +248,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                           <select
                             name="role"
                             defaultValue={u.role}
-                            className="glass-inset h-8 rounded-lg px-2.5 text-xs text-ink [color-scheme:dark]"
+                            className="glass-inset h-8 rounded-lg px-2.5 text-xs text-ink"
                             aria-label={tu.roleFor(u.main_name)}
                           >
                             {ROLES.filter((r) => assignable.includes(r) || r === u.role).map((r) => (
