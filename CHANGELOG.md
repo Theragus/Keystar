@@ -6,6 +6,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **My characters view on the mining pages.** Viewers with corporation-wide mining access can switch the overview,
+  the ledger and the CSV export between **Corporation** and **My characters**. The latter shows all of their linked
+  characters, so alts in another corporation show up next to their main without counting towards the home
+  corporation's totals.
+
 ### Changed
 
 - **Fleet access is opt-in per character.** Members are no longer asked for `esi-fleets.read_fleet.v1` when they join

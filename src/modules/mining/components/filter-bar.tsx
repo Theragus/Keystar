@@ -9,7 +9,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { displaySecurity } from "@/core/eve/images";
 import { ORE_CLASSES, type OreClass } from "@/core/eve/ore";
 import { useI18n } from "@/i18n/client";
-import { MINING_METRICS, MINING_SOURCES, miningQueryString, type MiningFilters } from "../filters";
+import { MINING_METRICS, MINING_SOURCES, miningQueryString, type MiningFilters, type MiningView } from "../filters";
 import type { FilterOptions } from "../queries";
 
 export function MiningFilterBar({
@@ -18,12 +18,15 @@ export function MiningFilterBar({
   presets,
   showMetric = true,
   showSource = true,
+  showView = false,
 }: {
   filters: MiningFilters;
   options: FilterOptions;
   presets: RangePreset[];
   showMetric?: boolean;
   showSource?: boolean;
+  /** Corporation / "My characters" switch, for viewers with corporation access. */
+  showView?: boolean;
 }) {
   const { t } = useI18n();
   const { navigate } = usePendingNavigation();
@@ -36,6 +39,19 @@ export function MiningFilterBar({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {showView && (
+        <Segmented<MiningView>
+          label={t.mining.view.label}
+          value={filters.view}
+          // Selected members may not exist in the other view.
+          onChange={(view) => apply({ view, characters: [] })}
+          options={[
+            { value: "corp", label: t.mining.view.corp, title: t.mining.view.corpHint },
+            { value: "own", label: t.mining.view.own, title: t.mining.view.ownHint },
+          ]}
+        />
+      )}
+
       <DateRangePicker from={filters.from} to={filters.to} presets={presets} onChange={(r) => apply(r)} />
 
       <MultiSelect

@@ -172,7 +172,9 @@ Then open `https://keystar.example.com`. To build from the checkout instead of u
    3. **Corporation data** — link a character that has the in-game **Accountant** (or Director) role with corporation
       access, so Keystar can read refinery observers, the corporation wallets and the roster. Skippable.
    4. **Invite** — copy the `/join` link for your members.
-3. Link your alts under **My Characters → Link a character**.
+3. Link your alts under **My Characters → Link a character**. Alts in other corporations work too: once linked with
+   the mining scope, their personal mining ledgers sync like any other character's and appear in the mining P&L and in the **My characters** view of
+   the mining overview, ledger and export. The corporation view only counts characters in the home corporation.
 
 The worker picks up new tokens within a minute. ESI keeps 30 days of mining history; Keystar keeps everything from
 the moment it starts syncing.

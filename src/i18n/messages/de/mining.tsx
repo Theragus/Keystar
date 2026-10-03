@@ -107,6 +107,14 @@ export const mining: typeof en = {
     reset: "Zurücksetzen",
   },
 
+  view: {
+    label: "Mining anzeigen von",
+    corp: "Corporation",
+    corpHint: "Charaktere der Heimat-Corporation und die Raffinerien der Corporation",
+    own: "Meine Charaktere",
+    ownHint: "Alle deine verknüpften Charaktere, auch Alts in anderen Corporations",
+  },
+
   groupBy: {
     label: "Miner gruppieren nach",
     pilots: "Piloten",
@@ -137,6 +145,7 @@ export const mining: typeof en = {
       noHomeCorp:
         "Mining deiner eigenen Charaktere. Corporation-weite Ansichten erscheinen, sobald ein Admin die Heimat-Corporation festlegt.",
       own: "Mining deiner eigenen Charaktere. Frag einen Direktor nach Corporation-weitem Zugriff.",
+      ownView: "Mining aller deiner verknüpften Charaktere, auch Alts in anderen Corporations.",
     },
     ledger: "Ledger",
     empty: {

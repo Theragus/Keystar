@@ -224,8 +224,10 @@ character (enabled from the mail page). The page only ever shows the signed-in a
 - The **combined** view adds observer rows only when the same character/day/ore is not already in a personal ledger,
   so moon mining by registered members is never counted twice.
 - **Corporation-wide views** include characters currently in the home corporation and refineries owned by it —
-  guests from other corporations or a previous home corporation's data never show up. A member's own view always
-  includes all of their characters. Until a home corporation is set, everyone sees only their own characters.
+  guests from other corporations or a previous home corporation's data never show up. The **My characters** view
+  (`view=own`) shows all of a user's linked characters, alts in other corporations included; it is what members
+  without `mining.view.corp` always see, and viewers with it can switch to it on the overview, the ledger and the
+  export. Until a home corporation is set, everyone sees only their own characters.
 - Values come from `type_values` (current) or `type_value_history` (price on the day mined). Raw ore without its own
   market falls back to its compressed variant (by portion size), then the ESI average and adjusted prices.
 - `core.market-prices` prices the types the `PriceInterestProvider`s return (every ore in the ledgers) plus the types

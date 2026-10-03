@@ -129,6 +129,25 @@ describe.skipIf(!enabled)("integration", async () => {
       // The owner still sees their own character, whatever its corporation.
       const mine = await q.getMiningSummary(filters({ source: "personal" }), own([1, 4]), val);
       expect(mine.current.value).toBe(1000 * 10 + 7000 * 10);
+
+      // A viewer with corporation access finds that alt in the "My characters" view only.
+      const viewer = { can: (perm: string) => perm === "mining.view.corp", characterIds: [1, 4] };
+      const corpScope = q.miningScope(viewer, 100);
+      expect(corpScope.corp).toBe(true);
+      const ownScope = q.miningScope(viewer, 100, "own");
+      expect(ownScope.corp).toBe(false);
+      const ownView = await q.getMiningSummary(filters({ source: "personal", view: "own" }), ownScope, val);
+      expect(ownView.current.value).toBe(1000 * 10 + 7000 * 10);
+      const ownOptions = await q.getFilterOptions(ownScope);
+      expect(ownOptions.characters.map((c) => c.id)).toContain(4);
+
+      // Refinery systems are offered in the own view only where the viewer's characters mined.
+      await db().insert(schema.eveSystems).values({ systemId: 30000181, name: "Tama", securityStatus: 0.28 });
+      await db().update(schema.miningObservers).set({ solarSystemId: 30000181 }).where(sql`observer_id = 88`);
+      await db().insert(schema.miningObserverLedger).values({ observerId: 88, corporationId: 200, characterId: 4, recordedCorporationId: 200, date: "2026-09-13", typeId: 45490, quantity: 1 });
+      expect(ownOptions.systems.map((s) => s.id)).not.toContain(30000181);
+      expect((await q.getFilterOptions(ownScope)).systems.map((s) => s.id)).toContain(30000181);
+      expect((await q.getFilterOptions(own([2]))).systems.map((s) => s.id)).not.toContain(30000181);
     });
 
     it("shows no corporation-wide data until a home corporation is set", async () => {
