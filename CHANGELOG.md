@@ -6,6 +6,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-03
+
 ### Changed
 
 - **Member audit** handles large corporations: search by character, account (main) or character ID as you type, click a
