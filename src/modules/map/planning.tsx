@@ -15,18 +15,18 @@ function SystemSearch({label,systems,value,onPick}:{label:string;systems:MapSyst
  </div>;
 }
 
-export function MapPlanning({systems,selected,onFocus,onOverlay}:{systems:MapSystem[];selected:MapSystem|null;onFocus:(s:MapSystem)=>void;onOverlay:(o:MapOverlay)=>void}) {
+export function MapPlanning({initialOriginId=null,systems,selected,onFocus,onOverlay}:{initialOriginId?:number|null;systems:MapSystem[];selected:MapSystem|null;onFocus:(s:MapSystem)=>void;onOverlay:(o:MapOverlay)=>void}) {
  const {t,f}=useI18n();const m=t.map;
  const [gates,setGates]=useState<MapGate[]>([]),[rules,setRules]=useState<JumpRules|null>(null);
  const [dataError,setDataError]=useState(false),[attempt,setAttempt]=useState(0);
  const [start,setStart]=useState<MapSystem|null>(null),[end,setEnd]=useState<MapSystem|null>(null);
  const [route,setRoute]=useState<number[]>([]),[routeError,setRouteError]=useState(false);
  const [checks,setChecks]=useState<Record<number,GateCheck>>({}),[failed,setFailed]=useState<number[]>([]),[checking,setChecking]=useState(false),[checkVersion,setCheckVersion]=useState(0);
- const [origin,setOrigin]=useState<MapSystem|null>(null),[ship,setShip]=useState<JumpShip>("carrier"),[level,setLevel]=useState(5),[showRange,setShowRange]=useState(false);
+ const [origin,setOrigin]=useState<MapSystem|null>(null),[ship,setShip]=useState<JumpShip>("carrier"),[level,setLevel]=useState(5),[showRange,setShowRange]=useState(!!initialOriginId);
  const byId=useMemo(()=>new Map(systems.map(s=>[s[0],s])),[systems]);
  const graph=useMemo(()=>gateGraph(gates),[gates]);
  const range=rules?jumpRange(rules,ship,level):0;
- const source=origin??selected;
+ const source=origin??systems.find(s=>s[0]===initialOriginId)??selected;
  const rangeSystems=useMemo(()=>showRange&&source?systemsInRange(systems,source,range):[],[showRange,source,systems,range]);
  const restricted=(s:MapSystem)=>s[2]>=.45 || (rules?.restricted.includes(s[0])??false);
  const originBlocked=source&&(source[0]>=31000000 || (rules?.restricted.includes(source[0])??false));

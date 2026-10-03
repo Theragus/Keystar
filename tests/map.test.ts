@@ -1,7 +1,13 @@
+import { mapSystemHref, parseMapSystem } from "../src/modules/map/links";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { project, securityClass } from "../src/modules/map/model";
 describe("universe map", () => {
+ it("supports validated system deep links", () => {
+  expect(mapSystemHref(30000142)).toBe("/map?system=30000142");
+  expect(parseMapSystem("30000142")).toBe(30000142);
+  expect(parseMapSystem("bad")).toBeNull();expect(parseMapSystem(["30000142"])).toBeNull();expect(parseMapSystem("12")).toBeNull();
+ });
  it("ships a complete, unique and finite universe dataset", () => {
   const rows = JSON.parse(readFileSync("public/data/map-systems.json", "utf8")) as [number,string,number,number,number,number][];
   expect(rows.length).toBeGreaterThan(8000);

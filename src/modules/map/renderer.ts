@@ -7,6 +7,7 @@ type Options = {
  overlay?: () => MapOverlay;
  camera: () => { yaw: number; pitch: number; zoom: number };
  dragging: () => boolean; selected: number | null; query: string; labels: boolean;
+ distanceUnit?: string;
  format: (value: number) => string; onHits: (hits: Hit[]) => void;
 };
 
@@ -27,7 +28,7 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
   const label = `${s[1]} · ${options.format(s[2])}`;
   return {system:s,x:s[3]-center[0],y:s[4]-center[1],z:s[5]-center[2],
    label,width:ctx.measureText(label).width,match:!query || s[1].toLowerCase().includes(query),
-   group:securityClass(s[2]),hit:{system:s,x:0,y:0}};
+   rangeLabel:label,rangeWidth:0,group:securityClass(s[2]),hit:{system:s,x:0,y:0}};
  });
  let width=0,height=0, frame=0, destroyed=false;
  let ink="", colors: Record<string,string>={};
@@ -45,7 +46,11 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
  function draw() {
   frame=0;if(destroyed || !ctx)return;
   const overlay = options.overlay?.();
-  if(overlay !== lastOverlay) { lastOverlay=overlay; route=new Set(overlay?.route ?? []);inRange=new Set(overlay?.inRange ?? []); }
+  if(overlay !== lastOverlay) {
+   lastOverlay=overlay; route=new Set(overlay?.route ?? []);inRange=new Set(overlay?.inRange ?? []);
+   const origin=points.find(p=>p.system[0]===overlay?.originId);
+   if(origin&&overlay?.range)for(const p of points)if(inRange.has(p.system[0])||p.system[0]===overlay.originId){p.rangeLabel=`${p.label} · ${options.format(Math.hypot(p.x-origin.x,p.y-origin.y,p.z-origin.z))} ${options.distanceUnit ?? "LY"}`;p.rangeWidth=ctx.measureText(p.rangeLabel).width;}
+  }
   const c=options.camera(), sy=Math.sin(c.yaw),cy=Math.cos(c.yaw),sp=Math.sin(c.pitch),cp=Math.cos(c.pitch);
   const scale=Math.min(width,height)*.8/range*c.zoom;
   ctx.clearRect(0,0,width,height);
@@ -89,11 +94,12 @@ export function createMapRenderer(canvas: HTMLCanvasElement, systems: MapSystem[
    const active=p.system[0]===options.selected;
    if(!active && !route.has(p.system[0]) && (!options.labels||!p.match||count>=100 || (overlay?.range && !inRange.has(p.system[0]))))continue;
    const x=p.hit.x+7,y=p.hit.y-5;
+   const label=overlay?.range?p.rangeLabel:p.label, labelWidth=overlay?.range?p.rangeWidth:p.width;
    const cells:string[]=[];
-   for(let col=Math.floor(x/32);col<=Math.floor((x+p.width+4)/32);col++)
+   for(let col=Math.floor(x/32);col<=Math.floor((x+labelWidth+4)/32);col++)
     for(let row=Math.floor((y-12)/16);row<=Math.floor((y+4)/16);row++)cells.push(`${col}:${row}`);
    if(!active && cells.some(cell=>occupied.has(cell)))continue;
-   ctx.fillText(p.label,x,y);cells.forEach(cell=>occupied.add(cell));count++;
+   ctx.fillText(label,x,y);cells.forEach(cell=>occupied.add(cell));count++;
   }
  }
  function schedule() {if(!frame&&!destroyed)frame=requestAnimationFrame(draw);}
