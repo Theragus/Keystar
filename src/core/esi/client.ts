@@ -32,6 +32,8 @@ export interface EsiResponse<T> {
   fromCache: boolean;
   /** ESI answered 304 Not Modified. */
   notModified: boolean;
+  /** When ESI generated the response (Last-Modified); null for local cache hits or without the header. */
+  lastModified: Date | null;
 }
 
 export interface CachedEntry {
@@ -142,6 +144,7 @@ export class EsiClient {
         pages: cached.pages ?? 1,
         fromCache: true,
         notModified: true,
+        lastModified: null,
       };
     }
 
@@ -185,10 +188,11 @@ export class EsiClient {
       this.trackLimits(pattern, res);
       const expiresAt = parseExpires(res.headers.get("expires"));
       const pages = Number(res.headers.get("x-pages") ?? "1") || 1;
+      const lastModified = parseExpires(res.headers.get("last-modified"));
 
       if (res.status === 304 && cached) {
         if (useCache) await this.opts.cache!.set(cacheKey, { ...cached, expiresAt, pages });
-        return { data: cached.body as T, status: 304, expiresAt, pages, fromCache: false, notModified: true };
+        return { data: cached.body as T, status: 304, expiresAt, pages, fromCache: false, notModified: true, lastModified };
       }
 
       if (res.ok) {
@@ -196,7 +200,7 @@ export class EsiClient {
         if (useCache) {
           await this.opts.cache!.set(cacheKey, { etag: res.headers.get("etag"), body: data, pages, expiresAt });
         }
-        return { data, status: res.status, expiresAt, pages, fromCache: false, notModified: false };
+        return { data, status: res.status, expiresAt, pages, fromCache: false, notModified: false, lastModified };
       }
 
       const errBody = await res.json().catch(() => undefined);
@@ -236,18 +240,20 @@ export class EsiClient {
   async getAllPages<T>(
     path: string,
     options: Omit<EsiRequestOptions, "method" | "body" | "page"> = {},
-  ): Promise<{ data: T[]; expiresAt: Date | null; notModified: boolean }> {
+  ): Promise<{ data: T[]; expiresAt: Date | null; notModified: boolean; fromCache: boolean; lastModified: Date | null }> {
     const first = await this.get<T[]>(path, options);
     const data = [...(first.data ?? [])];
     let expiresAt = first.expiresAt;
     let notModified = first.notModified;
+    let fromCache = first.fromCache;
     for (let page = 2; page <= first.pages; page++) {
       const res = await this.get<T[]>(path, { ...options, page });
       data.push(...(res.data ?? []));
       notModified = notModified && res.notModified;
+      fromCache = fromCache && res.fromCache;
       if (res.expiresAt && (!expiresAt || res.expiresAt < expiresAt)) expiresAt = res.expiresAt;
     }
-    return { data, expiresAt, notModified };
+    return { data, expiresAt, notModified, fromCache, lastModified: first.lastModified };
   }
 
   private async waitForBudget(pattern: string): Promise<void> {
@@ -281,6 +287,7 @@ export class EsiClient {
   }
 }
 
+/** Parses an HTTP date header (Expires, Last-Modified). */
 function parseExpires(value: string | null): Date | null {
   if (!value) return null;
   const t = Date.parse(value);

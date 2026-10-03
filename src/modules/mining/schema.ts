@@ -54,3 +54,32 @@ export const miningObserverLedger = pgTable(
     index("mining_obs_ledger_char_idx").on(t.characterId),
   ],
 );
+
+/**
+ * Mining activity measured from ledger growth between syncs (see activity.ts):
+ * the character's ledger grew by `quantity` of `type_id` on ledger day `date`
+ * during [window_start, window_end). Used for active hours and ISK/hour.
+ */
+export const miningActivity = pgTable(
+  "mining_activity",
+  {
+    characterId: bigint("character_id", { mode: "number" }).notNull(),
+    windowEnd: timestamp("window_end", { withTimezone: true }).notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    typeId: integer("type_id").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    quantity: bigint("quantity", { mode: "number" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.characterId, t.windowEnd, t.date, t.typeId] }),
+    index("mining_activity_char_date_idx").on(t.characterId, t.date),
+  ],
+);
+
+/** Per character: since when ledger growth is observed, and the latest observation. */
+export const miningActivityCoverage = pgTable("mining_activity_coverage", {
+  characterId: bigint("character_id", { mode: "number" }).primaryKey(),
+  since: timestamp("since", { withTimezone: true }).notNull(),
+  lastObservedAt: timestamp("last_observed_at", { withTimezone: true }).notNull(),
+  lastGrowthAt: timestamp("last_growth_at", { withTimezone: true }),
+});
