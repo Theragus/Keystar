@@ -91,7 +91,7 @@ export async function SituationPanel({ view, scannedAt, dscanAt }: { view: ScanV
               </div>
             </div>
           ) : <p className="text-xs text-ink-3">{e.noGroup}</p>}
-          <p className="mt-2 text-3xs text-ink-3" title={e.groupCaution}>{e.groupBrief}</p>        </div>
+        </div>
         <div className="glass-inset rounded-lg p-3">
           <h3 className="eve-label mb-2 text-2xs text-ink-3">{e.newest}</h3>
           {newest ? (
