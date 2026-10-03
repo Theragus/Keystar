@@ -29,11 +29,26 @@ export const admin: typeof en = {
       missingScopes: (count: number) =>
         count === 1 ? "1 Charakter mit fehlenden Scopes" : `${n(count)} Charaktere mit fehlenden Scopes`,
       allGood: "Alles in Ordnung",
+      fixOwn: "Unter „Meine Charaktere“ beheben",
+      openAudit: "Mitglieder-Audit öffnen",
     },
     roleFor: (name: string | null) => `Rolle für ${name ?? "Benutzer"}`,
     saveRole: "Rolle speichern",
     enable: "Aktivieren",
     disable: "Deaktivieren",
+    noAction: {
+      self: "Du kannst dein eigenes Konto nicht deaktivieren",
+      higher: "Nur eine höhere Rolle kann dieses Konto ändern",
+    },
+    rolePermissions: "Rollenrechte",
+    filter: {
+      showing: (count: number, role: string) => `${n(count)} Benutzer mit der Rolle ${role}`,
+      showAll: "Alle anzeigen",
+      onlyRole: "Nur diese Rolle anzeigen",
+      allUsers: "Alle Benutzer anzeigen",
+      empty: "Keine Benutzer mit dieser Rolle.",
+    },
+    zkill: (name: string) => `${name} auf zKillboard`,
   },
   members: {
     metaTitle: "Mitglieder-Audit",

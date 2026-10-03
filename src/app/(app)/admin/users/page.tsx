@@ -1,15 +1,17 @@
 import { sql } from "drizzle-orm";
-import { Ban, CheckCircle2, UserCheck } from "lucide-react";
+import { ArrowRight, Ban, CheckCircle2, UserCheck } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge, RoleBadge, StatusBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Portrait } from "@/components/ui/eve-image";
 import { Glass, Panel } from "@/components/ui/glass";
 import { requirePermission } from "@/core/auth/dal";
 import { getDb } from "@/core/db";
 import { characterScopes } from "@/core/modules/registry";
-import { assignableRoles, canManageRole, ROLES, type Role } from "@/core/rbac/roles";
+import { assignableRoles, canManageRole, isRole, ROLES, type Role } from "@/core/rbac/roles";
 import { getI18n } from "@/i18n/server";
+import { zkillCharacter } from "@/modules/killboard/links";
 import { approveUser, setUserDisabled, updateUserRole } from "../actions";
 
 export async function generateMetadata() {
@@ -29,11 +31,14 @@ interface UserRow {
   characters: { id: number; name: string; status: string | null; scopes: string[] | null }[];
 }
 
-export default async function UsersPage() {
+export default async function UsersPage({ searchParams }: PageProps<"/admin/users">) {
   const actor = await requirePermission("users.view");
   const { t, f } = await getI18n();
   const tu = t.admin.users;
   const canManage = actor.can("users.manage");
+  const canAudit = actor.can("members.audit");
+  const roleParam = (await searchParams).role;
+  const roleFilter = isRole(roleParam) ? roleParam : null;
   const required = characterScopes();
 
   const rows = await getDb().execute<Record<string, unknown>>(sql`
@@ -51,6 +56,10 @@ export default async function UsersPage() {
   const users = rows as unknown as UserRow[];
   const pending = users.filter((u) => u.role === "guest" && !u.is_disabled);
   const assignable = assignableRoles(actor.role);
+  // Role cards filter the table; counts and the approval queue always cover everyone.
+  const shown = roleFilter ? users.filter((u) => u.role === roleFilter) : users;
+  const manageable = (u: UserRow) => canManage && u.id !== actor.id && canManageRole(actor.role, u.role);
+  const showActions = shown.some(manageable);
 
   return (
     <div className="space-y-6">
@@ -58,18 +67,50 @@ export default async function UsersPage() {
         eyebrow={t.shell.navSections.admin}
         title={t.shell.nav.users}
         description={tu.description}
+        actions={
+          actor.can("app.settings.manage") ? (
+            <ButtonLink href="/admin/settings#permissions" size="sm">
+              {tu.rolePermissions} <ArrowRight className="size-3.5" aria-hidden />
+            </ButtonLink>
+          ) : undefined
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        {[...ROLES].reverse().map((r) => (
-          <Glass key={r} className="px-4 py-3.5">
-            <div className="flex items-center justify-between">
-              <RoleBadge role={r} />
-              <span className="text-lg font-semibold tabular-nums">{f.integer(users.filter((u) => u.role === r).length)}</span>
-            </div>
-            <p className="mt-2 text-2xs leading-snug text-ink-3">{t.common.roles[r].description}</p>
-          </Glass>
-        ))}
+        {[...ROLES].reverse().map((r) => {
+          const count = users.filter((u) => u.role === r).length;
+          const active = roleFilter === r;
+          const body = (
+            <>
+              <div className="flex items-center justify-between">
+                <RoleBadge role={r} />
+                <span className="text-lg font-semibold tabular-nums">{f.integer(count)}</span>
+              </div>
+              <p className="mt-2 text-2xs leading-snug text-ink-3">{t.common.roles[r].description}</p>
+            </>
+          );
+          // An empty role has nothing to filter to.
+          if (!count && !active) {
+            return (
+              <Glass key={r} className="px-4 py-3.5 opacity-60">
+                {body}
+              </Glass>
+            );
+          }
+          return (
+            <Glass
+              key={r}
+              as={Link}
+              href={active ? "/admin/users" : `/admin/users?role=${r}`}
+              scroll={false}
+              aria-current={active ? "true" : undefined}
+              title={active ? tu.filter.allUsers : tu.filter.onlyRole}
+              className="glass-link px-4 py-3.5"
+            >
+              {body}
+            </Glass>
+          );
+        })}
       </div>
 
       {pending.length > 0 && canManage && (
@@ -96,6 +137,16 @@ export default async function UsersPage() {
         </Panel>
       )}
 
+      {roleFilter && (
+        <div className="flex items-center gap-2 text-sm text-ink-2">
+          <span>{tu.filter.showing(shown.length, t.common.roles[roleFilter].label)}</span>
+          <span className="text-ink-3">·</span>
+          <Link href="/admin/users" scroll={false} className="text-accent hover:underline">
+            {tu.filter.showAll}
+          </Link>
+        </div>
+      )}
+
       <Glass className="overflow-hidden">
         <div className="overflow-x-auto px-2 py-2">
           <table className="ks-table">
@@ -106,14 +157,34 @@ export default async function UsersPage() {
                 <th>{tu.columns.esiHealth}</th>
                 <th>{tu.columns.lastLogin}</th>
                 <th>{tu.columns.role}</th>
-                {canManage && <th className="text-right">{tu.columns.actions}</th>}
+                {showActions && <th className="text-right">{tu.columns.actions}</th>}
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => {
+              {shown.length === 0 && (
+                <tr>
+                  <td colSpan={showActions ? 6 : 5} className="py-6 text-center text-ink-3">
+                    {tu.filter.empty}
+                  </td>
+                </tr>
+              )}
+              {shown.map((u) => {
                 const invalid = u.characters.filter((c) => c.status === "invalid").length;
                 const missing = u.characters.filter((c) => !c.scopes || required.some((s) => !c.scopes!.includes(s))).length;
-                const manageable = canManage && u.id !== actor.id && canManageRole(actor.role, u.role);
+                const own = u.id === actor.id;
+                const canChange = manageable(u);
+                const tokenTrouble = !u.is_disabled && (invalid > 0 || missing > 0);
+                // Where a token problem gets fixed: your own characters page, or the member audit for others.
+                const fixHref = !tokenTrouble ? null : own ? "/characters" : canAudit ? "/admin/members" : null;
+                const health = u.is_disabled ? (
+                  <StatusBadge status="error" label={tu.health.disabled} />
+                ) : invalid ? (
+                  <StatusBadge status="error" label={tu.health.revoked(invalid)} />
+                ) : missing ? (
+                  <StatusBadge status="warning" label={tu.health.missingScopes(missing)} />
+                ) : (
+                  <StatusBadge status="ok" label={tu.health.allGood} />
+                );
                 return (
                   <tr key={u.id} className={u.is_disabled ? "opacity-50" : undefined}>
                     <td>
@@ -121,7 +192,7 @@ export default async function UsersPage() {
                         {u.main_id && <Portrait id={Number(u.main_id)} size={30} />}
                         <div className="leading-tight">
                           <div className="font-medium">
-                            {u.main_name ?? tu.unknown} {u.id === actor.id && <span className="text-xs text-ink-3">{tu.you}</span>}
+                            {u.main_name ?? tu.unknown} {own && <span className="text-xs text-ink-3">{tu.you}</span>}
                           </div>
                           <div className="text-2xs text-ink-3">{u.corp_ticker ? `[${u.corp_ticker}]` : "—"}</div>
                         </div>
@@ -130,26 +201,35 @@ export default async function UsersPage() {
                     <td>
                       <div className="flex max-w-[340px] flex-wrap gap-1">
                         {u.characters.map((c) => (
-                          <Badge key={c.id} tone={c.status === "invalid" ? "critical" : "neutral"}>
-                            {c.name}
-                          </Badge>
+                          <a
+                            key={c.id}
+                            href={zkillCharacter(c.id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={tu.zkill(c.name)}
+                            className="rounded-full transition hover:brightness-150"
+                          >
+                            <Badge tone={c.status === "invalid" ? "critical" : "neutral"}>{c.name}</Badge>
+                          </a>
                         ))}
                       </div>
                     </td>
                     <td>
-                      {u.is_disabled ? (
-                        <StatusBadge status="error" label={tu.health.disabled} />
-                      ) : invalid ? (
-                        <StatusBadge status="error" label={tu.health.revoked(invalid)} />
-                      ) : missing ? (
-                        <StatusBadge status="warning" label={tu.health.missingScopes(missing)} />
+                      {fixHref ? (
+                        <Link
+                          href={fixHref}
+                          title={own ? tu.health.fixOwn : tu.health.openAudit}
+                          className="inline-flex rounded-full transition hover:brightness-150"
+                        >
+                          {health}
+                        </Link>
                       ) : (
-                        <StatusBadge status="ok" label={tu.health.allGood} />
+                        health
                       )}
                     </td>
                     <td className="text-ink-2">{f.relativeTime(u.last_login_at)}</td>
                     <td>
-                      {manageable ? (
+                      {canChange ? (
                         <form action={updateUserRole.bind(null, u.id)} className="flex items-center gap-1.5">
                           <select
                             name="role"
@@ -171,14 +251,21 @@ export default async function UsersPage() {
                         <RoleBadge role={u.role} />
                       )}
                     </td>
-                    {canManage && (
+                    {showActions && (
                       <td className="text-right">
-                        {manageable && (
+                        {canChange ? (
                           <form action={setUserDisabled.bind(null, u.id, !u.is_disabled)}>
                             <Button size="sm" variant={u.is_disabled ? "glass" : "danger"} type="submit">
                               <Ban className="size-3.5" aria-hidden /> {u.is_disabled ? tu.enable : tu.disable}
                             </Button>
                           </form>
+                        ) : (
+                          <span
+                            className="text-ink-3"
+                            title={own ? tu.noAction.self : tu.noAction.higher}
+                          >
+                            —
+                          </span>
                         )}
                       </td>
                     )}

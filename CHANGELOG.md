@@ -1,9 +1,35 @@
 # Changelog
 
 All notable changes to Keystar. Versions follow [Semantic Versioning](https://semver.org/); while Keystar is below
-1.0, new features bump the patch version. Releasing is described in [docs/releasing.md](docs/releasing.md).
+1.0, releases with new features bump the minor version (0.1.5 → 0.2.0) and releases with only fixes bump the patch
+version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
+
+## [0.1.5] - 2026-10-03
+
+### Changed
+
+- Cards that looked clickable now are, or are gone. On the dashboard, the KPI tiles open the page behind the
+  number: the killboard tiles open the killboard on the same 30 days (ISK destroyed jumps to the ISK breakdown, ISK
+  efficiency to pilot efficiency), and the mining tile opens Mining. The info row links to the corporation on
+  zKillboard, Member Audit, My Characters and Sync Status. Links only appear for viewers who can open the target
+  page, and a hover state plus an arrow marks them.
+- Users & Roles: the role cards filter the user table (`?role=director`; click again to show everyone). Character
+  names open zKillboard. An ESI health warning links to where it can be fixed: My Characters for your own account,
+  Member Audit for others. Admins get a "Role permissions" shortcut to the permission matrix in Settings. The
+  Actions column is hidden when there is no account you can manage, and otherwise shows "—" with an explanation
+  where nothing can be done.
+- The corporation name in the top bar links back to the dashboard.
+- The new texts (filter line, tooltips, "Role permissions") are available in English and German.
+
+### Removed
+
+- The corporation card on the dashboard, which repeated the kills, losses and efficiency shown in the tiles below
+  it. The corporation logo and ticker moved into the "Home corporation" item, and the active pilot count into the
+  kills tile.
+- The up/down "switcher" icon next to the corporation name in the top bar. Keystar has one home corporation, so
+  there was nothing to switch.
 
 ## [0.1.4] - 2026-10-03
 

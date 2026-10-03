@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { nextVersion, releaseChangelog } from "@/scripts/release-prepare";
+import { nextVersion, releaseChangelog, suggestedBump } from "@/scripts/release-prepare";
 
 describe("nextVersion", () => {
   it.each([
-    ["0.1.4", undefined, "0.1.5"],
     ["0.1.4", "patch", "0.1.5"],
     ["0.1.4", "minor", "0.2.0"],
     ["0.1.4", "major", "1.0.0"],
@@ -15,6 +14,20 @@ describe("nextVersion", () => {
 
   it.each(["0.1.4", "0.1.3", "0.0.9", "v0.2.0", "huge"])("rejects %s", (bump) => {
     expect(() => nextVersion("0.1.4", bump)).toThrow();
+  });
+});
+
+describe("suggestedBump", () => {
+  it("bumps the patch number for fixes only", () => {
+    expect(suggestedBump("\n### Fixed\n\n- A.\n\n### Security\n\n- B.\n")).toBe("patch");
+  });
+
+  it.each(["Added", "Changed", "Removed", "Deprecated"])("bumps the minor number for ### %s", (kind) => {
+    expect(suggestedBump(`\n### Fixed\n\n- A.\n\n### ${kind}\n\n- B.\n`)).toBe("minor");
+  });
+
+  it("bumps the minor number for entries without a heading", () => {
+    expect(suggestedBump("\n- Something.\n")).toBe("minor");
   });
 });
 

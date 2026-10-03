@@ -20,28 +20,37 @@ version in `package.json` alone.
 1. Prepare the release on `main` (directly or in a small release pull request):
 
    ```bash
-   pnpm release:prepare          # patch: 0.1.1 → 0.1.2 (features and fixes while below 1.0)
-   pnpm release:prepare minor    # or major, or an exact version such as 0.2.0
+   pnpm release:prepare          # picks the next version from the Unreleased section (see below)
+   pnpm release:prepare patch    # or minor, major, or an exact version such as 0.2.0
    ```
 
-   This bumps `"version"` in `package.json`, renames `## [Unreleased]` to the version and today's date, and adds a
-   fresh empty `## [Unreleased]` above it. It refuses to run when the Unreleased section is empty. It commits nothing;
-   review the diff, commit and push. (The same edits by hand work too.)
+   While Keystar is below 1.0:
+   - a release with new features bumps the minor number and resets the patch (0.1.5 → 0.2.0),
+   - a release with only fixes bumps the patch number (0.2.0 → 0.2.1),
+   - a change that needs action on the server when updating (a new or renamed `.env` variable, an edit to the
+     compose file, characters to re-link for new ESI scopes) also bumps the minor number; spell out the steps at the
+     top of its CHANGELOG section.
+
+   Without an argument the script bumps the patch number when the Unreleased section only has `### Fixed` and
+   `### Security` entries, and the minor number otherwise; it never picks a major bump. Pass the bump explicitly
+   when that guess is wrong. It then sets `"version"` in `package.json`, renames `## [Unreleased]` to the
+   version and today's date, and adds a fresh empty `## [Unreleased]` above it. It refuses to run when the Unreleased
+   section is empty. It commits nothing; review the diff, commit and push. (The same edits by hand work too.)
 
    ```markdown
    ## [Unreleased]
 
-   ## [0.1.2] - 2026-10-20
+   ## [0.2.0] - 2026-10-20
 
    ### Added
    - …
    ```
 
 2. Wait for CI to pass on that commit on `main`, then open the Actions tab → **Release** → **Run workflow** (on
-   `main`). The workflow (`.github/workflows/release.yml`) checks that `v0.1.2` doesn't exist yet and that CI passed
+   `main`). The workflow (`.github/workflows/release.yml`) checks that `v0.2.0` doesn't exist yet and that CI passed
    on the commit, then:
-   - builds the Docker image and pushes `ghcr.io/theragus/keystar:0.1.2`, `:0.1` and `:latest`,
-   - creates the `v0.1.2` tag and a GitHub release whose notes are that CHANGELOG section.
+   - builds the Docker image and pushes `ghcr.io/theragus/keystar:0.2.0`, `:0.2` and `:latest`,
+   - creates the `v0.2.0` tag and a GitHub release whose notes are that CHANGELOG section.
 
    If the version is already tagged, CI hasn't passed yet or the CHANGELOG section is missing, the workflow stops
    with an error and publishes nothing. A failed release (e.g. a registry outage) is retried the same way.
@@ -68,7 +77,7 @@ version tags only ever point at releases.
 On the server, in the Keystar checkout:
 
 ```bash
-# .env: KEYSTAR_VERSION=0.1.2   (or "latest" to always take the newest release)
+# .env: KEYSTAR_VERSION=0.2.0   (or "latest" to always take the newest release)
 git pull                          # compose file and docs of the new version
 docker compose pull
 docker compose up -d

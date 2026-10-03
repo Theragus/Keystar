@@ -146,7 +146,7 @@ export default async function SettingsPage() {
         </Panel>
       </div>
 
-      <Panel title={ts.permissions.title} subtitle={ts.permissions.subtitle}>
+      <Panel id="permissions" title={ts.permissions.title} subtitle={ts.permissions.subtitle}>
         <div className="overflow-x-auto">
           <table className="ks-table">
             <thead>

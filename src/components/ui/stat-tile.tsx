@@ -1,4 +1,6 @@
+import { ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Glass } from "./glass";
@@ -34,6 +36,7 @@ export function StatTile({
   hero = false,
   trend,
   icon: Icon,
+  href,
   className,
 }: {
   label: string;
@@ -45,10 +48,13 @@ export function StatTile({
   hero?: boolean;
   trend?: number[];
   icon?: LucideIcon;
+  /** Makes the whole tile a link to the page behind the number. */
+  href?: string;
   className?: string;
 }) {
-  return (
-    <Glass className={cn("flex flex-col gap-3 px-5 py-4", className)}>
+  const classes = cn("flex flex-col gap-3 px-5 py-4", href && "glass-link group", className);
+  const body = (
+    <>
       <div className="flex items-center gap-2.5">
         {Icon && (
           <span className="grid size-7 shrink-0 place-items-center rounded-md border border-white/[0.08] bg-white/[0.03]">
@@ -73,7 +79,15 @@ export function StatTile({
       <div className="mt-auto flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1">
         {delta}
         {hint && <span className="text-xs text-ink-3">{hint}</span>}
+        {href && <ArrowRight className="ml-auto size-4 shrink-0 text-ink-3 transition-colors group-hover:text-accent" aria-hidden />}
       </div>
+    </>
+  );
+  return href ? (
+    <Glass as={Link} href={href} className={classes}>
+      {body}
     </Glass>
+  ) : (
+    <Glass className={classes}>{body}</Glass>
   );
 }

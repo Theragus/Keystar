@@ -269,7 +269,11 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
             </Panel>
           )}
 
-          <Panel title={tk.pilotTable.title} subtitle={tk.pilotTable.subtitle(pilotRows.length, corp?.ticker || null)}>
+          <Panel
+            id="pilot-efficiency"
+            title={tk.pilotTable.title}
+            subtitle={tk.pilotTable.subtitle(pilotRows.length, corp?.ticker || null)}
+          >
             <SortableTable
               entityLabel={tk.pilotTable.entity}
               columns={columns.pilots}
@@ -305,7 +309,7 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
             >
               <SystemBars rows={lossSystems} color={LOSS_COLOR} unit="losses" upIsGood={false} />
             </Panel>
-            <Panel title={tk.breakdown.title}>
+            <Panel id="isk" title={tk.breakdown.title}>
               <div className="grid items-center gap-5 sm:grid-cols-[13rem_1fr] xl:grid-cols-1 2xl:grid-cols-[11rem_1fr]">
                 <IskDonut destroyed={totals.iskDestroyed} lost={totals.iskLost} />
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm 2xl:grid-cols-1 2xl:gap-y-2">
