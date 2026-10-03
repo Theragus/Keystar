@@ -18,6 +18,12 @@ export interface ScopeRequirement {
   reason: string;
   /** In-game corporation roles that make this scope useful (any of). */
   corpRoles?: string[];
+  /**
+   * Opt-in per character (e.g. wallet access for the mining P&L): never part of
+   * the member/corporation scope sets, never reported as missing. Requested only
+   * when a user enables it for a character (`/auth/login?with=<scope>`).
+   */
+  optional?: boolean;
 }
 
 export interface NavItem {

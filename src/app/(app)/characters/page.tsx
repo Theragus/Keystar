@@ -1,4 +1,5 @@
 import { inArray } from "drizzle-orm";
+import Link from "next/link";
 import { Building2, Crown, KeyRound, Link2, RefreshCw, Trash2, TriangleAlert } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge, StatusBadge } from "@/components/ui/badge";
@@ -7,7 +8,13 @@ import { CorpLogo, Portrait } from "@/components/ui/eve-image";
 import { Glass, Panel } from "@/components/ui/glass";
 import { requireUser } from "@/core/auth/dal";
 import { characterCorpRoles, esiTokens, eveCorporations, getDb, syncJobs } from "@/core/db";
-import { allScopeRequirements, characterScopes, corporationScopes } from "@/core/modules/registry";
+import {
+  allScopeRequirements,
+  characterScopes,
+  corporationScopes,
+  optionalScopes,
+  reauthorizeHref,
+} from "@/core/modules/registry";
 import { relativeTime } from "@/lib/format";
 import { JOB_LABELS } from "@/modules/jobs";
 import { removeCharacter, setMainCharacter, syncCharacterNow } from "./actions";
@@ -32,6 +39,7 @@ export default async function CharactersPage() {
 
   const memberScopes = characterScopes();
   const corpOnly = corporationScopes().filter((s) => !memberScopes.includes(s));
+  const optional = optionalScopes();
   const reasons = new Map(allScopeRequirements().map((s) => [s.scope, s.reason]));
 
   return (
@@ -100,7 +108,7 @@ export default async function CharactersPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {(!token || token.status === "invalid" || missing.length > 0) && (
-                      <ButtonLink href="/auth/login?intent=link" size="sm" variant="primary">
+                      <ButtonLink href={reauthorizeHref(granted)} size="sm" variant="primary">
                         <KeyRound className="size-3.5" aria-hidden /> Re-authorise
                       </ButtonLink>
                     )}
@@ -142,6 +150,21 @@ export default async function CharactersPage() {
                         <li className="pt-1 text-ink-3">+ {corpGranted.length} corporation scope(s)</li>
                       )}
                     </ul>
+                    {optional.length > 0 && (
+                      <>
+                        <div className="eve-label mt-3 mb-2 text-2xs text-ink-3">Optional</div>
+                        <ul className="space-y-1 text-xs">
+                          {optional.map((s) => (
+                            <li key={s} className="flex items-center justify-between gap-2" title={reasons.get(s)}>
+                              <code className="truncate text-ink-2">{s}</code>
+                              <Link href="/mining/pnl/settings" className="shrink-0">
+                                {granted.includes(s) ? <Badge tone="good">on</Badge> : <Badge>off</Badge>}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                   </div>
                   <div className="rounded-2xl glass-inset px-4 py-3">
                     <div className="eve-label mb-2 text-2xs text-ink-3">Background sync</div>
@@ -195,6 +218,10 @@ export default async function CharactersPage() {
               <li>Refresh tokens are encrypted with AES-256-GCM before they touch the database.</li>
               <li>Only read scopes are requested; Keystar cannot act in game.</li>
               <li>Removing a character deletes its token and revokes it with CCP. Mining history stays with the corp.</li>
+              <li>
+                Wallet access is optional and per character (Mining P&amp;L → Settings). Imported wallet transactions are only
+                ever shown to you, and are deleted when you remove the character.
+              </li>
               <li>You can revoke access any time under Third-Party Applications on the EVE Online website.</li>
             </ul>
           </Panel>
