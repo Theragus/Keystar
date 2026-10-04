@@ -152,6 +152,9 @@ them; its scores, tags and template notes are stored as data and shown in the re
   before bumping it)
 - `ETag` / `If-None-Match` revalidation and `Expires`-based caching in the `esi_cache` table, so jobs can run on a
   timer without spending rate-limit tokens
+  (the entry is written before the job stores the body, so `notModified` and `fromCache` say the body is unchanged,
+  not that it was stored: a job that skips its write on them never repeats a failed write; write idempotently
+  instead)
 - `X-Pages` pagination
 - back-off when the legacy error budget runs low (`X-ESI-Error-Limit-*`) and per rate-limit group on `429`
   (`Retry-After`, `X-Ratelimit-Group`)

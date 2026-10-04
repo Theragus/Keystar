@@ -107,47 +107,48 @@ export const characterIndustryJobsJob: JobDefinition = {
     });
     const now = new Date();
     const rows = jobRows(id, res.data, now);
-    if (!res.notModified) {
-      const stillLinked = await db.transaction(async (tx) => {
-        // Unlinking or transferring the character meanwhile deletes its jobs, and switching access off (then deleting
-        // the stored jobs) must stay deleted; a write after either would bring the rows back. The share locks make
-        // those actions wait for this write, or this write see the unlink, the relink to another account, or the
-        // switched-off token.
-        const [current] = await tx.execute<{ user_id: string }>(
-          sql`SELECT user_id FROM characters WHERE character_id = ${id} FOR SHARE`,
-        );
-        if (current?.user_id !== owner.userId) return false;
-        const [token] = await tx.execute<{ status: string; scopes: string[] }>(
-          sql`SELECT status, scopes FROM esi_tokens WHERE character_id = ${id} FOR SHARE`,
-        );
-        if (token?.status !== "active" || !INDUSTRY_SCOPES.every((s) => token.scopes.includes(s))) return false;
-        for (let i = 0; i < rows.length; i += CHUNK) {
-          await tx
-            .insert(industryJobs)
-            .values(rows.slice(i, i + CHUNK))
-            .onConflictDoUpdate({
-              target: industryJobs.jobId,
-              set: {
-                characterId: sql`excluded.character_id`,
-                status: sql`excluded.status`,
-                endDate: sql`excluded.end_date`,
-                pauseDate: sql`excluded.pause_date`,
-                completedDate: sql`excluded.completed_date`,
-                completedCharacterId: sql`excluded.completed_character_id`,
-                successfulRuns: sql`excluded.successful_runs`,
-                cost: sql`excluded.cost`,
-                updatedAt: sql`excluded.updated_at`,
-              },
-              setWhere: sql`(${industryJobs.status}, ${industryJobs.endDate}, ${industryJobs.pauseDate}, ${industryJobs.completedDate},
-                  ${industryJobs.successfulRuns}, ${industryJobs.cost})
-                IS DISTINCT FROM (excluded.status, excluded.end_date, excluded.pause_date, excluded.completed_date,
-                  excluded.successful_runs, excluded.cost)`,
-            });
-        }
-        return true;
-      });
-      if (!stillLinked) return { summary: "Character changed owner or switched industry access off during the sync" };
-    }
+    // Written on every run, also when ESI answers "not modified": that only says the list is unchanged since the cached
+    // copy, not that it was stored (the write may have failed, or the jobs were deleted on unlink). Unchanged rows are
+    // skipped by the upsert's condition.
+    const stillLinked = await db.transaction(async (tx) => {
+      // Unlinking or transferring the character meanwhile deletes its jobs, and switching access off (then deleting
+      // the stored jobs) must stay deleted; a write after either would bring the rows back. The share locks make
+      // those actions wait for this write, or this write see the unlink, the relink to another account, or the
+      // switched-off token.
+      const [current] = await tx.execute<{ user_id: string }>(
+        sql`SELECT user_id FROM characters WHERE character_id = ${id} FOR SHARE`,
+      );
+      if (current?.user_id !== owner.userId) return false;
+      const [token] = await tx.execute<{ status: string; scopes: string[] }>(
+        sql`SELECT status, scopes FROM esi_tokens WHERE character_id = ${id} FOR SHARE`,
+      );
+      if (token?.status !== "active" || !INDUSTRY_SCOPES.every((s) => token.scopes.includes(s))) return false;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        await tx
+          .insert(industryJobs)
+          .values(rows.slice(i, i + CHUNK))
+          .onConflictDoUpdate({
+            target: industryJobs.jobId,
+            set: {
+              characterId: sql`excluded.character_id`,
+              status: sql`excluded.status`,
+              endDate: sql`excluded.end_date`,
+              pauseDate: sql`excluded.pause_date`,
+              completedDate: sql`excluded.completed_date`,
+              completedCharacterId: sql`excluded.completed_character_id`,
+              successfulRuns: sql`excluded.successful_runs`,
+              cost: sql`excluded.cost`,
+              updatedAt: sql`excluded.updated_at`,
+            },
+            setWhere: sql`(${industryJobs.status}, ${industryJobs.endDate}, ${industryJobs.pauseDate}, ${industryJobs.completedDate},
+                ${industryJobs.successfulRuns}, ${industryJobs.cost})
+              IS DISTINCT FROM (excluded.status, excluded.end_date, excluded.pause_date, excluded.completed_date,
+                excluded.successful_runs, excluded.cost)`,
+          });
+      }
+      return true;
+    });
+    if (!stillLinked) return { summary: "Character changed owner or switched industry access off during the sync" };
     await ensureTypes([...rows.map((r) => r.blueprintTypeId), ...rows.flatMap((r) => (r.productTypeId ? [r.productTypeId] : []))]);
     await ensureNames(rows.flatMap((r) => [r.installerId, ...(r.completedCharacterId ? [r.completedCharacterId] : [])]));
     await ensureIndustryLocations(esi, db, id, rows.map((r) => r.locationId));

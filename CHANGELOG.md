@@ -8,6 +8,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- The corporation roster and industry jobs are stored again after a failed sync, or after a character was
+  unlinked and linked again, instead of waiting until ESI's data changes. Unlinking or transferring a character, and
+  deleting its industry data, also removes the ESI responses Keystar had cached for it, and cached responses
+  without an expiry are cleaned up after a week. ([#139](https://github.com/Theragus/Keystar/issues/139))
 - In English, the killboard's permissions in Users & Roles, its background jobs and its browser tab title now
   say "Combat Report" like the sidebar, instead of "Killboard".
 - Wallet imports read ESI's available history again after deleting wallet data or relinking a character, instead
