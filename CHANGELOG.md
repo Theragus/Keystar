@@ -15,6 +15,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   - Fleet yield is entered in m³/s, as mining lasers show it, instead of m³/h.
 - **Mining P&L**: industrial cores, Mining Foreman Burst modules and drone mining augmentor rigs are auto-tagged as
   "Ships & fittings" expenses, including purchases already imported.
+- **Live fleet**: the fleet structure is drawn as a tree, stepping in from fleet command to wings, squads and
+  pilots, with a pilot count on every wing and squad.
 
 ### Removed
 
