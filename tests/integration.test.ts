@@ -2564,7 +2564,7 @@ describe.skipIf(!enabled)("integration", async () => {
           expiresAt: new Date(Date.now() + 60_000),
         })),
       );
-      await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB, { keepAccount: true }));
+      await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB));
       expect((await db().select().from(schema.esiCache)).map((r) => r.key).sort()).toEqual(["0:GET /status", "21:GET /characters/21/roles"]);
     });
 
