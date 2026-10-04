@@ -11,10 +11,13 @@ export const skills = {
       skills: "Reads trained skills, skill points and attributes for the skills pages (opt-in).",
       queueLabel: "Skill queue access",
       skillsLabel: "Skill access",
+      implants: "Reads the implants of the active clone so the remap optimiser can tell base attributes from implant bonuses (opt-in).",
+      implantsLabel: "Implant access",
     },
     jobs: {
       queue: "Skill queue",
       character: "Skills and attributes",
+      implants: "Implants",
     },
     permissionGroup: "Skills",
     permissions: {
@@ -30,17 +33,20 @@ export const skills = {
     navSection: "Pilots",
     nav: {
       queues: "Skill queues",
+      remap: "Remap optimiser",
     },
   },
 
   metaTitle: {
     overview: "Skill queues",
     settings: "Skills access",
+    remap: "Remap optimiser",
   },
   page: {
     description: "What your characters are training, when each skill finishes and how long the queues last.",
     settings: "Access",
     synced: (when: string) => `Updated ${when}`,
+    remapDescription: "The neural remap that trains each character's current skill queue the fastest.",
   },
   view: {
     label: "Whose queues",
@@ -83,6 +89,7 @@ export const skills = {
     notEnabled: "This character doesn't share its skills with Keystar yet.",
     enable: "Share skills",
     showQueue: (count: number) => `Show the full queue (${plural(count, "skill", "skills")})`,
+    remapLink: "Best remap",
   },
   table: {
     position: "#",
@@ -119,6 +126,52 @@ export const skills = {
     },
     filtered: "No character matches the filter.",
   },
+  remap: {
+    title: "Recommended remap",
+    columns: {
+      attribute: "Attribute",
+      current: "Now",
+      recommended: "Remap to",
+      implants: "Implants",
+    },
+    queueNow: "Queue now",
+    queueAfter: "After the remap",
+    saved: "Time saved",
+    optimal: "The current attributes are already the best remap for this queue.",
+    howTo: "Remap in game: character sheet → Attributes → Neural remap. Implants are not part of a remap and stay as they are.",
+    method:
+      "Calculated over the whole remaining queue with Omega training speed (primary + secondary ÷ 2 SP per minute). Every legal remap is tried: 17–27 per attribute, 99 points in total.",
+    shortQueue: {
+      title: "Queue shorter than 180 days",
+      body: (duration: string) =>
+        `With the recommended attributes the queue only runs for ${duration}. A remap locks your attributes in: the yearly remap comes back only after 365 days and bonus remaps are gone once used. Plan at least 180 days of skills with these attributes before you remap.`,
+    },
+    availability: {
+      now: "Yearly remap available now",
+      yearlyFrom: (when: string) => `Yearly remap from ${when}`,
+      bonus: (count: number) => plural(count, "bonus remap left", "bonus remaps left"),
+      none: (when: string) => `No remap available before ${when}; the advice applies once one is.`,
+    },
+    notes: {
+      empty: "The queue is empty: nothing to optimise.",
+      notShared: "This character doesn't share its skill queue and attributes.",
+      waiting: "Waiting for the queue and attributes to sync …",
+      paused: "Training is paused in game; times are calculated from the SP still to train.",
+      unknownEntries: (count: number) => `${plural(count, "queued skill", "queued skills")} left out: training data not known yet.`,
+      implantsNotShared:
+        "Implants aren't shared, so the attributes are taken as having no implants. With attribute implants plugged in, the advice is off.",
+      implantsWaiting: "Implants are shared but not read yet; assuming none for now.",
+      implantsUncertain:
+        "Attributes minus implants isn't a valid remap (an active booster or stale data?), so implants are left out of the calculation.",
+      notComparable: (total: string) =>
+        `The attributes add up to ${total} instead of 99, so implants (or a booster) add points Keystar doesn't know about. The recommended distribution still holds; share implants to see how much time it saves.`,
+      shareImplants: "Share implants",
+    },
+    empty: {
+      title: "No character to optimise",
+      body: "Share a character's skills on the Skills access page to get remap advice for its queue.",
+    },
+  },
   settings: {
     description: "Choose for each character whether Keystar may read its skill queue, skills and attributes.",
     title: "Skill access per character",
@@ -138,6 +191,11 @@ export const skills = {
     deleteData: "Delete skill data",
     deleteDataHint: "Removes the stored queue, skills and attributes of this character from Keystar.",
     sharingLabel: "Skill sharing",
+    implants: {
+      shared: "Implants shared for the remap optimiser.",
+      hint: "Share implants too, so the remap optimiser knows your base attributes exactly.",
+      enable: "Share implants",
+    },
     toast: {
       deleted: (name: string) => `Stored skills of ${name} deleted`,
       failed: (name: string) => `Couldn't delete the skills of ${name}`,

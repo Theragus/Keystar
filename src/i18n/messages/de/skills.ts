@@ -11,10 +11,14 @@ export const skills: typeof en = {
       skills: "Liest trainierte Skills, Skillpunkte und Attribute für die Skill-Seiten (optional).",
       queueLabel: "Zugriff auf die Skill-Queue",
       skillsLabel: "Zugriff auf Skills",
+      implants:
+        "Liest die Implantate des aktiven Klons, damit der Remap-Optimierer Basisattribute und Implantatboni unterscheiden kann (optional).",
+      implantsLabel: "Zugriff auf Implantate",
     },
     jobs: {
       queue: "Skill-Queue",
       character: "Skills und Attribute",
+      implants: "Implantate",
     },
     permissionGroup: "Skills",
     permissions: {
@@ -30,17 +34,20 @@ export const skills: typeof en = {
     navSection: "Piloten",
     nav: {
       queues: "Skill-Queues",
+      remap: "Remap-Optimierer",
     },
   },
 
   metaTitle: {
     overview: "Skill-Queues",
     settings: "Skill-Zugriff",
+    remap: "Remap-Optimierer",
   },
   page: {
     description: "Was deine Charaktere trainieren, wann jeder Skill fertig ist und wie lange die Queues noch laufen.",
     settings: "Zugriff",
     synced: (when: string) => `Aktualisiert ${when}`,
+    remapDescription: "Der Neural Remap, mit dem jeder Charakter seine aktuelle Skill-Queue am schnellsten abschließt.",
   },
   view: {
     label: "Wessen Queues",
@@ -83,6 +90,7 @@ export const skills: typeof en = {
     notEnabled: "Dieser Charakter teilt seine Skills noch nicht mit Keystar.",
     enable: "Skills teilen",
     showQueue: (count: number) => `Ganze Queue anzeigen (${plural(count, "Skill", "Skills")})`,
+    remapLink: "Bester Remap",
   },
   table: {
     position: "#",
@@ -119,6 +127,53 @@ export const skills: typeof en = {
     },
     filtered: "Kein Charakter passt zum Filter.",
   },
+  remap: {
+    title: "Empfohlener Remap",
+    columns: {
+      attribute: "Attribut",
+      current: "Jetzt",
+      recommended: "Remap auf",
+      implants: "Implantate",
+    },
+    queueNow: "Queue jetzt",
+    queueAfter: "Nach dem Remap",
+    saved: "Zeitersparnis",
+    optimal: "Die aktuellen Attribute sind für diese Queue bereits der beste Remap.",
+    howTo: "Remap im Spiel: Charakterbogen → Attribute → Neural Remap. Implantate sind nicht Teil des Remaps und bleiben, wie sie sind.",
+    method:
+      "Berechnet über die gesamte restliche Queue mit Omega-Trainingsgeschwindigkeit (Primär + Sekundär ÷ 2 SP pro Minute). Jeder gültige Remap wird geprüft: 17–27 pro Attribut, 99 Punkte insgesamt.",
+    shortQueue: {
+      title: "Queue kürzer als 180 Tage",
+      body: (duration: string) =>
+        `Mit den empfohlenen Attributen läuft die Queue nur noch ${duration} lang. Ein Remap legt deine Attribute fest: Der jährliche Remap kommt erst nach 365 Tagen wieder und Bonus-Remaps sind nach Gebrauch weg. Plane mindestens 180 Tage Skills mit diesen Attributen, bevor du remappst.`,
+    },
+    availability: {
+      now: "Jährlicher Remap jetzt verfügbar",
+      yearlyFrom: (when: string) => `Jährlicher Remap ab ${when}`,
+      bonus: (count: number) => `${plural(count, "Bonus-Remap", "Bonus-Remaps")} übrig`,
+      none: (when: string) => `Vor ${when} ist kein Remap verfügbar; die Empfehlung gilt, sobald einer verfügbar ist.`,
+    },
+    notes: {
+      empty: "Die Queue ist leer: nichts zu optimieren.",
+      notShared: "Dieser Charakter gibt Skill-Queue und Attribute nicht frei.",
+      waiting: "Warte auf die Synchronisierung von Queue und Attributen …",
+      paused: "Das Training ist im Spiel pausiert; die Zeiten werden aus den noch fehlenden SP berechnet.",
+      unknownEntries: (count: number) =>
+        `${plural(count, "Skill", "Skills")} in der Queue nicht berücksichtigt: Trainingsdaten noch unbekannt.`,
+      implantsNotShared:
+        "Implantate sind nicht freigegeben, daher werden die Attribute als implantatfrei angenommen. Mit Attributimplantaten liegt die Empfehlung daneben.",
+      implantsWaiting: "Implantate sind freigegeben, aber noch nicht gelesen; vorerst wird ohne gerechnet.",
+      implantsUncertain:
+        "Attribute minus Implantate ergeben keinen gültigen Remap (aktiver Booster oder veraltete Daten?), daher bleiben Implantate außen vor.",
+      notComparable: (total: string) =>
+        `Die Attribute ergeben ${total} statt 99 Punkte, also bringen Implantate (oder ein Booster) Punkte mit, die Keystar nicht kennt. Die empfohlene Verteilung gilt trotzdem; gib die Implantate frei, um die Zeitersparnis zu sehen.`,
+      shareImplants: "Implantate freigeben",
+    },
+    empty: {
+      title: "Kein Charakter zum Optimieren",
+      body: "Gib die Skills eines Charakters auf der Seite Skill-Zugriff frei, um Remap-Empfehlungen für seine Queue zu bekommen.",
+    },
+  },
   settings: {
     description: "Lege für jeden Charakter fest, ob Keystar seine Skill-Queue, Skills und Attribute lesen darf.",
     title: "Skill-Zugriff pro Charakter",
@@ -138,6 +193,11 @@ export const skills: typeof en = {
     deleteData: "Skill-Daten löschen",
     deleteDataHint: "Entfernt die gespeicherte Queue, Skills und Attribute dieses Charakters aus Keystar.",
     sharingLabel: "Skill-Freigabe",
+    implants: {
+      shared: "Implantate für den Remap-Optimierer freigegeben.",
+      hint: "Gib auch die Implantate frei, damit der Remap-Optimierer deine Basisattribute genau kennt.",
+      enable: "Implantate freigeben",
+    },
     toast: {
       deleted: (name: string) => `Gespeicherte Skills von ${name} gelöscht`,
       failed: (name: string) => `Skills von ${name} konnten nicht gelöscht werden`,

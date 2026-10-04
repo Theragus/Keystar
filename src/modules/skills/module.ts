@@ -1,11 +1,17 @@
-import { GraduationCap } from "lucide-react";
+import { Brain, GraduationCap } from "lucide-react";
 import type { KeystarModule } from "@/core/modules/types";
 
 export const SKILLQUEUE_SCOPE = "esi-skills.read_skillqueue.v1";
 export const SKILLS_SCOPE = "esi-skills.read_skills.v1";
 /** Both scopes are turned on and off together from the skills settings page. */
 export const SKILLS_SCOPES = [SKILLQUEUE_SCOPE, SKILLS_SCOPE] as const;
+/**
+ * Implants, for the remap optimiser (ESI attributes include implant bonuses). Shared separately from the skills scopes
+ * so installs whose EVE application lacks it can still share skills.
+ */
+export const IMPLANTS_SCOPE = "esi-clones.read_implants.v1";
 export const SKILLS_MANAGE_HREF = "/skills/settings";
+export const SKILLS_REMAP_HREF = "/skills/remap";
 
 export const SKILLS_PERMISSIONS = {
   viewOwn: "skills.view.own",
@@ -14,8 +20,8 @@ export const SKILLS_PERMISSIONS = {
 
 /**
  * Skills: skill queues, trained skills and attributes of characters whose owner opts in. The scopes are optional per
- * character; members who turn them on share their queue with whoever holds `skills.view.corp`. The attribute and
- * per-skill dogma tables are kept for a later remap optimiser, trained skills for corporation skill plans.
+ * character; members who turn them on share their queue with whoever holds `skills.view.corp`. Attributes, implants
+ * and per-skill dogma feed the remap optimiser; trained skills are kept for corporation skill plans.
  */
 export const skillsModule: KeystarModule = {
   id: "skills",
@@ -39,6 +45,15 @@ export const skillsModule: KeystarModule = {
       managePermission: SKILLS_PERMISSIONS.viewOwn,
       reason: (t) => t.skills.module.scopes.skills,
       label: (t) => t.skills.module.scopes.skillsLabel,
+    },
+    {
+      scope: IMPLANTS_SCOPE,
+      level: "character",
+      optional: true,
+      manageHref: SKILLS_MANAGE_HREF,
+      managePermission: SKILLS_PERMISSIONS.viewOwn,
+      reason: (t) => t.skills.module.scopes.implants,
+      label: (t) => t.skills.module.scopes.implantsLabel,
     },
   ],
   permissions: [
@@ -68,6 +83,12 @@ export const skillsModule: KeystarModule = {
           href: "/skills",
           label: (t) => t.skills.module.nav.queues,
           icon: GraduationCap,
+          anyPermission: [SKILLS_PERMISSIONS.viewOwn, SKILLS_PERMISSIONS.viewCorp],
+        },
+        {
+          href: SKILLS_REMAP_HREF,
+          label: (t) => t.skills.module.nav.remap,
+          icon: Brain,
           anyPermission: [SKILLS_PERMISSIONS.viewOwn, SKILLS_PERMISSIONS.viewCorp],
         },
       ],

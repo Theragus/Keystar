@@ -6,6 +6,28 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Upgrade notes
+
+The remap optimiser can read implants with a new optional character scope.
+
+1. Add `esi-clones.read_implants.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>. Nobody is asked for it unless they click "Share implants", but
+   without it on the application that EVE login fails with `invalid_scope`. Sharing skills keeps working without it.
+2. Update as usual; the database migrations run on start.
+
+### Added
+
+- **Remap optimiser.** A new page under Pilots recommends the neural remap that trains each character's current skill
+  queue the fastest.
+  - Tries every legal remap (17–27 per attribute, 99 points) against the SP still to train and shows the attributes
+    to remap to, the queue time now and after the remap, and the time saved.
+  - Warns when the queue runs less than 180 days with the recommended attributes: the yearly remap only comes back
+    after 365 days and bonus remaps are gone once used.
+  - Shows whether the yearly remap or a bonus remap is available, and when the next one is.
+  - Implants can be shared per character (`esi-clones.read_implants.v1`) so their bonuses are told apart from the
+    base attributes. Without them, attributes are taken as implant-free and the page says so.
+  - Own characters, plus the corporation view for directors; linked from each character on Skill queues.
+
 ## [0.12.0] - 2026-10-04
 
 ### Added

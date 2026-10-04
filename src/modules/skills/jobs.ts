@@ -5,9 +5,17 @@ import { ensureTypes } from "@/core/eve/resolver";
 import { createLogger } from "@/core/logger";
 import type { JobDefinition } from "@/core/sync/types";
 import { mapLimit } from "@/lib/concurrency";
-import { SKILLQUEUE_SCOPE, SKILLS_SCOPE } from "./module";
+import { IMPLANTS_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE } from "./module";
 import { parseSkillDogma } from "./queue";
-import { skillsCharacter, skillsCharacterSkills, skillsQueue, skillsTypeAttributes } from "./schema";
+import { parseImplantDogma, zeroAttributes } from "./remap";
+import {
+  skillsCharacter,
+  skillsCharacterSkills,
+  skillsImplantAttributes,
+  skillsImplants,
+  skillsQueue,
+  skillsTypeAttributes,
+} from "./schema";
 
 const log = createLogger("skills");
 const CHUNK = 1000;
@@ -81,6 +89,28 @@ export async function ensureSkillAttributes(esi: EsiClient, db: Db, skillIds: nu
     }
   });
   if (rows.length) await db.insert(skillsTypeAttributes).values(rows).onConflictDoNothing();
+}
+
+/** Stores the attribute bonuses of implant types not seen before (zeros for implants without one). */
+export async function ensureImplantAttributes(esi: EsiClient, db: Db, typeIds: number[]): Promise<void> {
+  const wanted = [...new Set(typeIds)];
+  if (!wanted.length) return;
+  const known = await db
+    .select({ id: skillsImplantAttributes.typeId })
+    .from(skillsImplantAttributes)
+    .where(inArray(skillsImplantAttributes.typeId, wanted));
+  const knownSet = new Set(known.map((r) => r.id));
+  const missing = wanted.filter((id) => !knownSet.has(id));
+  const rows: (typeof skillsImplantAttributes.$inferInsert)[] = [];
+  await mapLimit(missing, 6, async (typeId) => {
+    try {
+      const res = await esi.get<{ dogma_attributes?: { attribute_id: number; value: number }[] }>(`/universe/types/${typeId}`);
+      rows.push({ typeId, ...(parseImplantDogma(res.data.dogma_attributes) ?? zeroAttributes()) });
+    } catch (err) {
+      log.warn("Could not read implant attributes", { typeId, error: (err as Error).message });
+    }
+  });
+  if (rows.length) await db.insert(skillsImplantAttributes).values(rows).onConflictDoNothing();
 }
 
 export const skillQueueJob: JobDefinition = {
@@ -188,4 +218,31 @@ export const characterSkillsJob: JobDefinition = {
   },
 };
 
-export const skillsJobs: JobDefinition[] = [skillQueueJob, characterSkillsJob];
+export const implantsJob: JobDefinition = {
+  key: "skills.implants",
+  label: (t) => t.skills.module.jobs.implants,
+  module: "skills",
+  owner: "character",
+  requiredScopes: [IMPLANTS_SCOPE],
+  // Implants only change when the pilot plugs one in or jumps clones.
+  intervalSeconds: 3600,
+  async run({ esi, db, characterId }) {
+    const id = characterId!;
+    const res = await esi.get<number[]>(`/characters/${id}/implants`, { characterId: id });
+    const now = new Date();
+    const typeIds = [...new Set(res.data)];
+    await db.transaction(async (tx) => {
+      await tx.delete(skillsImplants).where(eq(skillsImplants.characterId, id));
+      if (typeIds.length) await tx.insert(skillsImplants).values(typeIds.map((typeId) => ({ characterId: id, typeId, updatedAt: now })));
+      await tx
+        .insert(skillsCharacter)
+        .values({ characterId: id, implantsSyncedAt: now })
+        .onConflictDoUpdate({ target: skillsCharacter.characterId, set: { implantsSyncedAt: now } });
+    });
+    await ensureTypes(typeIds);
+    await ensureImplantAttributes(esi, db, typeIds);
+    return { summary: `${typeIds.length} implant${typeIds.length === 1 ? "" : "s"}`, nextRunAt: res.expiresAt };
+  },
+};
+
+export const skillsJobs: JobDefinition[] = [skillQueueJob, characterSkillsJob, implantsJob];
