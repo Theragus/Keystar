@@ -2346,6 +2346,40 @@ describe.skipIf(!enabled)("integration", async () => {
       expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId).sort()).toEqual([1, 2]);
     });
 
+    it("skips a sync's write once access is off, so deleted jobs stay deleted", async () => {
+      const { characterIndustryJobsJob } = await import("@/modules/industry/jobs");
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        maxRetries: 0,
+        fetchImpl: (async (url: string) => {
+          const path = new URL(String(url)).pathname;
+          const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+          if (/\/industry\/jobs$/.test(path)) {
+            return reply([{ job_id: 900, installer_id: 2, facility_id: 60003760, station_id: 60003760, activity_id: 1, blueprint_id: 5,
+              blueprint_type_id: 787, blueprint_location_id: 60003760, output_location_id: 60003760, runs: 2, cost: 10, duration: 3600,
+              status: "active", start_date: new Date().toISOString(), end_date: new Date(Date.now() + 3600_000).toISOString() }]);
+          }
+          if (/\/universe\/stations\//.test(path)) return reply({ name: "Station", system_id: 30000180, type_id: 1529 });
+          if (/\/universe\/types\//.test(path)) return reply({ type_id: 787, name: "Blueprint", group_id: 462, published: true });
+          return reply([]);
+        }) as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 2, characterId: 2, esi, db: db(), log: undefined as never, meta: {} };
+      // With access on, the run stores the job.
+      expect((await characterIndustryJobsJob.run(ctx))?.summary).toContain("1 running job");
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId).sort()).toEqual([1, 2, 900]);
+
+      // Access off and data deleted: a run whose ESI request already happened must not bring it back.
+      await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+      await db().delete(schema.industryJobs).where(sql`character_id = 2`);
+      await db().delete(schema.esiCache);
+      expect((await characterIndustryJobsJob.run(ctx))?.summary).toContain("switched industry access off");
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+    });
+
     it("deletes stored jobs only once access is off", async () => {
       const { deleteIndustryData, setIndustryAccess } = await import("@/app/(app)/industry/actions");
       actor = { id: userB, characterIds: [2, 3] };

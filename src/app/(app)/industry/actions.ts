@@ -77,7 +77,8 @@ export async function deleteIndustryData(characterId: number): Promise<ActionRes
   try {
     await getDb().transaction(async (tx) => {
       await lockOwnedCharacter(tx, characterId, user.id);
-      const [token] = await tx.select({ scopes: esiTokens.scopes }).from(esiTokens).where(eq(esiTokens.characterId, characterId));
+      // The token lock waits for a sync that is writing, which then sees access off and won't write again.
+      const [token] = await tx.select({ scopes: esiTokens.scopes }).from(esiTokens).where(eq(esiTokens.characterId, characterId)).for("update");
       if (INDUSTRY_SCOPES.some((s) => token?.scopes.includes(s))) throw new StillEnabled();
       await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
     });

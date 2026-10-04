@@ -100,13 +100,18 @@ export const characterIndustryJobsJob: JobDefinition = {
     const rows = jobRows(id, res.data, now);
     if (!res.notModified) {
       const stillLinked = await db.transaction(async (tx) => {
-        // Unlinking or transferring the character meanwhile deletes its jobs; a write after that would hand the rows
-        // to the character's next owner. The share lock makes the unlink wait for this write, or this write see the
-        // unlink (or a relink to another account).
+        // Unlinking or transferring the character meanwhile deletes its jobs, and switching access off (then deleting
+        // the stored jobs) must stay deleted; a write after either would bring the rows back. The share locks make
+        // those actions wait for this write, or this write see the unlink, the relink to another account, or the
+        // switched-off token.
         const [current] = await tx.execute<{ user_id: string }>(
           sql`SELECT user_id FROM characters WHERE character_id = ${id} FOR SHARE`,
         );
         if (current?.user_id !== owner.userId) return false;
+        const [token] = await tx.execute<{ status: string; scopes: string[] }>(
+          sql`SELECT status, scopes FROM esi_tokens WHERE character_id = ${id} FOR SHARE`,
+        );
+        if (token?.status !== "active" || !INDUSTRY_SCOPES.every((s) => token.scopes.includes(s))) return false;
         for (let i = 0; i < rows.length; i += CHUNK) {
           await tx
             .insert(industryJobs)
@@ -132,7 +137,7 @@ export const characterIndustryJobsJob: JobDefinition = {
         }
         return true;
       });
-      if (!stillLinked) return { summary: "Character changed owner during the sync" };
+      if (!stillLinked) return { summary: "Character changed owner or switched industry access off during the sync" };
     }
     await ensureTypes([...rows.map((r) => r.blueprintTypeId), ...rows.flatMap((r) => (r.productTypeId ? [r.productTypeId] : []))]);
     await ensureNames(rows.flatMap((r) => [r.installerId, ...(r.completedCharacterId ? [r.completedCharacterId] : [])]));
