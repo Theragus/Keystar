@@ -13,6 +13,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
     grades stay under their ore and follow the same order.
   - The unit price column is replaced by ISK/m³, the value that matters when choosing which rocks to mine.
   - Fleet yield is entered in m³/s, as mining lasers show it, instead of m³/h.
+- **Mining P&L**: industrial cores, Mining Foreman Burst modules and drone mining augmentor rigs are auto-tagged as
+  "Ships & fittings" expenses, including purchases already imported.
 
 ### Removed
 
