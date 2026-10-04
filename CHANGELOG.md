@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- Mail sync no longer removes older stored messages if ESI ignores a paging cursor or returns an empty page while
+  listing a mailbox. ([#137](https://github.com/Theragus/Keystar/issues/137))
 - Right-aligned column headers in tables (the Load and Database tables on System Info, the actions column on
   Users) now line up with their values instead of sitting on the left.
 
