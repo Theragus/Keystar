@@ -7,6 +7,7 @@ import { core } from "./core";
 import { dashboard } from "./dashboard";
 import { eve } from "./eve";
 import { fleet } from "./fleet";
+import { industry } from "./industry";
 import { intel } from "./intel";
 import { killboard } from "./killboard";
 import { mining } from "./mining";
@@ -33,6 +34,7 @@ export const de: Messages = {
   pnl,
   killboard,
   fleet,
+  industry,
   intel,
   trade,
   wallet,

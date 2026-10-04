@@ -230,6 +230,26 @@ describe.skipIf(!enabled)("integration", async () => {
       const { detachTransferredCharacter } = await import("@/core/auth/provision");
       await createSession(userA);
       await createSession(userB);
+      // Industry jobs are the installer's own data: they go with the character, like wallet history and mail.
+      const job = (jobId: number, characterId: number) => ({
+        jobId,
+        characterId,
+        installerId: characterId,
+        locationId: 60003760,
+        facilityId: 60003760,
+        activityId: 1,
+        activity: "manufacturing" as const,
+        blueprintId: 1,
+        blueprintTypeId: 787,
+        blueprintLocationId: 60003760,
+        outputLocationId: 60003760,
+        runs: 1,
+        duration: 3600,
+        status: "active" as const,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 3600_000),
+      });
+      await db().insert(schema.industryJobs).values([job(1, 1), job(2, 3)]);
 
       // Bravo keeps an alt: the account stays active and the alt becomes main.
       const bravo = await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB, { keepAccount: false }));
@@ -246,6 +266,7 @@ describe.skipIf(!enabled)("integration", async () => {
       const remaining = await db().select().from(schema.sessions);
       expect(remaining.map((r) => r.userId)).toEqual([userB]);
       expect((await db().select().from(schema.characters)).map((c) => c.characterId)).toEqual([3]);
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([2]);
     });
 
     it("keeps the account when it links a transferred character back to itself", async () => {

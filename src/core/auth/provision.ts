@@ -13,6 +13,7 @@ import {
   sessions,
   users,
   walletFees,
+  industryJobs,
   walletTransactions,
   type Db,
 } from "@/core/db";
@@ -56,7 +57,8 @@ export async function detachTransferredCharacter(
   opts: { keepAccount: boolean },
 ): Promise<{ retired: boolean }> {
   await tx.delete(characters).where(eq(characters.characterId, characterId));
-  // Wallet history and mail imported for the previous owner are theirs, not the new owner's.
+  // Wallet history, mail and industry jobs imported for the previous owner are theirs, not the new owner's.
+  await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
   await tx
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, previousUserId)));
