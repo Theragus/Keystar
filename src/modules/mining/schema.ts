@@ -165,9 +165,9 @@ export const miningPnlTxOverrides = pgTable(
 );
 
 /**
- * Costs ESI can't see (PLEX/Omega for alts, contracts …). `spread_days` > 1
- * spreads the amount evenly over that many days from `date`, so a year of
- * Omega doesn't land on a single day.
+ * Costs ESI can't see (PLEX/Omega for alts, contracts …) and, with `kind` "income", income it can't see (ore sold by
+ * contract or to a buyback; counted when income comes from sales). `spread_days` > 1 spreads the amount evenly over
+ * that many days from `date`, so a year of Omega doesn't land on a single day.
  */
 export const miningPnlEntries = pgTable(
   "mining_pnl_entries",
@@ -178,6 +178,8 @@ export const miningPnlEntries = pgTable(
     characterId: bigint("character_id", { mode: "number" }),
     date: date("date", { mode: "string" }).notNull(),
     spreadDays: smallint("spread_days").notNull().default(1),
+    kind: text("kind").$type<"expense" | "income">().notNull().default("expense"),
+    /** An expense category, or an income category for income entries. */
     category: text("category").notNull(),
     description: text("description").notNull().default(""),
     amount: doublePrecision("amount").notNull(),

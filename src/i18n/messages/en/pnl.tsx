@@ -107,7 +107,8 @@ export const pnl = {
         `${income} income − ${expenses} expenses${margin ? ` · ${margin} margin` : ""}`,
       income: "Income",
       rate: (percent: string) => `${percent} of valuation`,
-      fromSales: (count: number, mined: string) => `${plural(count, "wallet sale", "wallet sales")} · ${mined} mined`,
+      fromSales: (count: number, manual: string | null, mined: string) =>
+        `${plural(count, "wallet sale", "wallet sales")}${manual ? ` + ${manual} manual` : ""} · ${mined} mined`,
       salesSuggested: (count: number, amount: string) => `${n(count)} sales suggested (${amount})`,
       rules: (count: number) => plural(count, "price rule", "price rules"),
       expenses: "Expenses",
@@ -168,7 +169,7 @@ export const pnl = {
       incomeSales: (mined: string) => (
         <>
           <b className="text-ink">Income</b> is what the wallet sales you counted brought in (ore, minerals, moon
-          materials, ice products and gas), on the day of the sale. The ore mined in this period is worth {mined} at the
+          materials, ice products and gas), on the day of the sale, plus manual income entries. The ore mined in this period is worth {mined} at the
           valuation; ISK per hour still values the mined ore.
         </>
       ),
@@ -218,12 +219,34 @@ export const pnl = {
       includeHint: "Count this sale as mining income",
       excludeHint: "Exclude: not mining income",
       page: (page: number, pages: number, total: number) => `Page ${n(page)} of ${n(pages)} · ${plural(total, "sale", "sales")}`,
+      footer:
+        "Only market sales show up here; add ore sold by contract or to a buyback below. Trades between your own characters don't count.",
+    },
+    add: {
+      title: "Add income",
+      subtitle: "Ore sold by contract or to a buyback, anything ESI can't see",
+      date: "Date",
+      amount: "Amount (ISK)",
+      amountPlaceholder: "e.g. 1.2b or 450,000,000",
+      category: "Category",
+      spread: "Spread over",
+      character: "Character",
+      accountWide: "Account-wide",
+      note: "Note",
+      notePlaceholder: "e.g. buyback contract",
+      submit: "Add income",
+    },
+    manual: {
+      title: "Manual income",
+      subtitle: "Entries overlapping the selected period; they count when income comes from sales",
+      empty: "No manual income in this period.",
+      columns: { date: "Date", category: "Category", character: "Character", note: "Note", amount: "Amount", actions: "Actions" },
+      spreadDays: (days: number) => `+${n(days - 1)}d`,
+      deleteHint: "Delete this income",
       footer: (back: ReactNode) => (
-        <>
-          Only market sales show up here; contracts and buyback programmes aren&apos;t market transactions. Trades between
-          your own characters don&apos;t count. {back}
-        </>
+        <>Spread income counts a share per day, like spread costs. {back}</>
       ),
+      back: "Back to the overview",
     },
   },
 

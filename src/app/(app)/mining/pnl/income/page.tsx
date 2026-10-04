@@ -10,12 +10,13 @@ import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/utils";
 import { INCOME_CATEGORIES, type ExpenseStatus } from "@/modules/mining/pnl/categories";
 import { AutoSubmitSelect, SubmitButton } from "@/modules/mining/pnl/components/form-controls";
+import { ManualEntries } from "@/modules/mining/pnl/components/manual-entries";
 import { PnlFilterBar } from "@/modules/mining/pnl/components/pnl-filter-bar";
 import { PnlTabs } from "@/modules/mining/pnl/components/pnl-tabs";
 import { pnlQueryString, STATUS_FILTERS } from "@/modules/mining/pnl/filters";
 import { pnlPageContext } from "@/modules/mining/pnl/page-context";
-import { getSaleRows, getSales, getWalletStatus } from "@/modules/mining/pnl/queries";
-import { includeAllSuggestedSales, setSaleCategory, setSaleIncluded } from "../actions";
+import { getManualIncomeEntries, getSaleRows, getSales, getWalletStatus } from "@/modules/mining/pnl/queries";
+import { addManualIncome, deleteManualEntry, includeAllSuggestedSales, setSaleCategory, setSaleIncluded } from "../actions";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -39,9 +40,10 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
   const p = t.pnl.expenses.purchases;
   const { filters, scope, user } = ctx;
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
-  const [summary, sales, wallet] = await Promise.all([
+  const [summary, sales, entries, wallet] = await Promise.all([
     getSaleRows(scope),
     getSales(scope, { status: filters.status, limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
+    getManualIncomeEntries(user.id, filters.from, filters.to),
     getWalletStatus(user.id),
   ]);
 
@@ -71,7 +73,7 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
 
         <PnlFilterBar filters={filters} presets={ctx.presets} characters={characters} />
 
-        {ctx.incomeSource === "mined" && walletOn && (
+        {ctx.incomeSource === "mined" && (walletOn || entries.length > 0) && (
           <Glass className="flex items-start gap-2 rounded-2xl px-4 py-3 text-sm text-ink-2">
             <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
             <span>
@@ -244,16 +246,22 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
                     </span>
                   </div>
                 )}
-                <p className="mt-3 text-2xs text-ink-3">
-                  {m.sales.footer(
-                    <Link href={`/mining/pnl?${query}`} className="text-accent hover:underline">
-                      {t.pnl.expenses.manual.back}
-                    </Link>,
-                  )}
-                </p>
+                <p className="mt-3 text-2xs text-ink-3">{m.sales.footer}</p>
               </>
             )}
           </Panel>
+
+          <ManualEntries
+            text={m}
+            addAction={addManualIncome}
+            deleteAction={deleteManualEntry}
+            categories={INCOME_CATEGORIES.map((c) => ({ id: c, label: t.pnl.incomeCategories[c].label }))}
+            defaultCategory="ore"
+            entries={entries}
+            characters={characters}
+            today={ctx.today}
+            backHref={`/mining/pnl?${query}`}
+          />
         </PendingFrame>
       </div>
     </PendingProvider>

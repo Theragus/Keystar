@@ -258,6 +258,7 @@ describe("P&L report", () => {
       income: [income("2026-09-28", 1, "ore", 1000, 10), income("2026-09-28", 2, "ice", 1000, 30)],
       sales: [sale("2026-10-02", 1, "ore", 900), sale("2026-10-02", 2, "moon", 300, "suggested"), sale("2026-10-05", 2, null, 50)],
       expenses: [expense("2026-09-29", 1, 100)],
+      manualIncome: [{ date: "2026-10-03", characterId: null, category: "moon" as const, amount: 200 }],
       activity: {
         total: { hours: 2, value: 1000 },
         byCharacter: new Map([[1, { hours: 2, value: 1000 }]]),
@@ -268,20 +269,24 @@ describe("P&L report", () => {
 
     const mined = buildPnlReport(input);
     expect(mined.incomeSource).toBe("mined");
-    expect(mined.totals).toMatchObject({ income: 2000, minedIncome: 2000, salesIncome: 950 });
+    // Mined basis: sales and manual income are only reported, never added.
+    expect(mined.totals).toMatchObject({ income: 2000, minedIncome: 2000, salesIncome: 950, manualIncome: 200 });
 
     const r = buildPnlReport({ ...input, incomeSource: "sales" });
-    expect(r.totals).toMatchObject({ income: 950, minedIncome: 2000, salesIncome: 950, expenses: 100, net: 850, volume: 40 });
+    expect(r.totals).toMatchObject({ income: 1150, minedIncome: 2000, salesIncome: 950, manualIncome: 200, net: 1050, volume: 40 });
     expect(r.sales.suggested).toEqual({ amount: 300, count: 1 });
     // Sales land on the day of the sale, by income category (untagged-but-counted as "other").
-    expect(r.buckets.map((b) => b.income)).toEqual([0, 900, 50]);
+    expect(r.buckets.map((b) => b.income)).toEqual([0, 1100, 50]);
+    expect(r.buckets[1].incomeByClass.moon).toBe(200);
     expect(r.buckets[1].incomeByClass.ore).toBe(900);
     expect(r.buckets[2].incomeByClass.other).toBe(50);
     expect(r.characters.map((c) => [c.characterId, c.income, c.volume])).toEqual([
       [1, 900, 10],
       [2, 50, 30],
+      [null, 200, 0],
     ]);
     expect(r.activities.map((a) => [a.activity, a.income])).toEqual([
+      ["moon", 200],
       ["ore", 900],
       ["ice", 0],
       ["other", 50],

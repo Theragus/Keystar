@@ -1,0 +1,1 @@
+ALTER TABLE "mining_pnl_entries" ADD COLUMN "kind" text DEFAULT 'expense' NOT NULL;

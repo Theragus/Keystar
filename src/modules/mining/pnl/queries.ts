@@ -337,71 +337,104 @@ export function getSales(
   return walletTransactionsPage(s, "sell", isIncomeCategory, opts);
 }
 
-export interface ManualDailyRow {
+export type ManualKind = "expense" | "income";
+
+interface ManualDaily<C> {
   date: string;
   characterId: number | null;
-  category: ExpenseCategory;
+  category: C;
   amount: number;
 }
 
-/**
- * Manual entries per day, with spread entries divided evenly over their days.
- * Account-wide entries only count while no character filter is applied.
- */
-export async function getManualDaily(s: PnlScope, allCharacterIds: number[]): Promise<ManualDailyRow[]> {
+export type ManualDailyRow = ManualDaily<ExpenseCategory>;
+export type ManualIncomeDailyRow = ManualDaily<IncomeCategory>;
+
+async function manualDaily(s: PnlScope, allCharacterIds: number[], kind: ManualKind): Promise<Record<string, unknown>[]> {
   const chars = s.narrowed ? s.characterIds : allCharacterIds;
   const charCond = chars.length
     ? s.narrowed
       ? sql`AND e.character_id IN (${list(chars)})`
       : sql`AND (e.character_id IS NULL OR e.character_id IN (${list(chars)}))`
     : sql`AND e.character_id IS NULL`;
-  const rows = await getDb().execute<Record<string, unknown>>(sql`
+  return getDb().execute<Record<string, unknown>>(sql`
     SELECT to_char(d::date, 'YYYY-MM-DD') AS date, e.character_id, e.category,
            SUM(e.amount / e.spread_days)::float8 AS amount
     FROM mining_pnl_entries e
     CROSS JOIN LATERAL generate_series(e.date::timestamp, (e.date + (e.spread_days - 1))::timestamp, interval '1 day') AS d
-    WHERE e.user_id = ${s.userId}::uuid AND d::date BETWEEN ${s.from}::date AND ${s.to}::date ${charCond}
+    WHERE e.user_id = ${s.userId}::uuid AND e.kind = ${kind} AND d::date BETWEEN ${s.from}::date AND ${s.to}::date ${charCond}
     GROUP BY 1, 2, 3
     ORDER BY 1`);
-  return rows.map((r) => ({
-    date: String(r.date),
-    characterId: r.character_id === null ? null : num(r.character_id),
-    category: isExpenseCategory(r.category) ? r.category : "other",
-    amount: num(r.amount),
-  }));
 }
 
-export interface ManualEntry {
+const manualDailyRow =
+  <C>(isCategory: (v: unknown) => v is C, fallback: C) =>
+  (r: Record<string, unknown>): ManualDaily<C> => ({
+    date: String(r.date),
+    characterId: r.character_id === null ? null : num(r.character_id),
+    category: isCategory(r.category) ? r.category : fallback,
+    amount: num(r.amount),
+  });
+
+/**
+ * Manual costs per day, with spread entries divided evenly over their days.
+ * Account-wide entries only count while no character filter is applied.
+ */
+export async function getManualDaily(s: PnlScope, allCharacterIds: number[]): Promise<ManualDailyRow[]> {
+  return (await manualDaily(s, allCharacterIds, "expense")).map(manualDailyRow(isExpenseCategory, "other"));
+}
+
+/** Manual income per day, like getManualDaily(). */
+export async function getManualIncomeDaily(s: PnlScope, allCharacterIds: number[]): Promise<ManualIncomeDailyRow[]> {
+  return (await manualDaily(s, allCharacterIds, "income")).map(manualDailyRow(isIncomeCategory, "other"));
+}
+
+interface Manual<C> {
   id: number;
   characterId: number | null;
   characterName: string | null;
   date: string;
   spreadDays: number;
-  category: ExpenseCategory;
+  category: C;
   description: string;
   amount: number;
 }
 
-/** Manual entries of the account overlapping the range, newest first. */
-export async function getManualEntries(userId: string, from: string, to: string): Promise<ManualEntry[]> {
-  const rows = await getDb().execute<Record<string, unknown>>(sql`
+export type ManualEntry = Manual<ExpenseCategory>;
+export type ManualIncomeEntry = Manual<IncomeCategory>;
+
+async function manualEntries(userId: string, from: string, to: string, kind: ManualKind): Promise<Record<string, unknown>[]> {
+  return getDb().execute<Record<string, unknown>>(sql`
     SELECT e.id, e.character_id, ch.name AS character_name, to_char(e.date, 'YYYY-MM-DD') AS date, e.spread_days,
            e.category, e.description, e.amount
     FROM mining_pnl_entries e
     LEFT JOIN characters ch ON ch.character_id = e.character_id
-    WHERE e.user_id = ${userId}::uuid AND e.date <= ${to}::date AND e.date + (e.spread_days - 1) >= ${from}::date
+    WHERE e.user_id = ${userId}::uuid AND e.kind = ${kind}
+      AND e.date <= ${to}::date AND e.date + (e.spread_days - 1) >= ${from}::date
     ORDER BY e.date DESC, e.id DESC
     LIMIT 500`);
-  return rows.map((r) => ({
+}
+
+const manualEntry =
+  <C>(isCategory: (v: unknown) => v is C, fallback: C) =>
+  (r: Record<string, unknown>): Manual<C> => ({
     id: num(r.id),
     characterId: r.character_id === null ? null : num(r.character_id),
     characterName: str(r.character_name),
     date: String(r.date),
     spreadDays: num(r.spread_days),
-    category: isExpenseCategory(r.category) ? r.category : "other",
+    category: isCategory(r.category) ? r.category : fallback,
     description: String(r.description ?? ""),
     amount: num(r.amount),
-  }));
+  });
+
+/** Manual costs of the account overlapping the range, newest first. */
+export async function getManualEntries(userId: string, from: string, to: string): Promise<ManualEntry[]> {
+  return (await manualEntries(userId, from, to, "expense")).map(manualEntry(isExpenseCategory, "other"));
+}
+
+/** Manual income entries of the account overlapping the range, newest first. */
+export async function getManualIncomeEntries(userId: string, from: string, to: string): Promise<ManualIncomeEntry[]> {
+  return (await manualEntries(userId, from, to, "income")).map(manualEntry(isIncomeCategory, "other"));
 }
 
 export interface PriceRule {
