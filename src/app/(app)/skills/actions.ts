@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { audit } from "@/core/audit";
+import { audit, auditInTx } from "@/core/audit";
 import { assertPermission } from "@/core/auth/dal";
 import { disableOptionalScope, enableOptionalScope } from "@/core/auth/scope-switch";
 import { esiTokens, getDb, skillsCharacter, skillsCharacterSkills, skillsQueue } from "@/core/db";
@@ -31,22 +31,22 @@ export async function setSkillsSharing(characterId: number, enabled: boolean): P
       }
       // On: both scopes or neither. Off: a partly shared character only holds one of them.
       if (enabled ? outcomes.some((o) => o !== "ok") : outcomes.every((o) => o !== "ok")) throw new NotHeld();
+      for (const scope of SKILLS_SCOPES) {
+        await auditInTx(tx, {
+          actorUserId: user.id,
+          actorName: user.main?.name,
+          action: enabled ? "esi.scope.enabled" : "esi.scope.disabled",
+          targetType: "character",
+          targetId: characterId,
+          details: { scope },
+        });
+      }
     });
   } catch (err) {
     if (err instanceof NotHeld) return refused("notHeld");
     throw err;
   }
   // The worker's planner (every 30 seconds) starts or stops the skills jobs.
-  for (const scope of SKILLS_SCOPES) {
-    await audit({
-      actorUserId: user.id,
-      actorName: user.main?.name,
-      action: enabled ? "esi.scope.enabled" : "esi.scope.disabled",
-      targetType: "character",
-      targetId: characterId,
-      details: { scope },
-    });
-  }
   revalidatePath("/", "layout");
   return ok;
 }

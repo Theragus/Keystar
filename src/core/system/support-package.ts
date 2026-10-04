@@ -70,6 +70,8 @@ export interface SupportPackage {
   esi: EsiClientStats | null;
   zkill: ZkillClientStats | null;
   audit: Record<string, number> | null;
+  /** Failed audit writes in the web process; the failed action names only, no actors. */
+  auditFailures: { count: number; lastAt: string | null; lastAction: string | null } | null;
 }
 
 function data<T>(s: Section<T>, name: string, errors: Record<string, string>, r: Redactor): T | null {
@@ -156,6 +158,7 @@ export function buildSupportPackage(
     esi: snapshot.esi,
     zkill: snapshot.zkill,
     audit,
+    auditFailures: snapshot.auditFailures,
   };
 }
 
