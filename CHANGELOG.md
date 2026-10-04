@@ -6,6 +6,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-04
+
 ### Added
 
 - **Threat Intel, rebuilt.** Threat Intel has been reworked from the ground up around the evidence that matters
