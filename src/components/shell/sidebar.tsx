@@ -123,29 +123,28 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
         <div className="shrink-0 border-t border-surface-contrast/[0.07] p-3 group-data-[sidebar=collapsed]/shell:px-0">
           <div className="flex items-center gap-2.5 group-data-[sidebar=collapsed]/shell:flex-col group-data-[sidebar=collapsed]/shell:gap-2">
             <RailFlyout
-              className="shrink-0"
+              className="min-w-0 flex-1 group-data-[sidebar=collapsed]/shell:flex-none"
               card={
                 <Link href="/characters" tabIndex={-1} className={cn("block rounded-md px-2.5 py-1.5", pilotLinkHover)} data-flyout-anchor>
                   {pilotInfo}
                 </Link>
               }
             >
+              {/* One link for portrait and name: the collapsed rail keeps a single tab stop. */}
               <Link
                 href="/characters"
                 title={t.shell.nav.characters}
-                aria-label={t.shell.nav.characters}
-                className={cn("block rounded-full", pilotLinkHover)}
-                data-flyout-anchor
+                className={cn(
+                  "-mx-1.5 flex items-center gap-2.5 rounded-md px-1.5 py-1 group-data-[sidebar=collapsed]/shell:mx-0 group-data-[sidebar=collapsed]/shell:rounded-full group-data-[sidebar=collapsed]/shell:p-0",
+                  pilotLinkHover,
+                )}
               >
-                {user.main ? <Portrait id={user.main.characterId} size={32} /> : <div className="size-8 rounded-full bg-space-700" />}
+                <div className="shrink-0" data-flyout-anchor>
+                  {user.main ? <Portrait id={user.main.characterId} size={32} /> : <div className="size-8 rounded-full bg-space-700" />}
+                </div>
+                <div className="min-w-0 flex-1 group-data-[sidebar=collapsed]/shell:sr-only">{pilotInfo}</div>
               </Link>
             </RailFlyout>
-            <Link
-              href="/characters"
-              className={cn("-mx-1.5 min-w-0 flex-1 rounded-md px-1.5 py-1 group-data-[sidebar=collapsed]/shell:sr-only", pilotLinkHover)}
-            >
-              {pilotInfo}
-            </Link>
             <form action="/auth/logout" method="post">
               <button
                 type="submit"
