@@ -15,7 +15,9 @@ group per area.
 When an entry fixes or implements a GitHub issue, end it with the issue number in parentheses, as a link so it is
 clickable both in CHANGELOG.md and in the release notes. Several issues share one pair of parentheses:
 `([#14](https://github.com/Theragus/Keystar/issues/14), [#18](https://github.com/Theragus/Keystar/issues/18))`.
-Entries without an issue carry no reference.
+An entry without an issue links its pull request instead, with a `PR` prefix so the number isn't mistaken for an
+issue: `([PR #133](https://github.com/Theragus/Keystar/pull/133))`. The number only exists once the pull request is
+open, so add the link in a follow-up commit on the same branch.
 
 ```markdown
 ## [Unreleased]
@@ -23,6 +25,8 @@ Entries without an issue carry no reference.
 ### Fixed
 - **Sign-in redirect.** Sign-in could redirect to another site when `returnTo` contained a tab.
   ([#14](https://github.com/Theragus/Keystar/issues/14))
+- **Table headers.** Right-aligned column headers now line up with their values.
+  ([PR #133](https://github.com/Theragus/Keystar/pull/133))
 ```
 
 ## Cutting a release
