@@ -15,7 +15,8 @@ import { PnlFilterBar } from "@/modules/mining/pnl/components/pnl-filter-bar";
 import { PnlTabs } from "@/modules/mining/pnl/components/pnl-tabs";
 import { pnlQueryString, STATUS_FILTERS } from "@/modules/mining/pnl/filters";
 import { pnlPageContext } from "@/modules/mining/pnl/page-context";
-import { getManualIncomeEntries, getSaleRows, getSales, getWalletStatus } from "@/modules/mining/pnl/queries";
+import { summarizeOreFlows } from "@/modules/mining/pnl/ore-flows";
+import { getManualIncomeEntries, getOreFlows, getSaleRows, getSales, getWalletStatus } from "@/modules/mining/pnl/queries";
 import { addManualIncome, deleteManualEntry, includeAllSuggestedSales, setSaleCategory, setSaleIncluded } from "../actions";
 
 export async function generateMetadata() {
@@ -40,12 +41,17 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
   const p = t.pnl.expenses.purchases;
   const { filters, scope, user } = ctx;
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
-  const [summary, sales, entries, wallet] = await Promise.all([
+  const [summary, sales, entries, wallet, oreFlows] = await Promise.all([
     getSaleRows(scope),
     getSales(scope, { status: filters.status, limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
     getManualIncomeEntries(user.id, filters.from, filters.to),
     getWalletStatus(user.id),
+    getOreFlows(scope),
   ]);
+  const flows = summarizeOreFlows(oreFlows);
+  const fl = m.flows;
+  const price = (value: number) => f.unitPrice(value).replace(" ISK", "");
+  const signedUnits = (value: number) => `${value < 0 ? "−" : ""}${f.compact(Math.abs(value))}`;
 
   const byStatus = (status: ExpenseStatus) =>
     summary
@@ -250,6 +256,67 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
               </>
             )}
           </Panel>
+
+          {flows.rows.length > 0 && (
+            <Panel title={fl.title} subtitle={fl.subtitle}>
+              <p className="mb-4 text-sm text-ink-2">
+                {fl.summary(
+                  f.compact(flows.totals.soldIsk),
+                  flows.totals.soldAtValuation > 0 ? f.compact(flows.totals.soldAtValuation) : null,
+                  f.compact(flows.totals.leftValue),
+                  f.volume(flows.totals.leftVolume),
+                )}
+              </p>
+              <div className="overflow-x-auto">
+                <table className="ks-table">
+                  <thead>
+                    <tr>
+                      <th>{fl.columns.ore}</th>
+                      <th className="num">{fl.columns.mined}</th>
+                      <th className="num">{fl.columns.sold}</th>
+                      <th className="num">{fl.columns.left}</th>
+                      <th className="num">{fl.columns.got}</th>
+                      <th className="num">{fl.columns.valuation}</th>
+                      <th className="num">{fl.columns.isk}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {flows.rows.map((r) => (
+                      <tr key={r.typeId}>
+                        <td>
+                          <span className="flex items-center gap-2 whitespace-nowrap">
+                            <TypeIcon id={r.typeId} size={22} />
+                            {r.typeName}
+                          </span>
+                        </td>
+                        <td className="num">{r.mined ? f.compact(r.mined) : "—"}</td>
+                        <td className="num">
+                          <span className="block">{r.sold ? f.compact(r.sold) : "—"}</span>
+                          {r.compressedShare > 0 && (
+                            <span className="block text-2xs text-ink-3">{fl.compressed(f.percent(r.compressedShare, 0))}</span>
+                          )}
+                        </td>
+                        <td className={cn("num", r.left < 0 ? "text-ink-3" : "text-ink-2")}>{r.left ? signedUnits(r.left) : "—"}</td>
+                        <td className="num font-semibold">{r.soldUnitPrice === null ? "—" : price(r.soldUnitPrice)}</td>
+                        <td className="num text-ink-2">
+                          {r.valuationUnitPrice ? (
+                            <>
+                              {price(r.valuationUnitPrice)}
+                              {r.vsValuation !== null && <span className="text-ink-3"> ({f.percent(r.vsValuation, 0)})</span>}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="num">{r.soldIsk ? f.compact(r.soldIsk) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-3 text-2xs text-ink-3">{fl.notes}</p>
+            </Panel>
+          )}
 
           <ManualEntries
             text={m}

@@ -14,6 +14,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   re-categorise, or count them automatically per character). Ore sold by contract or to a buyback can be added as
   manual income, spread over several days like manual costs. Choose the basis under Settings → Income; it stays on
   the mined value until you switch.
+- **Mining P&L**: a "Mined vs sold" table on the Income tab compares, per ore, what you mined with what you sold
+  of it, raw or compressed (compressed ore counts 1:1 in units), with what you got per unit against the valuation
+  and the value of the ore still unsold.
 
 ### Changed
 

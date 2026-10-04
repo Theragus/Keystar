@@ -1039,6 +1039,30 @@ describe.skipIf(!enabled)("integration", async () => {
       expect((await pnl.getPnlSettings(userB)).incomeSource).toBe("sales");
     });
 
+    it("matches mined ore with sales of it and its compressed variant, in raw units", async () => {
+      // Real portion sizes: compression is 1:1 in units (Veldspar 100 → Compressed Veldspar 100).
+      await db().update(schema.eveTypes).set({ portionSize: 100 }).where(sql`type_id = 62516`);
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 21, 1230, { isBuy: false, quantity: 100, unitPrice: 12 }), // raw Veldspar
+        tx(3, 22, 62516, { isBuy: false, quantity: 300, unitPrice: 11 }), // compressed Veldspar
+        tx(3, 23, 62516, { isBuy: false, quantity: 999, unitPrice: 11 }), // excluded by hand
+        tx(2, 24, 62516, { isBuy: false, quantity: 999, unitPrice: 11, clientId: 3 }), // to your own alt
+        tx(2, 25, 62516, { quantity: 999 }), // a purchase
+        tx(2, 26, 34, { isBuy: false, quantity: 5000, unitPrice: 4 }), // minerals aren't ore
+      ]);
+      await db().insert(schema.miningPnlTxOverrides).values({ userId: userB, characterId: 3, transactionId: 23, included: false });
+      // Veldspar is the only asteroid ore in the fixture ledgers.
+      const minedVeldspar = (await pnl.getIncomeRows(scopeB())).filter((r) => r.oreClass === "ore").reduce((sum, r) => sum + r.quantity, 0);
+
+      const flows = await pnl.getOreFlows(scopeB());
+      const veldspar = flows.find((f) => f.typeId === 1230)!;
+      expect(veldspar).toMatchObject({ mined: minedVeldspar, sold: 400, soldCompressed: 300, soldIsk: 1200 + 3300, sales: 2 });
+      expect(flows.some((f) => f.typeId === 62516 || f.typeId === 34)).toBe(false);
+      // Narrowed to Bravo: only Bravo's own sale.
+      const bravo = (await pnl.getOreFlows(scopeB({ characters: [2] }))).find((f) => f.typeId === 1230);
+      expect(bravo).toMatchObject({ sold: 100, soldCompressed: 0, soldIsk: 1200 });
+    });
+
     it("spreads manual entries over their days; account-wide ones only without a character filter", async () => {
       await db().insert(schema.miningPnlEntries).values([
         { userId: userB, characterId: 3, date: "2026-08-17", spreadDays: 30, category: "subscription", amount: 3000 },
