@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- **Delete appraisals.** A small trash button next to each of your recent appraisals, and on the appraisal itself,
+  deletes it after a confirmation; its share link stops working. Only the person who created an appraisal can delete it.
 - **System Info for admins.** A new last page under Administration shows the technical state of the instance:
   - **Health checks** for the database, migrations and schema, the worker and its version, failing or stuck jobs,
     paused syncing, EVE SSO, `APP_URL`, clock skew and ESI rate limits.
