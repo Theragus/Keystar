@@ -22,6 +22,7 @@ import {
   getIncomeRows,
   getManualDaily,
   getPriceRules,
+  getSaleRows,
   getWalletStatus,
 } from "@/modules/mining/pnl/queries";
 import { buildPnlReport } from "@/modules/mining/pnl/report";
@@ -47,19 +48,21 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
   const { filters, scope, user } = ctx;
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
 
-  const [income, expenses, manual, activity, rules, wallet] = await Promise.all([
+  const fromSales = ctx.incomeSource === "sales";
+  const [income, sales, expenses, manual, activity, rules, wallet] = await Promise.all([
     getIncomeRows(scope),
+    fromSales ? getSaleRows(scope) : [],
     getExpenseRows(scope),
     getManualDaily(scope, user.characterIds),
     getActivityStats(scope),
     getPriceRules(user.id),
     getWalletStatus(user.id),
   ]);
-  const report = buildPnlReport({ ...filters, income, expenses, manual, activity, characters });
+  const report = buildPnlReport({ ...filters, incomeSource: ctx.incomeSource, income, sales, expenses, manual, activity, characters });
   const { totals } = report;
   const query = pnlQueryString(filters, { bucket: "day", page: 1 });
   const walletOn = wallet.filter((w) => w.granted).length;
-  const hasData = income.length > 0 || expenses.length > 0 || manual.length > 0;
+  const hasData = income.length > 0 || sales.length > 0 || expenses.length > 0 || manual.length > 0;
   const ratePct = scope.ratePct;
   const rate = ratePct !== 100 ? f.percent(ratePct / 100, Number.isInteger(ratePct) ? 0 : 1) : null;
   const hours = (h: number) => t.pnl.hours(hoursValue(f, h));
@@ -112,7 +115,20 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                 label={m.tiles.income}
                 value={f.compact(totals.income)}
                 unit="ISK"
-                hint={incomeHint || ctx.valuationLabel}
+                hint={
+                  !fromSales ? (
+                    incomeHint || ctx.valuationLabel
+                  ) : report.sales.suggested.count > 0 ? (
+                    <Link
+                      href={`/mining/pnl/income?${pnlQueryString(filters, { status: "suggested", bucket: "day", page: 1 })}`}
+                      className="text-accent hover:underline"
+                    >
+                      {m.tiles.salesSuggested(report.sales.suggested.count, f.compact(report.sales.suggested.amount))}
+                    </Link>
+                  ) : (
+                    m.tiles.fromSales(report.sales.counted.count, f.compact(totals.minedIncome))
+                  )
+                }
               />
               <StatTile
                 className="xl:col-span-2"
@@ -293,11 +309,13 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                 <li className="flex items-start gap-1.5">
                   <Info className="mt-0.5 size-3.5 shrink-0 text-ink-3" aria-hidden />
                   <span>
-                    {m.how.income(
-                      ctx.valuationLabel,
-                      rate,
-                      totals.baseIncome !== totals.income ? f.compact(totals.baseIncome) : null,
-                    )}
+                    {fromSales
+                      ? m.how.incomeSales(f.compact(totals.minedIncome))
+                      : m.how.income(
+                          ctx.valuationLabel,
+                          rate,
+                          totals.baseIncome !== totals.income ? f.compact(totals.baseIncome) : null,
+                        )}
                   </span>
                 </li>
                 <li className="flex items-start gap-1.5">

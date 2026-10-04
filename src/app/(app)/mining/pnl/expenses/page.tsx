@@ -155,7 +155,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                               <span className="flex items-center gap-2">
                                 <TypeIcon id={p.typeId} size={24} />
                                 <span className="min-w-0">
-                                  <span className="block max-w-[18rem] truncate text-ink">{p.typeName ?? `Type ${p.typeId}`}</span>
+                                  <span className="block max-w-[18rem] truncate text-ink">{p.typeName ?? t.pnl.typeFallback(p.typeId)}</span>
                                   <span className="block max-w-[18rem] truncate text-2xs text-ink-3">
                                     {[p.groupName, p.characterName].filter(Boolean).join(" · ")}
                                   </span>

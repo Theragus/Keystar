@@ -17,7 +17,7 @@ import { WALLET_SCOPE } from "@/modules/wallet/module";
 
 /**
  * Demo data for the mining P&L of one account: wallet import on for two of
- * its characters (automatic counting on for one, off for the other), a month
+ * its characters (automatic counting of purchases and sales on for one, off for the other), a month
  * of purchases and ore sales, manual costs, a price rule and two weeks of
  * measured mining activity.
  */
@@ -93,8 +93,8 @@ export async function seedMiningPnl(
       .where(sql`${esiTokens.characterId} = ${c.characterId}`);
   }
   await db.insert(miningPnlCharacters).values([
-    { userId, characterId: moon.characterId, autoIncludeExpenses: true },
-    { userId, characterId: ice.characterId, autoIncludeExpenses: false },
+    { userId, characterId: moon.characterId, autoIncludeExpenses: true, autoIncludeSales: true },
+    { userId, characterId: ice.characterId, autoIncludeExpenses: false, autoIncludeSales: false },
   ]);
 
   // --- Wallet purchases and sales over the last 30 days ---------------------

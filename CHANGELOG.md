@@ -38,6 +38,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   message on the login page instead of waiting as guests, and each refused attempt is in the audit log. Existing
   accounts and linked alts are unaffected; guests who registered from outside before can be disabled in one go on
   the Users page.
+- **Mining P&L**: income can come from what you actually sold instead of the value of the ore you mined. A new
+  Income tab lists your wallet sales; sales of ore, moon ore, ice and gas (raw or compressed), minerals, moon
+  materials and ice products are suggested as mining income and reviewed like purchases (include, exclude,
+  re-categorise, or count them automatically per character). Choose the basis under Settings → Income; it stays
+  on the mined value until you switch.
 
 ### Changed
 

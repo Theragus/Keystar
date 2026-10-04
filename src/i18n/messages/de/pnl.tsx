@@ -9,12 +9,14 @@ export const pnl: typeof en = {
   title: "Mining-GuV",
   metaTitle: {
     overview: "Mining-GuV",
+    income: "Mining-GuV · Einnahmen",
     expenses: "Mining-GuV · Ausgaben",
     settings: "Mining-GuV · Einstellungen",
   },
   tabs: {
     label: "Mining-GuV",
     overview: "Übersicht",
+    income: "Einnahmen",
     expenses: "Ausgaben",
     settings: "Einstellungen",
   },
@@ -37,6 +39,13 @@ export const pnl: typeof en = {
     subscription: { label: "PLEX / Omega", hint: "Spielzeit für Mining-Alts" },
     other: { label: "Sonstiges", hint: "Alles andere, was du als Mining-Kosten zählst" },
   },
+  incomeCategories: {
+    ore: { label: "Erz & Mineralien", hint: "Asteroiden-Erz, roh oder komprimiert, und Mineralien" },
+    moon: { label: "Mond-Erz & -Materialien", hint: "Mond-Erz, roh oder komprimiert, und Mondmaterialien" },
+    ice: { label: "Eis & Eisprodukte", hint: "Eis, roh oder komprimiert, und Eisprodukte" },
+    gas: { label: "Gas", hint: "Gaswolken, roh oder komprimiert" },
+    other: { label: "Sonstiges", hint: "Alles andere, was du als Mining-Einnahmen zählst" },
+  },
   statuses: {
     counted: { label: "Gezählt", hint: "In deinen Ausgaben enthalten" },
     suggested: { label: "Vorgeschlagen", hint: "Als Mining-Kosten erkannt, wartet darauf, dass du sie übernimmst" },
@@ -50,9 +59,23 @@ export const pnl: typeof en = {
     excluded: "Ausgeschlossen",
     untagged: "Andere Käufe",
   },
+  saleStatuses: {
+    counted: { label: "Gezählt", hint: "In deinen Einnahmen enthalten" },
+    suggested: { label: "Vorgeschlagen", hint: "Als Mining-Einnahmen erkannt, wartet darauf, dass du sie übernimmst" },
+    excluded: { label: "Ausgeschlossen", hint: "Von dir ausgeschlossen" },
+    untagged: { label: "Andere Verkäufe", hint: "Nicht als Mining-Einnahmen erkannt; ordne eine Kategorie zu, um sie zu zählen" },
+  },
+  saleStatusFilters: {
+    mining: "Mining-Verkäufe",
+    suggested: "Vorgeschlagen",
+    counted: "Gezählt",
+    excluded: "Ausgeschlossen",
+    untagged: "Andere Verkäufe",
+  },
   spread: (days: number) => (days === 1 ? "Ein Tag" : `${n(days)} Tage`),
   hours: (value: string) => `${value} h`,
   accountWide: "Kontoweite Einträge",
+  typeFallback: (id: number) => `Typ ${id}`,
   characterFallback: (id: number) => `Charakter ${id}`,
   switch: { on: "An", off: "Aus" },
 
@@ -81,6 +104,8 @@ export const pnl: typeof en = {
         `${income} Einnahmen − ${expenses} Ausgaben${margin ? ` · ${margin} Marge` : ""}`,
       income: "Einnahmen",
       rate: (percent: string) => `${percent} der Bewertung`,
+      fromSales: (count: number, mined: string) => `${plural(count, "Wallet-Verkauf", "Wallet-Verkäufe")} · ${mined} abgebaut`,
+      salesSuggested: (count: number, amount: string) => `${n(count)} Verkäufe vorgeschlagen (${amount})`,
       rules: (count: number) => plural(count, "Preisregel", "Preisregeln"),
       expenses: "Ausgaben",
       suggested: (count: number, amount: string) => `${n(count)} vorgeschlagen (${amount})`,
@@ -142,6 +167,13 @@ export const pnl: typeof en = {
           {base ? ` Zum reinen Dashboard-Wert wären es ${base}${base.endsWith(".") ? "" : "."}` : ""}
         </>
       ),
+      incomeSales: (mined: string) => (
+        <>
+          <b className="text-ink">Einnahmen</b> sind der Erlös der Wallet-Verkäufe, die du zählst (Erz, Mineralien,
+          Mondmaterialien, Eisprodukte und Gas), am Tag des Verkaufs. Das in diesem Zeitraum abgebaute Erz ist zur
+          Bewertung {mined} wert; ISK pro Stunde bewertet weiterhin das abgebaute Erz.
+        </>
+      ),
       expenses: () => (
         <>
           <b className="text-ink">Ausgaben</b> sind Wallet-Käufe, die du gezählt hast (oder die bei Charakteren mit
@@ -155,7 +187,7 @@ export const pnl: typeof en = {
           15-Minuten-Syncs gewachsen sind (Genauigkeit ±15 Min. pro Session). Gleichzeitig minende Charaktere zählen
           einmal ({wallClock} Echtzeit, {characterHours} Charakterstunden).{" "}
           {since
-            ? `Gemessen seit ${since}; deckt ${share} der Einnahmen dieses Zeitraums ab.`
+            ? `Gemessen seit ${since}; deckt ${share} des in diesem Zeitraum abgebauten Erzes ab (nach Wert).`
             : "Die Messung beginnt mit dem nächsten Ledger-Sync; für früheres Mining gibt es keine Aktivitätsdaten."}
         </>
       ),
@@ -165,6 +197,35 @@ export const pnl: typeof en = {
           {unpriced > 0
             ? ` ${plural(unpriced, "Ledger-Zeile hat", "Ledger-Zeilen haben")} noch keinen Preis und zählen mit 0 ISK.`
             : ""}
+        </>
+      ),
+    },
+  },
+
+  income: {
+    description: "Entscheide, welche Wallet-Verkäufe Mining-Einnahmen waren: Erz, Mineralien, Mondmaterialien, Eisprodukte und Gas.",
+    minedNotice: (settings: ReactNode) => (
+      <>Einnahmen sind derzeit der Wert des Erzes, das du abbaust, daher zählen diese Verkäufe noch nicht. {settings}, um stattdessen sie zu zählen.</>
+    ),
+    switchToSales: "Auf Wallet-Verkäufe umstellen",
+    sales: {
+      title: "Wallet-Verkäufe",
+      subtitle: "Automatisch nach Item-Gruppe erkannt: Erz (roh oder komprimiert), Mineralien, Mondmaterialien, Eisprodukte und Gas",
+      includeAll: (count: number) => `Alle ${n(count)} Vorschläge übernehmen`,
+      includeAllHint: "Jeden vorgeschlagenen Verkauf in diesem Zeitraum zählen",
+      walletOff:
+        "Der Wallet-Import ist für alle deine Charaktere aus. Schalte ihn pro Charakter ein, damit Erz- und Mineralienverkäufe hier vorgeschlagen werden; nichts zählt, bis du es übernimmst (oder für den Charakter das automatische Zählen einschaltest).",
+      enableWallet: "Wallet-Import einschalten",
+      statusNav: "Verkaufsstatus",
+      empty: "Keine Verkäufe in diesem Zeitraum.",
+      notMiningIncome: "Keine Mining-Einnahme",
+      includeHint: "Diesen Verkauf als Mining-Einnahme zählen",
+      excludeHint: "Ausschließen: keine Mining-Einnahme",
+      page: (page: number, pages: number, total: number) =>
+        `Seite ${n(page)} von ${n(pages)} · ${plural(total, "Verkauf", "Verkäufe")}`,
+      footer: (back: ReactNode) => (
+        <>
+          Marktverkäufe aus deinen importierten Wallets. Handel zwischen deinen eigenen Charakteren zählt nicht. {back}
         </>
       ),
     },
@@ -236,7 +297,7 @@ export const pnl: typeof en = {
   },
 
   settings: {
-    description: "Wallet-Import pro Charakter, wie Erz-Einnahmen bewertet werden und was du tatsächlich beim Verkauf bekommst.",
+    description: "Wallet-Import pro Charakter, wie Einnahmen gezählt werden und was du tatsächlich beim Verkauf bekommst.",
     wallet: {
       title: "Wallet-Import",
       subtitle:
@@ -254,6 +315,7 @@ export const pnl: typeof en = {
       activityNext: "Die Mining-Aktivität wird ab dem nächsten Ledger-Sync gemessen",
       activityNone: "Kein Zugriff aufs Mining-Ledger: Aktivität kann nicht gemessen werden",
       autoCount: "Erkannte Käufe automatisch zählen",
+      autoCountSales: "Erkannte Verkäufe automatisch zählen",
       enable: "Wallet-Import einschalten",
       stop: "Wallet-Import beenden",
       demo: "Im Demo-Modus nicht verfügbar",
@@ -278,11 +340,25 @@ export const pnl: typeof en = {
         ),
         autoCount:
           "„Erkannte Käufe automatisch zählen“ ist standardmäßig aus: Als Mining-Kosten erkannte Käufe werden nur vorgeschlagen, bis du sie übernimmst. Schalte es für Charaktere ein, die ausschließlich fürs Mining einkaufen; einzelne Käufe kannst du trotzdem ausschließen.",
+        autoCountSales:
+          "„Erkannte Verkäufe automatisch zählen“ funktioniert genauso für Verkäufe von Erz, Mineralien, Mondmaterialien, Eisprodukten und Gas. Es spielt nur eine Rolle, wenn Einnahmen aus Wallet-Verkäufen kommen.",
         stop: "Beenden schaltet den Wallet-Import in Keystar sofort ab; autorisiere den Charakter unter „Meine Charaktere“ neu, um den Scope auch aus seinem EVE-Token zu entfernen. Der importierte Verlauf bleibt, bis du ihn löschst.",
       },
     },
     income: {
-      title: "Bewertung der Einnahmen",
+      title: "Einnahmen",
+      source: {
+        label: "Einnahmen zählen aus",
+        options: {
+          mined: "Wert des abgebauten Erzes",
+          sales: "Deinen Wallet-Verkäufen",
+        },
+        hints: {
+          mined: "Beim Abbau, zur Bewertung unten. Funktioniert ohne Wallet-Import.",
+          sales: "Beim Verkauf, zum erzielten Preis. Prüfe die Verkäufe im Tab „Einnahmen“.",
+        },
+      },
+      valuation: "Bewertung des abgebauten Erzes",
       base: (valuation: string) => `Basis: ${valuation}`,
       share: "Anteil der Bewertung, den du tatsächlich bekommst",
       hint: "Z. B. 90, wenn du an einen Buyback zu 90 % von Jita Buy verkaufst. Erze mit einer Preisregel verwenden stattdessen diesen Preis.",

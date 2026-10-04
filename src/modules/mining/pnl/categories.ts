@@ -1,6 +1,9 @@
+import { ASTEROID_CATEGORY_ID, GAS_GROUP_IDS, ICE_GROUP_IDS } from "@/core/eve/ore";
+import type { ChartClass } from "../class-colors";
+
 /**
  * Mining expense categories and the auto-tagging of wallet purchases by item
- * type/group. Isomorphic; labels are in the dictionaries (`t.pnl.categories`). Group and type ids from ESI /universe/groups and
+ * type/group, plus the income categories of wallet sales. Isomorphic; labels are in the dictionaries (`t.pnl.categories`). Group and type ids from ESI /universe/groups and
  * /universe/types (checked against Tranquility).
  */
 export const EXPENSE_CATEGORIES = ["crystals", "fuel", "bursts", "drones", "ships", "subscription", "other"] as const;
@@ -73,19 +76,64 @@ export function purchaseCategorySqlCase(typeCol: string, groupCol: string): stri
   return `CASE ${[...types, ...groups].join(" ")} ELSE NULL END`;
 }
 
+/**
+ * Income categories of wallet sales: the activity the sold item comes from, so sales line up with the mining
+ * activities (and their chart colours).
+ */
+export const INCOME_CATEGORIES = ["ore", "moon", "ice", "gas", "other"] as const satisfies readonly ChartClass[];
+
+export type IncomeCategory = (typeof INCOME_CATEGORIES)[number];
+
+const MINERAL_GROUP_ID = 18;
+const MOON_MATERIALS_GROUP_ID = 427;
+const ICE_PRODUCT_GROUP_ID = 423;
+const COMPRESSED_GAS_GROUP_ID = 4168;
+const MOON_ORE_GROUP_IDS = [1884, 1920, 1921, 1922, 1923];
+
+/**
+ * Sale groups checked before the Asteroid category: moon ore, ice and gas (raw or compressed; compressed ore and ice
+ * share the raw groups) and what they refine into. Minerals count as ore, the bulk of them comes from asteroid ore.
+ */
+const SALE_GROUPS: Record<number, IncomeCategory> = {
+  ...Object.fromEntries(MOON_ORE_GROUP_IDS.map((g) => [g, "moon"])),
+  ...Object.fromEntries(ICE_GROUP_IDS.map((g) => [g, "ice"])),
+  ...Object.fromEntries(GAS_GROUP_IDS.map((g) => [g, "gas"])),
+  [COMPRESSED_GAS_GROUP_ID]: "gas",
+  [MINERAL_GROUP_ID]: "ore",
+  [MOON_MATERIALS_GROUP_ID]: "moon",
+  [ICE_PRODUCT_GROUP_ID]: "ice",
+};
+
+export function isIncomeCategory(value: unknown): value is IncomeCategory {
+  return typeof value === "string" && (INCOME_CATEGORIES as readonly string[]).includes(value);
+}
+
+/** Category a sale is auto-tagged with (ore, minerals, moon materials, ice products, gas), or null. */
+export function classifySale(groupId: number | null | undefined, categoryId: number | null | undefined): IncomeCategory | null {
+  if (groupId != null && SALE_GROUPS[groupId]) return SALE_GROUPS[groupId];
+  return categoryId === ASTEROID_CATEGORY_ID ? "ore" : null;
+}
+
+/** SQL CASE equivalent of classifySale (NULL when untagged). */
+export function saleCategorySqlCase(groupCol: string, categoryCol: string): string {
+  const groups = Object.entries(SALE_GROUPS).map(([id, c]) => `WHEN ${groupCol} = ${id} THEN '${c}'`);
+  return `CASE ${groups.join(" ")} WHEN ${categoryCol} = ${ASTEROID_CATEGORY_ID} THEN 'ore' ELSE NULL END`;
+}
+
+/** Review state of a wallet transaction; purchases and sales share it. */
 export type ExpenseStatus = "counted" | "suggested" | "excluded" | "untagged";
 
 /**
- * Effective state of a wallet purchase. Mirrors the SQL in pnl/queries.ts:
+ * Effective state of a wallet purchase or sale. Mirrors the SQL in pnl/queries.ts:
  * your category wins over the auto-tag; your include/exclude wins over the
- * character's "count automatically" switch, which only covers tagged purchases.
+ * character's "count automatically" switch, which only covers tagged transactions.
  */
-export function expenseStatus(input: {
-  autoCategory: ExpenseCategory | null;
-  overrideCategory: ExpenseCategory | null;
+export function expenseStatus<C extends string>(input: {
+  autoCategory: C | null;
+  overrideCategory: C | null;
   overrideIncluded: boolean | null;
   autoInclude: boolean;
-}): { category: ExpenseCategory | null; included: boolean; status: ExpenseStatus } {
+}): { category: C | null; included: boolean; status: ExpenseStatus } {
   const category = input.overrideCategory ?? input.autoCategory;
   const included = input.overrideIncluded ?? (input.autoCategory !== null && input.autoInclude);
   const status: ExpenseStatus = included

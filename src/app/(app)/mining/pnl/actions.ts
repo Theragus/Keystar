@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { assertPermission, type CurrentUser } from "@/core/auth/dal";
 import {
   esiTokens,
+  eveGroups,
   eveTypes,
   getDb,
   miningPnlCharacters,
@@ -19,10 +20,10 @@ import { isValidIsoDate } from "@/lib/dates";
 import { parseLocaleNumber } from "@/modules/mining/estimator/parse";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { miningValuation } from "@/modules/mining/page-context";
-import { classifyPurchase, isExpenseCategory } from "@/modules/mining/pnl/categories";
+import { classifyPurchase, classifySale, isExpenseCategory, isIncomeCategory } from "@/modules/mining/pnl/categories";
 import { parsePnlFilters } from "@/modules/mining/pnl/filters";
-import { getPurchases } from "@/modules/mining/pnl/queries";
-import { pnlScope } from "@/modules/mining/pnl/scope";
+import { getPurchases, getSales, type WalletSide } from "@/modules/mining/pnl/queries";
+import { isIncomeSource, pnlScope } from "@/modules/mining/pnl/scope";
 import { SPREAD_DAYS } from "@/modules/mining/pnl/spread";
 import { ok, refused, type ActionResult } from "@/lib/action-result";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
@@ -82,6 +83,18 @@ export async function setIncomeRate(formData: FormData) {
   revalidate();
 }
 
+/** Income basis: the mined ore at the valuation, or the counted wallet sales. */
+export async function setIncomeSource(formData: FormData) {
+  const user = await pnlUser();
+  const source = String(formData.get("source") ?? "");
+  if (!isIncomeSource(source)) throw new Error("Pick how income is counted");
+  await getDb()
+    .insert(miningPnlSettings)
+    .values({ userId: user.id, incomeSource: source })
+    .onConflictDoUpdate({ target: miningPnlSettings.userId, set: { incomeSource: source, updatedAt: new Date() } });
+  revalidate();
+}
+
 async function knownType(typeId: number) {
   const [type] = await getDb().select({ id: eveTypes.typeId }).from(eveTypes).where(eq(eveTypes.typeId, typeId));
   if (!type) throw new Error("Unknown item type");
@@ -127,28 +140,43 @@ export async function deletePriceRule(ruleId: number) {
   revalidate();
 }
 
-/** The per-character "count tagged purchases automatically" switch (off by default). */
-export async function setAutoInclude(characterId: number, on: boolean) {
+async function setCharacterSwitch(characterId: number, set: { autoIncludeExpenses: boolean } | { autoIncludeSales: boolean }) {
   const user = await pnlUser();
   const id = ownCharacter(user, characterId);
   await getDb()
     .insert(miningPnlCharacters)
-    .values({ userId: user.id, characterId: id, autoIncludeExpenses: on === true })
+    .values({ userId: user.id, characterId: id, ...set })
     .onConflictDoUpdate({
       target: [miningPnlCharacters.userId, miningPnlCharacters.characterId],
-      set: { autoIncludeExpenses: on === true, updatedAt: new Date() },
+      set: { ...set, updatedAt: new Date() },
     });
   revalidate();
 }
 
-/** A wallet purchase of the account's own character, with its auto-tag. */
-async function ownPurchase(user: CurrentUser, characterId: number, transactionId: number) {
+/** The per-character "count tagged purchases automatically" switch (off by default). */
+export async function setAutoInclude(characterId: number, on: boolean) {
+  await setCharacterSwitch(characterId, { autoIncludeExpenses: on === true });
+}
+
+/** The per-character "count tagged sales automatically" switch (off by default). */
+export async function setAutoIncludeSales(characterId: number, on: boolean) {
+  await setCharacterSwitch(characterId, { autoIncludeSales: on === true });
+}
+
+/** A wallet purchase or sale of the account's own character, with its auto-tag. */
+async function ownTransaction(user: CurrentUser, characterId: number, transactionId: number, side: WalletSide) {
   const charId = ownCharacter(user, characterId);
   const txId = positiveId(transactionId, "transaction");
   const [row] = await getDb()
-    .select({ typeId: walletTransactions.typeId, groupId: eveTypes.groupId, isBuy: walletTransactions.isBuy })
+    .select({
+      typeId: walletTransactions.typeId,
+      groupId: eveTypes.groupId,
+      categoryId: eveGroups.categoryId,
+      isBuy: walletTransactions.isBuy,
+    })
     .from(walletTransactions)
     .leftJoin(eveTypes, eq(eveTypes.typeId, walletTransactions.typeId))
+    .leftJoin(eveGroups, eq(eveGroups.groupId, eveTypes.groupId))
     .where(
       and(
         eq(walletTransactions.characterId, charId),
@@ -156,7 +184,7 @@ async function ownPurchase(user: CurrentUser, characterId: number, transactionId
         eq(walletTransactions.userId, user.id),
       ),
     );
-  if (!row || !row.isBuy) throw new Error("Purchase not found");
+  if (!row || row.isBuy !== (side === "buy")) throw new Error(side === "buy" ? "Purchase not found" : "Sale not found");
   const [override] = await getDb()
     .select({ category: miningPnlTxOverrides.category })
     .from(miningPnlTxOverrides)
@@ -167,7 +195,8 @@ async function ownPurchase(user: CurrentUser, characterId: number, transactionId
         eq(miningPnlTxOverrides.transactionId, txId),
       ),
     );
-  return { charId, txId, autoCategory: classifyPurchase(row.typeId, row.groupId), category: override?.category ?? null };
+  const autoCategory = side === "buy" ? classifyPurchase(row.typeId, row.groupId) : classifySale(row.groupId, row.categoryId);
+  return { charId, txId, autoCategory, category: override?.category ?? null };
 }
 
 async function writeOverride(
@@ -198,12 +227,12 @@ async function writeOverride(
     );
 }
 
-/** Sets a purchase's category ("" = automatic). Tagging a purchase Keystar didn't recognise also counts it. */
-export async function setPurchaseCategory(characterId: number, transactionId: number, formData: FormData) {
+/** Sets a transaction's category ("" = automatic). Tagging one Keystar didn't recognise also counts it. */
+async function setCategory(side: WalletSide, characterId: number, transactionId: number, formData: FormData) {
   const user = await pnlUser();
-  const { charId, txId, autoCategory } = await ownPurchase(user, characterId, transactionId);
+  const { charId, txId, autoCategory } = await ownTransaction(user, characterId, transactionId, side);
   const raw = String(formData.get("category") ?? "");
-  if (raw && !isExpenseCategory(raw)) throw new Error("Unknown category");
+  if (raw && !(side === "buy" ? isExpenseCategory(raw) : isIncomeCategory(raw))) throw new Error("Unknown category");
   const category = raw || null;
   const patch: { category: string | null; included?: boolean | null } = { category };
   if (autoCategory === null) patch.included = category ? true : null;
@@ -211,19 +240,48 @@ export async function setPurchaseCategory(characterId: number, transactionId: nu
   revalidate();
 }
 
-/** Include (true), exclude (false) or reset to automatic (null) one purchase. */
-export async function setPurchaseIncluded(characterId: number, transactionId: number, included: boolean | null) {
+/** Include (true), exclude (false) or reset to automatic (null) one transaction. */
+async function setIncluded(side: WalletSide, characterId: number, transactionId: number, included: boolean | null) {
   const user = await pnlUser();
-  const { charId, txId, autoCategory, category } = await ownPurchase(user, characterId, transactionId);
+  const { charId, txId, autoCategory, category } = await ownTransaction(user, characterId, transactionId, side);
   const patch: { included: boolean | null; category?: string } = { included: included === null ? null : included === true };
-  // An unrecognised purchase needs a category to count: "Other" until the user picks one.
+  // An unrecognised transaction needs a category to count: "Other" until the user picks one.
   if (included === true && autoCategory === null && category === null) patch.category = "other";
   await writeOverride(user, charId, txId, patch);
   revalidate();
 }
 
+export async function setPurchaseCategory(characterId: number, transactionId: number, formData: FormData) {
+  await setCategory("buy", characterId, transactionId, formData);
+}
+
+export async function setPurchaseIncluded(characterId: number, transactionId: number, included: boolean | null) {
+  await setIncluded("buy", characterId, transactionId, included);
+}
+
+export async function setSaleCategory(characterId: number, transactionId: number, formData: FormData) {
+  await setCategory("sell", characterId, transactionId, formData);
+}
+
+export async function setSaleIncluded(characterId: number, transactionId: number, included: boolean | null) {
+  await setIncluded("sell", characterId, transactionId, included);
+}
+
 /** Includes every suggested purchase matching the expenses page filters. */
 export async function includeAllSuggested(formData: FormData) {
+  await includeAllSuggestedOf("buy", formData);
+}
+
+/** Includes every suggested sale matching the income page filters. */
+export async function includeAllSuggestedSales(formData: FormData) {
+  await includeAllSuggestedOf("sell", formData);
+}
+
+const INCLUDE_BATCH = 5000;
+/** Safety stop for "include all" (250,000 transactions). */
+const MAX_INCLUDE_BATCHES = 50;
+
+async function includeAllSuggestedOf(side: WalletSide, formData: FormData) {
   const user = await pnlUser();
   const filters = parsePnlFilters({
     from: String(formData.get("from") ?? ""),
@@ -232,8 +290,11 @@ export async function includeAllSuggested(formData: FormData) {
   });
   const valuation = miningValuation(await getSettings());
   const scope = pnlScope(user, filters, valuation, 100);
-  const { rows } = await getPurchases(scope, { status: "suggested", limit: 5000, offset: 0 });
-  if (rows.length) {
+  // In batches: included rows leave "suggested", so each query returns the next ones until none are left.
+  const opts = { status: "suggested", limit: INCLUDE_BATCH, offset: 0 } as const;
+  for (let batch = 0; batch < MAX_INCLUDE_BATCHES; batch++) {
+    const { rows } = side === "buy" ? await getPurchases(scope, opts) : await getSales(scope, opts);
+    if (!rows.length) break;
     await getDb()
       .insert(miningPnlTxOverrides)
       .values(rows.map((r) => ({ userId: user.id, characterId: r.characterId, transactionId: r.transactionId, included: true })))
@@ -241,6 +302,7 @@ export async function includeAllSuggested(formData: FormData) {
         target: [miningPnlTxOverrides.userId, miningPnlTxOverrides.characterId, miningPnlTxOverrides.transactionId],
         set: { included: true, updatedAt: new Date() },
       });
+    if (rows.length < INCLUDE_BATCH) break;
   }
   revalidate();
 }
