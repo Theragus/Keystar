@@ -374,6 +374,84 @@ describe.skipIf(!enabled)("integration", async () => {
         postSpy.mockRestore();
       }
     });
+
+    it("gives outsiders no account while sign-ups are restricted to members", async () => {
+      const { provisionFromSso, ProvisionError } = await import("@/core/auth/provision");
+      const { setSetting } = await import("@/core/settings");
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const corpOf: Record<number, number> = { 1: 100, 60: 200, 61: 200 };
+      const getSpy = vi.spyOn(getEsi(), "get").mockImplementation(async (path: string) => {
+        if (path.startsWith("/corporations/")) return reply({ name: "Corp", ticker: "CORP", member_count: 3 });
+        return reply({ corporation_id: corpOf[Number(path.split("/")[2])] });
+      }) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      const signIn = (characterId: number, intent: "login" | "link" = "login", currentUserId: string | null = null) =>
+        provisionFromSso({
+          verified: { characterId, name: `Pilot ${characterId}`, ownerHash: `h${characterId}`, scopes: [], expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent,
+          currentUserId,
+        });
+      try {
+        await setSetting("corp.homeCorporationId", 100);
+        // An outsider who registered before the switch keeps signing in as a guest.
+        expect((await signIn(60)).role).toBe("guest");
+        await setSetting("access.restrictToMembers", true);
+        expect((await signIn(60)).role).toBe("guest");
+
+        const refused = await signIn(61).catch((err: unknown) => err);
+        expect(refused).toBeInstanceOf(ProvisionError);
+        expect((refused as InstanceType<typeof ProvisionError>).code).toBe("notMember");
+        expect(await db().select().from(schema.characters).where(sql`character_id = 61`)).toEqual([]);
+        // audit_log isn't truncated between tests, so look for this attempt specifically.
+        const blocked = await db()
+          .select()
+          .from(schema.auditLog)
+          .where(sql`action = 'user.registration.blocked' AND target_id = '61'`);
+        expect(blocked.length).toBeGreaterThan(0);
+
+        // Members still sign in, and alts outside the corporation can still be linked to an account.
+        expect((await signIn(1)).userId).toBe(userA);
+        expect((await signIn(61, "link", userA)).userId).toBe(userA);
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
+    });
+
+    it("finds enabled guests with no character in the home corporation or its alliance", async () => {
+      const { outsideGuestIds } = await import("@/core/auth/manage-users");
+      const { setSetting } = await import("@/core/settings");
+      const guest = async (characterId: number, corporationId: number, allianceId: number | null = null) => {
+        const [u] = await db().insert(schema.users).values({ role: "guest", mainCharacterId: characterId }).returning();
+        await db()
+          .insert(schema.characters)
+          .values({ characterId, userId: u.id, name: `Pilot ${characterId}`, corporationId, allianceId, ownerHash: `h${characterId}` });
+        return u.id;
+      };
+      const outsider = await guest(70, 200);
+      const allied = await guest(71, 300, 500);
+      const withCorpAlt = await guest(72, 200);
+      await db()
+        .insert(schema.characters)
+        .values({ characterId: 73, userId: withCorpAlt, name: "Corp Alt", corporationId: 100, ownerHash: "h73" });
+      const disabled = await guest(74, 200);
+      await db().update(schema.users).set({ isDisabled: true }).where(sql`id = ${disabled}`);
+      // Bravo is an approved member, now outside: approved accounts are left alone.
+      await db().update(schema.characters).set({ corporationId: 200 }).where(sql`user_id = ${userB}`);
+      // eve_corporations isn't truncated between tests.
+      await db()
+        .insert(schema.eveCorporations)
+        .values({ corporationId: 100, name: "Home", ticker: "HOME", allianceId: 500 })
+        .onConflictDoUpdate({ target: schema.eveCorporations.corporationId, set: { allianceId: 500 } });
+
+      expect(await outsideGuestIds()).toEqual([]);
+      await setSetting("corp.homeCorporationId", 100);
+      expect((await outsideGuestIds()).sort()).toEqual([outsider, allied].sort());
+      await setSetting("access.autoApproveAllianceMembers", true);
+      expect(await outsideGuestIds()).toEqual([outsider]);
+    });
   });
 
   describe("killboard", () => {

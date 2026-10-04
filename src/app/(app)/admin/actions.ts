@@ -3,7 +3,7 @@
 import { refresh, revalidatePath } from "next/cache";
 import { audit } from "@/core/audit";
 import { assertPermission } from "@/core/auth/dal";
-import { changeUserAccess, UserAccessError, type UserAccessErrorCode } from "@/core/auth/manage-users";
+import { changeUserAccess, outsideGuestIds, UserAccessError, type UserAccessErrorCode } from "@/core/auth/manage-users";
 import { refreshCorporations } from "@/core/eve/resolver";
 import { allPermissions } from "@/core/modules/registry";
 import { isRole, type Role } from "@/core/rbac/roles";
@@ -102,6 +102,39 @@ export async function setUserDisabled(userId: string, disabled: boolean): Promis
   return ok;
 }
 
+/**
+ * Disables every guest account outside the corporation, for when sign-ups were
+ * restricted to members after outsiders had already registered. Only accounts
+ * still waiting as guests are touched: anyone approved or promoted in the
+ * meantime stays as they are. Disabling keeps the account and can be undone.
+ */
+export async function disableOutsideGuests(): Promise<ActionResult<"forbidden">> {
+  const actor = await assertPermission("users.manage").catch(() => null);
+  if (!actor) return refused("forbidden");
+  for (const userId of await outsideGuestIds()) {
+    if (userId === actor.id) continue;
+    try {
+      const { changed } = await changeUserAccess(actor.id, userId, { isDisabled: true }, { onlyFromRole: "guest" });
+      if (!changed) continue;
+    } catch (err) {
+      if (!(err instanceof UserAccessError)) throw err;
+      if (err.code === "forbidden") return refused("forbidden");
+      continue;
+    }
+    await audit({
+      actorUserId: actor.id,
+      actorName: actor.main?.name,
+      action: "user.disabled",
+      targetType: "user",
+      targetId: userId,
+      details: { reason: "outsideCorporation" },
+    });
+  }
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/settings");
+  return ok;
+}
+
 export type SyncActionError = "forbidden" | "notFound";
 
 export async function triggerSyncJob(jobId: number): Promise<ActionResult<SyncActionError>> {
@@ -174,6 +207,7 @@ export async function saveSettings(formData: FormData): Promise<SettingsSaveResu
   await setSetting("corp.homeCorporationId", homeCorporationId, actor.id);
   await setSetting("access.autoApproveCorpMembers", formData.get("autoApproveCorpMembers") === "on", actor.id);
   await setSetting("access.autoApproveAllianceMembers", formData.get("autoApproveAllianceMembers") === "on", actor.id);
+  await setSetting("access.restrictToMembers", formData.get("restrictToMembers") === "on", actor.id);
   await setSetting("mining.valuationSource", valuationSource, actor.id);
   await setSetting("mining.valuationMode", valuationMode, actor.id);
   await setSetting("permissions.overrides", overrides, actor.id);
@@ -190,6 +224,7 @@ export async function saveSettings(formData: FormData): Promise<SettingsSaveResu
     action: "settings.updated",
     details: {
       homeCorporationId,
+      restrictToMembers: formData.get("restrictToMembers") === "on",
       valuationSource,
       valuationMode,
       overrides: Object.keys(overrides).length,

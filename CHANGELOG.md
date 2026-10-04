@@ -6,6 +6,14 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Only members can sign up.** A new switch under Settings → Access stops Keystar from creating accounts for
+  characters outside the home corporation (or its alliance, when alliance members are auto-approved). They see a
+  message on the login page instead of waiting as guests, and each refused attempt is in the audit log. Existing
+  accounts and linked alts are unaffected; guests who registered from outside before can be disabled in one go on
+  the Users page.
+
 ## [0.12.0] - 2026-10-04
 
 ### Added

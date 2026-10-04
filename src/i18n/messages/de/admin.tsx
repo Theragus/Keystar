@@ -11,6 +11,19 @@ export const admin: typeof en = {
       "Keystar-Rollen legen fest, was ein Konto sehen und ändern darf. Sie sind unabhängig von den Corporation-Rollen im Spiel.",
     awaitingApproval: (count: number) => `Freischaltung ausstehend (${n(count)})`,
     awaitingApprovalHint: "Von außerhalb der Heimat-Corporation oder vor der automatischen Freischaltung angemeldet",
+    outsideGuests: {
+      title: (count: number) => `Gäste außerhalb der Corporation (${n(count)})`,
+      hint: "Registrieren können sich jetzt nur noch Mitglieder, diese Konten sind aber schon vorher entstanden. Deaktivieren meldet sie ab und lässt sich pro Konto rückgängig machen; freigeschaltete Konten sind nicht betroffen.",
+      disable: "Diese Konten deaktivieren",
+      confirm: (count: number) =>
+        `${n(count)} ${count === 1 ? "Gastkonto" : "Gastkonten"} von außerhalb der Corporation deaktivieren? Sie werden sofort abgemeldet.`,
+      done: "Gastkonten von außerhalb deaktiviert",
+      failed: "Die Konten konnten nicht deaktiviert werden",
+      errors: {
+        forbidden: "Du darfst keine Benutzer mehr verwalten.",
+        unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+      },
+    },
     unknown: "Unbekannt",
     registered: (when: string) => `registriert ${when}`,
     approve: "Als Mitglied freischalten",
@@ -247,6 +260,12 @@ export const admin: typeof en = {
       autoCorpHint: (member: string, guest: string) => `Sie starten als ${member}, alle anderen als ${guest}.`,
       autoAlliance: "Allianzmitglieder automatisch freischalten",
       autoAllianceHint: "Charaktere in der Allianz der Heimat-Corporation.",
+      restrict: "Nur Mitglieder können sich registrieren",
+      restrictHint:
+        "Charaktere außerhalb der Heimat-Corporation (oder ihrer Allianz, falls oben freigeschaltet) bekommen gar kein Konto, statt als Gast zu warten. Schalte das beim Rekrutieren über den Beitrittslink aus. Bestehende Konten bleiben unverändert.",
+      outsideGuests: (count: number) =>
+        `${n(count)} ${count === 1 ? "Gastkonto stammt" : "Gastkonten stammen"} von außerhalb der Corporation.`,
+      reviewOutsideGuests: "Unter Benutzer prüfen",
       ssoConfigured: "Eingerichtet",
       ssoNotConfigured: "Nicht eingerichtet – setze EVE_CLIENT_ID und EVE_CLIENT_SECRET.",
       callbackUrl: (url: ReactNode) => <>Callback-URL für developers.eveonline.com: {url}</>,
