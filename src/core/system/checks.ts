@@ -17,6 +17,7 @@ export const CHECK_IDS = [
   "clock",
   "esiLimits",
   "network",
+  "auditLog",
 ] as const;
 export type CheckId = (typeof CHECK_IDS)[number];
 
@@ -142,6 +143,12 @@ export function runChecks(s: SystemSnapshot, now = Date.now()): CheckResult[] {
     else if (refused.length) add("network", "warn", { down: "", refused: refused.join(",") });
     else add("network", "ok", { ms: Math.max(...s.network.map((p) => p.ms)) });
   }
+
+  // Best-effort audit writes that failed in this process; sensitive changes write theirs in their own transaction.
+  const af = s.auditFailures;
+  if (!af) add("auditLog", "skip");
+  else if (af.count) add("auditLog", "warn", { count: af.count, last: af.lastAt ?? "", action: af.lastAction ?? "" });
+  else add("auditLog", "ok");
 
   return results;
 }

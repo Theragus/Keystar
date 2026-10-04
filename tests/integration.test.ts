@@ -352,6 +352,22 @@ describe.skipIf(!enabled)("integration", async () => {
       expect((await db().select().from(schema.sessions)).map((r) => r.userId)).toEqual([userA]);
     });
 
+    it("writes the audit entry with the change, and keeps neither when the entry can't be written", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await db().update(schema.users).set({ role: "admin" }).where(sql`id = ${userA}`);
+      await db().update(schema.users).set({ role: "member" }).where(sql`id = ${userB}`);
+      const entry = (from: string) => ({ action: "user.role.changed", targetType: "user", targetId: userB, details: { from } });
+      await changeUserAccess(userA, userB, { role: "director" }, { audit: entry });
+      const logged = await db().select().from(schema.auditLog).where(sql`target_id = ${userB}`);
+      expect(logged.map((r) => [r.action, r.details])).toEqual([["user.role.changed", { from: "member" }]]);
+
+      // An actor id that isn't a user fails the audit insert's foreign key, so the role change rolls back.
+      await expect(
+        changeUserAccess(userA, userB, { role: "member" }, { audit: () => ({ actorUserId: crypto.randomUUID(), action: "user.role.changed" }) }),
+      ).rejects.toThrow();
+      expect((await roles())[userB]).toBe("director");
+    });
+
     it("only approves users who are still guests", async () => {
       const { changeUserAccess } = await import("@/core/auth/manage-users");
       await db().update(schema.users).set({ role: "admin" }).where(sql`id = ${userA}`);

@@ -504,7 +504,10 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
 - Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` when `APP_URL` is https.
 - Every server action re-checks permissions; members' queries are scoped to their own character IDs in SQL.
 - CSV export neutralises spreadsheet formulas; security headers are set in `next.config.ts` and Caddy.
-- Administrative actions are written to the audit log.
+- Administrative actions are written to the audit log (`src/core/audit.ts`). Role and access changes, settings and
+  scope switches use `auditInTx` inside the change's own transaction, so the change and its entry commit or roll
+  back together. Everything else uses `audit`, which never throws: a failed write is logged and counted, and System
+  Info's "Audit log written" check warns about it.
 
 ## Appraisal
 

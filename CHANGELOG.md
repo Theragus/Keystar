@@ -19,6 +19,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   listing a mailbox. ([#137](https://github.com/Theragus/Keystar/issues/137))
 - Right-aligned column headers in tables (the Load and Database tables on System Info, the actions column on
   Users) now line up with their values instead of sitting on the left.
+- Role and access changes, settings changes and scope switches now write their audit log entry in the same
+  transaction as the change, so a database error can no longer leave a change without an audit trail. Other audit
+  entries that can't be written are counted, and System Info warns about them in a new "Audit log written" check.
+  ([#156](https://github.com/Theragus/Keystar/issues/156))
 
 ### Added
 

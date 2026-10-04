@@ -482,6 +482,15 @@ export const admin = {
                 ? `Can't reach ${names(v.down)}. Check the server's DNS, firewall and proxy settings.`
                 : refusedText(v.refused),
       },
+      auditLog: {
+        label: "Audit log written",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? "No audit entry lost since the web app started"
+            : s === "warn"
+              ? `${plural(Number(v.count), "audit entry", "audit entries")} couldn't be written since the web app started (last: ${v.action}). The server log has the error; usually the database was briefly unavailable.`
+              : "Only checked in the browser.",
+      },
     },
     keystar: {
       title: "Keystar",

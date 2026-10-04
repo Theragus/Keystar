@@ -2,7 +2,7 @@
 
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { audit } from "@/core/audit";
+import { audit, auditInTx } from "@/core/audit";
 import { assertPermission, getCurrentUser, type CurrentUser } from "@/core/auth/dal";
 import { disableOptionalScope, enableOptionalScope } from "@/core/auth/scope-switch";
 import { revokeRefreshToken } from "@/core/auth/sso";
@@ -146,18 +146,21 @@ export async function setOptionalScope(
         .where(eq(fleetTrackers.characterId, characterId));
       if (tracker?.status === "tracking" || tracker?.status === "not_boss") return "active" as const;
     }
-    return enabled ? enableOptionalScope(characterId, scope, tx) : disableOptionalScope(characterId, scope, tx);
+    const result = enabled ? await enableOptionalScope(characterId, scope, tx) : await disableOptionalScope(characterId, scope, tx);
+    if (result === "ok") {
+      await auditInTx(tx, {
+        actorUserId: user.id,
+        actorName: user.main?.name,
+        action: enabled ? "esi.scope.enabled" : "esi.scope.disabled",
+        targetType: "character",
+        targetId: characterId,
+        details: { scope },
+      });
+    }
+    return result;
   });
   if (outcome !== "ok") return refused(outcome);
   // The worker's planner (every 30 seconds) starts or stops the scope's background jobs.
-  await audit({
-    actorUserId: user.id,
-    actorName: user.main?.name,
-    action: enabled ? "esi.scope.enabled" : "esi.scope.disabled",
-    targetType: "character",
-    targetId: characterId,
-    details: { scope },
-  });
   revalidatePath("/", "layout");
   return ok;
 }
