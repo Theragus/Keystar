@@ -27,7 +27,7 @@ import { Glass, Panel } from "@/components/ui/glass";
 import { InfoItem } from "@/components/ui/info-item";
 import { requirePermission } from "@/core/auth/dal";
 import { env } from "@/core/env";
-import { HEARTBEAT_FRESH_MS, runChecks, worstStatus, type CheckResult, type CheckStatus } from "@/core/system/checks";
+import { HEARTBEAT_FRESH_MS, isRefused, runChecks, worstStatus, type CheckResult, type CheckStatus } from "@/core/system/checks";
 import { collectSystemSnapshot } from "@/core/system/collect";
 import { originFromHeaders, type ConfigEntry } from "@/core/system/config";
 import { createRedactor } from "@/core/system/redact";
@@ -266,6 +266,30 @@ export default async function SystemPage() {
             )}
           </Panel>
         </div>
+
+        {snapshot.network && (
+          <Panel title={ts.network.title} subtitle={ts.network.subtitle}>
+            <ul className="grid gap-2 md:grid-cols-3">
+              {snapshot.network.map((p) => {
+                const refused = p.reachable && isRefused(p.target, p.status);
+                return (
+                  <li key={p.target} className="glass-inset flex items-start gap-3 rounded-lg px-3.5 py-3">
+                    <Badge tone={!p.reachable ? (p.target === "zkill" ? "warning" : "critical") : refused ? "warning" : "good"} className="mt-px">
+                      {statusIcon[!p.reachable ? (p.target === "zkill" ? "warn" : "fail") : refused ? "warn" : "ok"]}
+                      {ts.network.targets[p.target]}
+                    </Badge>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm">
+                        {p.reachable ? ts.network.answered(p.status ?? 0, f.integer(p.ms)) : ts.network.unreachable(p.error ?? "?")}
+                      </div>
+                      <div className="text-xs text-ink-3">{ts.network.purpose[p.target]}</div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Panel>
+        )}
 
         <Panel
           title={ts.worker.title}

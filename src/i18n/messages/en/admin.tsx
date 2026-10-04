@@ -7,6 +7,26 @@ import { FORMATTERS } from "@/lib/format";
 const n = FORMATTERS.en.integer;
 const plural = (count: number, one: string, many: string) => `${n(count)} ${count === 1 ? one : many}`;
 type CheckValues = Record<string, string | number>;
+/** Service names in network check values ("esi,sso" or "zkill:403"); product names, the same in every language. */
+const NETWORK_NAMES: Record<string, string> = { esi: "ESI", sso: "EVE SSO", zkill: "zKillboard" };
+const names = (list: string | number) =>
+  String(list)
+    .split(",")
+    .filter(Boolean)
+    .map((e) => NETWORK_NAMES[e.split(":")[0]] ?? e)
+    .join(", ");
+/** One sentence per service that answered with an error ("zkill:403", "esi:503"). */
+const refusedText = (list: string | number) =>
+  String(list)
+    .split(",")
+    .filter(Boolean)
+    .map((e) => {
+      const [name, code] = e.split(":");
+      return name === "zkill" && code === "403"
+        ? "zKillboard blocks this server (HTTP 403): it needs a User-Agent with contact details, so set ESI_CONTACT."
+        : `${NETWORK_NAMES[name] ?? name} answers with an error (HTTP ${code}) and may be down.`;
+    })
+    .join(" ");
 
 /**
  * Administration pages: users & roles, member audit, sync status, settings, audit log, system info.
@@ -19,6 +39,20 @@ export const admin = {
       "Keystar roles control what each account can see and change. They are independent of in-game corporation roles.",
     awaitingApproval: (count: number) => `Awaiting approval (${n(count)})`,
     awaitingApprovalHint: "Signed in from outside the home corporation or before auto-approval",
+    outsideGuests: {
+      title: (count: number) => `Guests outside the corporation (${n(count)})`,
+      hint: "Sign-ups are now limited to members, but these accounts registered before. Disabling signs them out and can be undone per account; approved accounts are not affected.",
+      disable: "Disable these accounts",
+      confirm: (count: number) =>
+        `Disable ${n(count)} guest ${count === 1 ? "account" : "accounts"} from outside the corporation? They are signed out immediately.`,
+      done: "Outside guest accounts disabled",
+      failed: "Couldn't disable the accounts",
+      errors: {
+        forbidden: "You no longer have permission to manage users.",
+        notRestricted: "Sign-ups are no longer restricted to members, so nothing was changed.",
+        unknown: "Something went wrong. Reload the page and try again.",
+      },
+    },
     unknown: "Unknown",
     registered: (when: string) => `registered ${when}`,
     approve: "Approve as member",
@@ -264,6 +298,12 @@ export const admin = {
       autoCorpHint: (member: string, guest: string) => `They start as ${member}; everyone else starts as ${guest}.`,
       autoAlliance: "Auto-approve alliance members",
       autoAllianceHint: "Characters in the home corporation's alliance.",
+      restrict: "Only members can sign up",
+      restrictHint:
+        "Characters outside the home corporation (or its alliance, if auto-approved above) get no account at all instead of waiting as guests. Turn this off while recruiting through the join link. Existing accounts stay as they are.",
+      outsideGuests: (count: number) =>
+        `${n(count)} ${count === 1 ? "guest account is" : "guest accounts are"} from outside the corporation.`,
+      reviewOutsideGuests: "Review in Users",
       ssoConfigured: "Configured",
       ssoNotConfigured: "Not configured — set EVE_CLIENT_ID and EVE_CLIENT_SECRET.",
       callbackUrl: (url: ReactNode) => <>Callback URL for developers.eveonline.com: {url}</>,
@@ -431,6 +471,17 @@ export const admin = {
               ? "Requests are paused for an ESI rate limit. Jobs continue once it resets."
               : "No ESI requests yet.",
       },
+      network: {
+        label: "Outbound connections",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? `ESI, EVE SSO and zKillboard answer (slowest ${n(Number(v.ms))} ms)`
+            : s === "skip"
+              ? "Not checked."
+              : v.down
+                ? `Can't reach ${names(v.down)}. Check the server's DNS, firewall and proxy settings.`
+                : refusedText(v.refused),
+      },
     },
     keystar: {
       title: "Keystar",
@@ -469,6 +520,14 @@ export const admin = {
         estimated: "PostgreSQL's estimate: counting this table took too long",
       },
       unavailable: (error: string) => `Couldn't read the database: ${error}`,
+    },
+    network: {
+      title: "Network",
+      subtitle: "Outbound connections from the web app, checked when this page loads.",
+      targets: { esi: "ESI", sso: "EVE SSO", zkill: "zKillboard" },
+      purpose: { esi: "Every sync job", sso: "Sign-in", zkill: "Killboard and threat intel" },
+      answered: (status: number, ms: string) => `HTTP ${status} · ${ms} ms`,
+      unreachable: (error: string) => `Unreachable: ${error}`,
     },
     worker: {
       title: "Worker & background jobs",

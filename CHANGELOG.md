@@ -11,6 +11,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **System Info for admins.** A new last page under Administration shows the technical state of the instance:
   - **Health checks** for the database, migrations and schema, the worker and its version, failing or stuck jobs,
     paused syncing, EVE SSO, `APP_URL`, clock skew and ESI rate limits.
+  - **Network**: whether this server can reach ESI, EVE SSO and zKillboard right now, with the HTTP status and
+    response time of each, or why not (DNS, refused, timeout); proxy settings show whether they are set.
   - **Instance details**: the running version and build, the database with its largest tables, the worker and
     background jobs, and the configuration without secret values.
   - **Report an issue** walks through a bug report and opens it on GitHub with the version and a system summary
@@ -28,6 +30,14 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
   ([#102](https://github.com/Theragus/Keystar/issues/102))
 - Published images record their git commit, tag and build date, shown in System Info ([#102](https://github.com/Theragus/Keystar/issues/102)).
+- The sidebar footer of an unreleased image (`:main`) shows its tag and commit next to the version, e.g.
+  `Keystar v0.12.0 · main @ c7bfb85`, on an amber warning badge whose tooltip notes that the build may be unstable,
+  and links to that commit instead of the releases page.
+- **Only members can sign up.** A new switch under Settings → Access stops Keystar from creating accounts for
+  characters outside the home corporation (or its alliance, when alliance members are auto-approved). They see a
+  message on the login page instead of waiting as guests, and each refused attempt is in the audit log. Existing
+  accounts and linked alts are unaffected; guests who registered from outside before can be disabled in one go on
+  the Users page.
 - **Mining P&L**: income can come from what you actually sold instead of the value of the ore you mined. A new
   Income tab lists your wallet sales; sales of ore, moon ore, ice and gas (raw or compressed), minerals, moon
   materials and ice products are suggested as mining income and reviewed like purchases (include, exclude,
@@ -40,6 +50,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- **Sidebar.** The pilot portrait and name at the bottom of the sidebar link to My Characters, in the expanded sidebar, the collapsed rail and its hover card alike.
 - **Ore field estimator**
   - The ore table can be sorted by any column, including volume, ISK/m³, scanner and Keystar value and share;
     grades stay under their ore and follow the same order.
