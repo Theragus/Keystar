@@ -76,7 +76,7 @@ docker/                entrypoint, Caddyfile
    policy and detects **character transfers** (the SSO `owner` hash changes → the old account loses the character
    with its wallet history, mail and industry jobs; an account left without characters is disabled and signed out).
    A character moved between the player's own EVE accounts and linked back to the same Keystar account hasn't
-   changed hands: it keeps its data, only the owner hash and token are updated.
+   changed hands: it keeps its data; only the owner hash and token are updated and cached ESI responses refetched.
 4. Sessions are random 32-byte tokens; only their SHA-256 hash is stored. 30-day sliding expiry: the database row
    is extended on activity (authoritative) and `src/proxy.ts` renews the cookie on each navigation.
 

@@ -1614,6 +1614,9 @@ describe.skipIf(!enabled)("integration", async () => {
       await db()
         .insert(schema.syncJobs)
         .values({ jobKey: "wallet.character-transactions", ownerType: "character", ownerId: 3, meta: { newestSeenId: 51 } });
+      await db()
+        .insert(schema.esiCache)
+        .values({ key: "3:GET /characters/3/wallet/transactions", body: {}, expiresAt: new Date(Date.now() + 60_000) });
       const { getEsi } = await import("@/core/esi");
       const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
       const getSpy = vi
@@ -1642,6 +1645,8 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await db().select().from(schema.mailLabels)).toHaveLength(1);
       const [cursor] = await db().select().from(schema.syncJobs).where(sql`owner_id = 3`);
       expect(cursor.meta).toEqual({ newestSeenId: 51 });
+      // Responses cached with the old EVE account's token are fetched again.
+      expect(await db().select().from(schema.esiCache).where(sql`key LIKE '3:%'`)).toEqual([]);
       const [b] = await db().select().from(schema.users).where(sql`id = ${userB}`);
       expect(b).toMatchObject({ isDisabled: false, mainCharacterId: 2 });
     });

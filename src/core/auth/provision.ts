@@ -171,6 +171,8 @@ export async function provisionFromSso(params: {
     }
 
     if (ownerChanged && relinkedByOwner) {
+      // Stored history stays, but responses cached with the old EVE account's token are fetched again with the new one.
+      await forgetCharacterEsiCache(tx, verified.characterId);
       await auditInTx(tx, {
         action: "character.transferred",
         targetType: "character",
