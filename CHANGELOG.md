@@ -14,7 +14,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   Filter by running or finished jobs, character, activity, system and station; tiles count running jobs, jobs ready
   to deliver and jobs ending within a day. Members see only their own characters; two new member scopes
   (`esi-industry.read_character_jobs.v1`, `esi-universe.read_structures.v1`) must be added to the EVE application
-  and characters re-authorised (see `docs/deployment.md`).
+  and characters re-authorised (see `docs/deployment.md`). ([#105](https://github.com/Theragus/Keystar/issues/105))
 - **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
   container's memory against its limit, free host memory and the host's load average.
 
