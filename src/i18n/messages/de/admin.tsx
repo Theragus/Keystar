@@ -503,7 +503,7 @@ export const admin: typeof en = {
       search: { title: "Bestehende Issues durchsuchen", body: "Vielleicht hat es schon jemand gemeldet.", link: "Issues auf GitHub durchsuchen" },
       download: {
         title: "Supportpaket herunterladen",
-        body: "Nur technische Details, keine Piloten- oder Corporation-Daten. Du siehst vor dem Herunterladen genau, was drin ist. Startet die Web-App nicht, erzeugst du es auf der Kommandozeile:",
+        body: "Nur technische Details, keine Piloten- oder Corporation-Daten.. Startet die Web-App nicht, erzeugst du es auf der Kommandozeile:",
       },
       logs: {
         title: "Logs sammeln",
