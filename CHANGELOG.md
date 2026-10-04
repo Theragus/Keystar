@@ -6,6 +6,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-04
+
 ### Added
 
 - **Delete appraisals.** A small trash button next to each of your recent appraisals, and on the appraisal itself,
