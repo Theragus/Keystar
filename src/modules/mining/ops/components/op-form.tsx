@@ -6,10 +6,11 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Panel } from "@/components/ui/glass";
 import { SystemPicker } from "@/components/ui/system-picker";
 import type { ValuationSource } from "@/core/db/schema/eve";
-import { ORE_CLASSES } from "@/core/eve/ore";
+import { isOreClass } from "@/core/eve/ore";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import type { OpFormState } from "@/app/(app)/mining/ops/actions";
+import { CHART_CLASSES, chartClassOf } from "../../class-colors";
 import type { MiningOpParticipation, MiningOpSplitMode } from "../../schema";
 
 export interface OpFormValues {
@@ -167,10 +168,17 @@ export function OpForm({
             <fieldset className="space-y-1.5 text-xs text-ink-3">
               <legend className="mb-1.5">{m.oreClasses}</legend>
               <div className="flex flex-wrap gap-1.5">
-                {ORE_CLASSES.filter((c) => c !== "other").map((c) => (
-                  <label key={c} className="glass-chip flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-ink">
-                    <input type="checkbox" name="classes" value={c} defaultChecked={values.oreClasses.includes(c)} className="accent-(--accent)" />
-                    {t.eve.oreClasses[c].short}
+                {/* Moon ore is one choice: which rarity the moon gives doesn't decide what counts. */}
+                {CHART_CLASSES.filter((c) => c.id !== "other").map(({ id }) => (
+                  <label key={id} className="glass-chip flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-ink">
+                    <input
+                      type="checkbox"
+                      name="classes"
+                      value={id}
+                      defaultChecked={values.oreClasses.some((c) => isOreClass(c) && chartClassOf(c) === id)}
+                      className="accent-(--accent)"
+                    />
+                    {t.mining.chartClasses[id]}
                   </label>
                 ))}
               </div>

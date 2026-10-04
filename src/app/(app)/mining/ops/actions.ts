@@ -12,6 +12,7 @@ import { getSettings } from "@/core/settings";
 import { ok, refused, type ActionResult } from "@/lib/action-result";
 import { shareId, SHARE_ID_PATTERN } from "@/lib/share-id";
 import { parseLocaleNumber } from "@/modules/mining/estimator/parse";
+import { MOON_RARITY } from "@/modules/mining/class-colors";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { opStatus } from "@/modules/mining/ops/attribution";
 import { finalizeOp, getOp, getOpResult, reopenOp, type MiningOp } from "@/modules/mining/ops/queries";
@@ -101,7 +102,10 @@ export async function saveOp(_prev: OpFormState, formData: FormData): Promise<Op
 
   const solarSystemIds = ids(formData.getAll("systems"));
   if (solarSystemIds.length > MAX_SYSTEMS) return { error: "systems" };
-  const oreClasses = [...new Set(formData.getAll("classes").map(String))].filter(isOreClass);
+  // The form offers chart classes ("moon" for every rarity); ops store ore classes.
+  const oreClasses = [
+    ...new Set(formData.getAll("classes").flatMap((v) => (v === "moon" ? MOON_RARITY.map((m) => m.id) : [String(v)]))),
+  ].filter(isOreClass);
 
   const participationRaw = String(formData.get("participation") ?? "anyone");
   const participation: MiningOpParticipation =

@@ -13,6 +13,7 @@ import { getDb } from "@/core/db";
 import { getSettings } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
 import { SHARE_ID_PATTERN } from "@/lib/share-id";
+import { chartClassOf } from "@/modules/mining/class-colors";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { opStatus } from "@/modules/mining/ops/attribution";
 import { DeleteOpForm } from "@/modules/mining/ops/components/delete-op";
@@ -52,7 +53,7 @@ export default async function MiningOpPage({ params }: PageProps<"/mining/ops/[i
 
   const where = [
     context.systems.length ? context.systems.join(", ") : m.anySystem,
-    classes.length ? classes.map((c) => t.eve.oreClasses[c].short).join(", ") : m.allOre,
+    classes.length ? [...new Set(classes.map(chartClassOf))].map((c) => t.mining.chartClasses[c]).join(", ") : m.allOre,
     t.ops.participation[op.participation].label +
       (op.participation === "fleet" && context.fleetBoss ? ` · ${m.fleetOf(context.fleetBoss)}` : "") +
       (op.participation === "calendar" && context.eventTitle ? ` · ${context.eventTitle}` : ""),
@@ -320,7 +321,7 @@ export default async function MiningOpPage({ params }: PageProps<"/mining/ops/[i
                       <span className="flex items-center gap-2">
                         <TypeIcon id={o.typeId} size={24} />
                         <span className="text-ink">{o.name}</span>
-                        <span className="text-2xs text-ink-3">{t.eve.oreClasses[o.oreClass].short}</span>
+                        <span className="text-2xs text-ink-3">{t.mining.chartClasses[chartClassOf(o.oreClass)]}</span>
                       </span>
                     </td>
                     <td className="num">{f.integer(o.quantity)}</td>
