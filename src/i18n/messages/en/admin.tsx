@@ -550,7 +550,7 @@ export const admin = {
         eveId: (count: number) => plural(count, "EVE ID", "EVE IDs"),
         name: (count: number) => plural(count, "name", "names"),
       },
-      preview: "Preview · exactly what will be downloaded",
+      preview: "Preview",
       copyJson: "Copy JSON",
       size: (kb: number) => `${n(kb)} KB`,
       auditNote: "Downloads are recorded in the audit log.",

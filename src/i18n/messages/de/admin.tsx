@@ -546,7 +546,7 @@ export const admin: typeof en = {
         eveId: (count: number) => plural(count, "EVE-ID", "EVE-IDs"),
         name: (count: number) => plural(count, "Name", "Namen"),
       },
-      preview: "Vorschau · genau das wird heruntergeladen",
+      preview: "Vorschau",
       copyJson: "JSON kopieren",
       size: (kb: number) => `${n(kb)} KB`,
       auditNote: "Downloads werden im Audit-Log protokolliert.",
