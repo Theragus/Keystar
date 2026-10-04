@@ -14,6 +14,7 @@ export const mining: typeof en = {
       observers: "Mondbohrer",
       estimator: "Feldschätzer",
       pnl: "Mining-GuV",
+      ops: "Mining-Ops",
     },
     permissionGroup: "Mining",
     permissions: {
@@ -26,6 +27,10 @@ export const mining: typeof en = {
       pnl: {
         label: "Mining-GuV",
         description: "Persönliche Einnahmen-/Ausgaben-Übersicht der eigenen Charaktere (nie die anderer Mitglieder).",
+      },
+      manageOps: {
+        label: "Mining-Ops verwalten",
+        description: "Mining-Ops anlegen, beenden und abschließen und festlegen, wer zählt. Jeder sieht die Ops, an denen er teilgenommen hat.",
       },
     },
     scopes: {

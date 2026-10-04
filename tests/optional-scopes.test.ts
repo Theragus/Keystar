@@ -13,7 +13,7 @@ import {
 } from "@/core/modules/registry";
 import { FLEET_SCOPE } from "@/modules/fleet/logic";
 import { SKILLQUEUE_SCOPE, SKILLS_SCOPE } from "@/modules/skills/module";
-import { MAIL_SCOPE } from "@/modules/social/module";
+import { CALENDAR_SCOPE, MAIL_SCOPE } from "@/modules/social/module";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
 
 const MINING = "esi-industry.read_character_mining.v1";
@@ -25,9 +25,9 @@ function params(href: string) {
 
 describe("optional scopes", () => {
   it("keeps opt-in scopes out of the member and corporation sets", () => {
-    expect(optionalScopes()).toEqual([FLEET_SCOPE, MAIL_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, WALLET_SCOPE]);
+    expect(optionalScopes()).toEqual([CALENDAR_SCOPE, FLEET_SCOPE, MAIL_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, WALLET_SCOPE]);
     expect(characterScopes()).toEqual([MINING]);
-    for (const scope of [WALLET_SCOPE, MAIL_SCOPE, FLEET_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE]) {
+    for (const scope of [WALLET_SCOPE, MAIL_SCOPE, CALENDAR_SCOPE, FLEET_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE]) {
       expect(characterScopes()).not.toContain(scope);
       expect(corporationScopes()).not.toContain(scope);
       expect(memberScopeRequirements().some((s) => s.scope === scope)).toBe(false);

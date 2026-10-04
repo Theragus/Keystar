@@ -33,6 +33,7 @@ export interface ActivityCoverage {
 
 export interface ActivityDelta {
   date: string;
+  solarSystemId: number;
   typeId: number;
   quantity: number;
 }
@@ -83,12 +84,16 @@ export function planActivity(input: {
     if (r.date < firstDate || r.date > lastDate) continue;
     const delta = r.quantity - (previous.get(`${r.date}|${r.solarSystemId}|${r.typeId}`) ?? 0);
     if (delta <= 0) continue;
-    const key = `${r.date}|${r.typeId}`;
-    const d = grown.get(key) ?? { date: r.date, typeId: r.typeId, quantity: 0 };
-    d.quantity += delta;
-    grown.set(key, d);
+    grown.set(`${r.date}|${r.solarSystemId}|${r.typeId}`, {
+      date: r.date,
+      solarSystemId: r.solarSystemId,
+      typeId: r.typeId,
+      quantity: delta,
+    });
   }
-  const deltas = [...grown.values()].sort((a, b) => a.date.localeCompare(b.date) || a.typeId - b.typeId);
+  const deltas = [...grown.values()].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.solarSystemId - b.solarSystemId || a.typeId - b.typeId,
+  );
   if (!deltas.length) {
     return { coverage: { ...coverage, lastObservedAt: observedAt }, window: null, deltas };
   }

@@ -19,8 +19,11 @@ export const social = {
     scopes: {
       readMail: "Reads your EVE mail, labels and mailing lists so you can read them in Keystar (opt-in, read-only).",
       readMailLabel: "Mail import",
+      readCalendar:
+        "Reads corporation and alliance events from your EVE calendar and who accepted them, so mining ops can be created from them (opt-in, read-only; personal events are not kept).",
+      readCalendarLabel: "Calendar import",
     },
-    jobs: { mail: "EVE mail" },
+    jobs: { mail: "EVE mail", calendar: "EVE calendar" },
   },
   page: {
     metaTitle: "EVE Mail",

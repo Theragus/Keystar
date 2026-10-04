@@ -1,0 +1,2 @@
+ALTER TABLE "mining_activity" DROP CONSTRAINT "mining_activity_character_id_window_end_date_type_id_pk";--> statement-breakpoint
+ALTER TABLE "mining_activity" ADD CONSTRAINT "mining_activity_character_id_window_end_date_solar_system_id_type_id_pk" PRIMARY KEY("character_id","window_end","date","solar_system_id","type_id");

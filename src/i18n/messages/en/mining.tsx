@@ -16,6 +16,7 @@ export const mining = {
       observers: "Moon Drills",
       estimator: "Field Estimator",
       pnl: "Mining P&L",
+      ops: "Mining Ops",
     },
     permissionGroup: "Mining",
     permissions: {
@@ -25,6 +26,10 @@ export const mining = {
       pnl: {
         label: "Mining P&L",
         description: "Personal income and expense sheet for your own characters (never other members').",
+      },
+      manageOps: {
+        label: "Manage mining ops",
+        description: "Create, end and finalize mining ops and decide who counts. Everyone sees the ops they took part in.",
       },
     },
     scopes: {

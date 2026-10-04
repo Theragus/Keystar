@@ -117,6 +117,7 @@ export const characterLedgerJob: JobDefinition = {
               windowStart: window.start,
               windowEnd: window.end,
               date: d.date,
+              solarSystemId: d.solarSystemId,
               typeId: d.typeId,
               quantity: d.quantity,
             })),

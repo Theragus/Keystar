@@ -55,6 +55,7 @@ export interface PnlDemoCharacter {
 export interface PnlDemoLedgerRow {
   characterId: number;
   date: string;
+  solarSystemId: number;
   typeId: number;
   quantity: number;
 }
@@ -215,7 +216,8 @@ export async function seedMiningPnl(
       const windowEnd = new Date(sessionStart + (w + 1) * 900_000);
       for (const r of dayRows) {
         const quantity = Math.round(r.quantity / windows);
-        if (quantity > 0) activity.push({ characterId, date, typeId: r.typeId, quantity, windowStart, windowEnd });
+        if (quantity > 0)
+          activity.push({ characterId, date, solarSystemId: r.solarSystemId, typeId: r.typeId, quantity, windowStart, windowEnd });
       }
     }
   }

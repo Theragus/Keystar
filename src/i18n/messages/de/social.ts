@@ -19,8 +19,11 @@ export const social: typeof en = {
     scopes: {
       readMail: "Liest deine EVE-Mails, Labels und Mailinglisten, damit du sie in Keystar lesen kannst (optional, nur lesend).",
       readMailLabel: "Mail-Import",
+      readCalendar:
+        "Liest Corporation- und Allianz-Termine aus deinem EVE-Kalender und wer zugesagt hat, damit Mining-Ops daraus angelegt werden können (optional, nur lesend; private Termine werden nicht gespeichert).",
+      readCalendarLabel: "Kalender-Import",
     },
-    jobs: { mail: "EVE-Mail" },
+    jobs: { mail: "EVE-Mail", calendar: "EVE-Kalender" },
   },
   page: {
     metaTitle: "EVE-Mail",

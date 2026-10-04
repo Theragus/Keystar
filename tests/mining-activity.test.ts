@@ -38,7 +38,7 @@ describe("mining activity from ledger growth", () => {
     });
   });
 
-  it("records growth between observations, summed across systems, new rows in full", () => {
+  it("records growth between observations per system, new rows in full", () => {
     const plan = planActivity({
       before: [row("2026-10-02", 1230, 1000, 1), row("2026-10-02", 1230, 500, 2)],
       after: [row("2026-10-02", 1230, 1600, 1), row("2026-10-02", 1230, 900, 2), row("2026-10-02", 17470, 300)],
@@ -47,8 +47,9 @@ describe("mining activity from ledger growth", () => {
     })!;
     expect(plan.window).toEqual({ start: at("2026-10-02T10:00:00Z"), end: at("2026-10-02T10:15:00Z") });
     expect(plan.deltas).toEqual([
-      { date: "2026-10-02", typeId: 1230, quantity: 1000 },
-      { date: "2026-10-02", typeId: 17470, quantity: 300 },
+      { date: "2026-10-02", solarSystemId: 1, typeId: 1230, quantity: 600 },
+      { date: "2026-10-02", solarSystemId: 2, typeId: 1230, quantity: 400 },
+      { date: "2026-10-02", solarSystemId: 30000142, typeId: 17470, quantity: 300 },
     ]);
     expect(plan.coverage.lastGrowthAt).toEqual(at("2026-10-02T10:15:00Z"));
   });
@@ -119,8 +120,8 @@ describe("mining activity from ledger growth", () => {
       observedAt: at("2026-10-02T00:10:00Z"),
     })!;
     expect(plan.deltas).toEqual([
-      { date: "2026-10-01", typeId: 1230, quantity: 400 },
-      { date: "2026-10-02", typeId: 1230, quantity: 200 },
+      { date: "2026-10-01", solarSystemId: 30000142, typeId: 1230, quantity: 400 },
+      { date: "2026-10-02", solarSystemId: 30000142, typeId: 1230, quantity: 200 },
     ]);
   });
 

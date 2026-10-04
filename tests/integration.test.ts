@@ -42,8 +42,8 @@ describe.skipIf(!enabled)("integration", async () => {
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
       mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
       corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists,
-      corporation_members, skills_queue, skills_character_skills, skills_character, skills_type_attributes
-      RESTART IDENTITY CASCADE`);
+      corporation_members, skills_queue, skills_character_skills, skills_character, skills_type_attributes, mining_ops,
+      calendar_events RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
     userA = a.id;
@@ -869,6 +869,164 @@ describe.skipIf(!enabled)("integration", async () => {
     });
   });
 
+  describe("mining ops", async () => {
+    const opsQ = await import("@/modules/mining/ops/queries");
+    const { syncCalendar } = await import("@/modules/social/calendar");
+    const t = (iso: string) => new Date(`2026-09-10T${iso}:00Z`);
+    const activity = (characterId: number, from: string, to: string, typeId: number, quantity: number, solarSystemId = 30000180) => ({
+      characterId,
+      date: "2026-09-10",
+      solarSystemId,
+      typeId,
+      quantity,
+      windowStart: t(from),
+      windowEnd: t(to),
+    });
+    const createOp = async (extra: Partial<typeof schema.miningOps.$inferInsert> = {}) => {
+      const [op] = await db()
+        .insert(schema.miningOps)
+        .values({
+          id: "op123456",
+          corporationId: 100,
+          name: "Osmon op",
+          startsAt: t("18:00"),
+          endsAt: t("20:00"),
+          solarSystemIds: [30000180],
+          valuationSource: "jita_buy",
+          ratePct: 90,
+          corpCutPct: 10,
+          ...extra,
+        })
+        .returning();
+      return op;
+    };
+
+    beforeEach(async () => {
+      await db().insert(schema.miningActivity).values([
+        activity(1, "18:00", "18:15", 1230, 400),
+        activity(2, "18:30", "18:45", 45490, 60),
+        activity(2, "10:00", "10:15", 45490, 40),
+        activity(3, "19:00", "19:15", 1230, 200),
+        // Another system: not part of the op.
+        activity(3, "19:15", "19:30", 1230, 999, 30000181),
+      ]);
+      await db().insert(schema.miningActivityCoverage).values([
+        { characterId: 1, since: new Date("2026-09-01T00:00:00Z"), lastObservedAt: t("21:00") },
+        { characterId: 2, since: new Date("2026-09-01T00:00:00Z"), lastObservedAt: t("21:00") },
+        { characterId: 3, since: new Date("2026-09-01T00:00:00Z"), lastObservedAt: t("19:15") },
+      ]);
+    });
+
+    it("values the op's ore, pays alts to their main and flags missing data", async () => {
+      const op = await createOp();
+      const result = await opsQ.getOpResult(op);
+      expect(result.frozen).toBe(false);
+      expect(result.pilots.map((p) => [p.characterId, p.status])).toEqual([
+        [2, "counted"],
+        [1, "counted"],
+        [3, "counted"],
+      ]);
+      // Zeolites at the op day's historical price (500), Veldspar at the current one (10).
+      expect(result.payout.gross).toBe(60 * 500 + 400 * 10 + 200 * 10);
+      expect(result.payout.distributed).toBe(29160);
+      expect(result.payees.map((p) => [p.payeeCharacterId, p.characterIds.sort(), p.share])).toEqual([
+        [2, [2, 3], 25920],
+        [1, [1], 3240],
+      ]);
+      // Alpha's ledger shows 1000 Veldspar that day, only 400 were seen growing.
+      expect(result.unplaced.get(1)).toEqual({ volume: 60, value: 6000 });
+      expect(result.missing).toEqual([{ characterId: 3, name: "Bravo Alt", reason: "gap" }]);
+    });
+
+    it("honours overrides, freezes on finalize and goes live again on reopen", async () => {
+      const op = await createOp();
+      await db().insert(schema.miningOpParticipants).values({ opId: op.id, characterId: 2, mode: "excluded" });
+      expect(await opsQ.finalizeOp(op.id, "Alpha")).toBe(true);
+      expect(await opsQ.finalizeOp(op.id, "Alpha")).toBe(false);
+
+      // A late ledger entry no longer changes the frozen op.
+      await db().insert(schema.miningActivity).values(activity(1, "19:30", "19:45", 1230, 1000));
+      const frozen = await opsQ.getOpResult((await opsQ.getOp(op.id))!);
+      expect(frozen.frozen).toBe(true);
+      expect(frozen.payout.gross).toBe(6000);
+      expect(frozen.pilots.find((p) => p.characterId === 2)?.status).toBe("excluded");
+      expect(await opsQ.listOps(100, { onlyFor: [3] })).toMatchObject([{ op: { id: op.id }, payees: 2 }]);
+      expect(await opsQ.listOps(100, { onlyFor: [9] })).toEqual([]);
+
+      await opsQ.reopenOp(op.id);
+      const live = await opsQ.getOpResult((await opsQ.getOp(op.id))!);
+      expect(live.frozen).toBe(false);
+      expect(live.payout.gross).toBe(16000);
+      expect(await db().select().from(schema.miningOpShares)).toHaveLength(0);
+    });
+
+    it("counts fleet members for their time in the linked fleet", async () => {
+      await db().insert(schema.fleets).values({ fleetId: 500, bossCharacterId: 1, endedAt: t("20:00") });
+      await db().insert(schema.fleetMembers).values([
+        { fleetId: 500, characterId: 1, joinTime: t("17:00"), role: "fleet_commander", wingId: -1, squadId: -1, shipTypeId: 1, solarSystemId: 30000180 },
+        { fleetId: 500, characterId: 2, joinTime: t("18:40"), role: "squad_member", wingId: 1, squadId: 1, shipTypeId: 1, solarSystemId: 30000180 },
+      ]);
+      const op = await createOp({ participation: "fleet", fleetId: 500, ratePct: 100, corpCutPct: 0 });
+      const result = await opsQ.getOpResult(op);
+      expect(result.pilots.map((p) => [p.characterId, p.status])).toEqual([
+        [2, "counted"],
+        [1, "counted"],
+        [3, "outside"],
+      ]);
+      // Bravo joined at 18:40: a third of the 18:30–18:45 window.
+      expect(result.pilots.find((p) => p.characterId === 2)?.value).toBeCloseTo((60 / 3) * 500);
+      expect(result.payout.gross).toBeCloseTo(4000 + 10000);
+    });
+
+    it("imports corporation calendar events with attendees and counts those who accepted", async () => {
+      const responses: Record<string, unknown> = {
+        "/characters/1/calendar": [
+          { event_id: 11, event_date: "2026-09-10T18:00:00Z", title: "Moon pop", importance: 0, event_response: "accepted" },
+          { event_id: 12, event_date: "2026-09-11T18:00:00Z", title: "Dentist", importance: 0, event_response: "accepted" },
+        ],
+        "/characters/1/calendar/11": {
+          event_id: 11, date: "2026-09-10T18:00:00Z", duration: 120, importance: 0, owner_id: 100, owner_name: "Corp",
+          owner_type: "corporation", response: "accepted", text: "Bring Orcas", title: "Moon pop",
+        },
+        "/characters/1/calendar/12": {
+          event_id: 12, date: "2026-09-11T18:00:00Z", duration: 60, importance: 0, owner_id: 1, owner_name: "Alpha",
+          owner_type: "character", response: "accepted", text: "", title: "Dentist",
+        },
+        "/characters/1/calendar/11/attendees": [
+          { character_id: 1, event_response: "accepted" },
+          { character_id: 2, event_response: "declined" },
+        ],
+      };
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async (input: string | URL | Request) => {
+          const path = new URL(String(input instanceof Request ? input.url : input)).pathname;
+          const body = responses[path];
+          return new Response(JSON.stringify(body ?? { error: "not found" }), {
+            status: body === undefined ? 404 : 200,
+            headers: { "content-type": "application/json" },
+          });
+        }) as unknown as typeof fetch,
+      });
+      const res = await syncCalendar(db(), esi, 1, new Date("2026-09-09T00:00:00Z"));
+      expect(res).toMatchObject({ events: 1, attendees: 2 });
+      const events = await db().select().from(schema.calendarEvents);
+      expect(events.map((e) => [e.eventId, e.ownerType, e.durationMinutes])).toEqual([[11, "corporation", 120]]);
+      expect((await opsQ.getLinkableEvents(100, new Date("2026-09-09T00:00:00Z"))).map((e) => [e.eventId, e.accepted])).toEqual([[11, 1]]);
+
+      const op = await createOp({ participation: "calendar", calendarEventId: 11, solarSystemIds: [] });
+      const result = await opsQ.getOpResult(op);
+      expect(result.pilots.map((p) => [p.characterId, p.status])).toEqual([
+        [1, "counted"],
+        [2, "outside"],
+        [3, "outside"],
+      ]);
+    });
+  });
+
   describe("mining P&L", async () => {
     const pnl = await import("@/modules/mining/pnl/queries");
     const { pnlScope } = await import("@/modules/mining/pnl/scope");
@@ -1055,7 +1213,7 @@ describe.skipIf(!enabled)("integration", async () => {
       await characterLedgerJob.run(ctx);
       const rows = await db().select().from(schema.miningActivity);
       expect(rows).toHaveLength(1);
-      expect(rows[0]).toMatchObject({ characterId: 1, date: today, typeId: 1230, quantity: 600 });
+      expect(rows[0]).toMatchObject({ characterId: 1, date: today, solarSystemId: 30000180, typeId: 1230, quantity: 600 });
       expect(rows[0].windowStart.getTime()).toBe(earlier.getTime());
       const [ledger] = await db().select().from(schema.miningCharacterLedger).where(sql`character_id = 1 AND date = ${today}`);
       expect(ledger.quantity).toBe(1600);

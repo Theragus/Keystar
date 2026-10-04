@@ -6,6 +6,26 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Mining ops.** Industry → Mining Ops values the mining of one event and splits it between the pilots who took
+  part, instead of everything the members ever mined
+  ([#106](https://github.com/Theragus/Keystar/issues/106)).
+  - An op is a time frame in EVE time, optionally limited to systems and ore classes. Ore comes from the measured
+    ledger growth (about every 15 minutes); reads that straddle the start or end count by their share of time inside.
+  - Who counts: everyone mining in the op's time and place, the members of a tracked fleet while they were in it, or
+    the pilots who accepted an EVE calendar event. Organisers can include or exclude single pilots (a solo miner, a
+    booster without ore); pilots can opt their own characters out.
+  - Payout: ore value at a chosen price × rate (e.g. 90% buyback), minus a corporation cut, split by contribution or
+    equally; alts are paid to their main. Missing ledger data and ore that couldn't be placed in time are flagged.
+  - Finalize freezes the payout; CSV export of the payout list. New permission "Manage mining ops" (Contributor).
+  - Optional calendar import (`esi-calendar.read_calendar_events.v1`): create ops from corporation and alliance
+    events with their attendees. Read-only, personal events are never stored.
+
+### Changed
+
+- Mining activity windows now keep the solar system, so ops can be limited to systems.
+
 ## [0.12.0] - 2026-10-04
 
 ### Added

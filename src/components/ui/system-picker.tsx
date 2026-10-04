@@ -25,17 +25,21 @@ function loadSystems(): Promise<SystemOption[]> {
 /**
  * Solar system field with suggestions (known space and wormholes) that narrow
  * as you type. It stays a plain named input, so forms submit whatever was typed.
+ * With `onPick`, a picked system is handed over and the field clears (for
+ * lists of systems).
  */
 export function SystemPicker({
   name,
   defaultValue = "",
   placeholder,
   className,
+  onPick,
 }: {
-  name: string;
+  name?: string;
   defaultValue?: string;
   placeholder?: string;
   className?: string;
+  onPick?: (option: SystemOption) => void;
 }) {
   const { t } = useI18n();
   const s = t.common.systemPicker;
@@ -60,8 +64,9 @@ export function SystemPicker({
   }, [active]);
 
   const pick = (option: SystemOption) => {
-    setValue(option[1]);
+    setValue(onPick ? "" : option[1]);
     setOpen(false);
+    onPick?.(option);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -74,7 +79,7 @@ export function SystemPicker({
       }
     } else if (e.key === "Enter" && showList && matches[active]) {
       // Take the highlighted system; a second Enter submits the form.
-      if (matches[active][1] !== value) {
+      if (onPick || matches[active][1] !== value) {
         e.preventDefault();
         pick(matches[active]);
       } else setOpen(false);

@@ -9,6 +9,7 @@ import { fleet } from "./fleet";
 import { intel } from "./intel";
 import { killboard } from "./killboard";
 import { mining } from "./mining";
+import { ops } from "./ops";
 import { pnl } from "./pnl";
 import { setup } from "./setup";
 import { shell } from "./shell";
@@ -33,6 +34,7 @@ export const en = {
   admin,
   mining,
   pnl,
+  ops,
   killboard,
   fleet,
   intel,

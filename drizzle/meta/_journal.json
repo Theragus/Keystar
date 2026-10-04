@@ -85,6 +85,27 @@
       "when": 1791072409956,
       "tag": "0011_remove-intel-rescan",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791080065538,
+      "tag": "0012_mining_activity_system",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791080067112,
+      "tag": "0013_mining_activity_system_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791080166989,
+      "tag": "0014_mining_ops",
+      "breakpoints": true
     }
   ]
 }

@@ -311,6 +311,35 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   covers mining since the feature was deployed. Expenses are split across activities by active hours when measured
   activity covers ≥ 90% of income, otherwise by m³.
 
+## Mining ops
+
+Industry → Mining Ops (`/mining/ops`) values the mining of one event and splits it between the pilots who took part.
+ESI has no fleet mining log and the personal ledger only has daily totals, so ops are built on the measured activity
+windows above (`mining_activity`, which also keeps the solar system; rows from before that carry system 0 and only
+match ops without a system filter):
+
+- **An op** (`mining_ops`) is a time frame in EVE time, optionally limited to systems and ore classes. A window inside
+  the op counts in full; one that straddles the start or end counts by the share of its duration inside. The end is
+  extended by 15 minutes because ore shows up in the ledger some minutes after it was mined. Precision is the sync
+  interval (~15 minutes). The logic is pure and unit-tested (`src/modules/mining/ops/attribution.ts`).
+- **Who counts** (`participation`): everyone with matching activity, the members of a linked tracked fleet while they
+  were in it (`fleet_members` join/leave times, also extended by the grace), or the characters that accepted a linked
+  calendar event. Per-character overrides (`mining_op_participants`) include someone the rule leaves out (a booster
+  without ore) or exclude a solo miner; pilots can opt their own characters out, an organiser's decision wins.
+- **Payout** (`payout.ts`): ore value at the op's price source (the price on the op's last day from
+  `type_value_history`, else the current one) × rate, minus the corporation's cut, split by contribution or equally
+  in whole ISK (largest remainder). A payee is an account (alts are paid to the main) or an unregistered character.
+- **Missing data** is shown, never guessed: counted characters without ledger access during the op or with a sync gap,
+  and per character the ledger growth on the op's days and systems that no activity window explains ("not placed in
+  time").
+- **Finalize** freezes the result into `mining_op_shares` and `mining_op_share_types`, so later ledger corrections
+  and price moves don't change a settled op; reopening drops the frozen rows. Managing ops needs `mining.ops.manage`
+  (default Contributor); members see the ops they appear in, corporation-wide mining access sees all.
+- **Calendar import** (social module, `char-social` budget): characters whose owner opts in to
+  `esi-calendar.read_calendar_events.v1` are read hourly (`social.character-calendar`). Only corporation and alliance
+  events are stored (`calendar_events`, `calendar_event_attendees`); events that already started are refreshed by id
+  for two days, as ESI only lists upcoming ones. ESI can't create events, so ops are not written to the game calendar.
+
 ## Corporation wallets
 
 Finances → Corporation wallet and Corp wallet journal show the home corporation's wallet divisions (`wallet.corp.view`,

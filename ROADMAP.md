@@ -45,6 +45,9 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
     contracts and other costs ESI can't see.
   - *Breakdown*: net profit per day / week / month, ISK per hour from measured ledger activity (wall-clock and per
     character), cost per m³, per-character and per-activity (ore / moon / ice / gas) splits.
+- 🚧 **Mining ops** — time- and location-scoped mining events with a payout split, fleet or calendar attendance
+  and finalized payouts ([#106](https://github.com/Theragus/Keystar/issues/106); follow-ups
+  [#107](https://github.com/Theragus/Keystar/issues/107)–[#114](https://github.com/Theragus/Keystar/issues/114))
 - 💡 Mining P&L: recurring manual costs (monthly Omega), contract import for buyback sales
 - 💡 Mining tax / buyback calculations per member
 - 💡 Moon extraction timers (`/corporation/{id}/mining/extractions`, Station_Manager)

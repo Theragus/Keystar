@@ -1,4 +1,4 @@
-import { bigint, boolean, index, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "@/core/db/schema/core";
 
 export type MailRecipientType = "alliance" | "character" | "corporation" | "mailing_list";
@@ -74,4 +74,46 @@ export const mailLists = pgTable(
     name: text("name").notNull(),
   },
   (t) => [primaryKey({ columns: [t.characterId, t.mailingListId] }), index("mail_lists_user_idx").on(t.userId)],
+);
+
+export type CalendarOwnerType = "corporation" | "alliance";
+export type CalendarResponse = "accepted" | "declined" | "tentative" | "not_responded";
+
+/**
+ * Corporation and alliance events from the EVE calendar
+ * (GET /characters/{id}/calendar and /calendar/{event_id}), read through
+ * characters whose owner opted in. Personal and CCP events are never stored.
+ * ESI can't create events, so Keystar only reads them.
+ */
+export const calendarEvents = pgTable(
+  "calendar_events",
+  {
+    eventId: bigint("event_id", { mode: "number" }).primaryKey(),
+    ownerType: text("owner_type").$type<CalendarOwnerType>().notNull(),
+    ownerId: bigint("owner_id", { mode: "number" }).notNull(),
+    ownerName: text("owner_name").notNull(),
+    title: text("title").notNull(),
+    text: text("text").notNull().default(""),
+    eventDate: timestamp("event_date", { withTimezone: true }).notNull(),
+    durationMinutes: integer("duration_minutes").notNull(),
+    importance: integer("importance").notNull().default(0),
+    /** The character the event was last read through (its token reads the attendees too). */
+    seenByCharacterId: bigint("seen_by_character_id", { mode: "number" }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("calendar_events_date_idx").on(t.eventDate)],
+);
+
+/** Invited characters and their response (GET /characters/{id}/calendar/{event_id}/attendees). */
+export const calendarEventAttendees = pgTable(
+  "calendar_event_attendees",
+  {
+    eventId: bigint("event_id", { mode: "number" })
+      .notNull()
+      .references(() => calendarEvents.eventId, { onDelete: "cascade" }),
+    characterId: bigint("character_id", { mode: "number" }).notNull(),
+    response: text("response").$type<CalendarResponse>().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.eventId, t.characterId] })],
 );

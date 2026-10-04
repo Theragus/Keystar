@@ -1,4 +1,4 @@
-import { Calculator, Gem, Pickaxe, ReceiptText, TableProperties } from "lucide-react";
+import { Calculator, CalendarRange, Gem, Pickaxe, ReceiptText, TableProperties } from "lucide-react";
 import type { KeystarModule } from "@/core/modules/types";
 
 export const MINING_PERMISSIONS = {
@@ -6,6 +6,7 @@ export const MINING_PERMISSIONS = {
   viewCorp: "mining.view.corp",
   export: "mining.export",
   pnl: "mining.pnl",
+  manageOps: "mining.ops.manage",
 } as const;
 
 export const miningModule: KeystarModule = {
@@ -60,6 +61,13 @@ export const miningModule: KeystarModule = {
       group: (t) => t.mining.module.permissionGroup,
       defaultMinRole: "member",
     },
+    {
+      key: MINING_PERMISSIONS.manageOps,
+      label: (t) => t.mining.module.permissions.manageOps.label,
+      description: (t) => t.mining.module.permissions.manageOps.description,
+      group: (t) => t.mining.module.permissionGroup,
+      defaultMinRole: "contributor",
+    },
   ],
   nav: [
     {
@@ -70,6 +78,12 @@ export const miningModule: KeystarModule = {
       items: [
         { href: "/mining", label: (t) => t.mining.module.nav.overview, icon: Pickaxe, anyPermission: ["mining.view.own", "mining.view.corp"] },
         { href: "/mining/ledger", label: (t) => t.mining.module.nav.ledger, icon: TableProperties, anyPermission: ["mining.view.own", "mining.view.corp"] },
+        {
+          href: "/mining/ops",
+          label: (t) => t.mining.module.nav.ops,
+          icon: CalendarRange,
+          anyPermission: ["mining.view.own", "mining.view.corp", "mining.ops.manage"],
+        },
         { href: "/mining/observers", label: (t) => t.mining.module.nav.observers, icon: Gem, anyPermission: ["mining.view.corp"] },
         {
           href: "/mining/estimator",

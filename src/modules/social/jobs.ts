@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import { characters } from "@/core/db/schema/core";
 import type { JobDefinition } from "@/core/sync/types";
-import { MAIL_JOB_KEY, MAIL_SCOPE } from "./module";
+import { syncCalendar } from "./calendar";
+import { CALENDAR_JOB_KEY, CALENDAR_SCOPE, MAIL_JOB_KEY, MAIL_SCOPE } from "./module";
 import { syncMailbox } from "./sync";
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -33,4 +34,22 @@ export const mailJob: JobDefinition = {
   },
 };
 
-export const socialJobs: JobDefinition[] = [mailJob];
+/** Corporation and alliance events (and who accepted them) for mining ops. */
+export const calendarJob: JobDefinition = {
+  key: CALENDAR_JOB_KEY,
+  label: (t) => t.social.module.jobs.calendar,
+  module: "social",
+  owner: "character",
+  requiredScopes: [CALENDAR_SCOPE],
+  // Ops are planned hours or days ahead; hourly keeps attendance current without spending the char-social budget.
+  intervalSeconds: 3600,
+  async run({ esi, db, characterId }) {
+    const res = await syncCalendar(db, esi, characterId!);
+    return {
+      summary: `${count(res.events, "corporation event", "corporation events")}, ${count(res.attendees, "attendee", "attendees")}`,
+      nextRunAt: res.expiresAt,
+    };
+  },
+};
+
+export const socialJobs: JobDefinition[] = [mailJob, calendarJob];

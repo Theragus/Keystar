@@ -46,6 +46,7 @@ import { seedCorpWallet } from "./demo-data/corp-wallet";
 import { seedFleets } from "./demo-data/fleet";
 import { seedIntel } from "./demo-data/intel";
 import { seedKillboard } from "./demo-data/killboard";
+import { seedMiningOps } from "./demo-data/ops";
 import { seedMiningPnl } from "./demo-data/pnl";
 import { seedSkills } from "./demo-data/skills";
 import { seedMail } from "./demo-data/social";
@@ -196,8 +197,8 @@ async function main() {
     intel_ai_notes, wallet_transactions, mining_activity, mining_activity_coverage, mining_pnl_settings,
     mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions,
     corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages,
-    mail_labels, mail_lists, skills_queue, skills_character_skills, skills_character, skills_type_attributes
-    RESTART IDENTITY CASCADE`);
+    mail_labels, mail_lists, skills_queue, skills_character_skills, skills_character, skills_type_attributes, mining_ops,
+    calendar_events RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
   await db.insert(eveGroups).values(staticData.groups);
@@ -424,7 +425,13 @@ async function main() {
     characters: pnlChars.map((c) => ({ characterId: c.characterId, name: c.name, profile: c.profile })),
     ledger: personalRows
       .filter((r) => pnlChars.some((c) => c.characterId === r.characterId))
-      .map((r) => ({ characterId: r.characterId!, date: r.date!, typeId: r.typeId!, quantity: Number(r.quantity) })),
+      .map((r) => ({
+        characterId: r.characterId!,
+        date: r.date!,
+        solarSystemId: r.solarSystemId!,
+        typeId: r.typeId!,
+        quantity: Number(r.quantity),
+      })),
     types: new Map(staticData.types.map((t) => [t.typeId, { name: t.name, volume: t.volume, compressedTypeId: t.compressedTypeId ?? null }])),
     jitaBuy: new Map(valueRows.filter((v) => v.source === "jita_buy").map((v) => [v.typeId!, v.unitPrice!])),
     rand,
@@ -435,6 +442,20 @@ async function main() {
   const corpWallet = await seedCorpWallet(db, {
     corporationId: HOME_CORP.corporationId,
     members: allChars.filter((c) => (c.corp ?? HOME_CORP) === HOME_CORP).map((c) => c.characterId),
+    rand,
+    now: new Date(),
+  });
+
+  // --- Mining ops ------------------------------------------------------------
+  const typeIdByName = new Map(staticData.types.map((t) => [t.name, t]));
+  const miningOpsSeed = await seedMiningOps(db, {
+    corporationId: HOME_CORP.corporationId,
+    corporationName: HOME_CORP.name,
+    members: allChars.filter((c) => (c.corp ?? HOME_CORP) === HOME_CORP).map((c) => ({ characterId: c.characterId, name: c.name })),
+    organiser: { userId: demoUserIds.admin, name: "Aria Vexmoor" },
+    beltSystemId: systemByName.get("Vitrauze")!,
+    moonSystemId: systemByName.get("Osmon")!,
+    ores: ["Jaspet", "Hemorphite", "Spodumain"].map((name) => ({ typeId: typeIdByName.get(name)!.typeId, volume: typeIdByName.get(name)!.volume })),
     rand,
     now: new Date(),
   });
@@ -542,7 +563,7 @@ async function main() {
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
       `${killboard.killmails} killmails, ${fleetCount} fleets, ${pnl.transactions} wallet transactions, ${pnl.windows} ` +
-      `activity windows, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, ${queued} queued skills, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
+      `activity windows, ${miningOpsSeed.ops} mining ops, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, ${queued} queued skills, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");
   await closeDb();
