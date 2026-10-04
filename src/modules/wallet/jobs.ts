@@ -116,7 +116,10 @@ export const walletFeesJob: JobDefinition = {
       .where(and(eq(walletFees.characterId, characterId!), eq(walletFees.userId, owner.userId)));
     const seen = meta.userId === owner.userId && typeof meta.newestSeenId === "number" ? meta.newestSeenId : null;
     const stored = newest?.id == null ? null : Number(newest.id);
-    const cursor = stored === null ? seen : seen === null ? stored : Math.max(stored, seen);
+    const latest = stored === null ? seen : seen === null ? stored : Math.max(stored, seen);
+    // Fees imported before descriptions were kept get theirs from one full read of ESI's 30 days.
+    const backfill = latest !== null && meta.descriptions !== true;
+    const cursor = backfill ? null : latest;
 
     const res = await fetchJournalSince(esi, `/characters/${characterId}/wallet/journal`, characterId!, cursor);
     const rows = res.rows
@@ -130,6 +133,7 @@ export const walletFeesJob: JobDefinition = {
         amount: Math.abs(e.amount ?? 0),
         contextId: e.context_id ?? null,
         contextIdType: e.context_id_type ?? null,
+        description: e.description?.trim() || null,
       }));
 
     const stillOwned = await db.transaction(async (tx) => {
@@ -139,17 +143,25 @@ export const walletFeesJob: JobDefinition = {
       );
       if (current?.user_id !== owner.userId) return false;
       for (let i = 0; i < rows.length; i += CHUNK) {
-        await tx.insert(walletFees).values(rows.slice(i, i + CHUNK)).onConflictDoNothing();
+        await tx
+          .insert(walletFees)
+          .values(rows.slice(i, i + CHUNK))
+          .onConflictDoUpdate({
+            target: [walletFees.characterId, walletFees.journalId],
+            set: { description: sql`excluded.description` },
+            setWhere: sql`${walletFees.description} IS NULL AND ${walletFees.userId} = excluded.user_id`,
+          });
       }
       return true;
     });
     if (!stillOwned) return { summary: "Character changed owner during the import" };
 
-    const newestSeenId = res.rows.reduce((max, e) => Math.max(max, e.id), cursor ?? 0);
+    const newestSeenId = res.rows.reduce((max, e) => Math.max(max, e.id), latest ?? 0);
+    const added = rows.filter((r) => latest === null || r.journalId > latest).length;
     return {
-      summary: `${rows.length} new fee${rows.length === 1 ? "" : "s"}${res.truncated ? " (older ones skipped)" : ""}`,
+      summary: `${added} new fee${added === 1 ? "" : "s"}${res.truncated ? " (older ones skipped)" : ""}`,
       nextRunAt: res.expiresAt,
-      meta: { userId: owner.userId, newestSeenId: newestSeenId || null },
+      meta: { userId: owner.userId, newestSeenId: newestSeenId || null, descriptions: true },
     };
   },
 };

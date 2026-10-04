@@ -36,7 +36,7 @@ export const pnl: typeof en = {
     bursts: { label: "Burst-Ladungen", hint: "Mining-Foreman-Burst-Ladungen" },
     drones: { label: "Mining-Drohnen", hint: "Mining-, Eis- und Excavator-Drohnen" },
     ships: { label: "Schiffe & Fittings", hint: "Mining-Schiffe, Mining-Module, Rigs, Kompressoren, Industriekerne" },
-    fees: { label: "Steuern & Gebühren", hint: "Verkaufssteuer und Maklergebühren aus deinem Wallet-Journal" },
+    fees: { label: "Maklergebühren", hint: "Maklergebühren aus deinem Wallet-Journal" },
     subscription: { label: "PLEX / Omega", hint: "Spielzeit für Mining-Alts" },
     other: { label: "Sonstiges", hint: "Alles andere, was du als Mining-Kosten zählst" },
   },
@@ -171,7 +171,7 @@ export const pnl: typeof en = {
       incomeSales: (mined: string) => (
         <>
           <b className="text-ink">Einnahmen</b> sind der Erlös der Wallet-Verkäufe, die du zählst (Erz, Mineralien,
-          Mondmaterialien, Eisprodukte und Gas), am Tag des Verkaufs. Das in diesem Zeitraum abgebaute Erz ist zur
+          Mondmaterialien, Eisprodukte und Gas) nach Verkaufssteuer, am Tag des Verkaufs. Das in diesem Zeitraum abgebaute Erz ist zur
           Bewertung {mined} wert; ISK pro Stunde bewertet weiterhin das abgebaute Erz.
         </>
       ),
@@ -179,9 +179,9 @@ export const pnl: typeof en = {
         <>
           <b className="text-ink">Ausgaben</b> sind Wallet-Käufe, die du gezählt hast (oder die bei Charakteren mit
           eingeschalteter automatischer Zählung automatisch zählen), plus manuelle Einträge; verteilte Einträge werden
-          gleichmäßig auf ihre Tage aufgeteilt. Kommen Einnahmen aus Wallet-Verkäufen, kommen Verkaufssteuer auf gezählte
-          Mining-Verkäufe und übernommene Maklergebühren als „Steuern &amp; Gebühren“ aus dem Wallet-Journal dazu. Handel zwischen deinen eigenen Charakteren zählt
-          nicht.
+          gleichmäßig auf ihre Tage aufgeteilt. Kommen Einnahmen aus Wallet-Verkäufen, kommen übernommene Maklergebühren
+          aus dem Wallet-Journal dazu (die Verkaufssteuer wird stattdessen von den Verkäufen abgezogen). Handel zwischen
+          deinen eigenen Charakteren zählt nicht.
         </>
       ),
       iskPerHour: (wallClock: string, characterHours: string, since: string | null, share: string) => (
@@ -212,6 +212,14 @@ export const pnl: typeof en = {
     ),
     switchToSales: "Auf Wallet-Verkäufe umstellen",
     sales: {
+      salesTax: {
+        none: "Für diese Verkäufe wurde keine Verkaufssteuer importiert.",
+        counted: (amount: string, count: number) =>
+          `Verkaufssteuer: ${amount} von ${plural(count, "gezähltem Verkauf", "gezählten Verkäufen")} abgezogen.`,
+        pending: (amount: string) => ` Weitere ${amount} auf noch nicht geprüfte Verkäufe, abgezogen, sobald du sie übernimmst.`,
+      },
+      columns: { tax: "Verkaufssteuer" },
+      net: (amount: string) => `netto ${amount}`,
       title: "Wallet-Verkäufe",
       subtitle: "Automatisch nach Item-Gruppe erkannt: Erz (roh oder komprimiert), Mineralien, Mondmaterialien, Eisprodukte und Gas",
       includeAll: (count: number) => `Alle ${n(count)} Vorschläge übernehmen`,
@@ -288,19 +296,22 @@ export const pnl: typeof en = {
       older: "Älter",
     },
     fees: {
-      title: "Steuern & Gebühren",
-      subtitle: "Verkaufssteuer und Maklergebühren aus deinem Wallet-Journal",
-      columns: { fee: "Gebühr", sale: "Bezahlt auf" },
+      title: "Maklergebühren",
+      subtitle: "Fallen beim Erstellen oder Ändern einer Marktorder an, aus deinem Wallet-Journal",
+      columns: { description: "Gebühr" },
       kinds: { transaction_tax: "Verkaufssteuer", brokers_fee: "Maklergebühr" },
-      order: "Marktorder",
-      includeHint: "Diese Gebühr als Mining-Kosten zählen",
-      excludeHint: "Ausschließen: keine Mining-Kosten",
+      time: (time: string) => `${time} EVE`,
+      empty: "Keine Maklergebühren in diesem Zeitraum.",
+      includeAll: (count: number) => `Alle ${n(count)} Maklergebühren übernehmen`,
+      includeAllHint: "Jede vorgeschlagene Maklergebühr in diesem Zeitraum zählen",
+      includeHint: "Diese Maklergebühr als Mining-Kosten zählen",
+      excludeHint: "Ausschließen: keine Mining-Order",
       page: (page: number, pages: number, total: number) =>
-        `Seite ${n(page)} von ${n(pages)} · ${plural(total, "Gebühr", "Gebühren")}`,
+        `Seite ${n(page)} von ${n(pages)} · ${plural(total, "Maklergebühr", "Maklergebühren")}`,
       notes:
-        "Die Verkaufssteuer folgt dem Verkauf, auf den sie gezahlt wurde: Steuer auf einen gezählten Mining-Verkauf zählt, Steuer auf andere Verkäufe bleibt draußen. Maklergebühren gehören zu Marktorders, die nicht unbedingt Mining-Orders sind, und zählen daher erst, wenn du sie übernimmst.",
+        "ESI sagt nicht, für welche Order eine Maklergebühr anfiel; die Beschreibung aus dem Journal ist alles, was es gibt. Sie zählen erst, wenn du sie übernimmst. Die Verkaufssteuer steht nicht hier: Sie wird vom Verkauf abgezogen, auf den sie gezahlt wurde (Tab „Einnahmen“).",
       minedNote:
-        "Einnahmen sind derzeit der Wert des abgebauten Erzes, daher zählen Steuern und Gebühren nicht; dein Einnahmen-Anteil deckt sie ab. Sie zählen, sobald Einnahmen aus Wallet-Verkäufen kommen (Einstellungen → Einnahmen).",
+        "Einnahmen sind derzeit der Wert des abgebauten Erzes, daher zählen Maklergebühren nicht; dein Einnahmen-Anteil deckt sie ab. Sie zählen, sobald Einnahmen aus Wallet-Verkäufen kommen (Einstellungen → Einnahmen).",
     },
     add: {
       title: "Kosten erfassen",

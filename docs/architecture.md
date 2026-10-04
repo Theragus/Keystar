@@ -349,9 +349,12 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   `transaction_tax` and `brokers_fee` entries (`wallet_fees`, owned and deleted like `wallet_transactions`; the
   cursor is the newest journal id seen). Sales tax is matched to its sale by the journal's market transaction id,
   else the character's sale whose journal entry (`journal_ref_id`) comes right before the tax at the same time (a
-  multi-sell books sale, tax, sale, tax …), and takes that sale's status; broker fees belong to orders, so they stay
-  suggested until included. `mining_pnl_fee_overrides` holds the user's include/exclude decisions. Counted fees are
-  wallet expenses in the "fees" category, only when income comes from wallet sales.
+  multi-sell books sale, tax, sale, tax …). Sales tax has no review of its own: it is deducted from its sale, so sale
+  rows, the report's income and the mined-vs-sold table are net of tax. Broker fees belong to orders (ESI gives no
+  context, so the stored journal `description` is shown), stay suggested until included, and are wallet expenses in
+  the "fees" category, only when income comes from wallet sales. `mining_pnl_fee_overrides` holds the user's
+  include/exclude decisions on broker fees. The job reads ESI's 30 days once more to fill in descriptions of fees
+  imported before they were kept (`descriptions` in the job meta).
 - **Sale hints**: wallet sells of a mined ore or its compressed variant, converted to raw units with the valuation's
   compression ratio, offered as one-click price rules.
 - **Active hours / ISK per hour**: the ledger job compares each fresh ESI snapshot with the stored ledger in one

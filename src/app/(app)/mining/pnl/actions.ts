@@ -24,7 +24,7 @@ import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { miningValuation } from "@/modules/mining/page-context";
 import { classifyPurchase, classifySale, isExpenseCategory, isIncomeCategory } from "@/modules/mining/pnl/categories";
 import { parsePnlFilters } from "@/modules/mining/pnl/filters";
-import { getPurchases, getSales, type WalletSide } from "@/modules/mining/pnl/queries";
+import { getFees, getPurchases, getSales, type WalletSide } from "@/modules/mining/pnl/queries";
 import { isIncomeSource, pnlScope } from "@/modules/mining/pnl/scope";
 import { SPREAD_DAYS } from "@/modules/mining/pnl/spread";
 import { ok, refused, type ActionResult } from "@/lib/action-result";
@@ -333,17 +333,18 @@ export async function deleteManualEntry(entryId: number) {
   revalidate();
 }
 
-/** Include (true), exclude (false) or reset to automatic (null) one sales tax or broker fee. */
+/** Include (true), exclude (false) or reset to automatic (null) one broker fee. Sales tax follows its sale. */
 export async function setFeeIncluded(characterId: number, journalId: number, included: boolean | null) {
   const user = await pnlUser();
   const charId = ownCharacter(user, characterId);
   const id = positiveId(journalId, "fee");
   const db = getDb();
   const [fee] = await db
-    .select({ id: walletFees.journalId })
+    .select({ id: walletFees.journalId, refType: walletFees.refType })
     .from(walletFees)
     .where(and(eq(walletFees.characterId, charId), eq(walletFees.journalId, id), eq(walletFees.userId, user.id)));
   if (!fee) throw new Error("Fee not found");
+  if (fee.refType !== "brokers_fee") throw new Error("Sales tax counts with its sale; include or exclude the sale instead");
   const key = and(
     eq(miningPnlFeeOverrides.userId, user.id),
     eq(miningPnlFeeOverrides.characterId, charId),
@@ -359,6 +360,32 @@ export async function setFeeIncluded(characterId: number, journalId: number, inc
         target: [miningPnlFeeOverrides.userId, miningPnlFeeOverrides.characterId, miningPnlFeeOverrides.journalId],
         set: { included: included === true, updatedAt: new Date() },
       });
+  }
+  revalidate();
+}
+
+/** Includes every suggested broker fee matching the expenses page filters. */
+export async function includeAllSuggestedFees(formData: FormData) {
+  const user = await pnlUser();
+  const filters = parsePnlFilters({
+    from: String(formData.get("from") ?? ""),
+    to: String(formData.get("to") ?? ""),
+    chars: String(formData.get("chars") ?? ""),
+  });
+  const valuation = miningValuation(await getSettings());
+  const scope = pnlScope(user, filters, valuation, 100);
+  // In batches: included fees leave "suggested", so each query returns the next ones until none are left.
+  for (let batch = 0; batch < MAX_INCLUDE_BATCHES; batch++) {
+    const { rows } = await getFees(scope, { status: "suggested", kind: "brokers_fee", limit: INCLUDE_BATCH, offset: 0 });
+    if (!rows.length) break;
+    await getDb()
+      .insert(miningPnlFeeOverrides)
+      .values(rows.map((r) => ({ userId: user.id, characterId: r.characterId, journalId: r.journalId, included: true })))
+      .onConflictDoUpdate({
+        target: [miningPnlFeeOverrides.userId, miningPnlFeeOverrides.characterId, miningPnlFeeOverrides.journalId],
+        set: { included: true, updatedAt: new Date() },
+      });
+    if (rows.length < INCLUDE_BATCH) break;
   }
   revalidate();
 }

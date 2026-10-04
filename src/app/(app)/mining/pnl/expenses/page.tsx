@@ -20,6 +20,7 @@ import {
   addManualEntry,
   deleteManualEntry,
   includeAllSuggested,
+  includeAllSuggestedFees,
   setFeeIncluded,
   setPurchaseCategory,
   setPurchaseIncluded,
@@ -52,15 +53,18 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
     getExpenseRows(scope),
     getFeeRows(scope),
     getPurchases(scope, { status: filters.status, limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
-    // Same status tab as the purchases, so taxes on other sales ("Other purchases") can be found and included too.
-    getFees(scope, { status: filters.status, limit: FEE_PAGE_SIZE, offset: (filters.feePage - 1) * FEE_PAGE_SIZE }),
+    // Broker fees are reviewed here, on the same status tab as the purchases; sales tax follows its sale.
+    getFees(scope, { status: filters.status, kind: "brokers_fee", limit: FEE_PAGE_SIZE, offset: (filters.feePage - 1) * FEE_PAGE_SIZE }),
     getManualEntries(user.id, filters.from, filters.to),
     getWalletStatus(user.id),
   ]);
 
-  // The status tabs cover purchases and fees; "Include all suggested" only includes purchases.
+  // The status tabs cover purchases and broker fees, the two things reviewed here.
   const summary = [...purchaseRows, ...feeRows];
-  const suggestedPurchases = purchaseRows.filter((r) => r.status === "suggested").reduce((n, r) => n + r.count, 0);
+  const sumOf = (rows: { amount: number; count: number }[]) =>
+    rows.reduce((sum, r) => ({ amount: sum.amount + r.amount, count: sum.count + r.count }), { amount: 0, count: 0 });
+  const suggestedPurchases = sumOf(purchaseRows.filter((r) => r.status === "suggested")).count;
+  const suggestedBrokerFees = sumOf(feeRows.filter((r) => r.status === "suggested")).count;
   const byStatus = (status: ExpenseStatus) =>
     summary
       .filter((r) => r.status === status)
@@ -257,82 +261,93 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
             )}
           </Panel>
 
-          {fees.total > 0 && (
-            <Panel title={m.fees.title} subtitle={m.fees.subtitle}>
+          {feeRows.length > 0 && (
+            <Panel
+              title={m.fees.title}
+              subtitle={m.fees.subtitle}
+              actions={
+                suggestedBrokerFees > 0 && (
+                  <form action={includeAllSuggestedFees}>
+                    <input type="hidden" name="from" value={filters.from} />
+                    <input type="hidden" name="to" value={filters.to} />
+                    <input type="hidden" name="chars" value={filters.characters.join(",")} />
+                    <SubmitButton variant="primary" title={m.fees.includeAllHint}>
+                      <CheckCheck className="size-3.5" aria-hidden /> {m.fees.includeAll(suggestedBrokerFees)}
+                    </SubmitButton>
+                  </form>
+                )
+              }
+            >
               {ctx.incomeSource !== "sales" && (
                 <p className="mb-4 flex items-start gap-2 text-sm text-ink-2">
                   <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
                   {m.fees.minedNote}
                 </p>
               )}
-              <div className="overflow-x-auto">
-                <table className="ks-table">
-                  <thead>
-                    <tr>
-                      <th>{m.purchases.columns.date}</th>
-                      <th>{m.fees.columns.fee}</th>
-                      <th>{m.fees.columns.sale}</th>
-                      <th className="num">{m.purchases.columns.total}</th>
-                      <th>{m.purchases.columns.status}</th>
-                      <th className="num">{m.purchases.columns.countIt}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fees.rows.map((fee) => (
-                      <tr key={`${fee.characterId}:${fee.journalId}`} className={cn(fee.status === "excluded" && "opacity-60")}>
-                        <td className="whitespace-nowrap text-ink-2 tabular-nums">{f.shortDate(fee.date.slice(0, 10))}</td>
-                        <td>
-                          <span className="block text-ink">{m.fees.kinds[fee.kind]}</span>
-                          <span className="block text-2xs text-ink-3">{fee.characterName ?? t.pnl.characterFallback(fee.characterId)}</span>
-                        </td>
-                        <td>
-                          {fee.sale ? (
-                            <span className="flex items-center gap-2">
-                              <TypeIcon id={fee.sale.typeId} size={22} />
-                              <span className="max-w-[16rem] truncate text-ink-2">
-                                {fee.sale.typeName ?? t.pnl.typeFallback(fee.sale.typeId)}
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="text-ink-3">{fee.kind === "brokers_fee" ? m.fees.order : "—"}</span>
-                          )}
-                        </td>
-                        <td className="num font-semibold">{f.compact(fee.amount)}</td>
-                        <td>
-                          <Badge tone={statusTone[fee.status]}>{t.pnl.statuses[fee.status].label}</Badge>
-                        </td>
-                        <td className="num">
-                          <span className="inline-flex items-center gap-1">
-                            {fee.status !== "counted" && (
-                              <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, true)}>
-                                <SubmitButton title={m.fees.includeHint}>
-                                  <Plus className="size-3.5" aria-hidden /> {m.purchases.include}
-                                </SubmitButton>
-                              </form>
-                            )}
-                            {fee.status !== "excluded" && (
-                              <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, false)}>
-                                <SubmitButton variant="ghost" title={m.fees.excludeHint} className="px-2">
-                                  <X className="size-3.5" aria-hidden />
-                                  <span className="sr-only">{m.purchases.exclude}</span>
-                                </SubmitButton>
-                              </form>
-                            )}
-                            {fee.overrideIncluded !== null && (
-                              <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, null)}>
-                                <SubmitButton variant="ghost" title={m.purchases.reset} className="px-2">
-                                  <RotateCcw className="size-3.5" aria-hidden />
-                                  <span className="sr-only">{m.purchases.reset}</span>
-                                </SubmitButton>
-                              </form>
-                            )}
-                          </span>
-                        </td>
+              {fees.rows.length === 0 ? (
+                <p className="py-4 text-center text-sm text-ink-3">{m.fees.empty}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="ks-table">
+                    <thead>
+                      <tr>
+                        <th>{m.purchases.columns.date}</th>
+                        <th>{m.fees.columns.description}</th>
+                        <th className="num">{m.purchases.columns.total}</th>
+                        <th>{m.purchases.columns.status}</th>
+                        <th className="num">{m.purchases.columns.countIt}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {fees.rows.map((fee) => (
+                        <tr key={`${fee.characterId}:${fee.journalId}`} className={cn(fee.status === "excluded" && "opacity-60")}>
+                          <td className="whitespace-nowrap text-ink-2 tabular-nums">
+                            <span className="block">{f.shortDate(fee.date.slice(0, 10))}</span>
+                            <span className="block text-2xs text-ink-3">{m.fees.time(fee.date.slice(11, 16))}</span>
+                          </td>
+                          <td>
+                            <span className="block max-w-[28rem] truncate text-ink" title={fee.description ?? undefined}>
+                              {fee.description ?? m.fees.kinds.brokers_fee}
+                            </span>
+                            <span className="block text-2xs text-ink-3">{fee.characterName ?? t.pnl.characterFallback(fee.characterId)}</span>
+                          </td>
+                          <td className="num font-semibold">{f.compact(fee.amount)}</td>
+                          <td>
+                            <Badge tone={statusTone[fee.status]}>{t.pnl.statuses[fee.status].label}</Badge>
+                          </td>
+                          <td className="num">
+                            <span className="inline-flex items-center gap-1">
+                              {fee.status !== "counted" && (
+                                <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, true)}>
+                                  <SubmitButton title={m.fees.includeHint}>
+                                    <Plus className="size-3.5" aria-hidden /> {m.purchases.include}
+                                  </SubmitButton>
+                                </form>
+                              )}
+                              {fee.status !== "excluded" && (
+                                <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, false)}>
+                                  <SubmitButton variant="ghost" title={m.fees.excludeHint} className="px-2">
+                                    <X className="size-3.5" aria-hidden />
+                                    <span className="sr-only">{m.purchases.exclude}</span>
+                                  </SubmitButton>
+                                </form>
+                              )}
+                              {fee.overrideIncluded !== null && (
+                                <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, null)}>
+                                  <SubmitButton variant="ghost" title={m.purchases.reset} className="px-2">
+                                    <RotateCcw className="size-3.5" aria-hidden />
+                                    <span className="sr-only">{m.purchases.reset}</span>
+                                  </SubmitButton>
+                                </form>
+                              )}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               {feePages > 1 && (
                 <div className="mt-4 flex items-center justify-between text-xs text-ink-3">
                   <span>{m.fees.page(filters.feePage, feePages, fees.total)}</span>

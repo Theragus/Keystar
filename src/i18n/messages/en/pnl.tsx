@@ -40,7 +40,7 @@ export const pnl = {
     bursts: { label: "Burst charges", hint: "Mining Foreman burst charges" },
     drones: { label: "Mining drones", hint: "Mining, ice and excavator drones" },
     ships: { label: "Ships & fittings", hint: "Mining hulls, mining modules, rigs, compressors, industrial cores" },
-    fees: { label: "Taxes & fees", hint: "Sales tax and broker fees from your wallet journal" },
+    fees: { label: "Broker fees", hint: "Broker fees from your wallet journal" },
     subscription: { label: "PLEX / Omega", hint: "Game time for mining alts" },
     other: { label: "Other", hint: "Anything else you count as a mining cost" },
   } satisfies Record<ExpenseCategory, { label: string; hint: string }>,
@@ -170,7 +170,7 @@ export const pnl = {
       incomeSales: (mined: string) => (
         <>
           <b className="text-ink">Income</b> is what the wallet sales you counted brought in (ore, minerals, moon
-          materials, ice products and gas), on the day of the sale. The ore mined in this period is worth {mined} at the
+          materials, ice products and gas) after their sales tax, on the day of the sale. The ore mined in this period is worth {mined} at the
           valuation; ISK per hour still values the mined ore.
         </>
       ),
@@ -178,8 +178,8 @@ export const pnl = {
         <>
           <b className="text-ink">Expenses</b> are wallet purchases you counted (or that are counted automatically for
           characters where you switched that on) plus manual entries; spread entries are divided evenly over their days.
-          When income comes from wallet sales, sales tax on counted mining sales and the broker fees you include come
-          from the wallet journal as &ldquo;Taxes &amp; fees&rdquo;. Trades between your own characters don&apos;t count.
+          When income comes from wallet sales, the broker fees you include come from the wallet journal (sales tax is
+          deducted from the sales instead). Trades between your own characters don&apos;t count.
         </>
       ),
       iskPerHour: (wallClock: string, characterHours: string, since: string | null, share: string) => (
@@ -208,6 +208,14 @@ export const pnl = {
     ),
     switchToSales: "Switch to wallet sales",
     sales: {
+      salesTax: {
+        none: "No sales tax imported for these sales.",
+        counted: (amount: string, count: number) =>
+          `Sales tax: ${amount} deducted from ${plural(count, "counted sale", "counted sales")}.`,
+        pending: (amount: string) => ` ${amount} more on sales you haven't reviewed yet, deducted once you include them.`,
+      },
+      columns: { tax: "Sales tax" },
+      net: (amount: string) => `net ${amount}`,
       title: "Wallet sales",
       subtitle: "Auto-tagged by item group: ore (raw or compressed), minerals, moon materials, ice products and gas",
       includeAll: (count: number) => `Include all ${n(count)} suggested`,
@@ -283,18 +291,22 @@ export const pnl = {
       older: "Older",
     },
     fees: {
-      title: "Taxes & fees",
-      subtitle: "Sales tax and broker fees from your wallet journal",
-      columns: { fee: "Fee", sale: "Paid on" },
+      title: "Broker fees",
+      subtitle: "Charged when you place or change a market order, from your wallet journal",
+      columns: { description: "Fee" },
       kinds: { transaction_tax: "Sales tax", brokers_fee: "Broker fee" } satisfies Record<FeeKind, string>,
-      order: "Market order",
-      includeHint: "Count this fee as a mining cost",
-      excludeHint: "Exclude: not a mining cost",
-      page: (page: number, pages: number, total: number) => `Page ${n(page)} of ${n(pages)} · ${plural(total, "fee", "fees")}`,
+      time: (time: string) => `${time} EVE`,
+      empty: "No broker fees here for this period.",
+      includeAll: (count: number) => `Include all ${n(count)} broker fees`,
+      includeAllHint: "Count every suggested broker fee in this period",
+      includeHint: "Count this broker fee as a mining cost",
+      excludeHint: "Exclude: not a mining order",
+      page: (page: number, pages: number, total: number) =>
+        `Page ${n(page)} of ${n(pages)} · ${plural(total, "broker fee", "broker fees")}`,
       notes:
-        "Sales tax follows the sale it was paid on: tax on a counted mining sale counts, tax on other sales stays out. Broker fees belong to market orders, which may not be mining orders, so they only count once you include them.",
+        "ESI doesn't say which order a broker fee was for, so the journal's own description is all there is; they only count once you include them. Sales tax isn't listed here: it is deducted from the sale it was paid on (Income tab).",
       minedNote:
-        "Income is currently the value of the ore you mine, so taxes and fees don't count; your income rate covers them. They count once income comes from wallet sales (Settings → Income).",
+        "Income is currently the value of the ore you mine, so broker fees don't count; your income rate covers them. They count once income comes from wallet sales (Settings → Income).",
     },
     add: {
       title: "Add a cost",

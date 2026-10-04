@@ -72,6 +72,8 @@ export const walletFees = pgTable(
     amount: doublePrecision("amount").notNull(),
     contextId: bigint("context_id", { mode: "number" }),
     contextIdType: text("context_id_type"),
+    /** The journal's own description, as the EVE client shows it (null for entries imported before it was kept). */
+    description: text("description"),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
