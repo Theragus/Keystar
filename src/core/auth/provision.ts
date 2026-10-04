@@ -51,12 +51,7 @@ type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
  * existing session. The account itself stays, so it still counts for the
  * first-user bootstrap and a newcomer can't become admin that way.
  */
-export async function detachTransferredCharacter(
-  tx: Tx,
-  characterId: number,
-  previousUserId: string,
-  opts: { keepAccount: boolean },
-): Promise<{ retired: boolean }> {
+export async function detachTransferredCharacter(tx: Tx, characterId: number, previousUserId: string): Promise<{ retired: boolean }> {
   await tx.delete(characters).where(eq(characters.characterId, characterId));
   // Wallet history, mail and industry jobs imported for the previous owner are theirs, not the new owner's.
   await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
@@ -88,7 +83,7 @@ export async function detachTransferredCharacter(
     .where(eq(characters.userId, previousUserId))
     .orderBy(asc(characters.characterId))
     .limit(1);
-  const retired = !next && !opts.keepAccount;
+  const retired = !next;
   await tx
     .update(users)
     .set({
@@ -144,7 +139,11 @@ export async function provisionFromSso(params: {
     // the user count below is read after the lock, so it sees the other commit.
     await lockUsers(tx);
     const [existing] = await tx.select().from(characters).where(eq(characters.characterId, verified.characterId));
-    const owned = existing && existing.ownerHash === verified.ownerHash ? existing : undefined;
+    const ownerChanged = existing !== undefined && existing.ownerHash !== verified.ownerHash;
+    // A character moved between the player's own EVE accounts and linked back to the same Keystar account never
+    // changed hands: it keeps its wallet history, mail and industry jobs.
+    const relinkedByOwner = ownerChanged && linking && existing.userId === currentUserId;
+    const owned = existing && (!ownerChanged || relinkedByOwner) ? existing : undefined;
 
     // Only the very first account is bootstrapped as admin. Counting admins instead would hand admin to the
     // next sign-in, whoever that is, if the last admin were ever demoted.
@@ -171,12 +170,18 @@ export async function provisionFromSso(params: {
       throw new ProvisionError("notMember", `${verified.name} is not a member of this corporation.`);
     }
 
-    if (existing && existing.ownerHash !== verified.ownerHash) {
-      // The character was sold/transferred: the old account loses it entirely.
-      // Keep the account when it is linking the character back to itself.
-      const { retired } = await detachTransferredCharacter(tx, verified.characterId, existing.userId, {
-        keepAccount: linking && existing.userId === currentUserId,
+    if (ownerChanged && relinkedByOwner) {
+      // Stored history stays, but responses cached with the old EVE account's token are fetched again with the new one.
+      await forgetCharacterEsiCache(tx, verified.characterId);
+      await auditInTx(tx, {
+        action: "character.transferred",
+        targetType: "character",
+        targetId: verified.characterId,
+        details: { previousUserId: existing.userId, name: verified.name, sameAccount: true },
       });
+    } else if (ownerChanged) {
+      // The character was sold/transferred: the old account loses it entirely.
+      const { retired } = await detachTransferredCharacter(tx, verified.characterId, existing.userId);
       await auditInTx(tx, {
         action: "character.transferred",
         targetType: "character",
