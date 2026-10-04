@@ -9,6 +9,7 @@ import {
   Database,
   Download,
   ExternalLink,
+  Gauge,
   Globe,
   Lock,
   Package,
@@ -31,6 +32,7 @@ import { HEARTBEAT_FRESH_MS, isRefused, runChecks, worstStatus, type CheckResult
 import { collectSystemSnapshot } from "@/core/system/collect";
 import { originFromHeaders, type ConfigEntry } from "@/core/system/config";
 import { createRedactor } from "@/core/system/redact";
+import type { ProcessRuntime } from "@/core/system/runtime";
 import { bugReportUrl, issueSearchUrl, issueSummary } from "@/core/system/summary";
 import { buildSupportPackage, supportPackageFilename } from "@/core/system/support-package";
 import { getI18n } from "@/i18n/server";
@@ -81,6 +83,8 @@ export default async function SystemPage() {
   const beatFresh = beat ? isRecent(beat.lastBeatAt, HEARTBEAT_FRESH_MS) : false;
   const esi = (beatFresh ? beat?.info.esi : null) ?? snapshot.esi;
   const rt = snapshot.runtime;
+  // Older workers' heartbeats carry a runtime without load figures; treat those like no runtime.
+  const workerRt = beatFresh && beat?.info.runtime && "cpuPercent" in beat.info.runtime ? beat.info.runtime : null;
 
   const jobTotals = (worker?.jobs ?? []).reduce(
     (sum, j) => ({ ok: sum.ok + j.ok, error: sum.error + j.error, running: sum.running + j.running, overdue: sum.overdue + j.overdue }),
@@ -267,6 +271,42 @@ export default async function SystemPage() {
           </Panel>
         </div>
 
+        <Panel title={ts.load.title} subtitle={ts.load.subtitle}>
+          <div className="glass-inset overflow-x-auto rounded-lg">
+            <table className="ks-table">
+              <thead>
+                <tr>
+                  <th scope="col">
+                    <span className="sr-only">{ts.load.title}</span>
+                  </th>
+                  <th scope="col" className="text-right">
+                    {ts.load.columns.web}
+                  </th>
+                  <th scope="col" className="text-right">
+                    {ts.load.columns.worker}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadRows(ts.load, f).map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row" className="font-normal text-ink-2">
+                      {row.label}
+                    </th>
+                    <td className="text-right tabular-nums">{row.value(rt)}</td>
+                    <td className="text-right tabular-nums">{workerRt ? row.value(workerRt) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!workerRt && beat && (
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-3">
+              <Gauge className="size-3" aria-hidden /> {beatFresh ? ts.load.workerOld : ts.load.workerStale}
+            </p>
+          )}
+        </Panel>
+
         {snapshot.network && (
           <Panel title={ts.network.title} subtitle={ts.network.subtitle}>
             <ul className="grid gap-2 md:grid-cols-3">
@@ -435,6 +475,22 @@ export default async function SystemPage() {
       </div>
     </SystemDialogs>
   );
+}
+
+/** One row per load figure; `value` renders it for either process. */
+function loadRows(tl: I18n["t"]["admin"]["system"]["load"], f: I18n["f"]): { label: string; value: (rt: ProcessRuntime) => string }[] {
+  const mb = (value: number) => bytes(f, value * 1024 * 1024);
+  return [
+    { label: tl.cpu, value: (rt) => tl.cpuValue(f.percent(rt.cpuPercent / 100, rt.cpuPercent < 10 ? 1 : 0), rt.cpuLimit ?? rt.cpus) },
+    { label: tl.memory, value: (rt) => tl.memoryValue(mb(rt.rssMb), rt.memoryLimitMb ? mb(rt.memoryLimitMb) : null) },
+    { label: tl.heap, value: (rt) => mb(rt.heapUsedMb) },
+    { label: tl.container, value: (rt) => (rt.containerMemoryMb ? tl.memoryValue(mb(rt.containerMemoryMb), rt.memoryLimitMb ? mb(rt.memoryLimitMb) : null) : "—") },
+    { label: tl.hostFree, value: (rt) => tl.hostFreeValue(mb(rt.freeMemoryMb), mb(rt.totalMemoryMb)) },
+    {
+      label: tl.loadAverage,
+      value: (rt) => (rt.loadAverage ? tl.loadValue(...(rt.loadAverage.map((v) => f.number(v, 2)) as [string, string, string])) : "—"),
+    },
+  ];
 }
 
 function CheckRow({ check, i18n: { t } }: { check: CheckResult; i18n: Pick<I18n, "t" | "f"> }) {
