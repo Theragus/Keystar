@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertPermission, type CurrentUser } from "@/core/auth/dal";
 import {
@@ -14,6 +14,7 @@ import {
   miningPnlPriceRules,
   miningPnlSettings,
   miningPnlTxOverrides,
+  syncJobs,
   walletFees,
   walletTransactions,
 } from "@/core/db";
@@ -406,6 +407,16 @@ export async function deleteWalletData(characterId: number): Promise<ActionResul
   await db
     .delete(miningPnlFeeOverrides)
     .where(and(eq(miningPnlFeeOverrides.characterId, characterId), eq(miningPnlFeeOverrides.userId, user.id)));
+  await db
+    .update(syncJobs)
+    .set({ meta: null })
+    .where(
+      and(
+        eq(syncJobs.ownerType, "character"),
+        eq(syncJobs.ownerId, characterId),
+        inArray(syncJobs.jobKey, ["wallet.character-transactions", "wallet.character-fees"]),
+      ),
+    );
   revalidate();
   return ok;
 }

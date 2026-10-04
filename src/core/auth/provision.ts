@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { audit } from "@/core/audit";
 import { encryptToken } from "@/core/crypto";
 import {
@@ -11,6 +11,7 @@ import {
   mailMessages,
   miningPnlFeeOverrides,
   sessions,
+  syncJobs,
   users,
   walletFees,
   industryJobs,
@@ -63,6 +64,16 @@ export async function detachTransferredCharacter(
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, previousUserId)));
   await tx.delete(walletFees).where(and(eq(walletFees.characterId, characterId), eq(walletFees.userId, previousUserId)));
+  await tx
+    .update(syncJobs)
+    .set({ meta: null })
+    .where(
+      and(
+        eq(syncJobs.ownerType, "character"),
+        eq(syncJobs.ownerId, characterId),
+        inArray(syncJobs.jobKey, ["wallet.character-transactions", "wallet.character-fees"]),
+      ),
+    );
   await tx
     .delete(miningPnlFeeOverrides)
     .where(and(eq(miningPnlFeeOverrides.characterId, characterId), eq(miningPnlFeeOverrides.userId, previousUserId)));
