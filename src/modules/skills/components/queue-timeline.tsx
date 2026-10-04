@@ -2,10 +2,12 @@ import type { Messages } from "@/i18n/messages";
 import { cn } from "@/lib/utils";
 import type { QueueRow } from "../queries";
 import { durationParts, queueTimeline, romanLevel } from "../queue";
+import { TimelineSegment } from "./queue-hover";
 
 /**
  * The queue as one strip, like the game's training-time bar: each skill takes a slice proportional to the time it
- * still needs, the skill in training first. Ticks below mark days, weeks or months from now.
+ * still needs, the skill in training first. Ticks below mark days, weeks or months from now. Hovering a slice
+ * highlights its row in the queue table and vice versa (see `QueueHoverProvider`).
  */
 export function QueueTimeline({ entries, t, now, className }: { entries: QueueRow[]; t: Messages["skills"]; now: Date; className?: string }) {
   const timeline = queueTimeline(entries, now);
@@ -16,18 +18,17 @@ export function QueueTimeline({ entries, t, now, className }: { entries: QueueRo
       <ol className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface-contrast/6" role="list">
         {segments.map((s, i) => {
           const name = `${s.entry.skillName ?? s.entry.skillId} ${romanLevel(s.entry.finishedLevel)}`;
+          const label = t.timeline.segment(name, t.duration(durationParts(s.remainingMs)));
           return (
-            <li
+            <TimelineSegment
               key={s.entry.queuePosition}
-              className={cn(
-                "h-full min-w-px not-last:border-r not-last:border-space-900/80",
-                i === 0 ? "bg-accent" : i % 2 ? "bg-accent/30" : "bg-accent/50",
-              )}
-              style={{ width: `${s.width * 100}%` }}
-              title={t.timeline.segment(name, t.duration(durationParts(s.remainingMs)))}
+              position={s.entry.queuePosition}
+              width={s.width}
+              title={label}
+              className={i === 0 ? "bg-accent" : i % 2 ? "bg-accent/30" : "bg-accent/50"}
             >
-              <span className="sr-only">{t.timeline.segment(name, t.duration(durationParts(s.remainingMs)))}</span>
-            </li>
+              <span className="sr-only">{label}</span>
+            </TimelineSegment>
           );
         })}
       </ol>

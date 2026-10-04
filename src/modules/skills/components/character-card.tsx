@@ -9,6 +9,7 @@ import { SKILLS_MANAGE_HREF } from "../module";
 import type { QueueRow, SkillCharacter } from "../queries";
 import { ATTRIBUTE_NAMES, romanLevel, summarizeQueue, type QueueStatus } from "../queue";
 import { Countdown } from "./countdown";
+import { QueueHoverProvider } from "./queue-hover";
 import { QueueTable } from "./queue-table";
 import { QueueTimeline } from "./queue-timeline";
 
@@ -87,7 +88,7 @@ export function SkillCharacterCard({
       ) : !synced ? (
         <p className="text-sm text-ink-3">{t.card.waiting}</p>
       ) : (
-        <>
+        <QueueHoverProvider>
           {active ? (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
@@ -155,7 +156,7 @@ export function SkillCharacterCard({
               </div>
             </details>
           )}
-        </>
+        </QueueHoverProvider>
       )}
     </Glass>
   );
