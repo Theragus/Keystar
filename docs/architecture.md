@@ -73,8 +73,10 @@ docker/                entrypoint, Caddyfile
 2. `/auth/callback` exchanges the code, validates the JWT (signature via CCP's JWKS, issuer, audience contains the
    client id **and** `"EVE Online"`, expiry) and calls `provisionFromSso()`.
 3. Provisioning creates or finds the user, links the character, stores the encrypted refresh token, applies the role
-   policy and detects **character transfers** (the SSO `owner` hash changes → the old account loses the character;
-   an account left without characters is disabled and signed out).
+   policy and detects **character transfers** (the SSO `owner` hash changes → the old account loses the character
+   with its wallet history, mail and industry jobs; an account left without characters is disabled and signed out).
+   A character moved between the player's own EVE accounts and linked back to the same Keystar account hasn't
+   changed hands: it keeps its data; only the owner hash and token are updated and cached ESI responses refetched.
 4. Sessions are random 32-byte tokens; only their SHA-256 hash is stored. 30-day sliding expiry: the database row
    is extended on activity (authoritative) and `src/proxy.ts` renews the cookie on each navigation.
 
@@ -152,6 +154,9 @@ them; its scores, tags and template notes are stored as data and shown in the re
   before bumping it)
 - `ETag` / `If-None-Match` revalidation and `Expires`-based caching in the `esi_cache` table, so jobs can run on a
   timer without spending rate-limit tokens
+  (the entry is written before the job stores the body, so `notModified` and `fromCache` say the body is unchanged,
+  not that it was stored: a job that skips its write on them never repeats a failed write; write idempotently
+  instead)
 - `X-Pages` pagination
 - back-off when the legacy error budget runs low (`X-ESI-Error-Limit-*`) and per rate-limit group on `429`
   (`Retry-After`, `X-Ratelimit-Group`)
@@ -273,8 +278,8 @@ character (enabled from the mail page). The page only ever shows the signed-in a
 - **Storage**: `mail_messages` has one row per mailbox (`character_id`, `mail_id`) with the owning account
   (`user_id`). `mail_labels` and `mail_lists` store labels and mailing lists the same way. Mailing-list names come
   only from `mail_lists`, because `/universe/names` can't resolve them. As with the wallet, mail never follows a
-  sold character: it is deleted with the account, when the character is removed, when it is transferred, and on
-  request once mail access is turned off. Mail bypasses the ESI response cache.
+  sold character: it is deleted with the account, when the character is removed, when it is transferred to another
+  account, and on request once mail access is turned off. Mail bypasses the ESI response cache.
 - **Folders**: Inbox, Sent, Corporation and Alliance are the built-in labels 1, 2, 4 and 8. Sent means sent by the
   mailbox's character. Mailing lists come from the recipients, and custom labels are merged by name across
   characters. A mail in several of the account's mailboxes is listed once, with the characters that received it.
