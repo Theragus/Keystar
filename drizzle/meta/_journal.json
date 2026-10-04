@@ -99,6 +99,13 @@
       "when": 1791113537102,
       "tag": "0013_wallet_fees",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791127774088,
+      "tag": "0014_wallet_fee_description",
+      "breakpoints": true
     }
   ]
 }

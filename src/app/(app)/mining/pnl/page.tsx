@@ -62,6 +62,7 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
   ]);
   const report = buildPnlReport({ ...filters, incomeSource: ctx.incomeSource, income, sales, expenses, fees, manual, activity, characters });
   const { totals } = report;
+  // Costs waiting for review: purchases and broker fees.
   const suggestedCosts = {
     count: report.purchases.suggested.count + report.fees.suggested.count,
     amount: report.purchases.suggested.amount + report.fees.suggested.amount,

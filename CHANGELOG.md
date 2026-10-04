@@ -11,6 +11,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
   container's memory against its limit, free host memory and the host's load average.
 
+### Changed
+
+- **Mining P&L**: when income comes from wallet sales, it is now net of sales tax instead of counting the tax as an
+  expense: each sale on the Income tab shows the tax paid on it and its net, and the tax counts whenever the sale
+  does, without a review of its own. Broker fees stay expenses and are easier to review: each shows the journal's
+  description and time, and "Include all" counts every suggested broker fee at once.
+
 ## [0.13.0] - 2026-10-04
 
 ### Added

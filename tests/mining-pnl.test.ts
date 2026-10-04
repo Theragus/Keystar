@@ -261,6 +261,8 @@ describe("P&L report", () => {
       category,
       status,
       amount,
+      gross: amount,
+      tax: 0,
       count: 1,
     });
     const input = {
@@ -301,7 +303,7 @@ describe("P&L report", () => {
     expect(r.iskPerHour.gross).toBe(500);
   });
 
-  it("counts taxes and fees as wallet expenses under their own category", () => {
+  it("counts broker fees as wallet expenses under their own category", () => {
     const fee = (date: string, characterId: number, amount: number, status: ExpenseRow["status"]): ExpenseRow => ({
       date,
       characterId,
@@ -330,6 +332,22 @@ describe("P&L report", () => {
     ]);
     // The seller pays the tax: it lands on the selling character.
     expect(r.characters.find((c) => c.characterId === 1)).toMatchObject({ income: 0, expenses: 136 });
+  });
+
+  it("counts sales net of their sales tax", () => {
+    const r = buildPnlReport({
+      ...base,
+      incomeSource: "sales",
+      income: [],
+      sales: [
+        { date: "2026-09-30", characterId: 1, category: "ore", status: "counted", gross: 1000, tax: 34, amount: 966, count: 2 },
+        { date: "2026-09-30", characterId: 1, category: "ore", status: "suggested", gross: 500, tax: 17, amount: 483, count: 1 },
+      ],
+      expenses: [],
+      activity: noActivity,
+    });
+    expect(r.totals).toMatchObject({ income: 966, salesIncome: 966, salesTax: 34, expenses: 0 });
+    expect(r.sales.suggested).toEqual({ amount: 483, count: 1 });
   });
 
   it("returns nulls rather than dividing by zero", () => {

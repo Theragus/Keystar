@@ -59,6 +59,12 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
     ExpenseStatus,
     { amount: number; count: number }
   >;
+  // Sales tax is deducted from each sale: amounts below are what the sales brought in after tax.
+  const taxOf = (status: ExpenseStatus) =>
+    summary.filter((r) => r.status === status).reduce((t, r) => ({ tax: t.tax + r.tax, count: t.count + r.count }), { tax: 0, count: 0 });
+  const taxCounted = taxOf("counted");
+  const taxPending = taxOf("suggested");
+  const taxImported = summary.some((r) => r.tax > 0);
   const tabCount = (value: string) =>
     value === "mining" ? counts.counted.count + counts.suggested.count + counts.excluded.count : counts[value as ExpenseStatus].count;
   const pages = Math.max(1, Math.ceil(sales.total / PAGE_SIZE));
@@ -119,6 +125,15 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
               </div>
             ) : (
               <>
+                {/* Tax only on excluded or other sales doesn't count: no line for it, and it isn't "none imported". */}
+                {(!taxImported || taxCounted.tax + taxPending.tax > 0) && (
+                  <p className="mb-4 text-sm text-ink-2">
+                    {!taxImported
+                      ? m.sales.salesTax.none
+                      : m.sales.salesTax.counted(f.compact(taxCounted.tax), taxCounted.count)}
+                    {taxPending.tax > 0 && m.sales.salesTax.pending(f.compact(taxPending.tax))}
+                  </p>
+                )}
                 <nav aria-label={m.sales.statusNav} className="mb-4 flex flex-wrap gap-2">
                   {STATUS_FILTERS.map((s) => {
                     const active = filters.status === s;
@@ -153,6 +168,7 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
                           <th>{p.columns.item}</th>
                           <th className="num">{p.columns.quantity}</th>
                           <th className="num">{p.columns.total}</th>
+                          <th className="num">{m.sales.columns.tax}</th>
                           <th>{p.columns.category}</th>
                           <th>{p.columns.status}</th>
                           <th className="num">{p.columns.countIt}</th>
@@ -177,6 +193,19 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
                             <td className="num">
                               <span className="block font-semibold">{f.compact(s.amount)}</span>
                               <span className="block text-2xs text-ink-3">{p.unitPrice(f.unitPrice(s.unitPrice).replace(" ISK", ""))}</span>
+                            </td>
+                            <td className="num">
+                              {s.tax === null ? (
+                                <span className="text-ink-3">—</span>
+                              ) : (
+                                <>
+                                  <span className="block text-ink-2">
+                                    −{f.compact(s.tax)}
+                                    {s.amount > 0 && <span className="text-ink-3"> ({f.percent(s.tax / s.amount, 2)})</span>}
+                                  </span>
+                                  <span className="block text-2xs text-ink-3">{m.sales.net(f.compact(s.amount - s.tax))}</span>
+                                </>
+                              )}
                             </td>
                             <td>
                               <form action={setSaleCategory.bind(null, s.characterId, s.transactionId)}>
