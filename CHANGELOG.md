@@ -46,6 +46,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   expense: each sale on the Income tab shows the tax paid on it and its net, and the tax counts whenever the sale
   does, without a review of its own. Broker fees stay expenses and are easier to review: each shows the journal's
   description and time, and "Include all" counts every suggested broker fee at once.
+- Null-sec security status (0.0 and below) is shown in red instead of purple in every security pill, so the
+  security colours run from blue at 1.0 to red.
 
 ## [0.13.0] - 2026-10-04
 
