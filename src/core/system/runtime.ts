@@ -76,8 +76,8 @@ export function parseMemoryUsage(raw: string | null): number | null {
   return raw && Number.isFinite(bytes) && bytes > 0 ? mb(bytes) : null;
 }
 
-/** Where the previous CPU sample was taken; the first sample covers the process lifetime. */
-let lastCpuSample = { usage: process.cpuUsage(), at: performance.now() - process.uptime() * 1000 };
+/** Where the previous CPU sample was taken; a zero baseline at process start makes the first sample cover its lifetime. */
+let lastCpuSample: { usage: NodeJS.CpuUsage; at: number } = { usage: { user: 0, system: 0 }, at: performance.now() - process.uptime() * 1000 };
 
 function sampleCpuPercent(cores: number): number {
   const now = performance.now();

@@ -501,7 +501,7 @@ export const admin: typeof en = {
         "Die Werte der Web-App gelten seit dem letzten Aufruf dieser Seite, die des Workers für seinen letzten Heartbeat (30 s). Der Load Average gilt für den ganzen Host, nicht den Container.",
       columns: { web: "Web-App", worker: "Worker" },
       cpu: "CPU",
-      cpuValue: (percent: string, cores: number) => `${percent} von ${n(cores)} CPU`,
+      cpuValue: (percent: string, cores: string) => `${percent} von ${cores} CPU`,
       memory: "Speicher (RSS)",
       memoryValue: (used: string, limit: string | null) => (limit ? `${used} von ${limit}` : used),
       heap: "JS-Heap",
@@ -511,7 +511,7 @@ export const admin: typeof en = {
       loadAverage: "Load Average (1 · 5 · 15 Min.)",
       loadValue: (one: string, five: string, fifteen: string) => `${one} · ${five} · ${fifteen}`,
       workerStale: "Kein Heartbeat in den letzten 2 Minuten.",
-      workerOld: "Dieser Worker läuft in einer älteren Version, die ihre Auslastung nicht meldet.",
+      workerOld: "Dieser Worker läuft in einer älteren Version und meldet seine Auslastung noch nicht.",
     },
     database: {
       title: "Datenbank",

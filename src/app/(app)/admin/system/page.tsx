@@ -477,11 +477,17 @@ export default async function SystemPage() {
   );
 }
 
+/** CPUs available to the process: a cgroup limit may be fractional (0.5), the core count never is. */
+function cores(f: I18n["f"], rt: ProcessRuntime): string {
+  const value = rt.cpuLimit ?? rt.cpus;
+  return f.number(value, Number.isInteger(value) ? 0 : 1);
+}
+
 /** One row per load figure; `value` renders it for either process. */
 function loadRows(tl: I18n["t"]["admin"]["system"]["load"], f: I18n["f"]): { label: string; value: (rt: ProcessRuntime) => string }[] {
   const mb = (value: number) => bytes(f, value * 1024 * 1024);
   return [
-    { label: tl.cpu, value: (rt) => tl.cpuValue(f.percent(rt.cpuPercent / 100, rt.cpuPercent < 10 ? 1 : 0), rt.cpuLimit ?? rt.cpus) },
+    { label: tl.cpu, value: (rt) => tl.cpuValue(f.percent(rt.cpuPercent / 100, rt.cpuPercent < 10 ? 1 : 0), cores(f, rt)) },
     { label: tl.memory, value: (rt) => tl.memoryValue(mb(rt.rssMb), rt.memoryLimitMb ? mb(rt.memoryLimitMb) : null) },
     { label: tl.heap, value: (rt) => mb(rt.heapUsedMb) },
     { label: tl.container, value: (rt) => (rt.containerMemoryMb ? tl.memoryValue(mb(rt.containerMemoryMb), rt.memoryLimitMb ? mb(rt.memoryLimitMb) : null) : "—") },

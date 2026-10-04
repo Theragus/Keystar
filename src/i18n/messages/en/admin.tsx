@@ -508,10 +508,10 @@ export const admin = {
     load: {
       title: "Load",
       subtitle:
-        "The web app's figures cover the time since this page was last loaded, the worker's its last heartbeat (30 s). The load average is the whole host's, not the container's.",
+        "The web app's figures cover the time since this page was last loaded, the worker's last heartbeat interval (30 s). The load average is the whole host's, not the container's.",
       columns: { web: "Web app", worker: "Worker" },
       cpu: "CPU",
-      cpuValue: (percent: string, cores: number) => `${percent} of ${n(cores)} CPU`,
+      cpuValue: (percent: string, cores: string) => `${percent} of ${cores} CPU`,
       memory: "Memory (RSS)",
       memoryValue: (used: string, limit: string | null) => (limit ? `${used} of ${limit}` : used),
       heap: "JS heap",
