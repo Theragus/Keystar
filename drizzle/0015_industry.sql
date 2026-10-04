@@ -2,8 +2,9 @@ CREATE TABLE "industry_jobs" (
 	"job_id" bigint PRIMARY KEY NOT NULL,
 	"character_id" bigint NOT NULL,
 	"installer_id" bigint NOT NULL,
+	"location_id" bigint NOT NULL,
 	"facility_id" bigint NOT NULL,
-	"station_id" bigint NOT NULL,
+	"station_id" bigint,
 	"activity_id" integer NOT NULL,
 	"activity" text NOT NULL,
 	"blueprint_id" bigint NOT NULL,
@@ -37,4 +38,5 @@ CREATE TABLE "industry_locations" (
 );
 --> statement-breakpoint
 CREATE INDEX "industry_jobs_character_idx" ON "industry_jobs" USING btree ("character_id","status");--> statement-breakpoint
+CREATE INDEX "industry_jobs_location_idx" ON "industry_jobs" USING btree ("location_id");--> statement-breakpoint
 CREATE INDEX "industry_jobs_end_idx" ON "industry_jobs" USING btree ("end_date");

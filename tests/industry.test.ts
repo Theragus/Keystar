@@ -111,6 +111,8 @@ describe("job rows", () => {
     expect(row).toMatchObject({
       jobId: 500_001,
       characterId: 2_112_000_001,
+      locationId: 60003760,
+      stationId: 60003760,
       activity: "manufacturing",
       status: "active",
       productTypeId: null,
@@ -145,6 +147,16 @@ describe("job rows", () => {
     );
     expect(row).toMatchObject({ activity: "invention", productTypeId: 12003, probability: 0.34, successfulRuns: 3, completedCharacterId: 7 });
     expect(row.completedDate).toEqual(hours(-2));
+  });
+
+  it("locates structure jobs by facility_id even when station_id is missing or 0", () => {
+    const structure = 1_035_466_617_946;
+    const [a, b] = jobRows(1, [esiJob({ facility_id: structure, station_id: undefined }), esiJob({ job_id: 2, facility_id: structure, station_id: 0 })], now);
+    expect(a).toMatchObject({ locationId: structure, facilityId: structure, stationId: null });
+    expect(b).toMatchObject({ locationId: structure, stationId: 0 });
+    // A legacy row with only a station id still has a location; one with neither is dropped.
+    expect(jobRows(1, [esiJob({ facility_id: 0 })], now)[0].locationId).toBe(60003760);
+    expect(jobRows(1, [esiJob({ facility_id: 0, station_id: 0 })], now)).toEqual([]);
   });
 
   it("skips a job with a status it doesn't know", () => {

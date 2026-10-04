@@ -1,6 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/core/db";
-import { jobProgress, statusesOf, type IndustryActivity, type JobStatus } from "./activities";
+import { ENDING_SOON_MS, statusesOf, type IndustryActivity, type JobStatus } from "./activities";
 import type { IndustryFilters } from "./filters";
 import { INDUSTRY_JOBS_SCOPE } from "./module";
 
@@ -32,12 +32,12 @@ function jobConds(f: IndustryFilters, scope: IndustryScope): SQL {
   if (!chars.length) return sql`false`;
   const conds: SQL[] = [sql`j.character_id IN (${list(chars)})`, sql`j.status IN (${list([...statusesOf(f.state)])})`];
   if (f.activities.length) conds.push(sql`j.activity IN (${list(f.activities)})`);
-  if (f.locations.length) conds.push(sql`j.station_id IN (${list(f.locations)})`);
+  if (f.locations.length) conds.push(sql`j.location_id IN (${list(f.locations)})`);
   if (f.systems.length) conds.push(sql`loc.solar_system_id IN (${list(f.systems)})`);
   return sql.join(conds, sql` AND `);
 }
 
-const FROM = sql`FROM industry_jobs j LEFT JOIN industry_locations loc ON loc.location_id = j.station_id`;
+const FROM = sql`FROM industry_jobs j LEFT JOIN industry_locations loc ON loc.location_id = j.location_id`;
 
 export interface IndustryJob {
   jobId: number;
@@ -58,7 +58,7 @@ export interface IndustryJob {
   endDate: Date;
   pauseDate: Date | null;
   completedDate: Date | null;
-  stationId: number;
+  locationId: number;
   locationName: string | null;
   solarSystemId: number | null;
   systemName: string | null;
@@ -80,7 +80,7 @@ export async function getIndustryJobs(
   const rows = await db.execute<Record<string, unknown>>(sql`
     SELECT j.job_id, j.character_id, c.name AS character_name, j.activity, j.blueprint_type_id, bt.name AS blueprint_name,
            j.product_type_id, pt.name AS product_name, j.runs, j.licensed_runs, j.successful_runs, j.probability, j.cost,
-           j.status, j.start_date, j.end_date, j.pause_date, j.completed_date, j.station_id,
+           j.status, j.start_date, j.end_date, j.pause_date, j.completed_date, j.location_id,
            loc.name AS location_name, loc.solar_system_id, s.name AS system_name, s.security_status
     ${FROM}
     LEFT JOIN characters c ON c.character_id = j.character_id
@@ -113,7 +113,7 @@ export async function getIndustryJobs(
       endDate: toDate(r.end_date)!,
       pauseDate: toDate(r.pause_date),
       completedDate: toDate(r.completed_date),
-      stationId: num(r.station_id),
+      locationId: num(r.location_id),
       locationName: str(r.location_name),
       solarSystemId: numOrNull(r.solar_system_id),
       systemName: str(r.system_name),
@@ -138,30 +138,38 @@ export interface IndustrySummary {
   byActivity: Partial<Record<IndustryActivity, number>>;
 }
 
-/** Totals over every job the filters match (not only the current page). */
+/**
+ * Totals over every job the filters match (not only the current page), aggregated in SQL so a long history costs
+ * two small queries. Phases follow `jobProgress`: an active job past its end date counts as ready.
+ */
 export async function getIndustrySummary(f: IndustryFilters, scope: IndustryScope, now: Date): Promise<IndustrySummary> {
-  const rows = await getDb().execute<Record<string, unknown>>(sql`
-    SELECT j.activity, j.status, j.start_date, j.end_date, j.pause_date, j.cost ${FROM} WHERE ${jobConds(f, scope)}`);
-  const summary: IndustrySummary = { jobs: rows.length, running: 0, ready: 0, paused: 0, endingSoon: 0, lastEndsAt: null, cost: 0, byActivity: {} };
-  for (const r of rows) {
-    const activity = r.activity as IndustryActivity;
-    summary.byActivity[activity] = (summary.byActivity[activity] ?? 0) + 1;
-    summary.cost += num(r.cost);
-    const p = jobProgress(
-      { status: r.status as JobStatus, startDate: toDate(r.start_date)!, endDate: toDate(r.end_date)!, pauseDate: toDate(r.pause_date) },
-      now,
-    );
-    if (p.phase === "finished") continue;
-    if (p.phase === "ready") summary.ready++;
-    else if (p.phase === "paused") summary.paused++;
-    else {
-      summary.running++;
-      if (p.phase === "ending-soon") summary.endingSoon++;
-      const end = toDate(r.end_date)!;
-      if (!summary.lastEndsAt || end > summary.lastEndsAt) summary.lastEndsAt = end;
-    }
-  }
-  return summary;
+  const db = getDb();
+  const where = jobConds(f, scope);
+  // Dates go in as ISO strings: db.execute() does not serialise Date parameters.
+  const at = sql`${now.toISOString()}::timestamptz`;
+  const soon = sql`${new Date(now.getTime() + ENDING_SOON_MS).toISOString()}::timestamptz`;
+  const running = sql`j.status = 'active' AND j.end_date > ${at}`;
+  const [totals] = await db.execute<Record<string, unknown>>(sql`
+    SELECT count(*) AS jobs,
+           count(*) FILTER (WHERE ${running}) AS running,
+           count(*) FILTER (WHERE j.status = 'ready' OR (j.status = 'active' AND j.end_date <= ${at})) AS ready,
+           count(*) FILTER (WHERE j.status = 'paused') AS paused,
+           count(*) FILTER (WHERE ${running} AND j.end_date < ${soon}) AS ending_soon,
+           max(j.end_date) FILTER (WHERE ${running}) AS last_ends_at,
+           coalesce(sum(j.cost), 0) AS cost
+    ${FROM} WHERE ${where}`);
+  const byActivity = await db.execute<Record<string, unknown>>(sql`
+    SELECT j.activity, count(*) AS jobs ${FROM} WHERE ${where} GROUP BY j.activity`);
+  return {
+    jobs: num(totals?.jobs),
+    running: num(totals?.running),
+    ready: num(totals?.ready),
+    paused: num(totals?.paused),
+    endingSoon: num(totals?.ending_soon),
+    lastEndsAt: toDate(totals?.last_ends_at),
+    cost: num(totals?.cost),
+    byActivity: Object.fromEntries(byActivity.map((r) => [r.activity as IndustryActivity, num(r.jobs)])),
+  };
 }
 
 export interface IndustryFilterOptions {
@@ -186,17 +194,17 @@ export async function getIndustryFilterOptions(scope: IndustryScope, t: { unknow
       ${FROM} JOIN eve_systems s ON s.system_id = loc.solar_system_id
       WHERE ${own} ORDER BY s.name`),
     db.execute<Record<string, unknown>>(sql`
-      SELECT DISTINCT j.station_id, loc.name, s.name AS system_name
+      SELECT DISTINCT j.location_id, loc.name, s.name AS system_name
       ${FROM} LEFT JOIN eve_systems s ON s.system_id = loc.solar_system_id
-      WHERE ${own} ORDER BY loc.name NULLS LAST, j.station_id`),
+      WHERE ${own} ORDER BY loc.name NULLS LAST, j.location_id`),
   ]);
   return {
     characters: characters.map((r) => ({ id: num(r.character_id), name: String(r.name) })),
     activities: activities.map((r) => r.activity as IndustryActivity),
     systems: systems.map((r) => ({ id: num(r.system_id), name: String(r.name), security: numOrNull(r.security_status) })),
     locations: locations.map((r) => ({
-      id: num(r.station_id),
-      name: str(r.name) ?? t.unknownLocation(num(r.station_id)),
+      id: num(r.location_id),
+      name: str(r.name) ?? t.unknownLocation(num(r.location_id)),
       systemName: str(r.system_name),
     })),
   };

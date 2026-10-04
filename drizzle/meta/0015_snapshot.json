@@ -1,5 +1,5 @@
 {
-  "id": "9c31fc31-1071-42e6-9e8a-c015a8cfa913",
+  "id": "58706156-fcb8-495d-89c8-c472d6266c01",
   "prevId": "26432c4d-97c8-4407-9672-eec2b19d944a",
   "version": "7",
   "dialect": "postgresql",
@@ -1631,6 +1631,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "location_id": {
+          "name": "location_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
         "facility_id": {
           "name": "facility_id",
           "type": "bigint",
@@ -1641,7 +1647,7 @@
           "name": "station_id",
           "type": "bigint",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "activity_id": {
           "name": "activity_id",
@@ -1785,6 +1791,21 @@
             },
             {
               "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "industry_jobs_location_idx": {
+          "name": "industry_jobs_location_idx",
+          "columns": [
+            {
+              "expression": "location_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

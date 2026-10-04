@@ -117,8 +117,10 @@ export function isStructureId(locationId: number): boolean {
 export interface EsiIndustryJob {
   job_id: number;
   installer_id: number;
+  /** The station or structure the job runs in. */
   facility_id: number;
-  station_id: number;
+  /** Legacy field; for structure jobs it may be missing or 0 while `facility_id` carries the id. */
+  station_id?: number;
   activity_id: number;
   blueprint_id: number;
   blueprint_type_id: number;
@@ -143,8 +145,10 @@ export interface IndustryJobRow {
   jobId: number;
   characterId: number;
   installerId: number;
+  /** Where the job runs (`industry_locations`): `facility_id`, falling back to the legacy `station_id`. */
+  locationId: number;
   facilityId: number;
-  stationId: number;
+  stationId: number | null;
   activityId: number;
   activity: IndustryActivity;
   blueprintId: number;
@@ -167,17 +171,23 @@ export interface IndustryJobRow {
   updatedAt: Date;
 }
 
-/** Maps ESI jobs to rows; a job with an unknown status is skipped rather than stored under a wrong one. */
+/**
+ * Maps ESI jobs to rows; a job with an unknown status is skipped rather than stored under a wrong one. The location
+ * is `facility_id` (station or Upwell structure); `station_id` is only a fallback for old jobs that lack it.
+ */
 export function jobRows(characterId: number, jobs: EsiIndustryJob[], now: Date): IndustryJobRow[] {
   const rows: IndustryJobRow[] = [];
   for (const j of jobs) {
     if (!isJobStatus(j.status)) continue;
+    const locationId = j.facility_id || j.station_id || 0;
+    if (!locationId) continue;
     rows.push({
       jobId: j.job_id,
       characterId,
       installerId: j.installer_id,
-      facilityId: j.facility_id,
-      stationId: j.station_id,
+      locationId,
+      facilityId: j.facility_id || locationId,
+      stationId: j.station_id ?? null,
       activityId: j.activity_id,
       activity: activityOf(j.activity_id),
       blueprintId: j.blueprint_id,

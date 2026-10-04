@@ -17,9 +17,11 @@ export const industryJobs = pgTable(
     /** The character whose token the job was read with (the installer). */
     characterId: bigint("character_id", { mode: "number" }).notNull(),
     installerId: bigint("installer_id", { mode: "number" }).notNull(),
+    /** Station or structure the job runs in (`industry_locations`): ESI's `facility_id`. */
+    locationId: bigint("location_id", { mode: "number" }).notNull(),
     facilityId: bigint("facility_id", { mode: "number" }).notNull(),
-    /** Station or structure the job runs in (`industry_locations`). */
-    stationId: bigint("station_id", { mode: "number" }).notNull(),
+    /** ESI's legacy `station_id`, kept as reported (may be missing for structure jobs). */
+    stationId: bigint("station_id", { mode: "number" }),
     activityId: integer("activity_id").notNull(),
     activity: text("activity").$type<IndustryActivity>().notNull(),
     blueprintId: bigint("blueprint_id", { mode: "number" }).notNull(),
@@ -47,6 +49,7 @@ export const industryJobs = pgTable(
   },
   (t) => [
     index("industry_jobs_character_idx").on(t.characterId, t.status),
+    index("industry_jobs_location_idx").on(t.locationId),
     index("industry_jobs_end_idx").on(t.endDate),
   ],
 );

@@ -121,7 +121,7 @@ export const characterIndustryJobsJob: JobDefinition = {
     }
     await ensureTypes([...rows.map((r) => r.blueprintTypeId), ...rows.flatMap((r) => (r.productTypeId ? [r.productTypeId] : []))]);
     await ensureNames(rows.flatMap((r) => [r.installerId, ...(r.completedCharacterId ? [r.completedCharacterId] : [])]));
-    await ensureIndustryLocations(esi, db, id, rows.map((r) => r.stationId));
+    await ensureIndustryLocations(esi, db, id, rows.map((r) => r.locationId));
     const running = rows.filter((r) => r.status === "active" || r.status === "paused" || r.status === "ready").length;
     return {
       summary: `${running} running job${running === 1 ? "" : "s"}, ${rows.length} listed${res.notModified ? " (unchanged)" : ""}`,
