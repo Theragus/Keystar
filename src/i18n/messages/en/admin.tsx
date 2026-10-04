@@ -510,7 +510,7 @@ export const admin = {
       search: { title: "Search existing issues", body: "Someone may already have reported it.", link: "Search issues on GitHub" },
       download: {
         title: "Download the support package",
-        body: "Technical details only, no pilot or corporation data.. If the web app doesn't start, create it from the command line:",
+        body: "Technical details only, no pilot or corporation data. If the web app doesn't start, create it from the command line:",
       },
       logs: {
         title: "Collect the logs",
