@@ -5,8 +5,12 @@ unreleased work, and a release is cut only when you start one by hand.
 
 ## Pull requests
 
-Describe user-facing changes under `## [Unreleased]` at the top of [CHANGELOG.md](../CHANGELOG.md). Leave the
-version in `package.json` alone.
+Describe user-facing changes under `## [Unreleased]` at the top of [CHANGELOG.md](../CHANGELOG.md), sorted into
+`### Added`, `### Changed`, `### Removed`, `### Fixed` and `### Security`. Leave the version in `package.json` alone.
+
+Each entry is one bullet that starts with a short bold headline saying what changed, followed by a sentence or two.
+Put further details in sub-bullets rather than a long paragraph. A large feature gets one entry with a sub-bullet
+group per area.
 
 When an entry fixes or implements a GitHub issue, end it with the issue number in parentheses, as a link so it is
 clickable both in CHANGELOG.md and in the release notes. Several issues share one pair of parentheses:
@@ -17,7 +21,7 @@ Entries without an issue carry no reference.
 ## [Unreleased]
 
 ### Fixed
-- Sign-in could redirect to another site when `returnTo` contained a tab.
+- **Sign-in redirect.** Sign-in could redirect to another site when `returnTo` contained a tab.
   ([#14](https://github.com/Theragus/Keystar/issues/14))
 ```
 
@@ -34,8 +38,8 @@ Entries without an issue carry no reference.
    - a release with new features bumps the minor number and resets the patch (0.1.5 → 0.2.0),
    - a release with only fixes bumps the patch number (0.2.0 → 0.2.1),
    - a change that needs action on the server when updating (a new or renamed `.env` variable, an edit to the
-     compose file, characters to re-link for new ESI scopes) also bumps the minor number; spell out the steps at the
-     top of its CHANGELOG section.
+     compose file, characters to re-link for new ESI scopes) also bumps the minor number; spell out the steps under
+     `### Upgrade notes` at the top of its CHANGELOG section.
 
    Without an argument the script bumps the patch number when the Unreleased section only has `### Fixed` and
    `### Security` entries, and the minor number otherwise; it never picks a major bump. Pass the bump explicitly
