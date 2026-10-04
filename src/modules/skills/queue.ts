@@ -137,3 +137,81 @@ const ROMAN = ["0", "I", "II", "III", "IV", "V"];
 export function romanLevel(level: number): string {
   return ROMAN[level] ?? String(level);
 }
+
+/** One skill's share of the queue timeline (fractions of the queue's remaining time, 0..1). */
+export interface TimelineSegment<T extends QueueEntry = QueueEntry> {
+  entry: T;
+  /** Where the segment starts, as a share of the remaining queue. */
+  offset: number;
+  /** Its width, as a share of the remaining queue. */
+  width: number;
+  /** Time this entry still needs. */
+  remainingMs: number;
+}
+
+export type TimelineUnit = "day" | "week" | "month";
+
+/** A tick on the timeline's scale: `count` units from now. */
+export interface TimelineTick {
+  offset: number;
+  unit: TimelineUnit;
+  count: number;
+}
+
+const DAY_MS = 24 * 3600_000;
+const UNIT_MS: Record<TimelineUnit, number> = { day: DAY_MS, week: 7 * DAY_MS, month: 30 * DAY_MS };
+
+/** Tick spacings tried in order; the first giving at most `MAX_TICKS` ticks wins. */
+const TICK_STEPS: [TimelineUnit, number][] = [
+  ["day", 1],
+  ["day", 2],
+  ["week", 1],
+  ["week", 2],
+  ["month", 1],
+  ["month", 2],
+  ["month", 3],
+  ["month", 6],
+  ["month", 12],
+];
+const MAX_TICKS = 6;
+
+export interface QueueTimeline<T extends QueueEntry = QueueEntry> {
+  segments: TimelineSegment<T>[];
+  ticks: TimelineTick[];
+  totalMs: number;
+}
+
+/**
+ * The queue as one strip, like the game's training-time bar: every unfinished entry gets a slice proportional to
+ * the time it still needs, from `now` to the end of the queue. Null while the queue is paused or empty.
+ */
+export function queueTimeline<T extends QueueEntry>(entries: T[], now: Date): QueueTimeline<T> | null {
+  // An entry without dates means the queue is paused (see summarizeQueue); no strip until it resumes.
+  if (entries.some((e) => !e.finishDate)) return null;
+  const dated = entries.filter((e) => e.finishDate && e.finishDate.getTime() > now.getTime());
+  const last = dated[dated.length - 1];
+  if (!last?.finishDate) return null;
+  const totalMs = last.finishDate.getTime() - now.getTime();
+  if (totalMs <= 0) return null;
+  let cursor = now.getTime();
+  const segments: TimelineSegment<T>[] = [];
+  for (const entry of dated) {
+    const finish = entry.finishDate!.getTime();
+    // Entries run back to back; the start date of a queued entry may lag the previous finish by seconds.
+    const start = Math.max(cursor, entry.startDate?.getTime() ?? cursor);
+    const remainingMs = Math.max(0, finish - start);
+    segments.push({ entry, offset: (start - now.getTime()) / totalMs, width: remainingMs / totalMs, remainingMs });
+    cursor = Math.max(cursor, finish);
+  }
+  // Beyond the listed steps, whole years: enough of them that the queue still fits in MAX_TICKS.
+  const [unit, count]: [TimelineUnit, number] = TICK_STEPS.find(([u, c]) => totalMs / (UNIT_MS[u] * c) <= MAX_TICKS) ?? [
+    "month",
+    12 * Math.ceil(totalMs / (12 * UNIT_MS.month * MAX_TICKS)),
+  ];
+  const stepMs = UNIT_MS[unit] * count;
+  const ticks: TimelineTick[] = [];
+  for (let i = 1; i * stepMs < totalMs; i++) {
+    ticks.push({ offset: (i * stepMs) / totalMs, unit, count: i * count });
+  }
+  return { segments, ticks, totalMs };
+}

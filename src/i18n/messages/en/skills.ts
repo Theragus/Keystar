@@ -84,6 +84,16 @@ export const skills = {
     enable: "Share skills",
     showQueue: (count: number) => `Show the full queue (${plural(count, "skill", "skills")})`,
   },
+  timeline: {
+    label: "Training time",
+    segment: (skill: string, duration: string) => `${skill}: ${duration}`,
+    total: (duration: string) => `Whole queue: ${duration}`,
+    tick: {
+      day: (count: number) => `${n(count)}d`,
+      week: (count: number) => `${n(count)}w`,
+      month: (count: number) => `${n(count)}mo`,
+    },
+  },
   table: {
     position: "#",
     skill: "Skill",
