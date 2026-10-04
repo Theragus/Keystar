@@ -48,7 +48,7 @@ src/
     settings.ts        typed app settings (stored as JSON rows)
   modules/
     mining/            the mining module: schema, jobs, queries, filters, UI components, estimator
-    industry/          industry jobs of the viewer's own characters: schema, sync job, station/structure names, UI
+    industry/          opt-in industry jobs of the viewer's own characters: schema, sync job, station/structure names, UI
     killboard/         zKillboard client and sync, combat aggregates, situation report (Claude or template), UI
     intel/             threat intel: paste parser, scans, zKillboard worker, scoring, standings, history with us,
                        d-scan matching, briefings and dossiers (Claude or template), UI

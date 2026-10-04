@@ -1,5 +1,7 @@
-import { eveGroups, eveTypes, industryJobs, industryLocations, syncJobs, type Db } from "@/core/db";
+import { sql } from "drizzle-orm";
+import { esiTokens, eveGroups, eveTypes, industryJobs, industryLocations, syncJobs, type Db } from "@/core/db";
 import { activityOf, type JobStatus } from "@/modules/industry/activities";
+import { INDUSTRY_SCOPES } from "@/modules/industry/module";
 
 /** Blueprints and products used by the demo jobs (real type ids). */
 const GROUPS = [
@@ -94,7 +96,7 @@ const JOBS: Record<string, Spec[]> = {
   ],
 };
 
-/** Industry jobs for a few demo characters. Returns the number of jobs seeded. */
+/** Industry jobs for a few demo characters, which also get the opt-in industry scopes. Returns the number of jobs seeded. */
 export async function seedIndustry(db: Db, opts: { characters: { characterId: number; name: string }[]; now: Date }): Promise<number> {
   await db.insert(eveGroups).values(GROUPS).onConflictDoNothing();
   await db.insert(eveTypes).values(TYPES.map((t) => ({ ...t, published: true }))).onConflictDoNothing();
@@ -141,14 +143,23 @@ export async function seedIndustry(db: Db, opts: { characters: { characterId: nu
     }
   }
   if (rows.length) await db.insert(industryJobs).values(rows);
+  const enabled = opts.characters.filter((c) => JOBS[c.name]);
+  for (const c of enabled) {
+    for (const scope of INDUSTRY_SCOPES) {
+      await db
+        .update(esiTokens)
+        .set({ scopes: sql`array_append(${esiTokens.scopes}, ${scope})` })
+        .where(sql`${esiTokens.characterId} = ${c.characterId}`);
+    }
+  }
   await db.insert(syncJobs).values(
-    opts.characters.map((c) => ({
+    enabled.map((c) => ({
       jobKey: "industry.character-jobs",
       ownerType: "character" as const,
       ownerId: c.characterId,
       lastStatus: "ok" as const,
       lastSuccessAt: new Date(opts.now.getTime() - 4 * 60_000),
-      lastSummary: `${(JOBS[c.name] ?? []).filter((s) => !["delivered", "cancelled", "reverted"].includes(s.status)).length} running jobs, ${(JOBS[c.name] ?? []).length} listed`,
+      lastSummary: `${JOBS[c.name].filter((s) => !["delivered", "cancelled", "reverted"].includes(s.status)).length} running jobs, ${JOBS[c.name].length} listed`,
     })),
   );
   return rows.length;
