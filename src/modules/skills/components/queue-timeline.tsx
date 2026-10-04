@@ -7,7 +7,7 @@ import { TimelineSegment } from "./queue-hover";
 /**
  * The queue as one strip, like the game's training-time bar: each skill takes a slice proportional to the time it
  * still needs, the skill in training first. Ticks below mark days, weeks or months from now. Hovering a slice
- * highlights its row in the queue table and vice versa (see `QueueHoverProvider`).
+ * (or focusing it with the keyboard) highlights its row in the queue table and vice versa (see `QueueHoverProvider`).
  */
 export function QueueTimeline({ entries, t, now, className }: { entries: QueueRow[]; t: Messages["skills"]; now: Date; className?: string }) {
   const timeline = queueTimeline(entries, now);

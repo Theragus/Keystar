@@ -134,6 +134,8 @@ describe("skill queue timeline", () => {
   it("is empty for a paused or empty queue", () => {
     expect(queueTimeline([], now)).toBeNull();
     expect(queueTimeline([entry(0)], now)).toBeNull();
+    // A later entry without dates pauses the whole queue, so there is no strip for the dated one either.
+    expect(queueTimeline([entry(0, { startDate: hours(-1), finishDate: hours(5) }), entry(1)], now)).toBeNull();
   });
 
   it("slices the strip by the time each skill still needs", () => {

@@ -186,6 +186,8 @@ export interface QueueTimeline<T extends QueueEntry = QueueEntry> {
  * the time it still needs, from `now` to the end of the queue. Null while the queue is paused or empty.
  */
 export function queueTimeline<T extends QueueEntry>(entries: T[], now: Date): QueueTimeline<T> | null {
+  // An entry without dates means the queue is paused (see summarizeQueue); no strip until it resumes.
+  if (entries.some((e) => !e.finishDate)) return null;
   const dated = entries.filter((e) => e.finishDate && e.finishDate.getTime() > now.getTime());
   const last = dated[dated.length - 1];
   if (!last?.finishDate) return null;
