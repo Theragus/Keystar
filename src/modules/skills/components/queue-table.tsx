@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { QueueRow } from "../queries";
 import { remainingSp, romanLevel } from "../queue";
 import { Countdown } from "./countdown";
+import { QueueRow as HoverRow } from "./queue-hover";
 
 /** The queue as the game lists it: skill with the level being trained, finish time and time left per entry. */
 export function QueueTable({ entries, t, f, now }: { entries: QueueRow[]; t: Messages["skills"]; f: Formatter; now: Date }) {
@@ -24,7 +25,7 @@ export function QueueTable({ entries, t, f, now }: { entries: QueueRow[]; t: Mes
           {entries.map((e, i) => {
             const sp = remainingSp(e, now);
             return (
-              <tr key={e.queuePosition} className={cn(i === 0 && e.finishDate && "font-medium")}>
+              <HoverRow key={e.queuePosition} position={e.queuePosition} className={cn(i === 0 && e.finishDate && "font-medium")}>
                 <td className="num text-ink-3">{i + 1}</td>
                 <td>
                   <span className="flex items-center gap-2 whitespace-nowrap">
@@ -38,7 +39,7 @@ export function QueueTable({ entries, t, f, now }: { entries: QueueRow[]; t: Mes
                 <td className="whitespace-nowrap text-ink-2">{e.finishDate ? f.dateTime(e.finishDate) : "—"}</td>
                 <td className="num whitespace-nowrap">{e.finishDate ? <Countdown until={e.finishDate.toISOString()} now={now.toISOString()} /> : "—"}</td>
                 <td className="num text-ink-2">{sp === null ? "—" : f.integer(sp)}</td>
-              </tr>
+              </HoverRow>
             );
           })}
         </tbody>
