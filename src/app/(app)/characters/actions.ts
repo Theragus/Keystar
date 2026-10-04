@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { audit } from "@/core/audit";
 import { assertPermission, getCurrentUser, type CurrentUser } from "@/core/auth/dal";
@@ -16,6 +16,7 @@ import {
   mailLists,
   mailMessages,
   miningPnlFeeOverrides,
+  syncJobs,
   users,
   walletFees,
   industryJobs,
@@ -71,7 +72,19 @@ export async function removeCharacter(characterId: number): Promise<ActionResult
       .returning({ characterId: characters.characterId });
     // Industry jobs have no owner column: delete them only if this account's link was the one removed, so a
     // character that changed hands meanwhile keeps its new owner's jobs.
-    if (removed.length) await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
+    if (removed.length) {
+      await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
+      await tx
+        .update(syncJobs)
+        .set({ meta: null })
+        .where(
+          and(
+            eq(syncJobs.ownerType, "character"),
+            eq(syncJobs.ownerId, characterId),
+            inArray(syncJobs.jobKey, ["wallet.character-transactions", "wallet.character-fees"]),
+          ),
+        );
+    }
   });
   await db
     .delete(walletTransactions)

@@ -1333,15 +1333,81 @@ describe.skipIf(!enabled)("integration", async () => {
       await walletTransactionsJob.run({ ...ctx, meta: first!.meta! });
       expect(seen).toEqual([null]);
 
-      // Deleting history while access is off leaves the job's metadata intact.
-      await db().delete(schema.walletTransactions).where(sql`character_id = 3 AND user_id = ${userB}`);
+      await db().delete(schema.esiTokens).where(sql`character_id = 3`);
+      await db().insert(schema.syncJobs).values([
+        {
+          jobKey: "wallet.character-transactions",
+          ownerType: "character",
+          ownerId: 3,
+          meta: first!.meta!,
+        },
+        {
+          jobKey: "wallet.character-fees",
+          ownerType: "character",
+          ownerId: 3,
+          meta: first!.meta!,
+        },
+      ]);
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userB, characterIds: [3] }) }));
+      vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+      try {
+        const { deleteWalletData } = await import("@/app/(app)/mining/pnl/actions");
+        expect(await deleteWalletData(3)).toEqual({ ok: true });
+      } finally {
+        vi.doUnmock("@/core/auth/dal");
+        vi.doUnmock("next/cache");
+      }
+      expect((await db().select({ meta: schema.syncJobs.meta }).from(schema.syncJobs)).map((j) => j.meta)).toEqual([null, null]);
       seen.length = 0;
-      const restored = await walletTransactionsJob.run({ ...ctx, meta: first!.meta! });
+      const restored = await walletTransactionsJob.run(ctx);
       expect(restored?.summary).toBe("2 new transactions");
       expect(restored?.meta).toEqual(first?.meta);
       expect(seen).toEqual([null, "800", "700"]);
       const rows = await db().select().from(schema.walletTransactions).where(sql`user_id = ${userB}`).orderBy(schema.walletTransactions.transactionId);
       expect(rows.map((r) => r.transactionId)).toEqual([700, 800]);
+    });
+
+    it("uses the high-water mark when no personal transactions have been stored", async () => {
+      let requests = 0;
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async () => {
+          requests++;
+          return Response.json([{
+            transaction_id: 950,
+            date: "2026-09-10T12:00:00Z",
+            type_id: 34,
+            quantity: 1,
+            unit_price: 5,
+            is_buy: true,
+            is_personal: false,
+            client_id: 5,
+            location_id: 60003760,
+            journal_ref_id: 950,
+          }]);
+        }) as unknown as typeof fetch,
+      });
+      const ctx = {
+        jobId: 1,
+        ownerType: "character" as const,
+        ownerId: 3,
+        characterId: 3,
+        esi,
+        db: db(),
+        log: undefined as never,
+        meta: { userId: userB, newestSeenId: 950 },
+      };
+      const first = await walletTransactionsJob.run(ctx);
+      expect(requests).toBe(1);
+      expect(first?.meta).toEqual(ctx.meta);
+      expect(await db().select().from(schema.walletTransactions)).toEqual([]);
+
+      requests = 0;
+      await walletTransactionsJob.run({ ...ctx, meta: first!.meta! });
+      expect(requests).toBe(1);
     });
 
     it("imports only wallet fees, resumes incrementally, and reimports all pages after deleting wallet data", async () => {
@@ -1368,6 +1434,13 @@ describe.skipIf(!enabled)("integration", async () => {
       });
       expect(walletFeesJob.requiredScopes).toEqual([WALLET_SCOPE]);
       const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
+
+      // With a prior high-water mark, corporation-only journal rows don't force a full history read.
+      const emptyArchive = await walletFeesJob.run({ ...ctx, meta: { userId: userB, newestSeenId: 105, descriptions: true } });
+      expect(pages).toEqual(["1"]);
+      expect(emptyArchive?.meta).toEqual({ userId: userB, newestSeenId: 105, descriptions: true });
+      pages.length = 0;
+
       const first = await walletFeesJob.run(ctx);
       expect(pages).toEqual(["1", "2"]);
       expect(first?.summary).toBe("2 new fees");
@@ -1382,10 +1455,10 @@ describe.skipIf(!enabled)("integration", async () => {
       expect((await walletFeesJob.run({ ...ctx, meta: first!.meta! }))?.summary).toBe("0 new fees");
       expect(pages).toEqual(["1"]);
 
-      // Re-enabling import after deletion must ignore both the cursor and descriptions flag.
+      // Deleting history clears the cursor and descriptions flag before import is re-enabled.
       await db().delete(schema.walletFees).where(sql`character_id = 3 AND user_id = ${userB}`);
       pages.length = 0;
-      const restored = await walletFeesJob.run({ ...ctx, meta: first!.meta! });
+      const restored = await walletFeesJob.run(ctx);
       expect(restored?.summary).toBe("2 new fees");
       expect(restored?.meta).toEqual(first?.meta);
       expect(pages).toEqual(["1", "2"]);

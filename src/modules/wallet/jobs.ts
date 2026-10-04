@@ -37,7 +37,7 @@ export const walletTransactionsJob: JobDefinition = {
       .where(and(eq(walletTransactions.characterId, characterId!), eq(walletTransactions.userId, owner.userId)));
     const seen = meta.userId === owner.userId && typeof meta.newestSeenId === "number" ? meta.newestSeenId : null;
     const stored = newest?.id == null ? null : Number(newest.id);
-    const cursor = stored === null ? null : seen === null ? stored : Math.max(stored, seen);
+    const cursor = stored === null ? seen : seen === null ? stored : Math.max(stored, seen);
 
     const res = await fetchNewTransactions(esi, characterId!, cursor);
     // Corporation-wallet transactions made by this character are out of scope.
@@ -116,7 +116,7 @@ export const walletFeesJob: JobDefinition = {
       .where(and(eq(walletFees.characterId, characterId!), eq(walletFees.userId, owner.userId)));
     const seen = meta.userId === owner.userId && typeof meta.newestSeenId === "number" ? meta.newestSeenId : null;
     const stored = newest?.id == null ? null : Number(newest.id);
-    const latest = stored === null ? null : seen === null ? stored : Math.max(stored, seen);
+    const latest = stored === null ? seen : seen === null ? stored : Math.max(stored, seen);
     // Fees imported before descriptions were kept get theirs from one full read of ESI's 30 days.
     const backfill = latest !== null && meta.descriptions !== true;
     const cursor = backfill ? null : latest;
