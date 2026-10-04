@@ -6,6 +6,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
+  container's memory against its limit, free host memory and the host's load average.
+
 ## [0.13.0] - 2026-10-04
 
 ### Added
@@ -22,8 +27,6 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   - **Report an issue** walks through a bug report and opens it on GitHub with the version and a system summary
     filled in. Privacy warnings point out where logs or the public issue could expose pilot or corporation names,
     IDs or the server's address.
-  - **Load**: CPU share, memory and JS heap of the web app and the worker, the container's memory against its
-    limit, free host memory and the host's load average.
 
   ([#102](https://github.com/Theragus/Keystar/issues/102))
 - **Support package** for bug reports:
