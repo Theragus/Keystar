@@ -51,7 +51,8 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
   const [summary, purchases, fees, entries, wallet] = await Promise.all([
     getExpenseRows(scope),
     getPurchases(scope, { status: filters.status, limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
-    getFees(scope, { status: "mining", limit: FEE_LIMIT, offset: 0 }),
+    // Same status tab as the purchases, so taxes on other sales ("Other purchases") can be found and included too.
+    getFees(scope, { status: filters.status, limit: FEE_LIMIT, offset: 0 }),
     getManualEntries(user.id, filters.from, filters.to),
     getWalletStatus(user.id),
   ]);

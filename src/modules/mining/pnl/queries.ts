@@ -357,9 +357,10 @@ function feesCte(s: PnlScope): SQL {
     LEFT JOIN LATERAL (
       SELECT w.transaction_id FROM wallet_transactions w
       WHERE f.ref_type = 'transaction_tax' AND w.user_id = f.user_id AND w.character_id = f.character_id AND NOT w.is_buy
-        AND CASE WHEN f.context_id_type = 'market_transaction_id' THEN w.transaction_id = f.context_id
-                 ELSE w.date = f.date AND w.journal_ref_id < f.journal_id END
-      ORDER BY w.journal_ref_id DESC
+        AND ((f.context_id_type = 'market_transaction_id' AND w.transaction_id = f.context_id)
+             OR (w.date = f.date AND w.journal_ref_id < f.journal_id))
+      -- The exact transaction first; the journal order when it isn't imported.
+      ORDER BY (f.context_id_type = 'market_transaction_id' AND w.transaction_id = f.context_id) DESC, w.journal_ref_id DESC
       LIMIT 1
     ) paid ON true
     -- Its review status; sales outside "classified" (to your own characters) leave the tax untagged.

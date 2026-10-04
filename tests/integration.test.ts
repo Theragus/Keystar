@@ -1377,6 +1377,8 @@ describe.skipIf(!enabled)("integration", async () => {
         fee(84, "brokers_fee", "2026-09-09T10:00:00Z"),
         fee(91, "transaction_tax", "2026-09-13T10:00:00Z"),
         fee(93, "transaction_tax", "2026-09-13T10:00:00Z"),
+        // Names a sale that wasn't imported: falls back to the journal order (the crystal, untagged).
+        fee(95, "transaction_tax", "2026-09-13T10:00:00Z", { contextId: 999, contextIdType: "market_transaction_id" }),
         { ...fee(85, "brokers_fee", "2026-09-09T10:00:00Z"), userId: userA }, // another account's
       ]);
       const status = async () =>
@@ -1390,6 +1392,7 @@ describe.skipIf(!enabled)("integration", async () => {
         91: ["counted", 1230],
       });
       expect((await pnl.getFees(scopeB(), { status: "untagged", limit: 50, offset: 0 })).rows.map((r) => [r.journalId, r.sale?.typeId])).toEqual([
+        [95, 18066],
         [93, 18066],
         [82, 18066],
       ]);
@@ -1419,9 +1422,14 @@ describe.skipIf(!enabled)("integration", async () => {
       await db().insert(schema.walletTransactions).values([tx(3, 51, 18066), tx(2, 52, 18066)]);
       const fee = { userId: userB, date: new Date("2026-09-10T12:00:00Z"), refType: "brokers_fee" as const, amount: 5 };
       await db().insert(schema.walletFees).values([{ ...fee, characterId: 3, journalId: 61 }, { ...fee, characterId: 2, journalId: 62 }]);
+      await db().insert(schema.miningPnlFeeOverrides).values([
+        { userId: userB, characterId: 3, journalId: 61, included: true },
+        { userId: userB, characterId: 2, journalId: 62, included: true },
+      ]);
       await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: false }));
       expect((await db().select().from(schema.walletTransactions)).map((r) => r.transactionId)).toEqual([52]);
       expect((await db().select().from(schema.walletFees)).map((r) => r.journalId)).toEqual([62]);
+      expect((await db().select().from(schema.miningPnlFeeOverrides)).map((r) => r.journalId)).toEqual([62]);
     });
 
     it("reports opt-in scopes that a generic re-link dropped", async () => {
