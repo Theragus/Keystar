@@ -1,21 +1,21 @@
-import { CheckCheck, ChevronLeft, ChevronRight, Plus, RotateCcw, Wallet, X } from "lucide-react";
+import { CheckCheck, ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { TypeIcon } from "@/components/ui/eve-image";
+import { Portrait, TypeIcon } from "@/components/ui/eve-image";
 import { Panel } from "@/components/ui/glass";
 import { PendingFrame, PendingProvider } from "@/components/ui/pending";
 import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/utils";
 import { EXPENSE_CATEGORIES, type ExpenseStatus } from "@/modules/mining/pnl/categories";
 import { AutoSubmitSelect, SubmitButton } from "@/modules/mining/pnl/components/form-controls";
-import { ManualEntries } from "@/modules/mining/pnl/components/manual-entries";
 import { PnlFilterBar } from "@/modules/mining/pnl/components/pnl-filter-bar";
 import { PnlTabs } from "@/modules/mining/pnl/components/pnl-tabs";
 import { pnlQueryString, STATUS_FILTERS } from "@/modules/mining/pnl/filters";
 import { pnlPageContext } from "@/modules/mining/pnl/page-context";
 import { getExpenseRows, getManualEntries, getPurchases, getWalletStatus } from "@/modules/mining/pnl/queries";
+import { SPREAD_DAYS } from "@/modules/mining/pnl/spread";
 import {
   addManualEntry,
   deleteManualEntry,
@@ -30,6 +30,7 @@ export async function generateMetadata() {
 }
 
 const PAGE_SIZE = 50;
+const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink";
 
 const statusTone: Record<ExpenseStatus, "good" | "accent" | "neutral"> = {
   counted: "good",
@@ -246,17 +247,118 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
             )}
           </Panel>
 
-          <ManualEntries
-            text={m}
-            addAction={addManualEntry}
-            deleteAction={deleteManualEntry}
-            categories={EXPENSE_CATEGORIES.map((c) => ({ id: c, label: t.pnl.categories[c].label }))}
-            defaultCategory="subscription"
-            entries={entries}
-            characters={characters}
-            today={today}
-            backHref={`/mining/pnl?${query}`}
-          />
+          <div className="grid gap-4 xl:grid-cols-12">
+            <Panel className="xl:col-span-5" title={m.add.title} subtitle={m.add.subtitle}>
+              <form action={addManualEntry} className="grid gap-3 sm:grid-cols-2">
+                <label className="space-y-1 text-xs text-ink-3">
+                  {m.add.date}
+                  <input type="date" name="date" required defaultValue={today} max="2100-01-01" className={inputClass} />
+                </label>
+                <label className="space-y-1 text-xs text-ink-3">
+                  {m.add.amount}
+                  <input name="amount" required inputMode="decimal" placeholder={m.add.amountPlaceholder} className={inputClass} />
+                </label>
+                <label className="space-y-1 text-xs text-ink-3">
+                  {m.add.category}
+                  <select name="category" defaultValue="subscription" className={inputClass}>
+                    {EXPENSE_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {t.pnl.categories[c].label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-ink-3">
+                  {m.add.spread}
+                  <select name="spreadDays" defaultValue="1" className={inputClass}>
+                    {SPREAD_DAYS.map((days) => (
+                      <option key={days} value={days}>
+                        {t.pnl.spread(days)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-ink-3">
+                  {m.add.character}
+                  <select name="characterId" defaultValue="" className={inputClass}>
+                    <option value="">{m.add.accountWide}</option>
+                    {characters.map((c) => (
+                      <option key={c.characterId} value={c.characterId}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-ink-3">
+                  {m.add.note}
+                  <input name="description" maxLength={200} placeholder={m.add.notePlaceholder} className={inputClass} />
+                </label>
+                <div className="sm:col-span-2">
+                  <SubmitButton variant="primary" size="md">
+                    <Plus className="size-4" aria-hidden /> {m.add.submit}
+                  </SubmitButton>
+                </div>
+              </form>
+            </Panel>
+
+            <Panel className="xl:col-span-7" title={m.manual.title} subtitle={m.manual.subtitle}>
+              {entries.length === 0 ? (
+                <p className="py-8 text-center text-sm text-ink-3">{m.manual.empty}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="ks-table">
+                    <thead>
+                      <tr>
+                        <th>{m.manual.columns.date}</th>
+                        <th>{m.manual.columns.category}</th>
+                        <th>{m.manual.columns.character}</th>
+                        <th>{m.manual.columns.note}</th>
+                        <th className="num">{m.manual.columns.amount}</th>
+                        <th className="num" aria-label={m.manual.columns.actions} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entries.map((e) => (
+                        <tr key={e.id}>
+                          <td className="whitespace-nowrap text-ink-2 tabular-nums">
+                            {f.shortDate(e.date)}
+                            {e.spreadDays > 1 && <span className="ml-1 text-2xs text-ink-3">{m.manual.spreadDays(e.spreadDays)}</span>}
+                          </td>
+                          <td>{t.pnl.categories[e.category].label}</td>
+                          <td className="text-ink-2">
+                            {e.characterId === null ? (
+                              <span className="whitespace-nowrap">{m.add.accountWide}</span>
+                            ) : (
+                              <span className="flex items-center gap-2 whitespace-nowrap">
+                                <Portrait id={e.characterId} size={24} />
+                                {e.characterName ?? t.pnl.characterFallback(e.characterId)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="max-w-[16rem] truncate text-ink-2">{e.description || "—"}</td>
+                          <td className="num font-semibold">{f.compact(e.amount)}</td>
+                          <td className="num">
+                            <form action={deleteManualEntry.bind(null, e.id)}>
+                              <SubmitButton variant="ghost" title={m.manual.deleteHint}>
+                                <Trash2 className="size-3.5" aria-hidden />
+                              </SubmitButton>
+                            </form>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="mt-3 text-2xs text-ink-3">
+                {m.manual.footer(
+                  <Link href={`/mining/pnl?${query}`} className="text-accent hover:underline">
+                    {m.manual.back}
+                  </Link>,
+                )}
+              </p>
+            </Panel>
+          </div>
         </PendingFrame>
       </div>
     </PendingProvider>

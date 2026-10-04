@@ -321,15 +321,14 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   purchase is *suggested* until the user includes it, or counted automatically for characters where the user
   switched that on (`mining_pnl_characters`, off by default); the user's category/include decisions
   (`mining_pnl_tx_overrides`) always win. Everything else stays out unless tagged. Manual entries
-  (`mining_pnl_entries`, `kind` "expense") cover PLEX/Omega, contracts etc. and can be spread evenly over up to a year.
+  (`mining_pnl_entries`) cover PLEX/Omega, contracts etc. and can be spread evenly over up to a year.
 - **Income from wallet sales**: the account picks the income basis (`mining_pnl_settings.income_source`): `mined`
   (default) values the mined ore as above; `sales` counts market sells instead, on the day of the sale. Sells are
   auto-tagged by the activity they come from (`classifySale`, with an SQL twin): ore, moon ore, ice and gas, raw or
   compressed, plus minerals, moon materials and ice products. They go through the same suggested/counted/excluded
   review as purchases, with their own per-character switch (`mining_pnl_characters.auto_include_sales`) and the same
-  override table. Manual income entries (`mining_pnl_entries` with `kind` "income": ore sold by contract or to a
-  buyback, which aren't market transactions) count on the same basis. Volume, active hours and ISK/h always come from
-  the mined ore.
+  override table. Volume, active hours and ISK/h always come from the mined ore. Only market sales count; anything
+  the wallet doesn't show stays out.
 - **Sale hints**: wallet sells of a mined ore or its compressed variant, converted to raw units with the valuation's
   compression ratio, offered as one-click price rules.
 - **Active hours / ISK per hour**: the ledger job compares each fresh ESI snapshot with the stored ledger in one

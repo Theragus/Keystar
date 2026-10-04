@@ -18,7 +18,7 @@ import { WALLET_SCOPE } from "@/modules/wallet/module";
 /**
  * Demo data for the mining P&L of one account: wallet import on for two of
  * its characters (automatic counting of purchases and sales on for one, off for the other), a month
- * of purchases and ore sales, manual costs and income, a price rule and two weeks of
+ * of purchases and ore sales, manual costs, a price rule and two weeks of
  * measured mining activity.
  */
 
@@ -171,17 +171,6 @@ export async function seedMiningPnl(
       category: "other",
       description: "Hauling contract to Jita",
       amount: 38_000_000,
-    },
-    // The alt without wallet import sells to the corporation buyback by contract.
-    {
-      userId,
-      characterId: alt.characterId,
-      date: isoDay(new Date(today.getTime() - 10 * 86400_000)),
-      spreadDays: 1,
-      kind: "income",
-      category: "moon",
-      description: "Corp buyback contract",
-      amount: 185_000_000,
     },
   ]);
   if (iceMined[0]) {

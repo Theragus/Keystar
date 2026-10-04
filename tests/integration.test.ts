@@ -1044,8 +1044,6 @@ describe.skipIf(!enabled)("integration", async () => {
         { userId: userB, characterId: 3, date: "2026-08-17", spreadDays: 30, category: "subscription", amount: 3000 },
         { userId: userB, characterId: null, date: "2026-09-05", category: "other", amount: 100 },
         { userId: userA, characterId: 1, date: "2026-09-05", category: "other", amount: 999 },
-        // Income entries never count as costs, and costs never as income.
-        { userId: userB, characterId: 2, date: "2026-09-06", kind: "income", category: "moon", amount: 5000 },
       ]);
       const all = await pnl.getManualDaily(scopeB(), [2, 3]);
       expect(all.reduce((s, r) => s + r.amount, 0)).toBeCloseTo(1500 + 100);
@@ -1053,11 +1051,6 @@ describe.skipIf(!enabled)("integration", async () => {
       const narrowed = await pnl.getManualDaily(scopeB({ characters: [3] }), [2, 3]);
       expect(narrowed.reduce((s, r) => s + r.amount, 0)).toBeCloseTo(1500);
       expect((await pnl.getManualEntries(userB, range.from, range.to)).map((e) => e.amount)).toEqual([100, 3000]);
-      expect(await pnl.getManualIncomeDaily(scopeB(), [2, 3])).toEqual([
-        { date: "2026-09-06", characterId: 2, category: "moon", amount: 5000 },
-      ]);
-      expect(await pnl.getManualIncomeDaily(scopeB({ characters: [3] }), [2, 3])).toEqual([]);
-      expect((await pnl.getManualIncomeEntries(userB, range.from, range.to)).map((e) => [e.category, e.amount])).toEqual([["moon", 5000]]);
     });
 
     it("measures wall-clock and character hours from activity windows", async () => {

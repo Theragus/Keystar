@@ -92,13 +92,6 @@
       "when": 1791109546890,
       "tag": "0012_pnl_sales_income",
       "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1791110249860,
-      "tag": "0013_pnl_manual_income",
-      "breakpoints": true
     }
   ]
 }
