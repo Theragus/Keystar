@@ -6,6 +6,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Fixed
+
+- Right-aligned column headers in tables (the Load and Database tables on System Info, the actions column on
+  Users) now line up with their values instead of sitting on the left.
+
 ### Added
 
 - **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
