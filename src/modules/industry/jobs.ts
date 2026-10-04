@@ -95,29 +95,40 @@ export const characterIndustryJobsJob: JobDefinition = {
     const now = new Date();
     const rows = jobRows(id, res.data, now);
     if (!res.notModified) {
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        await db
-          .insert(industryJobs)
-          .values(rows.slice(i, i + CHUNK))
-          .onConflictDoUpdate({
-            target: industryJobs.jobId,
-            set: {
-              characterId: sql`excluded.character_id`,
-              status: sql`excluded.status`,
-              endDate: sql`excluded.end_date`,
-              pauseDate: sql`excluded.pause_date`,
-              completedDate: sql`excluded.completed_date`,
-              completedCharacterId: sql`excluded.completed_character_id`,
-              successfulRuns: sql`excluded.successful_runs`,
-              cost: sql`excluded.cost`,
-              updatedAt: sql`excluded.updated_at`,
-            },
-            setWhere: sql`(${industryJobs.status}, ${industryJobs.endDate}, ${industryJobs.pauseDate}, ${industryJobs.completedDate},
-                ${industryJobs.successfulRuns}, ${industryJobs.cost})
-              IS DISTINCT FROM (excluded.status, excluded.end_date, excluded.pause_date, excluded.completed_date,
-                excluded.successful_runs, excluded.cost)`,
-          });
-      }
+      const stillLinked = await db.transaction(async (tx) => {
+        // Unlinking or transferring the character meanwhile deletes its jobs; a write after that would orphan rows
+        // the character's next owner could see. The share lock makes the unlink wait for this write or this write
+        // see the unlink.
+        const [current] = await tx.execute<{ character_id: unknown }>(
+          sql`SELECT character_id FROM characters WHERE character_id = ${id} FOR SHARE`,
+        );
+        if (!current) return false;
+        for (let i = 0; i < rows.length; i += CHUNK) {
+          await tx
+            .insert(industryJobs)
+            .values(rows.slice(i, i + CHUNK))
+            .onConflictDoUpdate({
+              target: industryJobs.jobId,
+              set: {
+                characterId: sql`excluded.character_id`,
+                status: sql`excluded.status`,
+                endDate: sql`excluded.end_date`,
+                pauseDate: sql`excluded.pause_date`,
+                completedDate: sql`excluded.completed_date`,
+                completedCharacterId: sql`excluded.completed_character_id`,
+                successfulRuns: sql`excluded.successful_runs`,
+                cost: sql`excluded.cost`,
+                updatedAt: sql`excluded.updated_at`,
+              },
+              setWhere: sql`(${industryJobs.status}, ${industryJobs.endDate}, ${industryJobs.pauseDate}, ${industryJobs.completedDate},
+                  ${industryJobs.successfulRuns}, ${industryJobs.cost})
+                IS DISTINCT FROM (excluded.status, excluded.end_date, excluded.pause_date, excluded.completed_date,
+                  excluded.successful_runs, excluded.cost)`,
+            });
+        }
+        return true;
+      });
+      if (!stillLinked) return { summary: "Character was unlinked during the sync" };
     }
     await ensureTypes([...rows.map((r) => r.blueprintTypeId), ...rows.flatMap((r) => (r.productTypeId ? [r.productTypeId] : []))]);
     await ensureNames(rows.flatMap((r) => [r.installerId, ...(r.completedCharacterId ? [r.completedCharacterId] : [])]));
