@@ -1,4 +1,5 @@
 import { LogOut, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 
 import type { CurrentUser } from "@/core/auth/dal";
 import { env } from "@/core/env";
@@ -34,6 +35,7 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
   const { t } = await getI18n();
   const build = buildInfo();
   const version = versionLabel(build, env().SOURCE_URL);
+  const pilotLinkHover = "transition-colors hover:bg-surface-contrast/[0.06] focus-visible:bg-surface-contrast/[0.06]";
   const pilotInfo = (
     <>
       <div className="truncate text-[0.82rem] font-medium">{user.main?.name ?? t.shell.unknownPilot}</div>
@@ -121,18 +123,28 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
         <div className="shrink-0 border-t border-surface-contrast/[0.07] p-3 group-data-[sidebar=collapsed]/shell:px-0">
           <div className="flex items-center gap-2.5 group-data-[sidebar=collapsed]/shell:flex-col group-data-[sidebar=collapsed]/shell:gap-2">
             <RailFlyout
-              className="shrink-0"
+              className="min-w-0 flex-1 group-data-[sidebar=collapsed]/shell:flex-none"
               card={
-                <div className="px-2.5 py-1.5" data-flyout-anchor>
+                <Link href="/characters" tabIndex={-1} className={cn("block rounded-md px-2.5 py-1.5", pilotLinkHover)} data-flyout-anchor>
                   {pilotInfo}
-                </div>
+                </Link>
               }
             >
-              <div data-flyout-anchor>
-                {user.main ? <Portrait id={user.main.characterId} size={32} /> : <div className="size-8 rounded-full bg-space-700" />}
-              </div>
+              {/* One link for portrait and name: the collapsed rail keeps a single tab stop. */}
+              <Link
+                href="/characters"
+                title={t.shell.nav.characters}
+                className={cn(
+                  "-mx-1.5 flex items-center gap-2.5 rounded-md px-1.5 py-1 group-data-[sidebar=collapsed]/shell:mx-0 group-data-[sidebar=collapsed]/shell:rounded-full group-data-[sidebar=collapsed]/shell:p-0",
+                  pilotLinkHover,
+                )}
+              >
+                <div className="shrink-0" data-flyout-anchor>
+                  {user.main ? <Portrait id={user.main.characterId} size={32} /> : <div className="size-8 rounded-full bg-space-700" />}
+                </div>
+                <div className="min-w-0 flex-1 group-data-[sidebar=collapsed]/shell:sr-only">{pilotInfo}</div>
+              </Link>
             </RailFlyout>
-            <div className="min-w-0 flex-1 group-data-[sidebar=collapsed]/shell:sr-only">{pilotInfo}</div>
             <form action="/auth/logout" method="post">
               <button
                 type="submit"
