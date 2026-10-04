@@ -99,6 +99,21 @@ describe("redactor", () => {
     expect(Object.values(r.counts()).every((n) => n === 0)).toBe(true);
   });
 
+  it("removes bare Docker host names and IPv6 addresses from network errors", () => {
+    const r = createRedactor();
+    expect(r.scrub("getaddrinfo ENOTFOUND db")).toBe("getaddrinfo ENOTFOUND [host]");
+    expect(r.scrub("getaddrinfo EAI_AGAIN keystar-db")).toBe("getaddrinfo EAI_AGAIN [host]");
+    expect(r.scrub("connect ECONNREFUSED 172.18.0.2:5432")).toBe("connect ECONNREFUSED [host]:5432");
+    expect(r.scrub("connect ECONNREFUSED ::1:5432")).toBe("connect ECONNREFUSED [host]");
+    expect(r.scrub("connect ETIMEDOUT 2001:0db8:0:0:0:0:0:1")).toBe("connect ETIMEDOUT [host]");
+    expect(r.scrub("connect ECONNREFUSED fd00::12:5432")).toBe("connect ECONNREFUSED [host]");
+    expect(r.scrub('no pg_hba.conf entry for host "db"')).toBe('no pg_hba.conf entry for host "[host]"');
+    expect(r.counts().host).toBe(7);
+    // Times and C++-style names are not addresses.
+    const text = "timed out at 2026-10-04T11:00:00.000Z after 12:30 in std::vector";
+    expect(r.scrub(text)).toBe(text);
+  });
+
   it("hashes consistently within a package, differently across packages", () => {
     const a = createRedactor("one");
     expect(a.hash("host:1")).toBe(a.hash("host:1"));

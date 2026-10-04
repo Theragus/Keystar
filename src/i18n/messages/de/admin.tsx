@@ -430,6 +430,7 @@ export const admin: typeof en = {
         return d ? `${d} T ${h} Std.` : h ? `${h} Std. ${m} Min.` : `${m} Min.`;
       },
       runtime: "Laufzeitumgebung",
+      node: (version: string) => `Node ${version}`,
       host: "Host",
       hostValue: (platform: string, cpus: number, memory: string | null) =>
         [platform, `${n(cpus)} CPU`, memory ? `Limit ${memory}` : null].filter(Boolean).join(" · "),
@@ -443,7 +444,13 @@ export const admin: typeof en = {
       migrationsValue: (applied: number, bundled: number | null) =>
         bundled === null ? `${n(applied)} angewendet` : `${n(applied)} / ${n(bundled)} angewendet`,
       latest: (tag: string, when: string) => `Letzte Migration ${tag} · angewendet am ${when}`,
-      tables: { title: "Größte Tabellen", rows: "Zeilen", size: "Größe" },
+      tables: {
+        title: "Größte Tabellen",
+        rows: "Zeilen",
+        size: "Größe",
+        approx: (rows: string) => `~${rows}`,
+        estimated: "Schätzung von PostgreSQL: Das Zählen dieser Tabelle dauerte zu lange",
+      },
       unavailable: (error: string) => `Die Datenbank konnte nicht gelesen werden: ${error}`,
     },
     worker: {

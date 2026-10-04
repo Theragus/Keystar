@@ -16,11 +16,26 @@ const RULES: { rule: RedactionRule; pattern: RegExp; replacement: string; keep?:
   { rule: "email", pattern: /\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b/g, replacement: "[email]" },
   // Host names and IPv4 addresses (getaddrinfo ENOTFOUND db.example.com). Identifiers with `_` never match.
   { rule: "host", pattern: /\b(?:[a-z0-9-]+\.)+[a-z]{2,24}\b|\b\d{1,3}(?:\.\d{1,3}){3}\b/gi, replacement: "[host]" },
+  // IPv6: anything with "::", or all eight groups ("::1", "fd00::12", "2001:0:0:0:0:0:0:1").
+  {
+    rule: "host",
+    pattern: /(?<![\w:.])(?:[0-9a-f]{0,4}:)*:(?::?[0-9a-f]{1,4})*(?:%\w+)?(?![\w:])|(?<![\w:.])(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}(?![\w:])/gi,
+    replacement: "[host]",
+    keep: /^:+$|^[^:]*:[^:]*$/,
+  },
+  // Bare host names after network error codes (getaddrinfo ENOTFOUND db, connect ECONNREFUSED keystar-db:5432)
+  // and Postgres' "for host": Docker service names have no dots, so the rule above can't see them.
+  {
+    rule: "host",
+    pattern: /\b((?:getaddrinfo|ENOTFOUND|EAI_AGAIN|EAI_FAIL|EHOSTUNREACH|ENETUNREACH|ECONNREFUSED|ECONNRESET|ETIMEDOUT)\s+|for host\s+["']?)(?!\[host\])(?!E[A-Z_]+\b)([a-z0-9][\w.-]*)/gi,
+    replacement: "$1[host]",
+  },
   // Character, corporation, alliance and structure IDs have 6+ digits; HTTP statuses and counts don't.
   { rule: "eveId", pattern: /\b\d{6,}\b/g, replacement: "[id]" },
   // Quoted text is usually a name ("Some Pilot"). Identifiers with `_`, `.` or `:` stay: EVE names
   // can't contain those, and table, column and key names (relation "sync_jobs") are needed to debug.
-  { rule: "name", pattern: /"[^"\n]{1,80}"|'[^'\n]{1,80}'/g, replacement: '"[name]"', keep: /^["'][a-z0-9]+(?:[_.:][a-z0-9]+)+["']$/ },
+  // Markers from the rules above ("[host]") stay too.
+  { rule: "name", pattern: /"[^"\n]{1,80}"|'[^'\n]{1,80}'/g, replacement: '"[name]"', keep: /^["'](?:[a-z0-9]+(?:[_.:][a-z0-9]+)+|\[[a-z]+\])["']$/i },
 ];
 
 export interface Redactor {
@@ -36,10 +51,11 @@ export function createRedactor(salt: string = randomBytes(16).toString("hex")): 
     scrub(text) {
       let out = text;
       for (const { rule, pattern, replacement, keep } of RULES) {
-        out = out.replace(pattern, (match) => {
+        out = out.replace(pattern, (match, ...groups: unknown[]) => {
           if (keep?.test(match)) return match;
           counts[rule]++;
-          return replacement;
+          // `$1` keeps a rule's context (the error code before a bare host name).
+          return replacement.replace("$1", typeof groups[0] === "string" ? groups[0] : "");
         });
       }
       return out;

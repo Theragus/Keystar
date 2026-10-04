@@ -104,7 +104,6 @@ export default async function SystemPage() {
     packageJson: JSON.stringify(pkg, null, 2),
     packageFilename: supportPackageFilename(pkg),
     redactions: pkg.meta.redactions,
-    downloadHref: "/admin/system/support-package",
     bugReportUrl: bugReportUrl(sourceUrl, snapshot.build.version, summary),
     issueSearchUrl: issueSearchUrl(sourceUrl),
     version: snapshot.build.commit ? `${snapshot.build.version} (${snapshot.build.commit.slice(0, 7)})` : snapshot.build.version,
@@ -204,7 +203,7 @@ export default async function SystemPage() {
                 {ts.keystar.uptimeValue(rt.uptimeSeconds)}
               </InfoItem>
               <InfoItem icon={Cpu} label={ts.keystar.runtime}>
-                Node {rt.node}
+                {ts.keystar.node(rt.node)}
               </InfoItem>
               <InfoItem icon={Server} label={ts.keystar.host}>
                 {ts.keystar.hostValue(`${rt.platform}/${rt.arch}`, rt.cpuLimit ?? rt.cpus, rt.memoryLimitMb ? bytes(f, rt.memoryLimitMb * 1024 * 1024) : null)}
@@ -250,7 +249,9 @@ export default async function SystemPage() {
                       {db.tables.slice(0, 6).map((table) => (
                         <tr key={table.name}>
                           <td className="font-mono text-xs">{table.name}</td>
-                          <td className="text-right tabular-nums">{f.integer(table.rows)}</td>
+                          <td className="text-right tabular-nums" title={table.rowsEstimated ? ts.database.tables.estimated : undefined}>
+                            {table.rowsEstimated ? ts.database.tables.approx(f.integer(table.rows)) : f.integer(table.rows)}
+                          </td>
                           <td className="text-right text-ink-2 tabular-nums">{bytes(f, table.totalBytes)}</td>
                         </tr>
                       ))}

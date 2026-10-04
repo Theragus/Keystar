@@ -11,6 +11,7 @@ import type { CheckStatus } from "@/core/system/checks";
 import type { RedactionRule } from "@/core/system/redact";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
+import { recordSupportPackageDownload } from "../actions";
 
 export interface Problem {
   status: CheckStatus;
@@ -23,7 +24,6 @@ export interface SystemDialogData {
   packageJson: string;
   packageFilename: string;
   redactions: Record<RedactionRule, number>;
-  downloadHref: string;
   bugReportUrl: string;
   /** Issue search without a query; the dialog appends what the user types. */
   issueSearchUrl: string;
@@ -34,6 +34,17 @@ export interface SystemDialogData {
 
 type DialogKind = "package" | "issue";
 const OpenContext = createContext<((kind: DialogKind) => void) | null>(null);
+
+/** Saves exactly the previewed package, then records the download in the audit log. */
+function download(data: SystemDialogData) {
+  const url = URL.createObjectURL(new Blob([data.packageJson + "\n"], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = data.packageFilename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+  void recordSupportPackageDownload(data.packageFilename).catch(() => undefined);
+}
 
 async function copy(text: string): Promise<boolean> {
   // The Clipboard API needs a secure context (https or localhost) and permission.
@@ -182,9 +193,9 @@ function PackageDialog({ ref, data }: { ref: React.Ref<HTMLDialogElement>; data:
           <form method="dialog">
             <Button type="submit">{tp.cancel}</Button>
           </form>
-          <a href={data.downloadHref} download className={buttonClass("primary")}>
+          <Button type="button" variant="primary" onClick={() => download(data)}>
             <Download className="size-4" aria-hidden /> {tp.download}
-          </a>
+          </Button>
         </footer>
       }
     >

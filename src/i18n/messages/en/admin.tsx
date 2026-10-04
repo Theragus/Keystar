@@ -440,6 +440,7 @@ export const admin = {
         return d ? `${d} d ${h} h` : h ? `${h} h ${m} min` : `${m} min`;
       },
       runtime: "Runtime",
+      node: (version: string) => `Node ${version}`,
       host: "Host",
       hostValue: (platform: string, cpus: number, memory: string | null) =>
         [platform, `${n(cpus)} CPU`, memory ? `${memory} limit` : null].filter(Boolean).join(" · "),
@@ -453,7 +454,13 @@ export const admin = {
       migrationsValue: (applied: number, bundled: number | null) =>
         bundled === null ? `${n(applied)} applied` : `${n(applied)} / ${n(bundled)} applied`,
       latest: (tag: string, when: string) => `Latest migration ${tag} · applied ${when}`,
-      tables: { title: "Largest tables", rows: "Rows", size: "Size" },
+      tables: {
+        title: "Largest tables",
+        rows: "Rows",
+        size: "Size",
+        approx: (rows: string) => `~${rows}`,
+        estimated: "PostgreSQL's estimate: counting this table took too long",
+      },
       unavailable: (error: string) => `Couldn't read the database: ${error}`,
     },
     worker: {

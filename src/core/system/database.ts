@@ -36,6 +36,8 @@ export interface MigrationInfo {
 export interface TableInfo {
   name: string;
   rows: number;
+  /** PostgreSQL's estimate instead of an exact count: the table took too long to count. */
+  rowsEstimated: boolean;
   totalBytes: number;
   indexBytes: number;
   deadTuples: number;
@@ -143,6 +145,23 @@ export function compareSchema(expected: Map<string, Set<string>>, actual: Map<st
 
 const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : null);
 
+/** Exact row counts are worth a little time, never a slow page: past these limits a table gets the estimate. */
+const COUNT_TIMEOUT_MS = 2_000;
+const COUNT_BUDGET_MS = 10_000;
+
+/** Exact row count, or null when it would exceed `timeoutMs` (statement_timeout, scoped to one transaction). */
+async function exactCount(table: string, timeoutMs: number): Promise<number | null> {
+  try {
+    return await getDb().transaction(async (tx) => {
+      await tx.execute(sql`SELECT set_config('statement_timeout', ${String(Math.max(1, Math.round(timeoutMs)))}, true)`);
+      const [{ n }] = (await tx.execute(sql`SELECT count(*)::float8 AS n FROM ${sql.identifier(table)}`)) as unknown as { n: number }[];
+      return Number(n);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function collectDatabase(): Promise<DatabaseInfo> {
   const started = performance.now();
   await getDb().execute(sql`SELECT 1`);
@@ -165,13 +184,14 @@ export async function collectDatabase(): Promise<DatabaseInfo> {
     ),
     rows<{
       name: string;
+      estimate: string;
       total_bytes: string;
       index_bytes: string;
       dead: string;
       last_vacuum: string | null;
       last_analyze: string | null;
     }>(
-      sql`SELECT relname AS name, pg_total_relation_size(relid)::text AS total_bytes, pg_indexes_size(relid)::text AS index_bytes,
+      sql`SELECT relname AS name, n_live_tup::text AS estimate, pg_total_relation_size(relid)::text AS total_bytes, pg_indexes_size(relid)::text AS index_bytes,
                  n_dead_tup::text AS dead, GREATEST(last_vacuum, last_autovacuum) AS last_vacuum,
                  GREATEST(last_analyze, last_autoanalyze) AS last_analyze
           FROM pg_stat_user_tables WHERE schemaname = 'public'`,
@@ -193,11 +213,14 @@ export async function collectDatabase(): Promise<DatabaseInfo> {
     ),
   ]);
 
-  // Exact row counts: estimates are useless right after imports, and the tables are small enough.
+  // Exact row counts (estimates are far off right after imports), smallest tables first, within a time budget.
   const counts = new Map<string, number>();
-  for (const t of stats) {
-    const [{ n }] = await rows<{ n: number }>(sql`SELECT count(*)::int AS n FROM ${sql.identifier(t.name)}`);
-    counts.set(t.name, n);
+  const budgetEnd = performance.now() + COUNT_BUDGET_MS;
+  for (const t of [...stats].sort((a, b) => Number(a.total_bytes) - Number(b.total_bytes))) {
+    const left = budgetEnd - performance.now();
+    if (left <= 0) break;
+    const n = await exactCount(t.name, Math.min(COUNT_TIMEOUT_MS, left));
+    if (n !== null) counts.set(t.name, n);
   }
 
   const actual = new Map<string, Set<string>>();
@@ -220,7 +243,8 @@ export async function collectDatabase(): Promise<DatabaseInfo> {
     tables: stats
       .map((t) => ({
         name: t.name,
-        rows: counts.get(t.name) ?? 0,
+        rows: counts.get(t.name) ?? Math.max(0, Number(t.estimate)),
+        rowsEstimated: !counts.has(t.name),
         totalBytes: Number(t.total_bytes),
         indexBytes: Number(t.index_bytes),
         deadTuples: Number(t.dead),

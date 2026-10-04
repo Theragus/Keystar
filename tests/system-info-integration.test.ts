@@ -68,7 +68,10 @@ describe.skipIf(!enabled)("system info integration", async () => {
     expect(db.migrations).toMatchObject({ bundled: readJournal()!.length, applied: readJournal()!.length, pending: [], hashMismatch: [] });
     expect(db.drift.missingTables).toEqual([]);
     expect(db.drift.missingColumns).toEqual([]);
-    expect(db.tables.find((t) => t.name === "characters")?.rows).toBe(1);
+    expect(db.tables.find((t) => t.name === "characters")).toMatchObject({ rows: 1, rowsEstimated: false });
+    // The IN list of settings must render as valid SQL: these come back only if it does.
+    expect(db.settings.max_connections).toMatch(/^\d+$/);
+    expect(db.settings.TimeZone).toBeTruthy();
     expect(db.serverVersion).toMatch(/^\d+/);
 
     expect(s.worker.data.jobs.find((j) => j.jobKey === "corp.wallet")).toMatchObject({ error: 1, maxStreak: 5, failingOwners: 1 });
