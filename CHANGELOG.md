@@ -15,11 +15,14 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
       latest engagement with us.
     - Selecting a pilot or a legend entry highlights the members of the same alliance, or of the same corporation
       when there is no alliance.
+    - The engagement column is wider than the observed-group column.
   - **Engagement report**
     - Shows both sides of the latest engagement with the observed ships, loss counts and ISK lost, and marks
       incomplete evidence.
-    - Wide layout with compact ship rows: ship and pilot names inline, destroyed hulls on a red background.
-    - Page indicators at the bottom of the card slide between recorded fights, newest first.
+    - Wide layout with compact ship rows: ship and pilot names inline, destroyed hulls on a red background; hull
+      counts and loss labels are gone.
+    - Page indicators slide between recorded fights, newest first. Legends, paging and notes stay at the bottom of
+      the card.
     - Alliance/corporation highlighting with a legend per side, starting with the affiliation that has the most
       recorded pilots on each side.
   - **Pilot cards**
@@ -53,7 +56,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Removed
 
-- **Threat Intel rescan.** The rescan action and button are gone; start a new Local snapshot with New scan instead.
+- **Threat Intel rescan.** The rescan action and button, their translations and the scan-parent metadata are gone;
+  start a new Local snapshot with New scan instead.
 
 ### Fixed
 
@@ -511,7 +515,7 @@ Live fleet needs the new character scope `esi-fleets.read_fleet.v1`.
 
 ### Fixed
 
-- **German digit grouping** in killboard tables and the top-systems lists (e.g. "+1.234").
+- **German digit grouping** for changes in killboard tables and the top-systems lists (e.g. "+1.234").
 - **Field estimator placeholder** uses the number format of the EVE client in the chosen language.
 
 ## [0.1.3] - 2026-10-02
