@@ -179,8 +179,8 @@ export const pnl: typeof en = {
         <>
           <b className="text-ink">Ausgaben</b> sind Wallet-Käufe, die du gezählt hast (oder die bei Charakteren mit
           eingeschalteter automatischer Zählung automatisch zählen), plus manuelle Einträge; verteilte Einträge werden
-          gleichmäßig auf ihre Tage aufgeteilt. Verkaufssteuer auf gezählte Mining-Verkäufe und gezählte Maklergebühren
-          kommen als „Steuern &amp; Gebühren“ aus dem Wallet-Journal dazu. Handel zwischen deinen eigenen Charakteren zählt
+          gleichmäßig auf ihre Tage aufgeteilt. Kommen Einnahmen aus Wallet-Verkäufen, kommen Verkaufssteuer auf gezählte
+          Mining-Verkäufe und übernommene Maklergebühren als „Steuern &amp; Gebühren“ aus dem Wallet-Journal dazu. Handel zwischen deinen eigenen Charakteren zählt
           nicht.
         </>
       ),
@@ -279,7 +279,9 @@ export const pnl: typeof en = {
       excludeHint: "Ausschließen: keine Mining-Kosten",
       latest: (shown: number, total: number) => `Die neuesten ${n(shown)} von ${n(total)}.`,
       notes:
-        "Die Verkaufssteuer folgt dem Verkauf, auf den sie gezahlt wurde: Steuer auf einen gezählten Mining-Verkauf zählt, Steuer auf andere Verkäufe bleibt draußen. Maklergebühren gehören zu Marktorders, nicht zu Verkäufen, und werden daher vorgeschlagen (oder bei Charakteren gezählt, die ihre Verkäufe automatisch zählen).",
+        "Die Verkaufssteuer folgt dem Verkauf, auf den sie gezahlt wurde: Steuer auf einen gezählten Mining-Verkauf zählt, Steuer auf andere Verkäufe bleibt draußen. Maklergebühren gehören zu Marktorders, die nicht unbedingt Mining-Orders sind, und zählen daher erst, wenn du sie übernimmst.",
+      minedNote:
+        "Einnahmen sind derzeit der Wert des abgebauten Erzes, daher zählen Steuern und Gebühren nicht; dein Einnahmen-Anteil deckt sie ab. Sie zählen, sobald Einnahmen aus Wallet-Verkäufen kommen (Einstellungen → Einnahmen).",
     },
     add: {
       title: "Kosten erfassen",

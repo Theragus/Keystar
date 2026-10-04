@@ -178,8 +178,8 @@ export const pnl = {
         <>
           <b className="text-ink">Expenses</b> are wallet purchases you counted (or that are counted automatically for
           characters where you switched that on) plus manual entries; spread entries are divided evenly over their days.
-          Sales tax on counted mining sales and the broker fees you count come from the wallet journal as &ldquo;Taxes
-          &amp; fees&rdquo;. Trades between your own characters don&apos;t count.
+          When income comes from wallet sales, sales tax on counted mining sales and the broker fees you include come
+          from the wallet journal as &ldquo;Taxes &amp; fees&rdquo;. Trades between your own characters don&apos;t count.
         </>
       ),
       iskPerHour: (wallClock: string, characterHours: string, since: string | null, share: string) => (
@@ -274,7 +274,9 @@ export const pnl = {
       excludeHint: "Exclude: not a mining cost",
       latest: (shown: number, total: number) => `Latest ${n(shown)} of ${n(total)}.`,
       notes:
-        "Sales tax follows the sale it was paid on: tax on a counted mining sale counts, tax on other sales stays out. Broker fees belong to market orders, not sales, so they are suggested (or counted for characters that count their sales automatically).",
+        "Sales tax follows the sale it was paid on: tax on a counted mining sale counts, tax on other sales stays out. Broker fees belong to market orders, which may not be mining orders, so they only count once you include them.",
+      minedNote:
+        "Income is currently the value of the ore you mine, so taxes and fees don't count; your income rate covers them. They count once income comes from wallet sales (Settings → Income).",
     },
     add: {
       title: "Add a cost",

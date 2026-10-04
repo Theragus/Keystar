@@ -132,7 +132,7 @@ export function buildPnlReport(input: {
   /** Wallet sales; only counted ones are income, and only with `incomeSource` "sales". */
   sales?: SaleRow[];
   expenses: ExpenseRow[];
-  /** Sales tax and broker fees (category "fees"); counted ones are wallet expenses. */
+  /** Sales tax and broker fees (category "fees"); counted ones are wallet expenses, with `incomeSource` "sales" only. */
   fees?: ExpenseRow[];
   manual: ManualDailyRow[];
   activity: ActivityStats;
@@ -238,7 +238,8 @@ export function buildPnlReport(input: {
     return r.amount;
   };
   for (const r of expenses) countWallet(r, purchases);
-  for (const r of input.fees ?? []) feeTotal += countWallet(r, fees);
+  // Taxes and fees are paid on sales: they only count when the sales are the income (a mined-value rate covers them).
+  if (fromSales) for (const r of input.fees ?? []) feeTotal += countWallet(r, fees);
   let manualTotal = 0;
   for (const r of manual) {
     manualTotal += r.amount;

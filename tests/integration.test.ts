@@ -1244,16 +1244,20 @@ describe.skipIf(!enabled)("integration", async () => {
       expect((await walletFeesJob.run({ ...ctx, meta: first!.meta! }))?.summary).toBe("0 new fees");
     });
 
-    it("counts sales tax with the sale it was paid on, and broker fees when suggested or switched on", async () => {
+    it("counts sales tax with the sale it was paid on, even in a multi-sell, and leaves broker fees to you", async () => {
       const sell = { isBuy: false };
       await db().insert(schema.walletTransactions).values([
         tx(3, 71, 62516, { ...sell, date: new Date("2026-09-10T12:00:00Z") }), // compressed Veldspar: mining sale
         tx(3, 72, 18066, { ...sell, date: new Date("2026-09-11T08:30:00Z") }), // a crystal resold: not mining income
         tx(3, 73, 1230, { ...sell, date: new Date("2026-09-12T09:00:00Z") }), // Veldspar, excluded by hand
+        // A multi-sell: journal order sale 90, tax 91, sale 92, tax 93, all in the same second.
+        tx(3, 74, 1230, { ...sell, date: new Date("2026-09-13T10:00:00Z"), journalRefId: 90 }), // Veldspar
+        tx(3, 75, 18066, { ...sell, date: new Date("2026-09-13T10:00:00Z"), journalRefId: 92 }), // a crystal
       ]);
       await db().insert(schema.miningPnlTxOverrides).values([
         { userId: userB, characterId: 3, transactionId: 71, included: true },
         { userId: userB, characterId: 3, transactionId: 73, included: false },
+        { userId: userB, characterId: 3, transactionId: 74, included: true },
       ]);
       const fee = (journalId: number, refType: "transaction_tax" | "brokers_fee", date: string, extra = {}) => ({
         characterId: 3,
@@ -1266,28 +1270,46 @@ describe.skipIf(!enabled)("integration", async () => {
       });
       await db().insert(schema.walletFees).values([
         fee(81, "transaction_tax", "2026-09-10T12:00:00Z", { contextId: 71, contextIdType: "market_transaction_id" }),
-        fee(82, "transaction_tax", "2026-09-11T08:30:00Z"), // no context: matched by time
+        fee(82, "transaction_tax", "2026-09-11T08:30:00Z"), // no context: the sale booked right before it
         fee(83, "transaction_tax", "2026-09-12T09:00:00Z", { contextId: 73, contextIdType: "market_transaction_id" }),
         fee(84, "brokers_fee", "2026-09-09T10:00:00Z"),
+        fee(91, "transaction_tax", "2026-09-13T10:00:00Z"),
+        fee(93, "transaction_tax", "2026-09-13T10:00:00Z"),
         { ...fee(85, "brokers_fee", "2026-09-09T10:00:00Z"), userId: userA }, // another account's
       ]);
       const status = async () =>
         Object.fromEntries(
           (await pnl.getFees(scopeB(), { status: "mining", limit: 50, offset: 0 })).rows.map((r) => [r.journalId, [r.status, r.sale?.typeId ?? null]]),
         );
-      expect(await status()).toEqual({ 81: ["counted", 62516], 83: ["excluded", 1230], 84: ["suggested", null] });
+      expect(await status()).toEqual({
+        81: ["counted", 62516],
+        83: ["excluded", 1230],
+        84: ["suggested", null],
+        91: ["counted", 1230],
+      });
       expect((await pnl.getFees(scopeB(), { status: "untagged", limit: 50, offset: 0 })).rows.map((r) => [r.journalId, r.sale?.typeId])).toEqual([
+        [93, 18066],
         [82, 18066],
       ]);
 
-      // Counting sales automatically counts the character's broker fees too; your choice still wins.
+      // Counting sales automatically never counts broker fees (they may be for other orders); your choice wins.
       await db().insert(schema.miningPnlCharacters).values({ userId: userB, characterId: 3, autoIncludeSales: true });
-      await db().insert(schema.miningPnlFeeOverrides).values({ userId: userB, characterId: 3, journalId: 81, included: false });
-      expect(await status()).toEqual({ 81: ["excluded", 62516], 83: ["excluded", 1230], 84: ["counted", null] });
+      await db().insert(schema.miningPnlFeeOverrides).values([
+        { userId: userB, characterId: 3, journalId: 81, included: false },
+        { userId: userB, characterId: 3, journalId: 84, included: true },
+      ]);
+      expect(await status()).toEqual({
+        81: ["excluded", 62516],
+        83: ["excluded", 1230],
+        84: ["counted", null],
+        91: ["counted", 1230],
+      });
 
-      const feeRows = await pnl.getFeeRows(scopeB());
-      const counted = feeRows.filter((r) => r.status === "counted");
-      expect(counted).toEqual([{ date: "2026-09-09", characterId: 3, category: "fees", status: "counted", amount: 100, count: 1 }]);
+      const counted = (await pnl.getFeeRows(scopeB())).filter((r) => r.status === "counted");
+      expect(counted).toEqual([
+        { date: "2026-09-09", characterId: 3, category: "fees", status: "counted", amount: 100, count: 1 },
+        { date: "2026-09-13", characterId: 3, category: "fees", status: "counted", amount: 100, count: 1 },
+      ]);
     });
 
     it("drops the previous owner's wallet history when a character is transferred", async () => {

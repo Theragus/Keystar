@@ -54,7 +54,7 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
     getIncomeRows(scope),
     fromSales ? getSaleRows(scope) : [],
     getExpenseRows(scope),
-    getFeeRows(scope),
+    fromSales ? getFeeRows(scope) : [],
     getManualDaily(scope, user.characterIds),
     getActivityStats(scope),
     getPriceRules(user.id),

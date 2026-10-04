@@ -340,9 +340,9 @@ export function getSales(
 
 /**
  * Sales tax and broker fees of the selected characters with their status. Sales tax follows the sale it was paid on
- * (matched by the journal's market transaction id, else the same character and second): tax on a counted mining sale
- * counts, tax on other sales stays out. Broker fees belong to orders, not sales: they are suggested, or counted for
- * characters that count their sales automatically. Your include/exclude decision wins either way.
+ * (the journal's market transaction id, else the sale whose journal entry comes right before the tax at the same
+ * time): tax on a counted mining sale counts, tax on other sales stays out. Broker fees belong to orders, not sales,
+ * so they stay suggested until you include them. Your include/exclude decision wins either way.
  */
 function feesCte(s: PnlScope): SQL {
   const { start, end } = utcDayBounds(s.from, s.to);
@@ -350,19 +350,22 @@ function feesCte(s: PnlScope): SQL {
   fees AS (
     SELECT f.character_id, f.journal_id, f.date, f.ref_type, f.amount::float8 AS amount,
            sale.transaction_id AS sale_id, sale.type_id AS sale_type_id, sale.type_name AS sale_type_name,
-           sale.status AS sale_status, o.included AS o_included,
-           COALESCE(pc.auto_include_sales, false) AS auto_include
+           sale.status AS sale_status, o.included AS o_included
     FROM wallet_fees f
+    -- The sale a tax was paid on: the journal's market transaction id, else the character's sale booked right
+    -- before the tax in the journal (each sale's own journal entry precedes its tax, even in a multi-sell).
     LEFT JOIN LATERAL (
-      SELECT c.transaction_id, c.type_id, c.type_name, c.status FROM classified c
-      WHERE f.ref_type = 'transaction_tax' AND c.character_id = f.character_id
-        AND CASE WHEN f.context_id_type = 'market_transaction_id' THEN c.transaction_id = f.context_id ELSE c.date = f.date END
-      ORDER BY c.transaction_id
+      SELECT w.transaction_id FROM wallet_transactions w
+      WHERE f.ref_type = 'transaction_tax' AND w.user_id = f.user_id AND w.character_id = f.character_id AND NOT w.is_buy
+        AND CASE WHEN f.context_id_type = 'market_transaction_id' THEN w.transaction_id = f.context_id
+                 ELSE w.date = f.date AND w.journal_ref_id < f.journal_id END
+      ORDER BY w.journal_ref_id DESC
       LIMIT 1
-    ) sale ON true
+    ) paid ON true
+    -- Its review status; sales outside "classified" (to your own characters) leave the tax untagged.
+    LEFT JOIN classified sale ON sale.character_id = f.character_id AND sale.transaction_id = paid.transaction_id
     LEFT JOIN mining_pnl_fee_overrides o
       ON o.user_id = f.user_id AND o.character_id = f.character_id AND o.journal_id = f.journal_id
-    LEFT JOIN mining_pnl_characters pc ON pc.user_id = f.user_id AND pc.character_id = f.character_id
     WHERE f.user_id = ${s.userId}::uuid AND f.character_id IN (${list(s.characterIds)})
       AND f.date >= ${start}::timestamptz AND f.date < ${end}::timestamptz
   ),
@@ -371,7 +374,7 @@ function feesCte(s: PnlScope): SQL {
       WHEN fe.o_included THEN 'counted'
       WHEN fe.o_included = false THEN 'excluded'
       WHEN fe.ref_type = 'transaction_tax' THEN CASE WHEN fe.sale_status IN ('counted', 'suggested', 'excluded') THEN fe.sale_status ELSE 'untagged' END
-      WHEN fe.auto_include THEN 'counted'
+      -- Broker fees belong to orders, which may not be mining orders: never counted without you.
       ELSE 'suggested' END AS status
     FROM fees fe
   )`;

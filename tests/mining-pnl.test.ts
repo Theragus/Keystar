@@ -300,14 +300,18 @@ describe("P&L report", () => {
       amount,
       count: 1,
     });
-    const r = buildPnlReport({
+    const input = {
       ...base,
       income: [income("2026-09-28", 2, "ore", 1000, 10)],
       expenses: [expense("2026-09-29", 1, 100)],
       fees: [fee("2026-09-30", 1, 36, "counted"), fee("2026-09-30", 1, 15, "suggested"), fee("2026-10-01", 1, 99, "untagged")],
       activity: noActivity,
-    });
-    expect(r.totals).toMatchObject({ wallet: 136, fees: 36, expenses: 136, net: 864 });
+    };
+    // On the mined value, the income rate covers selling costs: fees don't count.
+    expect(buildPnlReport(input).totals).toMatchObject({ wallet: 100, fees: 0, expenses: 100 });
+
+    const r = buildPnlReport({ ...input, incomeSource: "sales" });
+    expect(r.totals).toMatchObject({ wallet: 136, fees: 36, expenses: 136, net: -136 });
     expect(r.fees.suggested).toEqual({ amount: 15, count: 1 });
     expect(r.purchases.suggested).toEqual({ amount: 0, count: 0 });
     expect(r.byCategory).toEqual([

@@ -1,4 +1,4 @@
-import { CheckCheck, ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2, Wallet, X } from "lucide-react";
+import { CheckCheck, ChevronLeft, ChevronRight, Info, Plus, RotateCcw, Trash2, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -253,6 +253,12 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
 
           {fees.total > 0 && (
             <Panel title={m.fees.title} subtitle={m.fees.subtitle}>
+              {ctx.incomeSource !== "sales" && (
+                <p className="mb-4 flex items-start gap-2 text-sm text-ink-2">
+                  <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+                  {m.fees.minedNote}
+                </p>
+              )}
               <div className="overflow-x-auto">
                 <table className="ks-table">
                   <thead>
