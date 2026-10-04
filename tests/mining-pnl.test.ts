@@ -130,6 +130,15 @@ describe("date buckets", () => {
 });
 
 describe("P&L filters and scope", () => {
+  it("keeps the fee page while paging purchases, and resets it when a shared filter changes", () => {
+    const f = parsePnlFilters({ from: "2026-09-01", to: "2026-09-30", fpage: "3", page: "2" }, "2026-10-04");
+    expect(f).toMatchObject({ page: 2, feePage: 3 });
+    expect(pnlQueryString(f, { page: 3 })).toContain("fpage=3");
+    expect(pnlQueryString(f, { from: "2026-08-01", page: 1 })).not.toContain("fpage");
+    expect(pnlQueryString(f, { status: "suggested", page: 1 })).not.toContain("fpage");
+    expect(parsePnlFilters({ fpage: "-2" }, "2026-10-04").feePage).toBe(1);
+  });
+
   it("defaults to 30 days by day and round-trips", () => {
     const f = parsePnlFilters({}, "2026-10-02");
     expect(f).toMatchObject({ from: "2026-09-03", to: "2026-10-02", bucket: "day", status: "mining", page: 1 });

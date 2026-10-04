@@ -47,9 +47,13 @@ export function parsePnlFilters(params: RawParams, today: string = isoDate(new D
   };
 }
 
-/** Serialises filters back into a query string, omitting defaults. */
+/**
+ * Serialises filters back into a query string, omitting defaults. Changing a shared filter (range, characters,
+ * bucket, status) starts the fee list on its first page again; paging the purchases keeps it.
+ */
 export function pnlQueryString(f: PnlFilters, overrides: Partial<PnlFilters> = {}): string {
-  const v = { ...f, ...overrides };
+  const changesFilters = Object.keys(overrides).some((k) => k !== "page" && k !== "feePage");
+  const v = { ...f, ...(changesFilters ? { feePage: 1 } : {}), ...overrides };
   const p = new URLSearchParams();
   p.set("from", v.from);
   p.set("to", v.to);
