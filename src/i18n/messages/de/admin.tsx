@@ -6,6 +6,26 @@ import { FORMATTERS } from "@/lib/format";
 const n = FORMATTERS.de.integer;
 const plural = (count: number, one: string, many: string) => `${n(count)} ${count === 1 ? one : many}`;
 type CheckValues = Record<string, string | number>;
+/** Service names in network check values ("esi,sso" or "zkill:403"); product names, the same in every language. */
+const NETWORK_NAMES: Record<string, string> = { esi: "ESI", sso: "EVE SSO", zkill: "zKillboard" };
+const names = (list: string | number) =>
+  String(list)
+    .split(",")
+    .filter(Boolean)
+    .map((e) => NETWORK_NAMES[e.split(":")[0]] ?? e)
+    .join(", ");
+/** One sentence per service that answered with an error ("zkill:403", "esi:503"). */
+const refusedText = (list: string | number) =>
+  String(list)
+    .split(",")
+    .filter(Boolean)
+    .map((e) => {
+      const [name, code] = e.split(":");
+      return name === "zkill" && code === "403"
+        ? "zKillboard sperrt diesen Server (HTTP 403): Es braucht einen User-Agent mit Kontaktdaten, setze ESI_CONTACT."
+        : `${NETWORK_NAMES[name] ?? name} antwortet mit einem Fehler (HTTP ${code}) und ist vielleicht ausgefallen.`;
+    })
+    .join(" ");
 
 export const admin: typeof en = {
   users: {
@@ -421,6 +441,17 @@ export const admin: typeof en = {
               ? "Anfragen pausieren wegen eines ESI-Ratenlimits. Die Jobs laufen weiter, sobald es zurückgesetzt ist."
               : "Noch keine ESI-Anfragen.",
       },
+      network: {
+        label: "Ausgehende Verbindungen",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? `ESI, EVE SSO und zKillboard antworten (langsamste ${n(Number(v.ms))} ms)`
+            : s === "skip"
+              ? "Nicht geprüft."
+              : v.down
+                ? `${names(v.down)} nicht erreichbar. Prüfe DNS, Firewall und Proxy des Servers.`
+                : refusedText(v.refused),
+      },
     },
     keystar: {
       title: "Keystar",
@@ -459,6 +490,14 @@ export const admin: typeof en = {
         estimated: "Schätzung von PostgreSQL: Das Zählen dieser Tabelle dauerte zu lange",
       },
       unavailable: (error: string) => `Die Datenbank konnte nicht gelesen werden: ${error}`,
+    },
+    network: {
+      title: "Netzwerk",
+      subtitle: "Ausgehende Verbindungen der Web-App, geprüft beim Laden dieser Seite.",
+      targets: { esi: "ESI", sso: "EVE SSO", zkill: "zKillboard" },
+      purpose: { esi: "Alle Sync-Jobs", sso: "Anmeldung", zkill: "Killboard und Bedrohungsanalyse" },
+      answered: (status: number, ms: string) => `HTTP ${status} · ${ms} ms`,
+      unreachable: (error: string) => `Nicht erreichbar: ${error}`,
     },
     worker: {
       title: "Worker & Hintergrund-Jobs",

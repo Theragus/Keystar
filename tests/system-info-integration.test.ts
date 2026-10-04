@@ -61,7 +61,7 @@ describe.skipIf(!enabled)("system info integration", async () => {
   });
 
   it("reads migrations, schema, tables and jobs", async () => {
-    const s = await collectSystemSnapshot({ source: "cli" });
+    const s = await collectSystemSnapshot({ source: "cli", network: false });
     expect(s.database.ok).toBe(true);
     if (!s.database.ok || !s.worker.ok || !s.tokens.ok) return;
     const db = s.database.data;
@@ -85,7 +85,7 @@ describe.skipIf(!enabled)("system info integration", async () => {
   });
 
   it("builds a support package without names, IDs or the worker host", async () => {
-    const s = await collectSystemSnapshot({ source: "cli" });
+    const s = await collectSystemSnapshot({ source: "cli", network: false });
     const json = JSON.stringify(buildSupportPackage(s, runChecks(s)));
     for (const marker of [PILOT, String(CORP_ID), String(CHARACTER_ID), "canary-host", "canary-refresh-token", "canary-owner-hash"]) {
       expect(json).not.toContain(marker);
