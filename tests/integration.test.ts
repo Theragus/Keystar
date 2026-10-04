@@ -1350,12 +1350,14 @@ describe.skipIf(!enabled)("integration", async () => {
       ]);
       vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userB, characterIds: [3] }) }));
       vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+      vi.doMock("server-only", () => ({}));
       try {
         const { deleteWalletData } = await import("@/app/(app)/mining/pnl/actions");
         expect(await deleteWalletData(3)).toEqual({ ok: true });
       } finally {
         vi.doUnmock("@/core/auth/dal");
         vi.doUnmock("next/cache");
+        vi.doUnmock("server-only");
       }
       expect((await db().select({ meta: schema.syncJobs.meta }).from(schema.syncJobs)).map((j) => j.meta)).toEqual([null, null]);
       seen.length = 0;
