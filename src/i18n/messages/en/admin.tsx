@@ -7,6 +7,20 @@ import { FORMATTERS } from "@/lib/format";
 const n = FORMATTERS.en.integer;
 const plural = (count: number, one: string, many: string) => `${n(count)} ${count === 1 ? one : many}`;
 type CheckValues = Record<string, string | number>;
+/** Service names in network check values ("esi,sso" or "zkill:403"); product names, the same in every language. */
+const NETWORK_NAMES: Record<string, string> = { esi: "ESI", sso: "EVE SSO", zkill: "zKillboard" };
+const names = (list: string | number) =>
+  String(list)
+    .split(",")
+    .filter(Boolean)
+    .map((e) => NETWORK_NAMES[e.split(":")[0]] ?? e)
+    .join(", ");
+const codes = (list: string | number) =>
+  String(list)
+    .split(",")
+    .filter(Boolean)
+    .map((e) => `HTTP ${e.split(":")[1]}`)
+    .join(", ");
 
 /**
  * Administration pages: users & roles, member audit, sync status, settings, audit log, system info.
@@ -431,6 +445,17 @@ export const admin = {
               ? "Requests are paused for an ESI rate limit. Jobs continue once it resets."
               : "No ESI requests yet.",
       },
+      network: {
+        label: "Outbound connections",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? `ESI, EVE SSO and zKillboard answer (slowest ${n(Number(v.ms))} ms)`
+            : s === "skip"
+              ? "Not checked."
+              : v.down
+                ? `Can't reach ${names(v.down)}. Check the server's DNS, firewall and proxy settings.`
+                : `${names(v.refused)} refused requests (${codes(v.refused)}). zKillboard blocks missing User-Agents: set ESI_CONTACT.`,
+      },
     },
     keystar: {
       title: "Keystar",
@@ -469,6 +494,14 @@ export const admin = {
         estimated: "PostgreSQL's estimate: counting this table took too long",
       },
       unavailable: (error: string) => `Couldn't read the database: ${error}`,
+    },
+    network: {
+      title: "Network",
+      subtitle: "Outbound connections from the web app, checked when this page loads.",
+      targets: { esi: "ESI", sso: "EVE SSO", zkill: "zKillboard" },
+      purpose: { esi: "Every sync job", sso: "Sign-in", zkill: "Killboard and threat intel" },
+      answered: (status: number, ms: string) => `HTTP ${status} · ${ms} ms`,
+      unreachable: (error: string) => `Unreachable: ${error}`,
     },
     worker: {
       title: "Worker & background jobs",

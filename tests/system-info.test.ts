@@ -9,7 +9,9 @@ import { createRedactor, errorSignature } from "@/core/system/redact";
 import { parseCpuLimit, parseMemoryLimit, processRuntime } from "@/core/system/runtime";
 import { bugReportUrl, issueSummary } from "@/core/system/summary";
 import { buildSupportPackage, supportPackageFilename } from "@/core/system/support-package";
+import { collectNetwork, networkError } from "@/core/system/network";
 import { MESSAGES } from "@/i18n/messages";
+import { ZkillClient } from "@/modules/killboard/zkill";
 
 const NOW = Date.parse("2026-10-04T12:00:00Z");
 const ago = (seconds: number) => new Date(NOW - seconds * 1000).toISOString();
@@ -70,6 +72,11 @@ function snapshot(overrides: Partial<SystemSnapshot> = {}): SystemSnapshot {
         errors: [],
       },
     },
+    network: [
+      { target: "esi", reachable: true, status: 200, ms: 80, error: null },
+      { target: "sso", reachable: true, status: 200, ms: 60, error: null },
+      { target: "zkill", reachable: true, status: 200, ms: 140, error: null },
+    ],
     clock: { ok: true, data: { dbOffsetMs: 12 } },
     esi: null,
     zkill: null,
@@ -428,5 +435,80 @@ describe("ESI client stats", () => {
     expect(stats.errorLimitRemain).toBe(97);
     expect(stats.clockOffsetMs).toBeGreaterThan(115_000);
     expect(stats.clockOffsetMs).toBeLessThan(121_000);
+  });
+});
+
+describe("network", () => {
+  const ok = (status: number) => async () => ({ status });
+  const fail = (code: string) => async (): Promise<{ status: number }> => {
+    throw Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error(`getaddrinfo ${code} db`), { code }) });
+  };
+
+  it("probes every target in parallel and reports error codes and timeouts", async () => {
+    const result = await collectNetwork(
+      { esi: ok(200), sso: fail("ENOTFOUND"), zkill: () => new Promise<{ status: number }>(() => {}) },
+      50,
+    );
+    expect(result.map((p) => [p.target, p.reachable, p.status, p.error])).toEqual([
+      ["esi", true, 200, null],
+      ["sso", false, null, "ENOTFOUND"],
+      ["zkill", false, null, "timeout"],
+    ]);
+    expect(networkError(new Error("socket hang up"))).toBe("socket hang up");
+  });
+
+  it("fails when ESI or EVE SSO are unreachable, warns for zKillboard, a 403 or an ESI outage", () => {
+    const probes = (overrides: Partial<Record<"esi" | "sso" | "zkill", { reachable: boolean; status: number | null }>>) =>
+      (["esi", "sso", "zkill"] as const).map((target) => ({
+        target,
+        reachable: true,
+        status: 200 as number | null,
+        ms: 10,
+        error: null,
+        ...overrides[target],
+      }));
+    const check = (network: ReturnType<typeof probes> | null) =>
+      runChecks(snapshot({ network }), NOW).find((c) => c.id === "network");
+    expect(check(probes({}))).toMatchObject({ status: "ok", values: { ms: 10 } });
+    expect(check(probes({ sso: { reachable: false, status: null } }))).toMatchObject({ status: "fail", values: { down: "sso" } });
+    expect(check(probes({ zkill: { reachable: false, status: null } }))?.status).toBe("warn");
+    expect(check(probes({ zkill: { reachable: true, status: 403 } }))).toMatchObject({
+      status: "warn",
+      values: { refused: "zkill:403" },
+    });
+    expect(check(probes({ esi: { reachable: true, status: 503 } }))?.status).toBe("warn");
+    expect(check(null)?.status).toBe("skip");
+    const en = MESSAGES.en.admin.system.checks.network;
+    expect(en.detail("fail", { down: "esi,sso", refused: "" })).toContain("ESI, EVE SSO");
+    expect(en.detail("warn", { down: "", refused: "zkill:403" })).toContain("zKillboard refused requests (HTTP 403)");
+  });
+
+  it("scrubs host names from network errors in the support package", () => {
+    const s = snapshot({
+      network: [{ target: "esi", reachable: false, status: null, ms: 5000, error: "getaddrinfo ENOTFOUND proxy.corp.example" }],
+    });
+    const pkg = buildSupportPackage(s, runChecks(s, NOW), { now: NOW });
+    expect(pkg.network?.[0].error).toBe("getaddrinfo ENOTFOUND [host]");
+    expect(pkg.meta.redactions.host).toBeGreaterThan(0);
+  });
+
+  it("pings ESI and zKillboard once, without retries, counting the request", async () => {
+    const esiFetch = vi.fn(async () => new Response("{}", { status: 503 }));
+    const esi = new EsiClient({
+      baseUrl: "https://esi.test",
+      userAgent: "test",
+      compatibilityDate: "2026-08-18",
+      fetchImpl: esiFetch as unknown as typeof fetch,
+      sleep: async () => {},
+    });
+    expect(await esi.ping()).toEqual({ status: 503 });
+    expect(esiFetch).toHaveBeenCalledTimes(1);
+    expect(esi.stats().requests.serverError).toBe(1);
+
+    const zkFetch = vi.fn(async () => new Response("{}", { status: 403 }));
+    const zkill = new ZkillClient({ userAgent: "test", fetch: zkFetch as unknown as typeof fetch, sleep: async () => {} });
+    expect(await zkill.ping()).toEqual({ status: 403 });
+    expect(zkFetch).toHaveBeenCalledTimes(1);
+    expect(zkill.stats()).toMatchObject({ requests: 1, failed: 1 });
   });
 });

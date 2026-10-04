@@ -11,6 +11,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **System Info for admins.** A new last page under Administration shows the technical state of the instance:
   - **Health checks** for the database, migrations and schema, the worker and its version, failing or stuck jobs,
     paused syncing, EVE SSO, `APP_URL`, clock skew and ESI rate limits.
+  - **Network**: whether this server can reach ESI, EVE SSO and zKillboard right now, with the HTTP status and
+    response time of each, or why not (DNS, refused, timeout); proxy settings show whether they are set.
   - **Instance details**: the running version and build, the database with its largest tables, the worker and
     background jobs, and the configuration without secret values.
   - **Report an issue** walks through a bug report and opens it on GitHub with the version and a system summary

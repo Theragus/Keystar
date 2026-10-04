@@ -208,6 +208,9 @@ process can't see the worker's process, so the worker reports its runtime and ES
 its heartbeat (`worker_heartbeats.info`); the clients count requests in `EsiClient.stats()` and
 `ZkillClient.stats()`.
 
+- `network.ts` probes ESI, EVE SSO (`/oauth/jwks`) and zKillboard with one request each (5 s limit), through
+  `EsiClient.ping()` and `ZkillClient.ping()` so the User-Agent, counters and request spacing apply. ESI or SSO
+  unreachable fails the network check; zKillboard unreachable, a 403 or a 5xx answer only warns.
 - `checks.ts` turns a snapshot into health checks. They are pure, so the page, the support package and the tests
   agree; their texts live under `admin.system.checks`.
 - `support-package.ts` builds the downloadable package from an **allowlist** of fields. Never add a field that holds

@@ -16,6 +16,7 @@ export const CHECK_IDS = [
   "appUrl",
   "clock",
   "esiLimits",
+  "network",
 ] as const;
 export type CheckId = (typeof CHECK_IDS)[number];
 
@@ -118,6 +119,20 @@ export function runChecks(s: SystemSnapshot, now = Date.now()): CheckResult[] {
     const limited = esiStats.some((e) => e.errorLimitPausedUntil || e.pausedGroups.length);
     const remain = Math.min(...esiStats.map((e) => e.errorLimitRemain ?? 100));
     add("esiLimits", limited ? "warn" : "ok", { remain });
+  }
+
+  // Outbound connections: ESI and SSO are needed for syncing and sign-in, zKillboard only for kills and intel.
+  if (!s.network) add("network", "skip");
+  else {
+    const down = s.network.filter((p) => !p.reachable).map((p) => p.target);
+    // Reachable but refusing us: zKillboard blocks unknown User-Agents and busy IPs with 403, ESI answers 5xx when down.
+    const refused = s.network
+      .filter((p) => p.reachable && (p.status === 403 || (p.status ?? 0) >= 500))
+      .map((p) => `${p.target}:${p.status}`);
+    const critical = down.some((t) => t === "esi" || t === "sso");
+    if (down.length) add("network", critical ? "fail" : "warn", { down: down.join(","), refused: refused.join(",") });
+    else if (refused.length) add("network", "warn", { down: "", refused: refused.join(",") });
+    else add("network", "ok", { ms: Math.max(...s.network.map((p) => p.ms)) });
   }
 
   return results;

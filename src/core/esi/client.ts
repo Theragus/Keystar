@@ -298,6 +298,32 @@ export class EsiClient {
     return { data, expiresAt, notModified, fromCache, lastModified: first.lastModified };
   }
 
+  /**
+   * One uncached GET without retries or rate-limit waits, for reachability checks
+   * (System Info). Any HTTP answer resolves with its status; network errors throw.
+   */
+  async ping(path = "/status"): Promise<{ status: number }> {
+    const sentAt = this.now();
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.opts.baseUrl}${path}`, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": this.opts.userAgent,
+          "X-Compatibility-Date": this.opts.compatibilityDate,
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (err) {
+      this.counters.requests.network++;
+      throw err;
+    }
+    this.trackLimits(routePattern(path), res);
+    this.count(res, sentAt);
+    await res.body?.cancel().catch(() => undefined);
+    return { status: res.status };
+  }
+
   /** A snapshot of the request counters and current back-off state. */
   stats(): EsiClientStats {
     const now = this.now();

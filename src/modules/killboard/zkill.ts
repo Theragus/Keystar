@@ -160,6 +160,31 @@ export class ZkillClient {
     }
   }
 
+  /**
+   * One request without retries, for reachability checks (System Info): an unknown
+   * character's statistics, which zKillboard answers with a tiny error object. Any
+   * HTTP answer resolves with its status (403 = User-Agent or IP blocked); network errors throw.
+   */
+  async ping(): Promise<{ status: number }> {
+    await this.throttle();
+    this.counters.requests++;
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.baseUrl}/api/stats/characterID/1/kills/`, {
+        headers: { "User-Agent": this.opts.userAgent, "Accept-Encoding": "gzip", Accept: "application/json" },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (err) {
+      this.counters.unreachable++;
+      throw err;
+    }
+    if (res.ok) this.counters.ok++;
+    else if (res.status === 429 || res.status >= 500) this.counters.throttled++;
+    else this.counters.failed++;
+    await res.body?.cancel().catch(() => undefined);
+    return { status: res.status };
+  }
+
   stats(): ZkillClientStats {
     return { ...this.counters, minIntervalMs: this.opts.minIntervalMs ?? 1100 };
   }
