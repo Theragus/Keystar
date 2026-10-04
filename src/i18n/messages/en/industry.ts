@@ -99,9 +99,8 @@ export const industry = {
   table: {
     title: "Jobs",
     character: "Character",
-    activity: "Activity",
-    blueprint: "Blueprint",
-    product: "Product",
+    job: "Job",
+    productArrow: "→",
     runs: "Runs",
     location: "Location",
     progress: "Progress",

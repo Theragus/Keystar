@@ -97,9 +97,8 @@ export const industry: typeof en = {
   table: {
     title: "Jobs",
     character: "Charakter",
-    activity: "Tätigkeit",
-    blueprint: "Blaupause",
-    product: "Produkt",
+    job: "Job",
+    productArrow: "→",
     runs: "Durchläufe",
     location: "Ort",
     progress: "Fortschritt",

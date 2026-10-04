@@ -41,7 +41,7 @@ export function JobProgress({
   );
   const pct = Math.round(p.fraction * 100);
   return (
-    <div className="min-w-40 space-y-1">
+    <div className="min-w-36 space-y-1">
       <div className="flex items-center justify-between gap-3 text-xs">
         <span
           className={cn(

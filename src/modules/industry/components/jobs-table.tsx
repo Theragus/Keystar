@@ -49,14 +49,11 @@ export function JobsTable({
           <thead>
             <tr>
               {showCharacter && <th>{t.table.character}</th>}
-              <th>{t.table.activity}</th>
-              <th>{t.table.blueprint}</th>
-              <th>{t.table.product}</th>
+              <th>{t.table.job}</th>
               <th className="num">{t.table.runs}</th>
               <th>{t.table.location}</th>
               <th>{t.table.progress}</th>
               <th>{t.table.ends}</th>
-              <th className="num">{t.table.cost}</th>
             </tr>
           </thead>
           <tbody>
@@ -72,37 +69,38 @@ export function JobsTable({
                     </td>
                   )}
                   <td>
-                    <Badge tone={ACTIVITY_TONE[j.activity]} className="whitespace-nowrap">
-                      {t.activityShort[j.activity]}
-                    </Badge>
-                  </td>
-                  <td>
-                    <span className="flex items-center gap-2 whitespace-nowrap">
-                      <TypeIcon id={j.blueprintTypeId} size={22} />
-                      <span title={t.activities[j.activity]}>{j.blueprintName ?? j.blueprintTypeId}</span>
-                    </span>
-                  </td>
-                  <td>
-                    {j.productTypeId ? (
-                      <span className="flex items-center gap-2 whitespace-nowrap">
-                        <TypeIcon id={j.productTypeId} size={22} />
-                        <span>
-                          {j.productName ?? j.productTypeId}
-                          {j.probability !== null && j.probability < 1 && (
-                            <span className="ml-2 text-2xs text-ink-3">{t.table.probability(f.percent(j.probability * 100, 0))}</span>
+                    <div className="flex items-center gap-2.5">
+                      <TypeIcon id={j.productTypeId ?? j.blueprintTypeId} size={28} className="shrink-0" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate font-medium text-ink" title={j.blueprintName ?? String(j.blueprintTypeId)}>
+                            {j.blueprintName ?? j.blueprintTypeId}
+                          </span>
+                          <span title={t.activities[j.activity]} className="shrink-0">
+                            <Badge tone={ACTIVITY_TONE[j.activity]} className="whitespace-nowrap">
+                              {t.activityShort[j.activity]}
+                            </Badge>
+                          </span>
+                        </div>
+                        <div className="truncate text-2xs text-ink-3">
+                          {j.productTypeId ? (
+                            <>
+                              {t.table.productArrow} {j.productName ?? j.productTypeId}
+                              {j.probability !== null && j.probability < 1 && <span className="ml-2">{t.table.probability(f.percent(j.probability, 0))}</span>}
+                            </>
+                          ) : (
+                            t.activities[j.activity]
                           )}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-ink-3">—</span>
-                    )}
+                        </div>
+                      </div>
+                    </div>
                   </td>
                   <td className="num tabular-nums">
                     {j.successfulRuns !== null && j.status === "delivered" ? t.table.runsOf(j.successfulRuns, j.runs) : f.integer(j.runs)}
                   </td>
                   <td>
-                    <span className="flex flex-col whitespace-nowrap">
-                      <span className="flex items-center gap-1.5">
+                    <span className="flex max-w-48 flex-col">
+                      <span className="truncate" title={j.locationName ?? undefined}>
                         {j.locationName ?? (
                           <span className="flex items-center gap-1 text-ink-3" title={t.table.noLocationHint}>
                             {t.table.noLocation} <CircleHelp className="size-3.5" aria-hidden />
@@ -110,7 +108,7 @@ export function JobsTable({
                         )}
                       </span>
                       {j.systemName && (
-                        <span className="flex items-center gap-1.5 text-2xs text-ink-3">
+                        <span className="flex items-center gap-1.5 whitespace-nowrap text-2xs text-ink-3">
                           <SecurityStatus value={j.security} /> {j.systemName}
                         </span>
                       )}
@@ -129,13 +127,15 @@ export function JobsTable({
                       />
                     )}
                   </td>
-                  <td className="whitespace-nowrap text-ink-2">
-                    {f.dateTime(j.completedDate ?? j.endDate)}
+                  <td className="text-ink-2">
+                    <div className="whitespace-nowrap">{f.dateTime(j.completedDate ?? j.endDate)}</div>
                     {p.phase === "finished" && j.completedDate && (
-                      <div className="text-2xs text-ink-3">{t.table.ago(f.relativeTime(j.completedDate, now))}</div>
+                      <div className="whitespace-nowrap text-2xs text-ink-3">{t.table.ago(f.relativeTime(j.completedDate, now))}</div>
                     )}
+                    <div className="whitespace-nowrap text-2xs text-ink-3" title={t.table.cost}>
+                      {j.cost ? f.isk(j.cost, { compact: true }) : "—"}
+                    </div>
                   </td>
-                  <td className="num tabular-nums text-ink-2">{j.cost ? f.compact(j.cost) : "—"}</td>
                 </tr>
               );
             })}
