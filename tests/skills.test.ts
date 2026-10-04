@@ -160,5 +160,8 @@ describe("skill queue timeline", () => {
       "6day",
       "8day",
     ]);
+    // Past a year's steps the spacing grows in whole years, so even an eight-year queue stays within the limit.
+    const long = queueTimeline([entry(0, { startDate: now, finishDate: days(8 * 365) })], now)!;
+    expect(long.ticks.map((t) => `${t.count}${t.unit}`)).toEqual(["24month", "48month", "72month", "96month"]);
   });
 });

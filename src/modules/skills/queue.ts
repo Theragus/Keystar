@@ -201,10 +201,15 @@ export function queueTimeline<T extends QueueEntry>(entries: T[], now: Date): Qu
     segments.push({ entry, offset: (start - now.getTime()) / totalMs, width: remainingMs / totalMs, remainingMs });
     cursor = Math.max(cursor, finish);
   }
-  const step = TICK_STEPS.find(([unit, count]) => totalMs / (UNIT_MS[unit] * count) <= MAX_TICKS) ?? TICK_STEPS[TICK_STEPS.length - 1];
+  // Beyond the listed steps, whole years: enough of them that the queue still fits in MAX_TICKS.
+  const [unit, count]: [TimelineUnit, number] = TICK_STEPS.find(([u, c]) => totalMs / (UNIT_MS[u] * c) <= MAX_TICKS) ?? [
+    "month",
+    12 * Math.ceil(totalMs / (12 * UNIT_MS.month * MAX_TICKS)),
+  ];
+  const stepMs = UNIT_MS[unit] * count;
   const ticks: TimelineTick[] = [];
-  for (let i = 1; i * step[1] * UNIT_MS[step[0]] < totalMs; i++) {
-    ticks.push({ offset: (i * step[1] * UNIT_MS[step[0]]) / totalMs, unit: step[0], count: i * step[1] });
+  for (let i = 1; i * stepMs < totalMs; i++) {
+    ticks.push({ offset: (i * stepMs) / totalMs, unit, count: i * count });
   }
   return { segments, ticks, totalMs };
 }
