@@ -108,9 +108,14 @@ export async function setUserDisabled(userId: string, disabled: boolean): Promis
  * still waiting as guests are touched: anyone approved or promoted in the
  * meantime stays as they are. Disabling keeps the account and can be undone.
  */
-export async function disableOutsideGuests(): Promise<ActionResult<"forbidden">> {
+export async function disableOutsideGuests(): Promise<ActionResult<"forbidden" | "notRestricted">> {
   const actor = await assertPermission("users.manage").catch(() => null);
   if (!actor) return refused("forbidden");
+  // The panel only shows while sign-ups are restricted; a page left open since then mustn't still clear guests.
+  if (!(await getSettings())["access.restrictToMembers"]) {
+    refresh();
+    return refused("notRestricted");
+  }
   for (const userId of await outsideGuestIds()) {
     if (userId === actor.id) continue;
     try {

@@ -26,6 +26,7 @@ export const admin = {
       failed: "Couldn't disable the accounts",
       errors: {
         forbidden: "You no longer have permission to manage users.",
+        notRestricted: "Sign-ups are no longer restricted to members, so nothing was changed.",
         unknown: "Something went wrong. Reload the page and try again.",
       },
     },

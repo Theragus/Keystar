@@ -144,7 +144,8 @@ export async function provisionFromSso(params: {
     };
     const policy = policyRole(policyInput);
 
-    // Checked before anything is changed, so a refused sign-in leaves nothing behind but its audit entry.
+    // Checked before the account, character or token is touched, so a refused sign-in creates none of them. The
+    // corporation and name lookups above only fill shared caches (and give us the home alliance to check against).
     if (!linking && !owned && !mayRegister(policyInput, settings["access.restrictToMembers"])) {
       throw new ProvisionError("notMember", `${verified.name} is not a member of this corporation.`);
     }

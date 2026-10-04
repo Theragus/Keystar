@@ -21,6 +21,7 @@ export const admin: typeof en = {
       failed: "Die Konten konnten nicht deaktiviert werden",
       errors: {
         forbidden: "Du darfst keine Benutzer mehr verwalten.",
+        notRestricted: "Die Registrierung ist nicht mehr auf Mitglieder beschränkt, daher wurde nichts geändert.",
         unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
       },
     },
