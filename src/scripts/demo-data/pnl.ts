@@ -173,6 +173,7 @@ export async function seedMiningPnl(
       amount: Math.round(value * 0.015 * 100) / 100,
       contextId: null,
       contextIdType: null,
+      description: "Market order commission to Jita IV - Moon 4 - Caldari Navy Assembly Plant",
     });
   }
   if (fees.length) await db.insert(walletFees).values(fees);

@@ -1318,9 +1318,9 @@ describe.skipIf(!enabled)("integration", async () => {
         { id: 105, ref_type: "bounty_prizes", amount: 1_000_000 },
         { id: 104, ref_type: "transaction_tax", amount: -360, context_id: 11, context_id_type: "market_transaction_id" },
         { id: 103, ref_type: "market_transaction", amount: 10_000, context_id: 11, context_id_type: "market_transaction_id" },
-        { id: 102, ref_type: "brokers_fee", amount: -150 },
+        { id: 102, ref_type: "brokers_fee", amount: -150, description: "Market order commission to Jita IV - Moon 4" },
         { id: 101, ref_type: "player_donation", amount: -5 },
-      ].map((e) => ({ ...e, date: "2026-09-10T12:00:00Z", description: "" }));
+      ].map((e) => ({ description: "", ...e, date: "2026-09-10T12:00:00Z" }));
       const esi = new EsiClient({
         baseUrl: "https://esi.test",
         userAgent: "t",
@@ -1336,14 +1336,23 @@ describe.skipIf(!enabled)("integration", async () => {
       const first = await walletFeesJob.run(ctx);
       expect(pages).toEqual(["/characters/3/wallet/journal"]);
       expect(first?.summary).toBe("2 new fees");
-      expect(first?.meta).toEqual({ userId: userB, newestSeenId: 105 });
+      expect(first?.meta).toEqual({ userId: userB, newestSeenId: 105, descriptions: true });
       const rows = await db().select().from(schema.walletFees).orderBy(schema.walletFees.journalId);
-      expect(rows.map((r) => [r.journalId, r.refType, r.amount, r.contextId, r.userId])).toEqual([
-        [102, "brokers_fee", 150, null, userB],
-        [104, "transaction_tax", 360, 11, userB],
+      expect(rows.map((r) => [r.journalId, r.refType, r.amount, r.contextId, r.userId, r.description])).toEqual([
+        [102, "brokers_fee", 150, null, userB, "Market order commission to Jita IV - Moon 4"],
+        [104, "transaction_tax", 360, 11, userB, null],
       ]);
       // Nothing newer than the cursor: nothing new stored.
       expect((await walletFeesJob.run({ ...ctx, meta: first!.meta! }))?.summary).toBe("0 new fees");
+
+      // Fees imported before descriptions were kept get theirs from one full read, without counting as new.
+      await db().update(schema.walletFees).set({ description: null });
+      const backfill = await walletFeesJob.run({ ...ctx, meta: { userId: userB, newestSeenId: 105 } });
+      expect(backfill?.summary).toBe("0 new fees");
+      expect(backfill?.meta).toMatchObject({ descriptions: true });
+      expect((await db().select().from(schema.walletFees).where(sql`journal_id = 102`))[0].description).toBe(
+        "Market order commission to Jita IV - Moon 4",
+      );
       // Fees alone count as wallet history in Settings (so they can be deleted), even without transactions.
       expect((await pnl.getWalletStatus(userB)).find((w) => w.characterId === 3)).toMatchObject({ transactions: 0, fees: 2 });
 
@@ -1357,6 +1366,7 @@ describe.skipIf(!enabled)("integration", async () => {
     });
 
     it("counts sales tax with the sale it was paid on, even in a multi-sell, and leaves broker fees to you", async () => {
+      // Sales tax has no review of its own: it always takes its sale's status.
       const sell = { isBuy: false };
       await db().insert(schema.walletTransactions).values([
         tx(3, 71, 62516, { ...sell, date: new Date("2026-09-10T12:00:00Z") }), // compressed Veldspar: mining sale
@@ -1408,23 +1418,34 @@ describe.skipIf(!enabled)("integration", async () => {
       ]);
 
       // Counting sales automatically never counts broker fees (they may be for other orders); your choice wins.
+      // A decision stored on a sales tax (from before taxes followed their sale) has no effect.
       await db().insert(schema.miningPnlCharacters).values({ userId: userB, characterId: 3, autoIncludeSales: true });
       await db().insert(schema.miningPnlFeeOverrides).values([
         { userId: userB, characterId: 3, journalId: 81, included: false },
         { userId: userB, characterId: 3, journalId: 84, included: true },
       ]);
       expect(await status()).toEqual({
-        81: ["excluded", 62516],
+        81: ["counted", 62516],
         83: ["excluded", 1230],
         84: ["counted", null],
         91: ["counted", 1230],
       });
+      // The Expenses tab reviews broker fees only.
+      expect((await pnl.getFees(scopeB(), { status: "mining", kind: "brokers_fee", limit: 50, offset: 0 })).rows.map((r) => r.journalId)).toEqual([84]);
 
-      const counted = (await pnl.getFeeRows(scopeB())).filter((r) => r.status === "counted");
-      expect(counted).toEqual([
+      // Broker fees are the only fee expenses; sales tax is deducted from its sale's income instead.
+      expect((await pnl.getFeeRows(scopeB())).filter((r) => r.status === "counted")).toEqual([
         { date: "2026-09-09", characterId: 3, category: "fees", status: "counted", amount: 100, count: 1 },
-        { date: "2026-09-13", characterId: 3, category: "fees", status: "counted", amount: 100, count: 1 },
       ]);
+      const countedSales = (await pnl.getSaleRows(scopeB())).filter((r) => r.status === "counted");
+      expect(countedSales.map((r) => [r.date, r.gross, r.tax, r.amount])).toEqual([
+        ["2026-09-10", 10_000, 100, 9_900],
+        ["2026-09-13", 10_000, 100, 9_900],
+      ]);
+
+      // Each sale on the Income tab shows the tax paid on it.
+      const sales = (await pnl.getSales(scopeB(), { status: "counted", limit: 50, offset: 0 })).rows;
+      expect(Object.fromEntries(sales.map((r) => [r.transactionId, r.tax]))).toEqual({ 71: 100, 74: 100 });
     });
 
     it("drops the previous owner's wallet history when a character is transferred", async () => {

@@ -1,0 +1,1 @@
+ALTER TABLE "wallet_fees" ADD COLUMN "description" text;
