@@ -16,6 +16,7 @@ export const CHECK_IDS = [
   "appUrl",
   "clock",
   "esiLimits",
+  "network",
 ] as const;
 export type CheckId = (typeof CHECK_IDS)[number];
 
@@ -38,6 +39,15 @@ const SEVERITY: Record<CheckStatus, number> = { skip: 0, ok: 1, warn: 2, fail: 3
 
 export function worstStatus(checks: CheckResult[]): CheckStatus {
   return checks.reduce<CheckStatus>((worst, c) => (SEVERITY[c.status] > SEVERITY[worst] ? c.status : worst), "ok");
+}
+
+/**
+ * A service that answers but won't serve us: any 5xx (down, or ESI's daily downtime), and zKillboard's
+ * 403, which it sends to unknown User-Agents and busy IPs. A 403 from ESI or SSO to these anonymous
+ * requests isn't a known failure mode, so it doesn't count.
+ */
+export function isRefused(target: string, status: number | null): boolean {
+  return (status ?? 0) >= 500 || (target === "zkill" && status === 403);
 }
 
 /** Health checks over a snapshot. Pure, so they are easy to test and identical on the page and in the package. */
@@ -118,6 +128,19 @@ export function runChecks(s: SystemSnapshot, now = Date.now()): CheckResult[] {
     const limited = esiStats.some((e) => e.errorLimitPausedUntil || e.pausedGroups.length);
     const remain = Math.min(...esiStats.map((e) => e.errorLimitRemain ?? 100));
     add("esiLimits", limited ? "warn" : "ok", { remain });
+  }
+
+  // Outbound connections: ESI and SSO are needed for syncing and sign-in, zKillboard only for kills and intel.
+  if (!s.network) add("network", "skip");
+  else {
+    const down = s.network.filter((p) => !p.reachable).map((p) => p.target);
+    const refused = s.network
+      .filter((p) => p.reachable && isRefused(p.target, p.status))
+      .map((p) => `${p.target}:${p.status}`);
+    const critical = down.some((t) => t === "esi" || t === "sso");
+    if (down.length) add("network", critical ? "fail" : "warn", { down: down.join(","), refused: refused.join(",") });
+    else if (refused.length) add("network", "warn", { down: "", refused: refused.join(",") });
+    else add("network", "ok", { ms: Math.max(...s.network.map((p) => p.ms)) });
   }
 
   return results;

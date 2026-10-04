@@ -11,6 +11,7 @@ import { zkillStats } from "@/modules/killboard/sync";
 import type { ZkillClientStats } from "@/modules/killboard/zkill";
 import { appUrlMatches, collectConfig, type ConfigEntry } from "./config";
 import { collectDatabase, type DatabaseInfo } from "./database";
+import { collectNetwork, type NetworkProbe } from "./network";
 import { processRuntime, type ProcessRuntime } from "./runtime";
 import { collectWorker, type WorkerInfo } from "./worker";
 
@@ -69,6 +70,8 @@ export interface SystemSnapshot {
   tokens: Section<TokenSummary>;
   database: Section<DatabaseInfo>;
   worker: Section<WorkerInfo>;
+  /** Reachability of ESI, EVE SSO and zKillboard from this process; null when not probed. */
+  network: NetworkProbe[] | null;
   /** Database clock minus ours. */
   clock: Section<{ dbOffsetMs: number }>;
   /** Counters of this process's clients; the worker's own are in its heartbeat. */
@@ -146,15 +149,21 @@ async function collectAudit(): Promise<Record<string, number>> {
  * Everything System Info shows and the support package is built from. Holds raw
  * data (job errors, worker ids); `buildSupportPackage` decides what may leave the instance.
  */
-export async function collectSystemSnapshot(opts: { source: "web" | "cli"; origin?: string | null }): Promise<SystemSnapshot> {
+export async function collectSystemSnapshot(opts: {
+  source: "web" | "cli";
+  origin?: string | null;
+  /** Probe ESI, EVE SSO and zKillboard (default); tests turn it off to stay offline. */
+  network?: boolean;
+}): Promise<SystemSnapshot> {
   const config = collectConfig();
-  const [settings, tokens, database, worker, clock, audit] = await Promise.all([
+  const [settings, tokens, database, worker, clock, audit, network] = await Promise.all([
     section(collectSettings),
     section(collectTokens),
     section(collectDatabase),
     section(collectWorker),
     section(collectClock),
     section(collectAudit),
+    opts.network === false ? null : collectNetwork(),
   ]);
   return {
     collectedAt: new Date().toISOString(),
@@ -169,6 +178,7 @@ export async function collectSystemSnapshot(opts: { source: "web" | "cli"; origi
     tokens,
     database,
     worker,
+    network,
     clock,
     esi: esiStats(),
     zkill: zkillStats(),

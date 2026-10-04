@@ -31,3 +31,25 @@ export function buildInfo(): BuildInfo {
     dependencies: Object.fromEntries(KEY_DEPENDENCIES.filter((d) => deps[d]).map((d) => [d, deps[d]])),
   };
 }
+
+export interface VersionLabel {
+  /** Footer text, e.g. "Keystar v0.12.0" or "Keystar v0.12.0 · main @ c7bfb85". */
+  text: string;
+  /** Where the footer links: the releases page, or the commit for a non-release build. */
+  href: string;
+  /** True for an image that isn't a release: tag other than the version (e.g. "main"). */
+  prerelease: boolean;
+}
+
+/**
+ * What the sidebar footer shows. A release image (tag equals the package version, or no build
+ * info at all, as in `pnpm dev`) shows just the version. Anything else, e.g. the `:main` image,
+ * also shows its tag and short commit so a test server isn't mistaken for the last release.
+ */
+export function versionLabel(info: BuildInfo, sourceUrl: string): VersionLabel {
+  const { version, imageTag, commit } = info;
+  const base = sourceUrl.replace(/\/+$/, "");
+  const prerelease = Boolean(commit) && Boolean(imageTag) && imageTag !== version && imageTag !== `v${version}`;
+  if (!prerelease || !commit) return { text: `Keystar v${version}`, href: `${base}/releases`, prerelease: false };
+  return { text: `Keystar v${version} · ${imageTag} @ ${commit.slice(0, 7)}`, href: `${base}/commit/${commit}`, prerelease: true };
+}

@@ -116,6 +116,12 @@ New users get a role from configuration: `ADMIN_CHARACTER_IDS` → admin; otherw
 corporation (optionally alliance) members → member; everyone else → guest awaiting approval. Logging in never
 demotes anyone.
 
+With **Only members can sign up** (Settings → Access, `access.restrictToMembers`) outsiders get no account at all:
+`mayRegister` in `src/core/auth/policy.ts` refuses a new account unless the character is in the home corporation (or
+its alliance, when alliance members are auto-approved) or would be admin, and the attempt is audited as
+`user.registration.blocked`. Existing accounts and alt links are unaffected. Guests who registered from outside before
+the switch can be disabled in one go on the Users page.
+
 ## Languages
 
 The UI is available in English and German (`src/i18n`). The language is not part of the URL:
@@ -208,6 +214,10 @@ process can't see the worker's process, so the worker reports its runtime and ES
 its heartbeat (`worker_heartbeats.info`); the clients count requests in `EsiClient.stats()` and
 `ZkillClient.stats()`.
 
+- `network.ts` probes ESI, EVE SSO (`/oauth/jwks`) and zKillboard with one request each (5 s limit), through
+  `EsiClient.ping()` and `ZkillClient.ping()` so the User-Agent, counters and request spacing apply. ESI or SSO
+  unreachable fails the network check; zKillboard unreachable or answering 403 (blocked User-Agent or IP), or any
+  service answering 5xx, only warns. Each probe is aborted when its time is up.
 - `checks.ts` turns a snapshot into health checks. They are pure, so the page, the support package and the tests
   agree; their texts live under `admin.system.checks`.
 - `support-package.ts` builds the downloadable package from an **allowlist** of fields. Never add a field that holds

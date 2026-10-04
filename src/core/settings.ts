@@ -11,6 +11,8 @@ const settingSchemas = {
   "corp.homeCorporationId": z.number().int().positive().nullable(),
   "access.autoApproveCorpMembers": z.boolean(),
   "access.autoApproveAllianceMembers": z.boolean(),
+  /** Refuse new accounts for characters that wouldn't be auto-approved (outside the corp/alliance). */
+  "access.restrictToMembers": z.boolean(),
   "permissions.overrides": z.record(z.string(), z.enum(ROLES)),
   "mining.valuationSource": z.enum(["jita_buy", "jita_sell", "jita_split", "esi_average"]),
   "mining.valuationMode": z.enum(["current", "historical"]),
@@ -31,6 +33,7 @@ export const SETTING_DEFAULTS: Settings = {
   "corp.homeCorporationId": null,
   "access.autoApproveCorpMembers": true,
   "access.autoApproveAllianceMembers": false,
+  "access.restrictToMembers": false,
   "permissions.overrides": {},
   "mining.valuationSource": "jita_buy",
   "mining.valuationMode": "current",

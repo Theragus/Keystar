@@ -5,6 +5,7 @@ import type { CheckResult } from "./checks";
 import type { ModuleSummary, Section, SettingsSummary, SystemSnapshot, TokenSummary } from "./collect";
 import type { ConfigEntry } from "./config";
 import type { DatabaseInfo } from "./database";
+import type { NetworkProbe } from "./network";
 import { createRedactor, errorSignature, type RedactionRule, type Redactor } from "./redact";
 import type { ProcessRuntime } from "./runtime";
 import type { JobSummary } from "./worker";
@@ -56,6 +57,8 @@ export interface SupportPackage {
   checks: CheckResult[];
   runtime: ProcessRuntime;
   clock: { dbOffsetMs: number | null };
+  /** Reachability of ESI, EVE SSO and zKillboard from the process that built the package. */
+  network: NetworkProbe[] | null;
   config: { entries: ConfigEntry[]; appUrlMatchesOrigin: boolean | null; demoMode: boolean };
   settings: SettingsSummary | null;
   modules: ModuleSummary[];
@@ -115,6 +118,7 @@ export function buildSupportPackage(
   const clock = data(snapshot.clock, "clock", collectorErrors, r);
   const audit = data(snapshot.audit, "audit", collectorErrors, r);
   const errorSignatures = signatures(snapshot, r);
+  const network = snapshot.network?.map((p) => ({ ...p, error: p.error && r.scrub(p.error) })) ?? null;
 
   return {
     meta: {
@@ -129,6 +133,7 @@ export function buildSupportPackage(
     checks,
     runtime: snapshot.runtime,
     clock: { dbOffsetMs: clock?.dbOffsetMs ?? null },
+    network,
     config: { entries: snapshot.config, appUrlMatchesOrigin: snapshot.appUrlMatchesOrigin, demoMode: snapshot.demoMode },
     settings,
     modules: snapshot.modules,
