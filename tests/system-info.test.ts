@@ -6,7 +6,7 @@ import type { SystemSnapshot } from "@/core/system/collect";
 import { appUrlMatches, collectConfig, originFromHeaders } from "@/core/system/config";
 import { compareMigrations, compareSchema, readJournal } from "@/core/system/database";
 import { createRedactor, errorSignature } from "@/core/system/redact";
-import { parseCpuLimit, parseMemoryLimit, processRuntime } from "@/core/system/runtime";
+import { cpuPercent, parseCpuLimit, parseMemoryLimit, parseMemoryUsage, processRuntime } from "@/core/system/runtime";
 import { bugReportUrl, issueSummary } from "@/core/system/summary";
 import { buildSupportPackage, supportPackageFilename } from "@/core/system/support-package";
 import { collectNetwork, networkError } from "@/core/system/network";
@@ -146,6 +146,23 @@ describe("runtime", () => {
     expect(parseCpuLimit("max 100000", null, null)).toBeNull();
     expect(parseCpuLimit(null, "50000", "100000")).toBe(0.5);
     expect(parseCpuLimit(null, "-1", "100000")).toBeNull();
+  });
+
+  it("turns CPU time into a share of the available cores", () => {
+    // 1.5 s of CPU over 10 s on 2 cores: 7.5 %.
+    expect(cpuPercent(1_500_000, 10_000, 2)).toBe(7.5);
+    expect(cpuPercent(10_000_000, 10_000, 1)).toBe(100);
+    expect(cpuPercent(123, 0, 2)).toBe(0);
+    expect(parseMemoryUsage("268435456")).toBe(256);
+    expect(parseMemoryUsage("garbage")).toBeNull();
+    expect(parseMemoryUsage(null)).toBeNull();
+  });
+
+  it("reports load figures of this process", () => {
+    const rt = processRuntime();
+    expect(rt.cpuPercent).toBeGreaterThanOrEqual(0);
+    expect(rt.freeMemoryMb).toBeGreaterThan(0);
+    if (rt.loadAverage) expect(rt.loadAverage).toHaveLength(3);
   });
 });
 
