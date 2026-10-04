@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
 import type { SyncOwnerType } from "@/core/db/schema/sync";
 import type { Settings } from "@/core/settings";
+import type { CheckStatus } from "@/core/system/checks";
 import { FORMATTERS } from "@/lib/format";
 
 const n = FORMATTERS.en.integer;
+const plural = (count: number, one: string, many: string) => `${n(count)} ${count === 1 ? one : many}`;
+type CheckValues = Record<string, string | number>;
 
 /**
- * Administration pages: users & roles, member audit, sync status, settings, audit log.
+ * Administration pages: users & roles, member audit, sync status, settings, audit log, system info.
  * Page titles and the "Administration" eyebrow come from `t.shell.nav` / `t.shell.navSections`.
  */
 export const admin = {
@@ -291,5 +294,283 @@ export const admin = {
     columns: { time: "Time", actor: "Actor", action: "Action", target: "Target", details: "Details" },
     empty: "Nothing logged yet.",
     system: "system",
+  },
+  system: {
+    metaTitle: "System info",
+    description:
+      "Technical state of this Keystar instance. Use it when something isn't working, and to report an issue with everything the developers need, without any pilot or corporation data.",
+    actions: {
+      copySummary: "Copy summary",
+      summaryCopied: "Summary copied. Paste it into your GitHub issue.",
+      reportIssue: "Report an issue",
+      download: "Download support package",
+    },
+    overall: {
+      ok: "All checks passed",
+      problems: (count: number) => `${plural(count, "problem needs", "problems need")} attention`,
+      breakdown: (failed: number, warnings: number) =>
+        [failed ? `${n(failed)} failed` : null, warnings ? plural(warnings, "warning", "warnings") : null].filter(Boolean).join(" · "),
+      checkedWhenLoaded: "Checked when this page loaded",
+      recheck: "Run checks again",
+      whatNext: "What to do next",
+    },
+    checksTitle: "Health checks",
+    checksSubtitle: "Automatic checks for the most common causes of problems.",
+    status: { ok: "OK", warn: "Warning", fail: "Failed", skip: "Not checked" } satisfies Record<CheckStatus, string>,
+    checks: {
+      database: {
+        label: "Database reachable",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok" ? `Answered in ${v.ms} ms` : "Keystar can't reach PostgreSQL. Check DATABASE_URL and that the database container runs.",
+      },
+      migrations: {
+        label: "Migrations up to date",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? `${n(Number(v.applied))} of ${n(Number(v.bundled))} applied`
+            : s === "fail"
+              ? `${plural(Number(v.pending), "migration hasn't", "migrations haven't")} run. Restart the app container, which migrates on start.`
+              : s === "warn" && v.reason === "unknown"
+                ? "The database was migrated by a newer Keystar. Run that version again or restore a backup."
+                : s === "warn"
+                  ? `${plural(Number(v.changed), "applied migration differs", "applied migrations differ")} from this version's files.`
+                  : "Needs the database.",
+      },
+      schema: {
+        label: "Database schema complete",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? "Every table and column Keystar expects exists"
+            : s === "fail"
+              ? `${plural(Number(v.missing), "table or column is", "tables or columns are")} missing. The support package lists them.`
+              : "Needs the database.",
+      },
+      worker: {
+        label: "Worker running",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? `Last heartbeat ${n(Number(v.seconds))} s ago`
+            : s === "fail"
+              ? "No heartbeat in the last 2 minutes. Start it with docker compose up -d worker."
+              : "Needs the database.",
+      },
+      workerVersion: {
+        label: "Worker and web on the same version",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? `Both run ${v.version}`
+            : s === "warn"
+              ? `The worker runs ${v.worker}, the web app ${v.web}. Restart the worker container after updating.`
+              : "Needs a running worker.",
+      },
+      jobs: {
+        label: "Background jobs healthy",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? "No job is failing repeatedly"
+            : s === "fail"
+              ? `${plural(Number(v.count), "job has", "jobs have")} failed ${v.streak} or more times in a row`
+              : "Needs the database.",
+      },
+      jobQueue: {
+        label: "Job queue moving",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? "No overdue jobs"
+            : s === "warn"
+              ? `${plural(Number(v.overdue), "job is", "jobs are")} overdue, ${plural(Number(v.stale), "lock", "locks")} expired. The worker may be overloaded or stuck.`
+              : "Needs a running worker and active syncing.",
+      },
+      syncPaused: {
+        label: "Syncing active",
+        detail: (s: CheckStatus): string =>
+          s === "ok" ? "Not paused" : s === "warn" ? "Syncing is paused on the Sync Status page." : "Needs the database.",
+      },
+      sso: {
+        label: "EVE SSO configured",
+        detail: (s: CheckStatus): string =>
+          s === "ok"
+            ? "Client ID and secret are set"
+            : s === "fail"
+              ? "Set EVE_CLIENT_ID and EVE_CLIENT_SECRET, or nobody can sign in."
+              : "Not needed in demo mode.",
+      },
+      appUrl: {
+        label: "App URL matches",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? "APP_URL is the address you opened Keystar with"
+            : s === "warn" && v.reason === "origin"
+              ? "APP_URL differs from the address in your browser. Sign-in and cookies break; set APP_URL to the public address."
+              : s === "warn"
+                ? "APP_URL doesn't use https. EVE SSO and secure cookies need https in production."
+                : "Only checked in the browser.",
+      },
+      clock: {
+        label: "Server clock",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? "In step with the database and ESI"
+            : s === "warn"
+              ? `Off by ${v.dbSeconds} s from the database and ${v.esiSeconds} s from ESI. Turn on time sync (NTP) on the host.`
+              : "Needs the database.",
+      },
+      esiLimits: {
+        label: "ESI rate limits",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? `Error budget ${v.remain} left`
+            : s === "warn"
+              ? "Requests are paused for an ESI rate limit. Jobs continue once it resets."
+              : "No ESI requests yet.",
+      },
+    },
+    keystar: {
+      title: "Keystar",
+      releaseNotes: "Release notes",
+      version: "Version",
+      install: "Install",
+      installDocker: (tag: string | null) => (tag ? `Docker image :${tag}` : "Docker image (own build)"),
+      installSource: "From source",
+      uptime: "Uptime",
+      uptimeValue: (seconds: number) => {
+        const d = Math.floor(seconds / 86400);
+        const h = Math.floor((seconds % 86400) / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return d ? `${d} d ${h} h` : h ? `${h} h ${m} min` : `${m} min`;
+      },
+      runtime: "Runtime",
+      host: "Host",
+      hostValue: (platform: string, cpus: number, memory: string | null) =>
+        [platform, `${n(cpus)} CPU`, memory ? `${memory} limit` : null].filter(Boolean).join(" · "),
+      environment: "Environment",
+      demo: "demo mode",
+    },
+    database: {
+      title: "Database",
+      postgres: "PostgreSQL",
+      migrations: "Migrations",
+      migrationsValue: (applied: number, bundled: number | null) =>
+        bundled === null ? `${n(applied)} applied` : `${n(applied)} / ${n(bundled)} applied`,
+      latest: (tag: string, when: string) => `Latest migration ${tag} · applied ${when}`,
+      tables: { title: "Largest tables", rows: "Rows", size: "Size" },
+      unavailable: (error: string) => `Couldn't read the database: ${error}`,
+    },
+    worker: {
+      title: "Worker & background jobs",
+      subtitle: "Run, pause and retry jobs on the Sync Status page.",
+      openSync: "Open Sync Status",
+      none: "No worker has sent a heartbeat yet.",
+      version: "Version",
+      lastBeat: "Last heartbeat",
+      started: "Started",
+      slots: (running: number, total: number) => `${n(running)} of ${n(total)} slots`,
+      running: "Running",
+      stats: { ok: "OK", failing: "Failing", running: "Running", overdue: "Overdue", errorBudget: "ESI error budget" },
+      failing: {
+        job: "Failing job",
+        owners: "Affected",
+        streak: "Failures in a row",
+        lastError: "Last error",
+        lastRun: "Last run",
+        ownerCount: (count: number) => plural(count, "owner", "owners"),
+      },
+      noFailing: "No failing jobs.",
+    },
+    config: {
+      title: "Configuration",
+      subtitle: "Environment variables of this instance. Secret values are never shown, not even here.",
+      columns: { variable: "Variable", status: "Status", value: "Value" },
+      states: { set: "Set", default: "Default", unset: "Not set" },
+      hidden: "Hidden",
+      custom: "Custom",
+      https: (https: boolean, matches: boolean | null) =>
+        [https ? "https" : "http", matches === true ? "matches this address" : matches === false ? "differs from this address" : null]
+          .filter(Boolean)
+          .join(" · "),
+      ids: (count: number) => plural(count, "character", "characters"),
+    },
+    help: {
+      title: "Troubleshooting & reporting an issue",
+      checks: { title: "Check the health checks above", body: "Most problems are a stopped worker, a pending migration or a missing ESI scope. The Sync Status page shows each job's last error." },
+      search: { title: "Search existing issues", body: "Someone may already have reported it.", link: "Search issues on GitHub" },
+      download: {
+        title: "Download the support package",
+        body: "Technical details only, no pilot or corporation data. You see exactly what's inside before downloading. If the web app doesn't start, create it from the command line:",
+      },
+      logs: {
+        title: "Collect the logs",
+        body: "Keystar doesn't keep logs itself. Copy the last hour from Docker, and remove anything secret before sharing:",
+      },
+      report: { title: "Open a bug report", body: "The version and a system summary are filled in for you. Attach the support package and the logs." },
+    },
+    package: {
+      title: "Support package",
+      intro: "A technical snapshot of this instance for a bug report. Check what's inside before you share it.",
+      close: "Close",
+      included: "Included",
+      includedItems: [
+        ["Build & runtime", "version, commit, Node, limits"],
+        ["Health checks", "every result"],
+        ["Configuration", "set / default / missing"],
+        ["Database", "migrations, schema, tables"],
+        ["Worker & jobs", "per job, error patterns"],
+        ["ESI & zKillboard", "request counters"],
+        ["Modules & tokens", "counts only"],
+        ["Audit activity", "counts per action, 7 days"],
+      ] as [string, string][],
+      never: "Never included",
+      neverItems: [
+        "Pilot, corporation and alliance names or IDs",
+        "Secrets, passwords and tokens",
+        "Your instance's address and host names",
+        "Wallet, mining, kill or mail contents",
+        "Who did what in the audit log",
+      ],
+      removed: "Removed from error messages",
+      rules: {
+        token: (count: number) => plural(count, "token", "tokens"),
+        url: (count: number) => plural(count, "URL", "URLs"),
+        email: (count: number) => plural(count, "email", "emails"),
+        host: (count: number) => plural(count, "host name", "host names"),
+        eveId: (count: number) => plural(count, "EVE ID", "EVE IDs"),
+        name: (count: number) => plural(count, "name", "names"),
+      },
+      preview: "Preview · exactly what will be downloaded",
+      copyJson: "Copy JSON",
+      size: (kb: number) => `${n(kb)} KB`,
+      auditNote: "Downloads are recorded in the audit log.",
+      cancel: "Cancel",
+      download: "Download",
+    },
+    issue: {
+      title: "Report an issue",
+      intro: "Bug reports go to the Keystar project on GitHub. You need a GitHub account, and reports are public.",
+      close: "Close",
+      checks: {
+        title: "Check the health checks",
+        problems: (count: number) => `${plural(count, "problem", "problems")} found`,
+        none: "No problems found",
+        body: "These often explain the problem without a report:",
+      },
+      search: {
+        title: "Search existing issues",
+        body: "If someone already reported it, add a comment there instead.",
+        label: "Search issues",
+        placeholder: "e.g. corp.wallet 403",
+        button: "Search on GitHub",
+      },
+      download: { title: "Download the support package", body: "Attach it to the report.", button: "Download" },
+      logs: { title: "Collect the logs", body: "Run this on the server, then remove anything secret from the file:" },
+      open: {
+        title: "Open the bug report",
+        body: "GitHub opens with the fields on the right filled in. Describe what you did and what went wrong, then drag the support package and the logs into the report.",
+      },
+      prefilled: "Filled in for you",
+      version: "Version",
+      summary: "System summary",
+      copySummary: "Copy summary",
+      openGithub: "Open bug report on GitHub",
+    },
   },
 };

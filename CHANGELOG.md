@@ -6,6 +6,21 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **System Info for admins.** The last page under Administration shows the technical state of the instance:
+  health checks (database, migrations and schema, worker and its version, failing or stuck jobs, paused sync, EVE
+  SSO, `APP_URL`, clock skew, ESI rate limits), the running version and build, the database with its largest tables,
+  the worker and background jobs, and the configuration without secret values. A guided **Report an issue** flow
+  opens a GitHub bug report with the version and a system summary filled in.
+- **Support package.** A JSON download (also `pnpm support:package` / `node dist/support.mjs` when the web app
+  doesn't start) with everything needed to debug an instance: build, runtime and container limits, health checks,
+  configuration, migrations and schema drift, table sizes, connections, per-job statistics with scrubbed error
+  patterns, ESI and zKillboard request counters, token and scope counts. It never contains pilot, corporation or
+  alliance names or IDs, secrets, the instance's address or who did what; admins see its exact contents before
+  downloading, and every download is recorded in the audit log.
+- Published images record their git commit, tag and build date, shown in System Info.
+
 ### Changed
 
 - Keep browser-fetched zKillboard counters in a private, temporary preview only. Remove browser uploads to the shared pilot cache; the worker verifies statistics before shared profiles and danger scores use them.

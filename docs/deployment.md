@@ -283,6 +283,14 @@ signing in without EVE SSO. `demo-seed` refuses to run if real users exist.
 
 ## Troubleshooting
 
+Start with **Administration → System Info** (admins): its health checks catch the most common problems below, and
+**Report an issue** walks you through a bug report with a support package that contains no pilot or corporation
+data. If the web app doesn't start, create the package from the command line:
+
+```bash
+docker compose run --rm -T worker node dist/support.mjs > keystar-support.json
+```
+
 | Symptom                                               | Fix                                                                                               |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | EVE login shows "Invalid callback URL"                | The callback in the EVE application must match `APP_URL` + `/auth/callback` exactly (https, no trailing slash). |
