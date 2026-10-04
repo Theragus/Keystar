@@ -10,6 +10,7 @@ import type { QueueRow, SkillCharacter } from "../queries";
 import { ATTRIBUTE_NAMES, romanLevel, summarizeQueue, type QueueStatus } from "../queue";
 import { Countdown } from "./countdown";
 import { QueueTable } from "./queue-table";
+import { QueueTimeline } from "./queue-timeline";
 
 const STATUS_BADGE: Record<QueueStatus, "ok" | "warning" | "pending"> = {
   training: "ok",
@@ -116,6 +117,7 @@ export function SkillCharacterCard({
                   <div className="h-full rounded-full bg-accent" style={{ width: `${summary.activeProgress.fraction * 100}%` }} />
                 </div>
               )}
+              <QueueTimeline entries={summary.entries} t={t} now={now} className="pt-1" />
               <p className="text-xs text-ink-3">
                 {t.card.queued(summary.entries.length)}
                 {summary.status === "paused" && ` · ${t.card.pausedHint}`}

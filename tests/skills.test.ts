@@ -6,6 +6,7 @@ import {
   durationParts,
   entryProgress,
   parseSkillDogma,
+  queueTimeline,
   remainingSp,
   romanLevel,
   summarizeQueue,
@@ -126,5 +127,38 @@ describe("skill helpers", () => {
     expect(skillsQueryString(f)).toBe("view=corp&chars=3%2C1");
     expect(parseSkillsFilters({ view: "bogus" }).view).toBe("own");
     expect(skillsQueryString(parseSkillsFilters({}))).toBe("");
+  });
+});
+
+describe("skill queue timeline", () => {
+  it("is empty for a paused or empty queue", () => {
+    expect(queueTimeline([], now)).toBeNull();
+    expect(queueTimeline([entry(0)], now)).toBeNull();
+  });
+
+  it("slices the strip by the time each skill still needs", () => {
+    const tl = queueTimeline(
+      [entry(0, { startDate: hours(-10), finishDate: hours(10) }), entry(1, { startDate: hours(10), finishDate: hours(40) })],
+      now,
+    )!;
+    expect(tl.totalMs).toBe(40 * 3600_000);
+    expect(tl.segments.map((s) => [s.offset, s.width])).toEqual([
+      [0, 0.25],
+      [0.25, 0.75],
+    ]);
+    expect(tl.segments[0].remainingMs).toBe(10 * 3600_000);
+    expect(tl.ticks).toEqual([{ offset: 0.6, unit: "day", count: 1 }]);
+  });
+
+  it("picks a tick spacing that keeps the scale readable", () => {
+    const days = (d: number) => hours(d * 24);
+    const tl = queueTimeline([entry(0, { startDate: now, finishDate: days(380) })], now)!;
+    expect(tl.ticks.map((t) => `${t.count}${t.unit}`)).toEqual(["3month", "6month", "9month", "12month"]);
+    expect(queueTimeline([entry(0, { startDate: now, finishDate: days(10) })], now)!.ticks.map((t) => `${t.count}${t.unit}`)).toEqual([
+      "2day",
+      "4day",
+      "6day",
+      "8day",
+    ]);
   });
 });

@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- **Skill queue timeline.** Each character's card shows the queue as one strip, like the training-time bar in
+  game: every skill takes a slice proportional to the time it still needs, with day, week or month marks below.
 - **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
   container's memory against its limit, free host memory and the host's load average.
 

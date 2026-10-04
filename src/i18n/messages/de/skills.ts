@@ -84,6 +84,16 @@ export const skills: typeof en = {
     enable: "Skills teilen",
     showQueue: (count: number) => `Ganze Queue anzeigen (${plural(count, "Skill", "Skills")})`,
   },
+  timeline: {
+    label: "Trainingszeit",
+    segment: (skill: string, duration: string) => `${skill}: ${duration}`,
+    total: (duration: string) => `Ganze Queue: ${duration}`,
+    tick: {
+      day: (count: number) => `${n(count)} T`,
+      week: (count: number) => `${n(count)} W`,
+      month: (count: number) => `${n(count)} Mo`,
+    },
+  },
   table: {
     position: "#",
     skill: "Skill",
