@@ -6,6 +6,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Fixed
+
+- The P&L overview's per-character table and the manual expenses list show character portraits, like the rest of
+  the mining pages.
+
 ## [0.12.0] - 2026-10-04
 
 ### Added
