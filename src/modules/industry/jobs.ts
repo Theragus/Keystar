@@ -1,5 +1,5 @@
-import { inArray, sql } from "drizzle-orm";
-import type { Db } from "@/core/db";
+import { eq, inArray, sql } from "drizzle-orm";
+import { characters, type Db } from "@/core/db";
 import { EsiError, type EsiClient } from "@/core/esi/client";
 import { ensureNames, ensureSystems, ensureTypes } from "@/core/eve/resolver";
 import { createLogger } from "@/core/logger";
@@ -88,6 +88,9 @@ export const characterIndustryJobsJob: JobDefinition = {
   intervalSeconds: 300,
   async run({ esi, db, characterId }) {
     const id = characterId!;
+    // Whose character this is at the start: a transfer to another account meanwhile must not get this snapshot.
+    const [owner] = await db.select({ userId: characters.userId }).from(characters).where(eq(characters.characterId, id));
+    if (!owner) return { summary: "Character is no longer linked" };
     const res = await esi.get<EsiIndustryJob[]>(`/characters/${id}/industry/jobs`, {
       characterId: id,
       query: { include_completed: true },
@@ -96,13 +99,13 @@ export const characterIndustryJobsJob: JobDefinition = {
     const rows = jobRows(id, res.data, now);
     if (!res.notModified) {
       const stillLinked = await db.transaction(async (tx) => {
-        // Unlinking or transferring the character meanwhile deletes its jobs; a write after that would orphan rows
-        // the character's next owner could see. The share lock makes the unlink wait for this write or this write
-        // see the unlink.
-        const [current] = await tx.execute<{ character_id: unknown }>(
-          sql`SELECT character_id FROM characters WHERE character_id = ${id} FOR SHARE`,
+        // Unlinking or transferring the character meanwhile deletes its jobs; a write after that would hand the rows
+        // to the character's next owner. The share lock makes the unlink wait for this write, or this write see the
+        // unlink (or a relink to another account).
+        const [current] = await tx.execute<{ user_id: string }>(
+          sql`SELECT user_id FROM characters WHERE character_id = ${id} FOR SHARE`,
         );
-        if (!current) return false;
+        if (current?.user_id !== owner.userId) return false;
         for (let i = 0; i < rows.length; i += CHUNK) {
           await tx
             .insert(industryJobs)
@@ -128,7 +131,7 @@ export const characterIndustryJobsJob: JobDefinition = {
         }
         return true;
       });
-      if (!stillLinked) return { summary: "Character was unlinked during the sync" };
+      if (!stillLinked) return { summary: "Character changed owner during the sync" };
     }
     await ensureTypes([...rows.map((r) => r.blueprintTypeId), ...rows.flatMap((r) => (r.productTypeId ? [r.productTypeId] : []))]);
     await ensureNames(rows.flatMap((r) => [r.installerId, ...(r.completedCharacterId ? [r.completedCharacterId] : [])]));
