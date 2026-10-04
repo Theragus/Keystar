@@ -41,6 +41,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- **Sidebar.** The pilot portrait and name at the bottom of the sidebar link to My Characters, in the expanded sidebar, the collapsed rail and its hover card alike.
 - **Ore field estimator**
   - The ore table can be sorted by any column, including volume, ISK/m³, scanner and Keystar value and share;
     grades stay under their ore and follow the same order.
