@@ -4,8 +4,8 @@ import { FORMATTERS } from "@/lib/format";
 export const shell: typeof en = {
   mainNav: "Hauptmenü",
   releaseNotes: "Versionshinweise",
-  buildInfo: (commit: string | null, builtAt: string | null) =>
-    `Unveröffentlichter Build${commit ? ` aus Commit ${commit}` : ""}${builtAt ? `, gebaut am ${FORMATTERS.de.dateTime(builtAt)}` : ""}`,
+  unstableBuild: (tag: string | null, commit: string | null, builtAt: string | null) =>
+    `Unveröffentlichter ${tag ?? "Entwicklungs"}-Build: möglicherweise instabil.${commit ? ` Commit ${commit}` : ""}${builtAt ? `, gebaut am ${FORMATTERS.de.dateTime(builtAt)}` : ""}`,
   unknownPilot: "Unbekannter Pilot",
   signOut: "Abmelden",
   noHomeCorp: "Keine Heimat-Corporation",
