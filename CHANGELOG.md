@@ -43,6 +43,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   materials and ice products are suggested as mining income and reviewed like purchases (include, exclude,
   re-categorise, or count them automatically per character). Choose the basis under Settings → Income; it stays
   on the mined value until you switch.
+- **Mining P&L**: a "Mined vs sold" table on the Income tab compares, per ore, what you mined with what you sold
+  of it, raw or compressed (compressed ore counts 1:1 in units), with what you got per unit against the valuation
+  and the value of the ore still unsold.
 
 ### Changed
 

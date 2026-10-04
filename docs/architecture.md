@@ -339,6 +339,10 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   review as purchases, with their own per-character switch (`mining_pnl_characters.auto_include_sales`) and the same
   override table. Volume, active hours and ISK/h always come from the mined ore. Only market sales count; anything
   the wallet doesn't show stays out.
+- **Mined vs sold** (`getOreFlows`, `ore-flows.ts`): per raw ore, the mined units of the period against market sells
+  of the ore or its compressed variant, converted to raw units by portion size like the valuation (1:1 for current
+  ores; compression only shrinks the volume). Excluded sales and internal trades are left out; the ore left over is
+  valued at the current valuation. Compressed gas has its own names and group, so it isn't linked to raw gas.
 - **Sale hints**: wallet sells of a mined ore or its compressed variant, converted to raw units with the valuation's
   compression ratio, offered as one-click price rules.
 - **Active hours / ISK per hour**: the ledger job compares each fresh ESI snapshot with the stored ledger in one

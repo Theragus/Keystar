@@ -491,6 +491,91 @@ export async function getSaleHints(s: PnlScope, range: { from: string; to: strin
     }));
 }
 
+export interface OreFlowRow {
+  /** The raw ore; sales of its compressed variant are counted here too. */
+  typeId: number;
+  typeName: string;
+  oreClass: OreClass;
+  /** Raw units mined in the period. */
+  mined: number;
+  /** m³ of one raw unit. */
+  unitVolume: number;
+  /** Mined ore at the P&L valuation (rate and price rules). */
+  minedValue: number;
+  /** Raw-equivalent units sold (compressed ore counts 1:1, by portion size). */
+  sold: number;
+  /** Of `sold`, the units sold compressed. */
+  soldCompressed: number;
+  /** ISK the sales brought in. */
+  soldIsk: number;
+  sales: number;
+  /** Current valuation per raw unit (null: no price yet). */
+  valuationUnitPrice: number | null;
+}
+
+/**
+ * Per ore: what the selected characters mined in the period and what their wallet sales of that ore or its
+ * compressed variant brought in. Compressed sales are converted to raw units with the same portion-size ratio as the
+ * valuation (1:1 for current ores: compression only shrinks the volume). Sales you excluded and trades between your
+ * own characters are left out; ore sold by contract isn't a market transaction and can't show up.
+ */
+export async function getOreFlows(s: PnlScope): Promise<OreFlowRow[]> {
+  if (!s.characterIds.length) return [];
+  const { start, end } = utcDayBounds(s.from, s.to);
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    WITH ${pricedCte(s)},
+    mined AS (
+      SELECT type_id, SUM(quantity)::float8 AS units, SUM(quantity * pnl_unit_price)::float8 AS value
+      FROM priced GROUP BY 1
+    ),
+    variants AS (
+      SELECT type_id AS raw_id, type_id AS sold_id, 1.0::float8 AS ratio, false AS compressed FROM mined
+      UNION
+      SELECT r.type_id, r.type_id, 1.0::float8, false FROM eve_types r WHERE r.compressed_type_id IS NOT NULL
+      UNION
+      SELECT r.type_id, r.compressed_type_id, r.portion_size::float8 / NULLIF(c.portion_size, 0), true
+      FROM eve_types r JOIN eve_types c ON c.type_id = r.compressed_type_id
+      WHERE r.portion_size IS NOT NULL
+    ),
+    sold AS (
+      SELECT v.raw_id, SUM(w.quantity * v.ratio)::float8 AS units,
+             COALESCE(SUM(w.quantity * v.ratio) FILTER (WHERE v.compressed), 0)::float8 AS compressed_units,
+             SUM(w.quantity * w.unit_price)::float8 AS isk, COUNT(*)::int AS sales
+      FROM wallet_transactions w
+      JOIN variants v ON v.sold_id = w.type_id AND v.ratio IS NOT NULL
+      LEFT JOIN mining_pnl_tx_overrides o
+        ON o.user_id = w.user_id AND o.character_id = w.character_id AND o.transaction_id = w.transaction_id
+      WHERE w.user_id = ${s.userId}::uuid AND w.character_id IN (${list(s.characterIds)}) AND NOT w.is_buy
+        AND w.date >= ${start}::timestamptz AND w.date < ${end}::timestamptz
+        AND o.included IS DISTINCT FROM false ${internalTrade(s)}
+      GROUP BY 1
+    )
+    SELECT t.type_id, t.name AS type_name, COALESCE(t.volume, 0)::float8 AS unit_volume, ${ORE_CLASS_SQL} AS ore_class,
+           COALESCE(m.units, 0) AS mined, COALESCE(m.value, 0) AS mined_value,
+           COALESCE(sd.units, 0) AS sold, COALESCE(sd.compressed_units, 0) AS sold_compressed,
+           COALESCE(sd.isk, 0) AS sold_isk, COALESCE(sd.sales, 0) AS sales,
+           tv.unit_price::float8 AS valuation_unit_price
+    FROM mined m
+    FULL JOIN sold sd ON sd.raw_id = m.type_id
+    JOIN eve_types t ON t.type_id = COALESCE(m.type_id, sd.raw_id)
+    LEFT JOIN eve_groups g ON g.group_id = t.group_id
+    LEFT JOIN type_values tv ON tv.type_id = t.type_id AND tv.source = ${s.valuation.source}
+    ORDER BY GREATEST(COALESCE(m.value, 0), COALESCE(sd.isk, 0)) DESC, t.name`);
+  return rows.map((r) => ({
+    typeId: num(r.type_id),
+    typeName: String(r.type_name),
+    oreClass: isOreClass(String(r.ore_class)) ? (r.ore_class as OreClass) : "other",
+    mined: num(r.mined),
+    unitVolume: num(r.unit_volume),
+    minedValue: num(r.mined_value),
+    sold: num(r.sold),
+    soldCompressed: num(r.sold_compressed),
+    soldIsk: num(r.sold_isk),
+    sales: num(r.sales),
+    valuationUnitPrice: r.valuation_unit_price === null || r.valuation_unit_price === undefined ? null : num(r.valuation_unit_price),
+  }));
+}
+
 /** Ore types the account mined recently (for the price rule picker). */
 export async function getMinedTypes(characterIds: number[], since: string): Promise<{ id: number; name: string }[]> {
   if (!characterIds.length) return [];
