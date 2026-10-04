@@ -8,6 +8,24 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- Keep browser-fetched zKillboard counters in a private, temporary preview only. Remove browser uploads to the shared pilot cache; the worker verifies statistics before shared profiles and danger scores use them.
+
+- Remove the retired rescan action, button, translations and scan-parent metadata; users create a new Local snapshot with New scan.
+
+- Widen the Local Situation engagement report and compact ship rows to ship and pilot names inline; remove hull counts and loss labels while retaining red loss backgrounds.
+
+- Add bottom page indicators to the Local Situation engagement report to slide between recorded fights, newest first. Engagement legends, paging and notes stay at the bottom of the card.
+
+- Engagement ship rows support alliance/corporation highlighting and per-side legends, initially selecting the affiliation with the most recorded pilots on each side.
+
+- Reorganize Threat Intel Local Situation around wrapping pilot affiliation tags, last combat evidence, recent observed co-attacks, and the latest engagement with us. Pilot and legend selection highlights matching alliance members, falling back to corporation membership.
+- Show both sides of the latest engagement with observed ships, loss counts and ISK lost; highlight destroyed hulls in red and identify incomplete evidence. Give the engagement column more width than the observed-group column and show recorded pilot names inline beside each hull.
+- Use compact equal-height pilot cards, direct character/corporation/alliance killboard links, and the three latest kills and losses as ship tags with detailed tooltips.
+- Calculate danger from combat capability and local relevance, with confidence and escalation evidence kept separate. Show explanatory 0–10 badges (green below 5, orange from 5 to below 8, red from 8); no recent sample is unknown.
+- Move D-scan input and matching results into a header dropdown and generate optional written briefings from the blue Briefing button in a dialog.
+- Replace loading prose with evidence overlays and independent loading indicators for each pending pilot tag/card.
+- Fetch pending statistics from the scan creator’s browser at 100 ms intervals with at most four concurrent requests for private provisional previews and rate-limit backoff. Only server-verified results enter the shared cache and danger scores. Server statistics requests avoid a redirect.
+
 - **More sections have their own colour.** Pilots is violet and Social pink, checked for contrast and colour-vision
   separation in both themes like the existing ones. Finances shares Trade's teal. Overview, Account and
   Administration keep the cyan accent.
@@ -61,6 +79,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   in focus, alerts stay in-page toasts. This needs the browser's permission and an HTTPS address.
 
 ### Changed
+
+
 
 - **Revoking optional access stays in Keystar.** "Revoke access" on the Live fleet page, "Stop wallet import" and
   "Stop" for EVE mail now switch the access off right away instead of opening the EVE login. Turning it back on works
