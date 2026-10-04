@@ -130,6 +130,15 @@ describe("date buckets", () => {
 });
 
 describe("P&L filters and scope", () => {
+  it("keeps the fee page while paging purchases, and resets it when a shared filter changes", () => {
+    const f = parsePnlFilters({ from: "2026-09-01", to: "2026-09-30", fpage: "3", page: "2" }, "2026-10-04");
+    expect(f).toMatchObject({ page: 2, feePage: 3 });
+    expect(pnlQueryString(f, { page: 3 })).toContain("fpage=3");
+    expect(pnlQueryString(f, { from: "2026-08-01", page: 1 })).not.toContain("fpage");
+    expect(pnlQueryString(f, { status: "suggested", page: 1 })).not.toContain("fpage");
+    expect(parsePnlFilters({ fpage: "-2" }, "2026-10-04").feePage).toBe(1);
+  });
+
   it("defaults to 30 days by day and round-trips", () => {
     const f = parsePnlFilters({}, "2026-10-02");
     expect(f).toMatchObject({ from: "2026-09-03", to: "2026-10-02", bucket: "day", status: "mining", page: 1 });
@@ -290,6 +299,37 @@ describe("P&L report", () => {
     // Activity still values the mined ore: half of the mined income was measured.
     expect(r.activity.measuredShare).toBe(0.5);
     expect(r.iskPerHour.gross).toBe(500);
+  });
+
+  it("counts taxes and fees as wallet expenses under their own category", () => {
+    const fee = (date: string, characterId: number, amount: number, status: ExpenseRow["status"]): ExpenseRow => ({
+      date,
+      characterId,
+      category: "fees",
+      status,
+      amount,
+      count: 1,
+    });
+    const input = {
+      ...base,
+      income: [income("2026-09-28", 2, "ore", 1000, 10)],
+      expenses: [expense("2026-09-29", 1, 100)],
+      fees: [fee("2026-09-30", 1, 36, "counted"), fee("2026-09-30", 1, 15, "suggested"), fee("2026-10-01", 1, 99, "untagged")],
+      activity: noActivity,
+    };
+    // On the mined value, the income rate covers selling costs: fees don't count.
+    expect(buildPnlReport(input).totals).toMatchObject({ wallet: 100, fees: 0, expenses: 100 });
+
+    const r = buildPnlReport({ ...input, incomeSource: "sales" });
+    expect(r.totals).toMatchObject({ wallet: 136, fees: 36, expenses: 136, net: -136 });
+    expect(r.fees.suggested).toEqual({ amount: 15, count: 1 });
+    expect(r.purchases.suggested).toEqual({ amount: 0, count: 0 });
+    expect(r.byCategory).toEqual([
+      { category: "crystals", amount: 100 },
+      { category: "fees", amount: 36 },
+    ]);
+    // The seller pays the tax: it lands on the selling character.
+    expect(r.characters.find((c) => c.characterId === 1)).toMatchObject({ income: 0, expenses: 136 });
   });
 
   it("returns nulls rather than dividing by zero", () => {

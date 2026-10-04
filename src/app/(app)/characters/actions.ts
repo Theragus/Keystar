@@ -15,7 +15,9 @@ import {
   mailLabels,
   mailLists,
   mailMessages,
+  miningPnlFeeOverrides,
   users,
+  walletFees,
   walletTransactions,
 } from "@/core/db";
 import { optionalScopePermission, optionalScopes } from "@/core/modules/registry";
@@ -65,6 +67,10 @@ export async function removeCharacter(characterId: number): Promise<ActionResult
   await db
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, user.id)));
+  await db.delete(walletFees).where(and(eq(walletFees.characterId, characterId), eq(walletFees.userId, user.id)));
+  await db
+    .delete(miningPnlFeeOverrides)
+    .where(and(eq(miningPnlFeeOverrides.characterId, characterId), eq(miningPnlFeeOverrides.userId, user.id)));
   await db.delete(mailMessages).where(and(eq(mailMessages.characterId, characterId), eq(mailMessages.userId, user.id)));
   await db.delete(mailLabels).where(and(eq(mailLabels.characterId, characterId), eq(mailLabels.userId, user.id)));
   await db.delete(mailLists).where(and(eq(mailLists.characterId, characterId), eq(mailLists.userId, user.id)));

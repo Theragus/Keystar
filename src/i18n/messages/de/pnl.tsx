@@ -36,6 +36,7 @@ export const pnl: typeof en = {
     bursts: { label: "Burst-Ladungen", hint: "Mining-Foreman-Burst-Ladungen" },
     drones: { label: "Mining-Drohnen", hint: "Mining-, Eis- und Excavator-Drohnen" },
     ships: { label: "Schiffe & Fittings", hint: "Mining-Schiffe, Mining-Module, Rigs, Kompressoren, Industriekerne" },
+    fees: { label: "Steuern & Gebühren", hint: "Verkaufssteuer und Maklergebühren aus deinem Wallet-Journal" },
     subscription: { label: "PLEX / Omega", hint: "Spielzeit für Mining-Alts" },
     other: { label: "Sonstiges", hint: "Alles andere, was du als Mining-Kosten zählst" },
   },
@@ -127,7 +128,7 @@ export const pnl: typeof en = {
       subtitle: "Gezählte Käufe und manuelle Einträge",
       review: "Prüfen",
       empty: "In diesem Zeitraum wurden keine Ausgaben gezählt.",
-      split: "Wallet-Käufe · manuelle Einträge",
+      split: "Wallet · manuelle Einträge",
       walletOff: (enable: ReactNode) => (
         <>
           Der Wallet-Import ist für alle deine Charaktere aus. {enable}, damit gekaufte Kristalle, Treibstoff,
@@ -178,7 +179,9 @@ export const pnl: typeof en = {
         <>
           <b className="text-ink">Ausgaben</b> sind Wallet-Käufe, die du gezählt hast (oder die bei Charakteren mit
           eingeschalteter automatischer Zählung automatisch zählen), plus manuelle Einträge; verteilte Einträge werden
-          gleichmäßig auf ihre Tage aufgeteilt. Handel zwischen deinen eigenen Charakteren zählt nicht.
+          gleichmäßig auf ihre Tage aufgeteilt. Kommen Einnahmen aus Wallet-Verkäufen, kommen Verkaufssteuer auf gezählte
+          Mining-Verkäufe und übernommene Maklergebühren als „Steuern &amp; Gebühren“ aus dem Wallet-Journal dazu. Handel zwischen deinen eigenen Charakteren zählt
+          nicht.
         </>
       ),
       iskPerHour: (wallClock: string, characterHours: string, since: string | null, share: string) => (
@@ -284,6 +287,21 @@ export const pnl: typeof en = {
       newer: "Neuer",
       older: "Älter",
     },
+    fees: {
+      title: "Steuern & Gebühren",
+      subtitle: "Verkaufssteuer und Maklergebühren aus deinem Wallet-Journal",
+      columns: { fee: "Gebühr", sale: "Bezahlt auf" },
+      kinds: { transaction_tax: "Verkaufssteuer", brokers_fee: "Maklergebühr" },
+      order: "Marktorder",
+      includeHint: "Diese Gebühr als Mining-Kosten zählen",
+      excludeHint: "Ausschließen: keine Mining-Kosten",
+      page: (page: number, pages: number, total: number) =>
+        `Seite ${n(page)} von ${n(pages)} · ${plural(total, "Gebühr", "Gebühren")}`,
+      notes:
+        "Die Verkaufssteuer folgt dem Verkauf, auf den sie gezahlt wurde: Steuer auf einen gezählten Mining-Verkauf zählt, Steuer auf andere Verkäufe bleibt draußen. Maklergebühren gehören zu Marktorders, die nicht unbedingt Mining-Orders sind, und zählen daher erst, wenn du sie übernimmst.",
+      minedNote:
+        "Einnahmen sind derzeit der Wert des abgebauten Erzes, daher zählen Steuern und Gebühren nicht; dein Einnahmen-Anteil deckt sie ab. Sie zählen, sobald Einnahmen aus Wallet-Verkäufen kommen (Einstellungen → Einnahmen).",
+    },
     add: {
       title: "Kosten erfassen",
       subtitle: "PLEX / Omega für Alts, Contracts, alles, was ESI nicht sieht",
@@ -319,7 +337,7 @@ export const pnl: typeof en = {
     wallet: {
       title: "Wallet-Import",
       subtitle:
-        "Optional und pro Charakter. Keystar liest dann die Marktkäufe und -verkäufe dieses Charakters; sehen kannst sie nur du.",
+        "Optional und pro Charakter. Keystar liest dann die Marktkäufe und -verkäufe dieses Charakters und die darauf gezahlten Steuern und Gebühren; sehen kannst sie nur du.",
       revoked: "Token widerrufen",
       on: "Wallet-Import an",
       off: "Wallet-Import aus",
@@ -327,7 +345,7 @@ export const pnl: typeof en = {
         `${plural(count, "Transaktion", "Transaktionen")} seit ${since} · synchronisiert ${synced}`,
       noTransactions: (synced: string) => `Keine Markttransaktionen in den letzten 30 Tagen · synchronisiert ${synced}`,
       firstImport: "Erster Import in wenigen Minuten",
-      kept: (count: number) => `${plural(count, "importierte Transaktion bleibt", "importierte Transaktionen bleiben")} erhalten`,
+      kept: (count: number) => `${plural(count, "importierter Wallet-Eintrag bleibt", "importierte Wallet-Einträge bleiben")} erhalten`,
       nothing: "Nichts importiert",
       activitySince: (date: string) => `Mining-Aktivität gemessen seit ${date}`,
       activityNext: "Die Mining-Aktivität wird ab dem nächsten Ledger-Sync gemessen",

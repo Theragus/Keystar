@@ -343,6 +343,13 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   of the ore or its compressed variant, converted to raw units by portion size like the valuation (1:1 for current
   ores; compression only shrinks the volume). Excluded sales and internal trades are left out; the ore left over is
   valued at the current valuation. Compressed gas has its own names and group, so it isn't linked to raw gas.
+- **Taxes & fees**: `wallet.character-fees` reads the personal wallet journal with the same opt-in scope and keeps only
+  `transaction_tax` and `brokers_fee` entries (`wallet_fees`, owned and deleted like `wallet_transactions`; the
+  cursor is the newest journal id seen). Sales tax is matched to its sale by the journal's market transaction id,
+  else the character's sale whose journal entry (`journal_ref_id`) comes right before the tax at the same time (a
+  multi-sell books sale, tax, sale, tax …), and takes that sale's status; broker fees belong to orders, so they stay
+  suggested until included. `mining_pnl_fee_overrides` holds the user's include/exclude decisions. Counted fees are
+  wallet expenses in the "fees" category, only when income comes from wallet sales.
 - **Sale hints**: wallet sells of a mined ore or its compressed variant, converted to raw units with the valuation's
   compression ratio, offered as one-click price rules.
 - **Active hours / ISK per hour**: the ledger job compares each fresh ESI snapshot with the stored ledger in one

@@ -48,6 +48,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **Mining P&L**: a "Mined vs sold" table on the Income tab compares, per ore, what you mined with what you sold
   of it, raw or compressed (compressed ore counts 1:1 in units), with what you got per unit against the valuation
   and the value of the ore still unsold.
+- **Mining P&L**: sales tax and broker fees from your characters' wallet journals count as a "Taxes & fees" expense
+  when income comes from wallet sales (same wallet access, no new login). Sales tax follows the sale it was paid on,
+  even in a multi-sell, so tax on counted mining sales counts on the character that sold; broker fees are suggested
+  until you include them.
 
 ### Changed
 

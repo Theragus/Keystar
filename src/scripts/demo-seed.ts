@@ -194,10 +194,10 @@ async function main() {
     type_value_history, price_interest, esi_cache, sync_jobs, worker_heartbeats, mining_character_ledger, mining_observers,
     mining_observer_ledger, killmails, killmail_attackers, killboard_reports, fleets, fleet_members, fleet_trackers,
     eve_constellations, intel_scans, intel_scan_pilots, intel_pilots, intel_pilot_killmails, intel_queue, intel_contacts,
-    intel_ai_notes, wallet_transactions, mining_activity, mining_activity_coverage, mining_pnl_settings,
-    mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions,
-    corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages,
-    mail_labels, mail_lists, skills_queue, skills_character_skills, skills_character, skills_type_attributes
+    intel_ai_notes, wallet_transactions, wallet_fees, mining_activity, mining_activity_coverage, mining_pnl_settings,
+    mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries,
+    corp_wallet_divisions, corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions,
+    corp_wallet_sync_state, mail_messages, mail_labels, mail_lists, skills_queue, skills_character_skills, skills_character, skills_type_attributes
     RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------

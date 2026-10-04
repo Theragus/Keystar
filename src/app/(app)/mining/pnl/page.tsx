@@ -19,6 +19,7 @@ import { pnlPageContext } from "@/modules/mining/pnl/page-context";
 import {
   getActivityStats,
   getExpenseRows,
+  getFeeRows,
   getIncomeRows,
   getManualDaily,
   getPriceRules,
@@ -49,20 +50,25 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
 
   const fromSales = ctx.incomeSource === "sales";
-  const [income, sales, expenses, manual, activity, rules, wallet] = await Promise.all([
+  const [income, sales, expenses, fees, manual, activity, rules, wallet] = await Promise.all([
     getIncomeRows(scope),
     fromSales ? getSaleRows(scope) : [],
     getExpenseRows(scope),
+    fromSales ? getFeeRows(scope) : [],
     getManualDaily(scope, user.characterIds),
     getActivityStats(scope),
     getPriceRules(user.id),
     getWalletStatus(user.id),
   ]);
-  const report = buildPnlReport({ ...filters, incomeSource: ctx.incomeSource, income, sales, expenses, manual, activity, characters });
+  const report = buildPnlReport({ ...filters, incomeSource: ctx.incomeSource, income, sales, expenses, fees, manual, activity, characters });
   const { totals } = report;
+  const suggestedCosts = {
+    count: report.purchases.suggested.count + report.fees.suggested.count,
+    amount: report.purchases.suggested.amount + report.fees.suggested.amount,
+  };
   const query = pnlQueryString(filters, { bucket: "day", page: 1 });
   const walletOn = wallet.filter((w) => w.granted).length;
-  const hasData = income.length > 0 || sales.length > 0 || expenses.length > 0 || manual.length > 0;
+  const hasData = income.length > 0 || sales.length > 0 || expenses.length > 0 || fees.length > 0 || manual.length > 0;
   const ratePct = scope.ratePct;
   const rate = ratePct !== 100 ? f.percent(ratePct / 100, Number.isInteger(ratePct) ? 0 : 1) : null;
   const hours = (h: number) => t.pnl.hours(hoursValue(f, h));
@@ -137,12 +143,12 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                 value={f.compact(totals.expenses)}
                 unit="ISK"
                 hint={
-                  report.purchases.suggested.count > 0 ? (
+                  suggestedCosts.count > 0 ? (
                     <Link
                       href={`/mining/pnl/expenses?${pnlQueryString(filters, { status: "suggested", bucket: "day", page: 1 })}`}
                       className="text-accent hover:underline"
                     >
-                      {m.tiles.suggested(report.purchases.suggested.count, f.compact(report.purchases.suggested.amount))}
+                      {m.tiles.suggested(suggestedCosts.count, f.compact(suggestedCosts.amount))}
                     </Link>
                   ) : totals.manual > 0 ? (
                     m.tiles.manual(f.compact(totals.manual))

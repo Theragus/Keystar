@@ -9,8 +9,10 @@ import {
   mailLabels,
   mailLists,
   mailMessages,
+  miningPnlFeeOverrides,
   sessions,
   users,
+  walletFees,
   walletTransactions,
   type Db,
 } from "@/core/db";
@@ -58,6 +60,10 @@ export async function detachTransferredCharacter(
   await tx
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, previousUserId)));
+  await tx.delete(walletFees).where(and(eq(walletFees.characterId, characterId), eq(walletFees.userId, previousUserId)));
+  await tx
+    .delete(miningPnlFeeOverrides)
+    .where(and(eq(miningPnlFeeOverrides.characterId, characterId), eq(miningPnlFeeOverrides.userId, previousUserId)));
   await tx.delete(mailMessages).where(and(eq(mailMessages.characterId, characterId), eq(mailMessages.userId, previousUserId)));
   await tx.delete(mailLabels).where(and(eq(mailLabels.characterId, characterId), eq(mailLabels.userId, previousUserId)));
   await tx.delete(mailLists).where(and(eq(mailLists.characterId, characterId), eq(mailLists.userId, previousUserId)));

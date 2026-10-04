@@ -62,7 +62,7 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
   const tabCount = (value: string) =>
     value === "mining" ? counts.counted.count + counts.suggested.count + counts.excluded.count : counts[value as ExpenseStatus].count;
   const pages = Math.max(1, Math.ceil(sales.total / PAGE_SIZE));
-  const walletOn = wallet.some((w) => w.granted || w.transactions > 0);
+  const walletOn = wallet.some((w) => w.granted || w.transactions + w.fees > 0);
   const query = pnlQueryString(filters, { page: 1 });
 
   return (

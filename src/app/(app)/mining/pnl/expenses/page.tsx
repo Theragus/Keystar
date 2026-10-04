@@ -1,4 +1,4 @@
-import { CheckCheck, ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2, Wallet, X } from "lucide-react";
+import { CheckCheck, ChevronLeft, ChevronRight, Info, Plus, RotateCcw, Trash2, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -14,12 +14,13 @@ import { PnlFilterBar } from "@/modules/mining/pnl/components/pnl-filter-bar";
 import { PnlTabs } from "@/modules/mining/pnl/components/pnl-tabs";
 import { pnlQueryString, STATUS_FILTERS } from "@/modules/mining/pnl/filters";
 import { pnlPageContext } from "@/modules/mining/pnl/page-context";
-import { getExpenseRows, getManualEntries, getPurchases, getWalletStatus } from "@/modules/mining/pnl/queries";
+import { getExpenseRows, getFeeRows, getFees, getManualEntries, getPurchases, getWalletStatus } from "@/modules/mining/pnl/queries";
 import { SPREAD_DAYS } from "@/modules/mining/pnl/spread";
 import {
   addManualEntry,
   deleteManualEntry,
   includeAllSuggested,
+  setFeeIncluded,
   setPurchaseCategory,
   setPurchaseIncluded,
 } from "../actions";
@@ -30,6 +31,8 @@ export async function generateMetadata() {
 }
 
 const PAGE_SIZE = 50;
+/** Fees per page of the taxes & fees list (newest first). */
+const FEE_PAGE_SIZE = 50;
 const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink";
 
 const statusTone: Record<ExpenseStatus, "good" | "accent" | "neutral"> = {
@@ -45,13 +48,19 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
   const m = t.pnl.expenses;
   const { filters, scope, user } = ctx;
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
-  const [summary, purchases, entries, wallet] = await Promise.all([
+  const [purchaseRows, feeRows, purchases, fees, entries, wallet] = await Promise.all([
     getExpenseRows(scope),
+    getFeeRows(scope),
     getPurchases(scope, { status: filters.status, limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
+    // Same status tab as the purchases, so taxes on other sales ("Other purchases") can be found and included too.
+    getFees(scope, { status: filters.status, limit: FEE_PAGE_SIZE, offset: (filters.feePage - 1) * FEE_PAGE_SIZE }),
     getManualEntries(user.id, filters.from, filters.to),
     getWalletStatus(user.id),
   ]);
 
+  // The status tabs cover purchases and fees; "Include all suggested" only includes purchases.
+  const summary = [...purchaseRows, ...feeRows];
+  const suggestedPurchases = purchaseRows.filter((r) => r.status === "suggested").reduce((n, r) => n + r.count, 0);
   const byStatus = (status: ExpenseStatus) =>
     summary
       .filter((r) => r.status === status)
@@ -63,7 +72,8 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
   const tabCount = (value: string) =>
     value === "mining" ? counts.counted.count + counts.suggested.count + counts.excluded.count : counts[value as ExpenseStatus].count;
   const pages = Math.max(1, Math.ceil(purchases.total / PAGE_SIZE));
-  const walletOn = wallet.some((w) => w.granted || w.transactions > 0);
+  const feePages = Math.max(1, Math.ceil(fees.total / FEE_PAGE_SIZE));
+  const walletOn = wallet.some((w) => w.granted || w.transactions + w.fees > 0);
   const query = pnlQueryString(filters, { page: 1 });
   const today = ctx.today;
 
@@ -84,13 +94,13 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
             title={m.purchases.title}
             subtitle={m.purchases.subtitle}
             actions={
-              counts.suggested.count > 0 && (
+              suggestedPurchases > 0 && (
                 <form action={includeAllSuggested}>
                   <input type="hidden" name="from" value={filters.from} />
                   <input type="hidden" name="to" value={filters.to} />
                   <input type="hidden" name="chars" value={filters.characters.join(",")} />
                   <SubmitButton variant="primary" title={m.purchases.includeAllHint}>
-                    <CheckCheck className="size-3.5" aria-hidden /> {m.purchases.includeAll(counts.suggested.count)}
+                    <CheckCheck className="size-3.5" aria-hidden /> {m.purchases.includeAll(suggestedPurchases)}
                   </SubmitButton>
                 </form>
               )
@@ -116,7 +126,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                     return (
                       <Link
                         key={s}
-                        href={`?${pnlQueryString(filters, { status: s, page: 1 })}`}
+                        href={`?${pnlQueryString(filters, { status: s, page: 1, feePage: 1 })}`}
                         aria-current={active ? "page" : undefined}
                         title={s === "mining" ? undefined : t.pnl.statuses[s].hint}
                         className={cn(
@@ -246,6 +256,103 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
               </>
             )}
           </Panel>
+
+          {fees.total > 0 && (
+            <Panel title={m.fees.title} subtitle={m.fees.subtitle}>
+              {ctx.incomeSource !== "sales" && (
+                <p className="mb-4 flex items-start gap-2 text-sm text-ink-2">
+                  <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+                  {m.fees.minedNote}
+                </p>
+              )}
+              <div className="overflow-x-auto">
+                <table className="ks-table">
+                  <thead>
+                    <tr>
+                      <th>{m.purchases.columns.date}</th>
+                      <th>{m.fees.columns.fee}</th>
+                      <th>{m.fees.columns.sale}</th>
+                      <th className="num">{m.purchases.columns.total}</th>
+                      <th>{m.purchases.columns.status}</th>
+                      <th className="num">{m.purchases.columns.countIt}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fees.rows.map((fee) => (
+                      <tr key={`${fee.characterId}:${fee.journalId}`} className={cn(fee.status === "excluded" && "opacity-60")}>
+                        <td className="whitespace-nowrap text-ink-2 tabular-nums">{f.shortDate(fee.date.slice(0, 10))}</td>
+                        <td>
+                          <span className="block text-ink">{m.fees.kinds[fee.kind]}</span>
+                          <span className="block text-2xs text-ink-3">{fee.characterName ?? t.pnl.characterFallback(fee.characterId)}</span>
+                        </td>
+                        <td>
+                          {fee.sale ? (
+                            <span className="flex items-center gap-2">
+                              <TypeIcon id={fee.sale.typeId} size={22} />
+                              <span className="max-w-[16rem] truncate text-ink-2">
+                                {fee.sale.typeName ?? t.pnl.typeFallback(fee.sale.typeId)}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-ink-3">{fee.kind === "brokers_fee" ? m.fees.order : "—"}</span>
+                          )}
+                        </td>
+                        <td className="num font-semibold">{f.compact(fee.amount)}</td>
+                        <td>
+                          <Badge tone={statusTone[fee.status]}>{t.pnl.statuses[fee.status].label}</Badge>
+                        </td>
+                        <td className="num">
+                          <span className="inline-flex items-center gap-1">
+                            {fee.status !== "counted" && (
+                              <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, true)}>
+                                <SubmitButton title={m.fees.includeHint}>
+                                  <Plus className="size-3.5" aria-hidden /> {m.purchases.include}
+                                </SubmitButton>
+                              </form>
+                            )}
+                            {fee.status !== "excluded" && (
+                              <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, false)}>
+                                <SubmitButton variant="ghost" title={m.fees.excludeHint} className="px-2">
+                                  <X className="size-3.5" aria-hidden />
+                                  <span className="sr-only">{m.purchases.exclude}</span>
+                                </SubmitButton>
+                              </form>
+                            )}
+                            {fee.overrideIncluded !== null && (
+                              <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, null)}>
+                                <SubmitButton variant="ghost" title={m.purchases.reset} className="px-2">
+                                  <RotateCcw className="size-3.5" aria-hidden />
+                                  <span className="sr-only">{m.purchases.reset}</span>
+                                </SubmitButton>
+                              </form>
+                            )}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {feePages > 1 && (
+                <div className="mt-4 flex items-center justify-between text-xs text-ink-3">
+                  <span>{m.fees.page(filters.feePage, feePages, fees.total)}</span>
+                  <span className="flex gap-2">
+                    {filters.feePage > 1 && (
+                      <ButtonLink href={`?${pnlQueryString(filters, { feePage: filters.feePage - 1 })}`} size="sm">
+                        <ChevronLeft className="size-3.5" aria-hidden /> {m.purchases.newer}
+                      </ButtonLink>
+                    )}
+                    {filters.feePage < feePages && (
+                      <ButtonLink href={`?${pnlQueryString(filters, { feePage: filters.feePage + 1 })}`} size="sm">
+                        {m.purchases.older} <ChevronRight className="size-3.5" aria-hidden />
+                      </ButtonLink>
+                    )}
+                  </span>
+                </div>
+              )}
+              <p className="mt-3 text-2xs text-ink-3">{m.fees.notes}</p>
+            </Panel>
+          )}
 
           <div className="grid gap-4 xl:grid-cols-12">
             <Panel className="xl:col-span-5" title={m.add.title} subtitle={m.add.subtitle}>
