@@ -38,9 +38,9 @@ describe.skipIf(!enabled)("integration", async () => {
       eve_entities, type_values, type_value_history, market_prices, price_interest, mining_character_ledger,
       mining_observer_ledger, mining_observers, sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, esi_cache,
       fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
-      intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, mining_activity,
+      intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, wallet_fees, mining_activity,
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
-      mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
+      mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
       corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists,
       corporation_members, skills_queue, skills_character_skills, skills_character, skills_type_attributes
       RESTART IDENTITY CASCADE`);
@@ -874,7 +874,7 @@ describe.skipIf(!enabled)("integration", async () => {
     const { pnlScope } = await import("@/modules/mining/pnl/scope");
     const { buildPnlReport } = await import("@/modules/mining/pnl/report");
     const { characterLedgerJob } = await import("@/modules/mining/jobs");
-    const { walletTransactionsJob } = await import("@/modules/wallet/jobs");
+    const { walletFeesJob, walletTransactionsJob } = await import("@/modules/wallet/jobs");
     const { WALLET_SCOPE } = await import("@/modules/wallet/module");
 
     const range = { from: "2026-09-01", to: "2026-09-30" };
@@ -1210,11 +1210,94 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(seen).toEqual([null]);
     });
 
+    it("imports only sales tax and broker fees from the wallet journal, and resumes after the newest entry", async () => {
+      const pages: string[] = [];
+      const journal = [
+        { id: 105, ref_type: "bounty_prizes", amount: 1_000_000 },
+        { id: 104, ref_type: "transaction_tax", amount: -360, context_id: 11, context_id_type: "market_transaction_id" },
+        { id: 103, ref_type: "market_transaction", amount: 10_000, context_id: 11, context_id_type: "market_transaction_id" },
+        { id: 102, ref_type: "brokers_fee", amount: -150 },
+        { id: 101, ref_type: "player_donation", amount: -5 },
+      ].map((e) => ({ ...e, date: "2026-09-10T12:00:00Z", description: "" }));
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async (url: string) => {
+          pages.push(new URL(String(url)).pathname);
+          return new Response(JSON.stringify(journal), { status: 200, headers: { "content-type": "application/json", "x-pages": "1" } });
+        }) as unknown as typeof fetch,
+      });
+      expect(walletFeesJob.requiredScopes).toEqual([WALLET_SCOPE]);
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
+      const first = await walletFeesJob.run(ctx);
+      expect(pages).toEqual(["/characters/3/wallet/journal"]);
+      expect(first?.summary).toBe("2 new fees");
+      expect(first?.meta).toEqual({ userId: userB, newestSeenId: 105 });
+      const rows = await db().select().from(schema.walletFees).orderBy(schema.walletFees.journalId);
+      expect(rows.map((r) => [r.journalId, r.refType, r.amount, r.contextId, r.userId])).toEqual([
+        [102, "brokers_fee", 150, null, userB],
+        [104, "transaction_tax", 360, 11, userB],
+      ]);
+      // Nothing newer than the cursor: nothing new stored.
+      expect((await walletFeesJob.run({ ...ctx, meta: first!.meta! }))?.summary).toBe("0 new fees");
+    });
+
+    it("counts sales tax with the sale it was paid on, and broker fees when suggested or switched on", async () => {
+      const sell = { isBuy: false };
+      await db().insert(schema.walletTransactions).values([
+        tx(3, 71, 62516, { ...sell, date: new Date("2026-09-10T12:00:00Z") }), // compressed Veldspar: mining sale
+        tx(3, 72, 18066, { ...sell, date: new Date("2026-09-11T08:30:00Z") }), // a crystal resold: not mining income
+        tx(3, 73, 1230, { ...sell, date: new Date("2026-09-12T09:00:00Z") }), // Veldspar, excluded by hand
+      ]);
+      await db().insert(schema.miningPnlTxOverrides).values([
+        { userId: userB, characterId: 3, transactionId: 71, included: true },
+        { userId: userB, characterId: 3, transactionId: 73, included: false },
+      ]);
+      const fee = (journalId: number, refType: "transaction_tax" | "brokers_fee", date: string, extra = {}) => ({
+        characterId: 3,
+        journalId,
+        userId: userB,
+        date: new Date(date),
+        refType,
+        amount: 100,
+        ...extra,
+      });
+      await db().insert(schema.walletFees).values([
+        fee(81, "transaction_tax", "2026-09-10T12:00:00Z", { contextId: 71, contextIdType: "market_transaction_id" }),
+        fee(82, "transaction_tax", "2026-09-11T08:30:00Z"), // no context: matched by time
+        fee(83, "transaction_tax", "2026-09-12T09:00:00Z", { contextId: 73, contextIdType: "market_transaction_id" }),
+        fee(84, "brokers_fee", "2026-09-09T10:00:00Z"),
+        { ...fee(85, "brokers_fee", "2026-09-09T10:00:00Z"), userId: userA }, // another account's
+      ]);
+      const status = async () =>
+        Object.fromEntries(
+          (await pnl.getFees(scopeB(), { status: "mining", limit: 50, offset: 0 })).rows.map((r) => [r.journalId, [r.status, r.sale?.typeId ?? null]]),
+        );
+      expect(await status()).toEqual({ 81: ["counted", 62516], 83: ["excluded", 1230], 84: ["suggested", null] });
+      expect((await pnl.getFees(scopeB(), { status: "untagged", limit: 50, offset: 0 })).rows.map((r) => [r.journalId, r.sale?.typeId])).toEqual([
+        [82, 18066],
+      ]);
+
+      // Counting sales automatically counts the character's broker fees too; your choice still wins.
+      await db().insert(schema.miningPnlCharacters).values({ userId: userB, characterId: 3, autoIncludeSales: true });
+      await db().insert(schema.miningPnlFeeOverrides).values({ userId: userB, characterId: 3, journalId: 81, included: false });
+      expect(await status()).toEqual({ 81: ["excluded", 62516], 83: ["excluded", 1230], 84: ["counted", null] });
+
+      const feeRows = await pnl.getFeeRows(scopeB());
+      const counted = feeRows.filter((r) => r.status === "counted");
+      expect(counted).toEqual([{ date: "2026-09-09", characterId: 3, category: "fees", status: "counted", amount: 100, count: 1 }]);
+    });
+
     it("drops the previous owner's wallet history when a character is transferred", async () => {
       const { detachTransferredCharacter } = await import("@/core/auth/provision");
       await db().insert(schema.walletTransactions).values([tx(3, 51, 18066), tx(2, 52, 18066)]);
+      const fee = { userId: userB, date: new Date("2026-09-10T12:00:00Z"), refType: "brokers_fee" as const, amount: 5 };
+      await db().insert(schema.walletFees).values([{ ...fee, characterId: 3, journalId: 61 }, { ...fee, characterId: 2, journalId: 62 }]);
       await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: false }));
       expect((await db().select().from(schema.walletTransactions)).map((r) => r.transactionId)).toEqual([52]);
+      expect((await db().select().from(schema.walletFees)).map((r) => r.journalId)).toEqual([62]);
     });
 
     it("reports opt-in scopes that a generic re-link dropped", async () => {

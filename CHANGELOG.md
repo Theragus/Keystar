@@ -33,6 +33,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   materials and ice products are suggested as mining income and reviewed like purchases (include, exclude,
   re-categorise, or count them automatically per character). Choose the basis under Settings → Income; it stays
   on the mined value until you switch.
+- **Mining P&L**: sales tax and broker fees from your characters' wallet journals count as a "Taxes & fees" expense
+  (same wallet access, no new login). Sales tax follows the sale it was paid on, so tax on counted mining sales
+  counts on the character that sold; broker fees are suggested, or counted for characters that count their sales
+  automatically.
 
 ### Changed
 

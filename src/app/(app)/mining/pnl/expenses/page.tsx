@@ -14,12 +14,13 @@ import { PnlFilterBar } from "@/modules/mining/pnl/components/pnl-filter-bar";
 import { PnlTabs } from "@/modules/mining/pnl/components/pnl-tabs";
 import { pnlQueryString, STATUS_FILTERS } from "@/modules/mining/pnl/filters";
 import { pnlPageContext } from "@/modules/mining/pnl/page-context";
-import { getExpenseRows, getManualEntries, getPurchases, getWalletStatus } from "@/modules/mining/pnl/queries";
+import { getExpenseRows, getFees, getManualEntries, getPurchases, getWalletStatus } from "@/modules/mining/pnl/queries";
 import { SPREAD_DAYS } from "@/modules/mining/pnl/spread";
 import {
   addManualEntry,
   deleteManualEntry,
   includeAllSuggested,
+  setFeeIncluded,
   setPurchaseCategory,
   setPurchaseIncluded,
 } from "../actions";
@@ -30,6 +31,8 @@ export async function generateMetadata() {
 }
 
 const PAGE_SIZE = 50;
+/** Fees listed for review (newest first); the totals always cover all of them. */
+const FEE_LIMIT = 100;
 const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink";
 
 const statusTone: Record<ExpenseStatus, "good" | "accent" | "neutral"> = {
@@ -45,9 +48,10 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
   const m = t.pnl.expenses;
   const { filters, scope, user } = ctx;
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
-  const [summary, purchases, entries, wallet] = await Promise.all([
+  const [summary, purchases, fees, entries, wallet] = await Promise.all([
     getExpenseRows(scope),
     getPurchases(scope, { status: filters.status, limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
+    getFees(scope, { status: "mining", limit: FEE_LIMIT, offset: 0 }),
     getManualEntries(user.id, filters.from, filters.to),
     getWalletStatus(user.id),
   ]);
@@ -246,6 +250,83 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
               </>
             )}
           </Panel>
+
+          {fees.total > 0 && (
+            <Panel title={m.fees.title} subtitle={m.fees.subtitle}>
+              <div className="overflow-x-auto">
+                <table className="ks-table">
+                  <thead>
+                    <tr>
+                      <th>{m.purchases.columns.date}</th>
+                      <th>{m.fees.columns.fee}</th>
+                      <th>{m.fees.columns.sale}</th>
+                      <th className="num">{m.purchases.columns.total}</th>
+                      <th>{m.purchases.columns.status}</th>
+                      <th className="num">{m.purchases.columns.countIt}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fees.rows.map((fee) => (
+                      <tr key={`${fee.characterId}:${fee.journalId}`} className={cn(fee.status === "excluded" && "opacity-60")}>
+                        <td className="whitespace-nowrap text-ink-2 tabular-nums">{f.shortDate(fee.date.slice(0, 10))}</td>
+                        <td>
+                          <span className="block text-ink">{m.fees.kinds[fee.kind]}</span>
+                          <span className="block text-2xs text-ink-3">{fee.characterName ?? t.pnl.characterFallback(fee.characterId)}</span>
+                        </td>
+                        <td>
+                          {fee.sale ? (
+                            <span className="flex items-center gap-2">
+                              <TypeIcon id={fee.sale.typeId} size={22} />
+                              <span className="max-w-[16rem] truncate text-ink-2">
+                                {fee.sale.typeName ?? t.pnl.typeFallback(fee.sale.typeId)}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-ink-3">{fee.kind === "brokers_fee" ? m.fees.order : "—"}</span>
+                          )}
+                        </td>
+                        <td className="num font-semibold">{f.compact(fee.amount)}</td>
+                        <td>
+                          <Badge tone={statusTone[fee.status]}>{t.pnl.statuses[fee.status].label}</Badge>
+                        </td>
+                        <td className="num">
+                          <span className="inline-flex items-center gap-1">
+                            {fee.status !== "counted" && (
+                              <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, true)}>
+                                <SubmitButton title={m.fees.includeHint}>
+                                  <Plus className="size-3.5" aria-hidden /> {m.purchases.include}
+                                </SubmitButton>
+                              </form>
+                            )}
+                            {fee.status !== "excluded" && (
+                              <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, false)}>
+                                <SubmitButton variant="ghost" title={m.fees.excludeHint} className="px-2">
+                                  <X className="size-3.5" aria-hidden />
+                                  <span className="sr-only">{m.purchases.exclude}</span>
+                                </SubmitButton>
+                              </form>
+                            )}
+                            {fee.overrideIncluded !== null && (
+                              <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, null)}>
+                                <SubmitButton variant="ghost" title={m.purchases.reset} className="px-2">
+                                  <RotateCcw className="size-3.5" aria-hidden />
+                                  <span className="sr-only">{m.purchases.reset}</span>
+                                </SubmitButton>
+                              </form>
+                            )}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-3 text-2xs text-ink-3">
+                {fees.total > fees.rows.length ? `${m.fees.latest(fees.rows.length, fees.total)} ` : ""}
+                {m.fees.notes}
+              </p>
+            </Panel>
+          )}
 
           <div className="grid gap-4 xl:grid-cols-12">
             <Panel className="xl:col-span-5" title={m.add.title} subtitle={m.add.subtitle}>

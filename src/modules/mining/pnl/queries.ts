@@ -12,6 +12,7 @@ import {
   saleCategorySqlCase,
   type ExpenseCategory,
   type ExpenseStatus,
+  type FeeKind,
   type IncomeCategory,
 } from "./categories";
 import { pnlLedgerFilters, type StatusFilter } from "./filters";
@@ -335,6 +336,116 @@ export function getSales(
   opts: { status: StatusFilter; limit: number; offset: number },
 ): Promise<{ rows: SaleTxRow[]; total: number }> {
   return walletTransactionsPage(s, "sell", isIncomeCategory, opts);
+}
+
+/**
+ * Sales tax and broker fees of the selected characters with their status. Sales tax follows the sale it was paid on
+ * (matched by the journal's market transaction id, else the same character and second): tax on a counted mining sale
+ * counts, tax on other sales stays out. Broker fees belong to orders, not sales: they are suggested, or counted for
+ * characters that count their sales automatically. Your include/exclude decision wins either way.
+ */
+function feesCte(s: PnlScope): SQL {
+  const { start, end } = utcDayBounds(s.from, s.to);
+  return sql`${walletTxCte(s, "sell")},
+  fees AS (
+    SELECT f.character_id, f.journal_id, f.date, f.ref_type, f.amount::float8 AS amount,
+           sale.transaction_id AS sale_id, sale.type_id AS sale_type_id, sale.type_name AS sale_type_name,
+           sale.status AS sale_status, o.included AS o_included,
+           COALESCE(pc.auto_include_sales, false) AS auto_include
+    FROM wallet_fees f
+    LEFT JOIN LATERAL (
+      SELECT c.transaction_id, c.type_id, c.type_name, c.status FROM classified c
+      WHERE f.ref_type = 'transaction_tax' AND c.character_id = f.character_id
+        AND CASE WHEN f.context_id_type = 'market_transaction_id' THEN c.transaction_id = f.context_id ELSE c.date = f.date END
+      ORDER BY c.transaction_id
+      LIMIT 1
+    ) sale ON true
+    LEFT JOIN mining_pnl_fee_overrides o
+      ON o.user_id = f.user_id AND o.character_id = f.character_id AND o.journal_id = f.journal_id
+    LEFT JOIN mining_pnl_characters pc ON pc.user_id = f.user_id AND pc.character_id = f.character_id
+    WHERE f.user_id = ${s.userId}::uuid AND f.character_id IN (${list(s.characterIds)})
+      AND f.date >= ${start}::timestamptz AND f.date < ${end}::timestamptz
+  ),
+  fee_status AS (
+    SELECT fe.*, CASE
+      WHEN fe.o_included THEN 'counted'
+      WHEN fe.o_included = false THEN 'excluded'
+      WHEN fe.ref_type = 'transaction_tax' THEN CASE WHEN fe.sale_status IN ('counted', 'suggested', 'excluded') THEN fe.sale_status ELSE 'untagged' END
+      WHEN fe.auto_include THEN 'counted'
+      ELSE 'suggested' END AS status
+    FROM fees fe
+  )`;
+}
+
+/** Sales tax and broker fees per day, character and status, as expense rows ("fees"). */
+export async function getFeeRows(s: PnlScope): Promise<ExpenseRow[]> {
+  if (!s.characterIds.length) return [];
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    WITH ${feesCte(s)}
+    SELECT to_char((f.date AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') AS date, f.character_id, f.status,
+           SUM(f.amount)::float8 AS amount, COUNT(*)::int AS count
+    FROM fee_status f
+    GROUP BY 1, 2, 3
+    ORDER BY 1`);
+  return rows.map((r) => ({
+    date: String(r.date),
+    characterId: num(r.character_id),
+    category: "fees" as const,
+    status: String(r.status) as ExpenseStatus,
+    amount: num(r.amount),
+    count: num(r.count),
+  }));
+}
+
+export interface FeeRow {
+  characterId: number;
+  characterName: string | null;
+  journalId: number;
+  date: string;
+  kind: FeeKind;
+  amount: number;
+  /** The sale a sales tax was paid on (null for broker fees, or when it can't be matched). */
+  sale: { typeId: number; typeName: string | null } | null;
+  status: ExpenseStatus;
+  /** Your include/exclude decision (null = automatic). */
+  overrideIncluded: boolean | null;
+}
+
+/** Fees for review, newest first: those on mining sales and broker fees (`untagged`: tax on other sales). */
+export async function getFees(
+  s: PnlScope,
+  opts: { status: StatusFilter; limit: number; offset: number },
+): Promise<{ rows: FeeRow[]; total: number }> {
+  if (!s.characterIds.length) return { rows: [], total: 0 };
+  const where = opts.status === "mining" ? sql`f.status <> 'untagged'` : sql`f.status = ${opts.status}`;
+  const db = getDb();
+  const [rows, count] = await Promise.all([
+    db.execute<Record<string, unknown>>(sql`
+      WITH ${feesCte(s)}
+      SELECT f.*, ch.name AS character_name, to_char(f.date AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date_iso
+      FROM fee_status f
+      LEFT JOIN characters ch ON ch.character_id = f.character_id
+      WHERE ${where}
+      ORDER BY f.date DESC, f.journal_id DESC
+      LIMIT ${opts.limit} OFFSET ${opts.offset}`),
+    db.execute<Record<string, unknown>>(sql`
+      WITH ${feesCte(s)}
+      SELECT COUNT(*)::int AS n FROM fee_status f WHERE ${where}`),
+  ]);
+  return {
+    total: num(count[0]?.n),
+    rows: rows.map((r) => ({
+      characterId: num(r.character_id),
+      characterName: str(r.character_name),
+      journalId: num(r.journal_id),
+      date: String(r.date_iso),
+      kind: r.ref_type === "brokers_fee" ? "brokers_fee" : "transaction_tax",
+      amount: num(r.amount),
+      sale: r.sale_id === null || r.sale_id === undefined ? null : { typeId: num(r.sale_type_id), typeName: str(r.sale_type_name) },
+      status: String(r.status) as ExpenseStatus,
+      overrideIncluded: r.o_included === null || r.o_included === undefined ? null : Boolean(r.o_included),
+    })),
+  };
 }
 
 export interface ManualDailyRow {

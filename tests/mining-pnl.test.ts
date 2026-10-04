@@ -291,6 +291,33 @@ describe("P&L report", () => {
     expect(r.iskPerHour.gross).toBe(500);
   });
 
+  it("counts taxes and fees as wallet expenses under their own category", () => {
+    const fee = (date: string, characterId: number, amount: number, status: ExpenseRow["status"]): ExpenseRow => ({
+      date,
+      characterId,
+      category: "fees",
+      status,
+      amount,
+      count: 1,
+    });
+    const r = buildPnlReport({
+      ...base,
+      income: [income("2026-09-28", 2, "ore", 1000, 10)],
+      expenses: [expense("2026-09-29", 1, 100)],
+      fees: [fee("2026-09-30", 1, 36, "counted"), fee("2026-09-30", 1, 15, "suggested"), fee("2026-10-01", 1, 99, "untagged")],
+      activity: noActivity,
+    });
+    expect(r.totals).toMatchObject({ wallet: 136, fees: 36, expenses: 136, net: 864 });
+    expect(r.fees.suggested).toEqual({ amount: 15, count: 1 });
+    expect(r.purchases.suggested).toEqual({ amount: 0, count: 0 });
+    expect(r.byCategory).toEqual([
+      { category: "crystals", amount: 100 },
+      { category: "fees", amount: 36 },
+    ]);
+    // The seller pays the tax: it lands on the selling character.
+    expect(r.characters.find((c) => c.characterId === 1)).toMatchObject({ income: 0, expenses: 136 });
+  });
+
   it("returns nulls rather than dividing by zero", () => {
     const r = buildPnlReport({ ...base, income: [], expenses: [], activity: noActivity });
     expect(r.costPerM3).toBeNull();

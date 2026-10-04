@@ -329,6 +329,12 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   review as purchases, with their own per-character switch (`mining_pnl_characters.auto_include_sales`) and the same
   override table. Volume, active hours and ISK/h always come from the mined ore. Only market sales count; anything
   the wallet doesn't show stays out.
+- **Taxes & fees**: `wallet.character-fees` reads the personal wallet journal with the same opt-in scope and keeps only
+  `transaction_tax` and `brokers_fee` entries (`wallet_fees`, owned and deleted like `wallet_transactions`; the
+  cursor is the newest journal id seen). Sales tax is matched to its sale by the journal's market transaction id,
+  else the same character and second, and takes that sale's status; broker fees belong to orders, so they are
+  suggested or counted with the character's "count sales automatically" switch. `mining_pnl_fee_overrides` holds the
+  user's include/exclude decisions. Counted fees are wallet expenses in the "fees" category.
 - **Sale hints**: wallet sells of a mined ore or its compressed variant, converted to raw units with the valuation's
   compression ratio, offered as one-click price rules.
 - **Active hours / ISK per hour**: the ledger job compares each fresh ESI snapshot with the stored ledger in one

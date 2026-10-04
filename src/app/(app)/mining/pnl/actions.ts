@@ -10,9 +10,11 @@ import {
   getDb,
   miningPnlCharacters,
   miningPnlEntries,
+  miningPnlFeeOverrides,
   miningPnlPriceRules,
   miningPnlSettings,
   miningPnlTxOverrides,
+  walletFees,
   walletTransactions,
 } from "@/core/db";
 import { getSettings } from "@/core/settings";
@@ -331,6 +333,36 @@ export async function deleteManualEntry(entryId: number) {
   revalidate();
 }
 
+/** Include (true), exclude (false) or reset to automatic (null) one sales tax or broker fee. */
+export async function setFeeIncluded(characterId: number, journalId: number, included: boolean | null) {
+  const user = await pnlUser();
+  const charId = ownCharacter(user, characterId);
+  const id = positiveId(journalId, "fee");
+  const db = getDb();
+  const [fee] = await db
+    .select({ id: walletFees.journalId })
+    .from(walletFees)
+    .where(and(eq(walletFees.characterId, charId), eq(walletFees.journalId, id), eq(walletFees.userId, user.id)));
+  if (!fee) throw new Error("Fee not found");
+  const key = and(
+    eq(miningPnlFeeOverrides.userId, user.id),
+    eq(miningPnlFeeOverrides.characterId, charId),
+    eq(miningPnlFeeOverrides.journalId, id),
+  );
+  if (included === null) {
+    await db.delete(miningPnlFeeOverrides).where(key);
+  } else {
+    await db
+      .insert(miningPnlFeeOverrides)
+      .values({ userId: user.id, characterId: charId, journalId: id, included: included === true })
+      .onConflictDoUpdate({
+        target: [miningPnlFeeOverrides.userId, miningPnlFeeOverrides.characterId, miningPnlFeeOverrides.journalId],
+        set: { included: included === true, updatedAt: new Date() },
+      });
+  }
+  revalidate();
+}
+
 export type DeleteWalletError = "forbidden" | "notOwned" | "stillImporting";
 
 /** Deletes a character's imported wallet history (only once wallet access has been removed). */
@@ -343,6 +375,10 @@ export async function deleteWalletData(characterId: number): Promise<ActionResul
   if (token?.scopes.includes(WALLET_SCOPE)) return refused("stillImporting");
   await db.delete(walletTransactions).where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, user.id)));
   await db.delete(miningPnlTxOverrides).where(and(eq(miningPnlTxOverrides.characterId, characterId), eq(miningPnlTxOverrides.userId, user.id)));
+  await db.delete(walletFees).where(and(eq(walletFees.characterId, characterId), eq(walletFees.userId, user.id)));
+  await db
+    .delete(miningPnlFeeOverrides)
+    .where(and(eq(miningPnlFeeOverrides.characterId, characterId), eq(miningPnlFeeOverrides.userId, user.id)));
   revalidate();
   return ok;
 }
