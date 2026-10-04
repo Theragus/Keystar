@@ -8,7 +8,7 @@ import { compareSortValues, SortHeader, useSortedRows } from "@/components/ui/so
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { priceSurveyTypes, type SurveyPrice } from "./actions";
-import { type GradeSummary, type OreSummary, parseSurveyScan, summariseSurvey } from "./parse";
+import { type GradeSummary, type OreSummary, parseLocaleNumber, parseSurveyScan, summariseSurvey } from "./parse";
 
 const EXAMPLE = `Scordite III-Grade	41.648	6.247 m3	787.000,00 ISK	21 km
 Scordite III-Grade	49.146	7.371 m3	928.000,00 ISK	21 km
@@ -127,8 +127,8 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
     },
     { rocks: 0, volume: 0, scanner: 0, keystar: 0, unpriced: 0 },
   );
-  // Mining lasers show their yield per second; whole numbers or one decimal mark, either separator.
-  const yieldPerSecond = Number(fleetYield.replace(/\s/g, "").replace(",", "."));
+  // Mining lasers show their yield per second; German or English notation, like the scan itself.
+  const yieldPerSecond = parseLocaleNumber(fleetYield) ?? 0;
   const hoursToClear = yieldPerSecond > 0 ? totals.volume / yieldPerSecond / 3600 : null;
   // Share and ISK/m³ use Keystar values once any are priced, scanner values until then.
   const useKeystar = totals.keystar > 0;
