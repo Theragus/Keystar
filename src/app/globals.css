@@ -123,6 +123,11 @@
   --ramp-5: #9ec5f4;
   /* Net line of the P&L and wallet charts. */
   --series-net: var(--color-ink);
+  /* Income (up) and expenses (down) of the P&L and wallet charts: a polarity pair, not
+     categorical slots, and distinct from the reserved status colours. Lightness keeps them
+     apart under red-green CVD. On #14161a: CVD ΔE 8.8, normal ΔE 29.3, both ≥ 3:1. */
+  --series-income: #36a866;
+  --series-expense: #c2403d;
   /* Current section colour; the accent unless the route's section has a tone. */
   --section: var(--color-accent);
 }
@@ -608,6 +613,9 @@ select option:disabled {
   --ramp-3: #2f7fe0;
   --ramp-4: #2163b3;
   --ramp-5: #154785;
+  /* On #f3f5f8 (and ≥ 3:1 on #ffffff): CVD ΔE 9.8, normal ΔE 29.4. */
+  --series-income: #249a5e;
+  --series-expense: #b02e2e;
   --glass-background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.8));
   --glass-rim: linear-gradient(160deg, rgba(24, 35, 50, 0.18), rgba(24, 35, 50, 0.08));
   --glass-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(24, 35, 50, 0.08), 0 12px 32px -18px rgba(24, 35, 50, 0.18);

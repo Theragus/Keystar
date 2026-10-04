@@ -29,6 +29,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **More sections have their own colour.** Pilots is violet and Social pink, checked for contrast and colour-vision
   separation in both themes like the existing ones. Finances shares Trade's teal. Overview, Account and
   Administration keep the cyan accent.
+- **Income is green and expenses red** in the mining P&L and corp wallet charts. The P&L shows income as one bar
+  instead of stacking it by resource; the tooltip and the By activity panel still break it down.
 
 ### Fixed
 
