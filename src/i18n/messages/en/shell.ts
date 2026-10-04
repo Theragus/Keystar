@@ -35,6 +35,7 @@ export const shell = {
     sync: "Sync Status",
     settings: "Settings",
     audit: "Audit Log",
+    system: "System Info",
   },
   /** Live alerts menu in the top bar. */
   alerts: {

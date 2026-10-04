@@ -35,6 +35,7 @@ export const shell: typeof en = {
     sync: "Sync-Status",
     settings: "Einstellungen",
     audit: "Audit-Log",
+    system: "Systeminfo",
   },
   alerts: {
     button: "Alarme",
