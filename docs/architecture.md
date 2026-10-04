@@ -32,7 +32,7 @@ Keystar is one TypeScript codebase that runs as two processes against one Postgr
 ```
 src/
   app/                 Next.js routes
-    (app)/             signed-in area (sidebar shell): dashboard, mining, characters, admin
+    (app)/             signed-in area (sidebar shell): dashboard, mining, industry, characters, admin
     auth/              SSO login / callback / logout / demo routes
     setup/             first-start walkthrough for the first admin
     login/, join/      public pages
@@ -48,6 +48,7 @@ src/
     settings.ts        typed app settings (stored as JSON rows)
   modules/
     mining/            the mining module: schema, jobs, queries, filters, UI components, estimator
+    industry/          industry jobs of the viewer's own characters: schema, sync job, station/structure names, UI
     killboard/         zKillboard client and sync, combat aggregates, situation report (Claude or template), UI
     intel/             threat intel: paste parser, scans, zKillboard worker, scoring, standings, history with us,
                        d-scan matching, briefings and dossiers (Claude or template), UI
@@ -190,6 +191,7 @@ Current jobs:
 | `mining.character-ledger`        | 15 min   | Personal mining ledgers; records mining activity windows   |
 | `mining.corporation-observers`   | 1 h      | Moon-refinery observer ledgers (Accountant)                |
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
+| `industry.character-jobs`        | 5 min    | Industry jobs of each character (incl. finished ones), names their stations and structures |
 | `killboard.zkill-sync`           | 1 h      | Home corporation kills/losses from zKillboard (no token)   |
 | `killboard.live-feed`            | 10 s     | zKillboard's live feed (R2Z2): home-corporation killmails within seconds, for the live notifications |
 | `killboard.situation-report`     | 1 h      | Writes the weekly situation report once a week has closed  |

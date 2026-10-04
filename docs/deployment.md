@@ -89,11 +89,13 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    esi-corporations.read_divisions.v1
    esi-corporations.read_structures.v1
    esi-fleets.read_fleet.v1
+   esi-industry.read_character_jobs.v1
    esi-industry.read_character_mining.v1
    esi-industry.read_corporation_mining.v1
    esi-mail.read_mail.v1
    esi-skills.read_skillqueue.v1
    esi-skills.read_skills.v1
+   esi-universe.read_structures.v1
    esi-wallet.read_character_wallet.v1
    esi-wallet.read_corporation_wallets.v1
    ```
@@ -105,6 +107,11 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
 5. Save and keep the **Client ID** and **Secret Key** for the next step.
 
 When future modules (assets) are added, add their scopes to the application as well.
+
+> **Upgrading to the release with industry jobs (see the CHANGELOG):** add `esi-industry.read_character_jobs.v1` and
+> `esi-universe.read_structures.v1` to the EVE application. Both are member scopes: My Characters shows every linked
+> character as missing them until its owner re-authorises it, and the Industry Jobs page only lists characters that
+> have. The structures scope names the player structures jobs run in (only those the character may dock at).
 
 > **Upgrading to the release with skill queues (see the CHANGELOG):** add `esi-skills.read_skillqueue.v1` and
 > `esi-skills.read_skills.v1` to the EVE application. Without them, "Share skills" on the Skills access page fails at
