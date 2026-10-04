@@ -6,6 +6,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Fixed
+
+- Right-aligned column headers in tables (the Load and Database tables on System Info, the actions column on
+  Users) now line up with their values instead of sitting on the left.
+
 ### Added
 
 - **Skill queue timeline.** Each character's card shows the queue as one strip, like the training-time bar in
