@@ -1,5 +1,5 @@
 import { eq, inArray, sql } from "drizzle-orm";
-import { characters, type Db } from "@/core/db";
+import { characters, esiTokens, type Db } from "@/core/db";
 import { EsiError, type EsiClient } from "@/core/esi/client";
 import { ensureNames, ensureSystems, ensureTypes } from "@/core/eve/resolver";
 import { createLogger } from "@/core/logger";
@@ -89,9 +89,18 @@ export const characterIndustryJobsJob: JobDefinition = {
   intervalSeconds: 300,
   async run({ esi, db, characterId }) {
     const id = characterId!;
-    // Whose character this is at the start: a transfer to another account meanwhile must not get this snapshot.
-    const [owner] = await db.select({ userId: characters.userId }).from(characters).where(eq(characters.characterId, id));
+    // Whose character this is at the start (a transfer to another account meanwhile must not get this snapshot), and
+    // whether access is still on: switching it off promises to stop reading at once, and the planner only disables
+    // this schedule on its next pass.
+    const [owner] = await db
+      .select({ userId: characters.userId, status: esiTokens.status, scopes: esiTokens.scopes })
+      .from(characters)
+      .leftJoin(esiTokens, eq(esiTokens.characterId, characters.characterId))
+      .where(eq(characters.characterId, id));
     if (!owner) return { summary: "Character is no longer linked" };
+    if (owner.status !== "active" || !INDUSTRY_SCOPES.every((s) => owner.scopes?.includes(s))) {
+      return { summary: "Industry access is switched off" };
+    }
     const res = await esi.get<EsiIndustryJob[]>(`/characters/${id}/industry/jobs`, {
       characterId: id,
       query: { include_completed: true },

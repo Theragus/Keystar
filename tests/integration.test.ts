@@ -2348,6 +2348,8 @@ describe.skipIf(!enabled)("integration", async () => {
 
     it("skips a sync's write once access is off, so deleted jobs stay deleted", async () => {
       const { characterIndustryJobsJob } = await import("@/modules/industry/jobs");
+      let requests = 0;
+      let offAfterFetch = false;
       const esi = new EsiClient({
         baseUrl: "https://esi.test",
         userAgent: "t",
@@ -2358,6 +2360,9 @@ describe.skipIf(!enabled)("integration", async () => {
           const path = new URL(String(url)).pathname;
           const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
           if (/\/industry\/jobs$/.test(path)) {
+            requests++;
+            // Simulates access being switched off while the ESI request is in flight.
+            if (offAfterFetch) await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
             return reply([{ job_id: 900, installer_id: 2, facility_id: 60003760, station_id: 60003760, activity_id: 1, blueprint_id: 5,
               blueprint_type_id: 787, blueprint_location_id: 60003760, output_location_id: 60003760, runs: 2, cost: 10, duration: 3600,
               status: "active", start_date: new Date().toISOString(), end_date: new Date(Date.now() + 3600_000).toISOString() }]);
@@ -2372,10 +2377,18 @@ describe.skipIf(!enabled)("integration", async () => {
       expect((await characterIndustryJobsJob.run(ctx))?.summary).toContain("1 running job");
       expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId).sort()).toEqual([1, 2, 900]);
 
-      // Access off and data deleted: a run whose ESI request already happened must not bring it back.
+      // Access off and data deleted: a run claimed before the planner disables the schedule reads nothing from ESI.
       await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
       await db().delete(schema.industryJobs).where(sql`character_id = 2`);
       await db().delete(schema.esiCache);
+      const before = requests;
+      expect((await characterIndustryJobsJob.run(ctx))?.summary).toBe("Industry access is switched off");
+      expect(requests).toBe(before);
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+
+      // A run whose ESI request already happened when access went off must not bring the jobs back either.
+      await db().update(schema.esiTokens).set({ scopes: [...INDUSTRY_SCOPES] }).where(sql`character_id = 2`);
+      offAfterFetch = true;
       expect((await characterIndustryJobsJob.run(ctx))?.summary).toContain("switched industry access off");
       expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
     });
