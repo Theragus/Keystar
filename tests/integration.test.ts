@@ -1300,7 +1300,7 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await db().select().from(schema.walletTransactions)).toEqual([]);
     });
 
-    it("resumes the wallet import per owner, past unstored corporation trades", async () => {
+    it("resumes the wallet import per owner, but reimports all pages after deleting wallet data", async () => {
       // A previous owner's rows must not hide the new owner's history.
       await db().insert(schema.walletTransactions).values({ ...tx(3, 900, 34), userId: userA });
       const seen: (string | null)[] = [];
@@ -1315,9 +1315,10 @@ describe.skipIf(!enabled)("integration", async () => {
           const all = [
             { transaction_id: 950, is_personal: false },
             { transaction_id: 800, is_personal: true },
+            { transaction_id: 700, is_personal: true },
           ].map((t) => ({ ...t, date: "2026-09-10T12:00:00Z", type_id: 34, quantity: 1, unit_price: 5, is_buy: true,
             client_id: 5, location_id: 60003760, journal_ref_id: t.transaction_id }));
-          return new Response(JSON.stringify(all.filter((t) => !fromId || t.transaction_id < Number(fromId))), {
+          return new Response(JSON.stringify(all.filter((t) => !fromId || t.transaction_id < Number(fromId)).slice(0, 2)), {
             status: 200,
             headers: { "content-type": "application/json" },
           });
@@ -1325,15 +1326,25 @@ describe.skipIf(!enabled)("integration", async () => {
       });
       const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
       const first = await walletTransactionsJob.run(ctx);
-      expect(first?.summary).toBe("1 new transaction");
+      expect(first?.summary).toBe("2 new transactions");
       expect(first?.meta).toEqual({ userId: userB, newestSeenId: 950 });
       // Next run: the corporation trade (950) is the high-water mark, so one request is enough.
       seen.length = 0;
       await walletTransactionsJob.run({ ...ctx, meta: first!.meta! });
       expect(seen).toEqual([null]);
+
+      // Deleting history while access is off leaves the job's metadata intact.
+      await db().delete(schema.walletTransactions).where(sql`character_id = 3 AND user_id = ${userB}`);
+      seen.length = 0;
+      const restored = await walletTransactionsJob.run({ ...ctx, meta: first!.meta! });
+      expect(restored?.summary).toBe("2 new transactions");
+      expect(restored?.meta).toEqual(first?.meta);
+      expect(seen).toEqual([null, "800", "700"]);
+      const rows = await db().select().from(schema.walletTransactions).where(sql`user_id = ${userB}`).orderBy(schema.walletTransactions.transactionId);
+      expect(rows.map((r) => r.transactionId)).toEqual([700, 800]);
     });
 
-    it("imports only sales tax and broker fees from the wallet journal, and resumes after the newest entry", async () => {
+    it("imports only wallet fees, resumes incrementally, and reimports all pages after deleting wallet data", async () => {
       const pages: string[] = [];
       const journal = [
         { id: 105, ref_type: "bounty_prizes", amount: 1_000_000 },
@@ -1348,14 +1359,17 @@ describe.skipIf(!enabled)("integration", async () => {
         compatibilityDate: "2026-08-18",
         tokenProvider: async () => "token",
         fetchImpl: (async (url: string) => {
-          pages.push(new URL(String(url)).pathname);
-          return new Response(JSON.stringify(journal), { status: 200, headers: { "content-type": "application/json", "x-pages": "1" } });
+          const page = Number(new URL(String(url)).searchParams.get("page") ?? 1);
+          pages.push(String(page));
+          return new Response(JSON.stringify(page === 1 ? journal.slice(0, 3) : journal.slice(3)), {
+            status: 200, headers: { "content-type": "application/json", "x-pages": "2" },
+          });
         }) as unknown as typeof fetch,
       });
       expect(walletFeesJob.requiredScopes).toEqual([WALLET_SCOPE]);
       const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
       const first = await walletFeesJob.run(ctx);
-      expect(pages).toEqual(["/characters/3/wallet/journal"]);
+      expect(pages).toEqual(["1", "2"]);
       expect(first?.summary).toBe("2 new fees");
       expect(first?.meta).toEqual({ userId: userB, newestSeenId: 105, descriptions: true });
       const rows = await db().select().from(schema.walletFees).orderBy(schema.walletFees.journalId);
@@ -1364,7 +1378,20 @@ describe.skipIf(!enabled)("integration", async () => {
         [104, "transaction_tax", 360, 11, userB, null],
       ]);
       // Nothing newer than the cursor: nothing new stored.
+      pages.length = 0;
       expect((await walletFeesJob.run({ ...ctx, meta: first!.meta! }))?.summary).toBe("0 new fees");
+      expect(pages).toEqual(["1"]);
+
+      // Re-enabling import after deletion must ignore both the cursor and descriptions flag.
+      await db().delete(schema.walletFees).where(sql`character_id = 3 AND user_id = ${userB}`);
+      pages.length = 0;
+      const restored = await walletFeesJob.run({ ...ctx, meta: first!.meta! });
+      expect(restored?.summary).toBe("2 new fees");
+      expect(restored?.meta).toEqual(first?.meta);
+      expect(pages).toEqual(["1", "2"]);
+      expect(await db().select().from(schema.walletFees).orderBy(schema.walletFees.journalId)).toEqual(
+        rows.map((r) => ({ ...r, firstSeenAt: expect.any(Date) })),
+      );
 
       // Fees imported before descriptions were kept get theirs from one full read, without counting as new.
       await db().update(schema.walletFees).set({ description: null });
