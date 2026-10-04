@@ -1,15 +1,18 @@
-import { CalendarDays, Users } from "lucide-react";
+import { CalendarDays, CircleCheck, Info, KeyRound, UserX, Users } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
 import { ButtonLink } from "@/components/ui/button";
 import { Panel } from "@/components/ui/glass";
 import { requirePermission } from "@/core/auth/dal";
+import { Glass } from "@/components/ui/glass";
 import { getSettings } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { calendarEventWindow } from "@/modules/mining/ops/attribution";
 import { OpForm, type OpFormValues } from "@/modules/mining/ops/components/op-form";
 import { eveTimeInput, opFormOptions } from "@/modules/mining/ops/form-data";
+import { getOpReadiness } from "@/modules/mining/ops/queries";
 import { saveOp } from "../actions";
 
 export async function generateMetadata() {
@@ -18,14 +21,15 @@ export async function generateMetadata() {
 }
 
 export default async function NewOpPage({ searchParams }: PageProps<"/mining/ops/new">) {
-  await requirePermission(MINING_PERMISSIONS.manageOps);
+  const user = await requirePermission(MINING_PERMISSIONS.manageOps);
   const settings = await getSettings();
   const home = settings["corp.homeCorporationId"];
   if (!home) redirect("/mining/ops");
   const { t, f } = await getI18n();
   const m = t.ops.form;
   const params = await searchParams;
-  const { events, fleetOptions, eventOptions } = await opFormOptions(t, f, home);
+  const [{ events, fleetOptions, eventOptions }, readiness] = await Promise.all([opFormOptions(t, f, home), getOpReadiness(home)]);
+  const r = m.readiness;
 
   const eventId = Number(params.event);
   const fleetId = Number(params.fleet);
@@ -53,6 +57,33 @@ export default async function NewOpPage({ searchParams }: PageProps<"/mining/ops
   return (
     <div className="space-y-6">
       <PageHeader eyebrow={t.mining.module.nav.ops} title={m.titleNew} description={m.description} />
+      <Glass className="flex items-start gap-3 px-5 py-4">
+        <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+        <div className="space-y-2 text-sm">
+          <p className="font-medium text-ink">{r.title}</p>
+          <p className="text-ink-2">{r.body}</p>
+          <ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs">
+            <li className="flex items-center gap-1.5 text-ink-2">
+              <CircleCheck className="size-3.5 text-good-text" aria-hidden /> {r.tracked(readiness.tracked)}
+            </li>
+            {readiness.noAccess > 0 && (
+              <li className="flex items-center gap-1.5 text-warning">
+                <KeyRound className="size-3.5" aria-hidden /> {r.noAccess(readiness.noAccess)}
+              </li>
+            )}
+            {readiness.unregistered > 0 && (
+              <li className="flex items-center gap-1.5 text-warning">
+                <UserX className="size-3.5" aria-hidden /> {r.unregistered(readiness.unregistered)}
+              </li>
+            )}
+          </ul>
+          {(readiness.noAccess > 0 || readiness.unregistered > 0) && user.can("members.audit") && (
+            <Link href="/admin/members" className="inline-block text-xs text-accent hover:underline">
+              {r.audit}
+            </Link>
+          )}
+        </div>
+      </Glass>
       {events.length > 0 && (
         <Panel title={m.fromEvent.title} subtitle={m.fromEvent.subtitle}>
           <ul className="divide-y divide-surface-contrast/[0.06]">

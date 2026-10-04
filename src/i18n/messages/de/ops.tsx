@@ -97,6 +97,14 @@ export const ops: typeof en = {
     create: "Op anlegen",
     save: "Speichern",
     cancel: "Abbrechen",
+    readiness: {
+      title: "Vor der Op: Alle brauchen ESI-Zugriff",
+      body: "Keystar sieht nur den Abbau von Charakteren, die hier registriert sind und das Lesen ihres Mining-Ledgers erlauben. Bitte alle Piloten, sich vor Beginn der Op anzumelden und den Zugriff zu erteilen; Abbau aller anderen fehlt in der Auszahlung und lässt sich nicht nachträglich ergänzen.",
+      tracked: (count: number) => `${plural(count, "Charakter", "Charaktere")} bereit`,
+      noAccess: (count: number) => `${plural(count, "registrierter Charakter", "registrierte Charaktere")} ohne Mining-Zugriff`,
+      unregistered: (count: number) => `${plural(count, "Corporation-Mitglied", "Corporation-Mitglieder")} nicht registriert`,
+      audit: "Mitglieder-Audit",
+    },
     fromEvent: {
       title: "Aus dem Kalender",
       subtitle: "Wähle einen Termin, um Name, Zeit und Zusagen zu übernehmen.",

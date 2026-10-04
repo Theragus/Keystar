@@ -99,6 +99,14 @@ export const ops = {
     create: "Create op",
     save: "Save",
     cancel: "Cancel",
+    readiness: {
+      title: "Before the op: everyone needs ESI access",
+      body: "Keystar only sees mining of characters that are registered here and allow reading their mining ledger. Ask every pilot to sign in and grant it before the op starts; mining of anyone else is missing from the payout and can't be added later.",
+      tracked: (count: number) => `${plural(count, "character", "characters")} ready`,
+      noAccess: (count: number) => `${plural(count, "registered character", "registered characters")} without mining access`,
+      unregistered: (count: number) => `${plural(count, "corporation member", "corporation members")} not registered`,
+      audit: "Member audit",
+    },
     fromEvent: {
       title: "From the calendar",
       subtitle: "Pick an event to fill in its name, time and attendees.",

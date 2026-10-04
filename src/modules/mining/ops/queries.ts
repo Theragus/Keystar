@@ -646,3 +646,23 @@ export async function opContext(db: Db, op: MiningOp): Promise<{ systems: string
     eventTitle: (row?.event_title as string | null) ?? null,
   };
 }
+
+/**
+ * How much of the home corporation an op can see: in-game members without a
+ * registered character, and registered members whose token doesn't (or no
+ * longer) reads the mining ledger. Their mining is invisible to ops.
+ */
+export async function getOpReadiness(homeCorporationId: number): Promise<{ unregistered: number; noAccess: number; tracked: number }> {
+  const [row] = await getDb().execute<Record<string, unknown>>(sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM corporation_members m
+        WHERE m.corporation_id = ${homeCorporationId}
+          AND NOT EXISTS (SELECT 1 FROM characters c WHERE c.character_id = m.character_id)) AS unregistered,
+      (SELECT COUNT(*)::int FROM characters c LEFT JOIN esi_tokens t ON t.character_id = c.character_id
+        WHERE c.corporation_id = ${homeCorporationId}
+          AND (t.character_id IS NULL OR t.status <> 'active' OR NOT ('esi-industry.read_character_mining.v1' = ANY(t.scopes)))) AS no_access,
+      (SELECT COUNT(*)::int FROM characters c JOIN esi_tokens t ON t.character_id = c.character_id
+        WHERE c.corporation_id = ${homeCorporationId}
+          AND t.status = 'active' AND 'esi-industry.read_character_mining.v1' = ANY(t.scopes)) AS tracked`);
+  return { unregistered: num(row?.unregistered), noAccess: num(row?.no_access), tracked: num(row?.tracked) };
+}
