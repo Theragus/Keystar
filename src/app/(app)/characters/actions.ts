@@ -18,6 +18,7 @@ import {
   miningPnlFeeOverrides,
   users,
   walletFees,
+  industryJobs,
   walletTransactions,
 } from "@/core/db";
 import { optionalScopePermission, optionalScopes } from "@/core/modules/registry";
@@ -64,6 +65,7 @@ export async function removeCharacter(characterId: number): Promise<ActionResult
   const db = getDb();
   const [token] = await db.select().from(esiTokens).where(eq(esiTokens.characterId, characterId));
   await db.delete(characters).where(and(eq(characters.characterId, characterId), eq(characters.userId, user.id)));
+  await db.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
   await db
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, user.id)));

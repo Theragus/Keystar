@@ -8,7 +8,7 @@ export interface IndustryFilters {
   characters: number[];
   activities: IndustryActivity[];
   systems: number[];
-  /** Stations and structures (`station_id` of the job). */
+  /** Stations and structures (`location_id` of the job, ESI's `facility_id`). */
   locations: number[];
   page: number;
 }
