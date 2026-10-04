@@ -3,7 +3,7 @@
  * (System Info offers the same file as a download). Logs go to stderr.
  *
  *   pnpm support:package > keystar-support.json
- *   docker compose run --rm -T worker node dist/support.mjs > keystar-support.json
+ *   docker compose run --rm --no-deps -T worker node dist/support.mjs > keystar-support.json
  */
 import { audit } from "@/core/audit";
 import { closeDb } from "@/core/db";

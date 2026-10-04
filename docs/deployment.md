@@ -288,7 +288,7 @@ Start with **Administration → System Info** (admins): its health checks catch 
 data. If the web app doesn't start, create the package from the command line:
 
 ```bash
-docker compose run --rm -T worker node dist/support.mjs > keystar-support.json
+docker compose run --rm --no-deps -T worker node dist/support.mjs > keystar-support.json
 ```
 
 | Symptom                                               | Fix                                                                                               |

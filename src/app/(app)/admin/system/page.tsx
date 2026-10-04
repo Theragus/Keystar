@@ -44,8 +44,8 @@ export async function generateMetadata() {
 
 type I18n = Awaited<ReturnType<typeof getI18n>>;
 
-/** The CLI fallback for when the web app doesn't start (see docker/entrypoint.sh). */
-const CLI_COMMAND = "docker compose run --rm -T worker node dist/support.mjs > keystar-support.json";
+/** The CLI fallback for when the web app doesn't start; `--no-deps` because the worker service waits for a healthy app. */
+const CLI_COMMAND = "docker compose run --rm --no-deps -T worker node dist/support.mjs > keystar-support.json";
 const LOGS_COMMAND = "docker compose logs --since 1h app worker > keystar-logs.txt";
 
 const statusTone = { ok: "good", warn: "warning", fail: "critical", skip: "neutral" } as const;
