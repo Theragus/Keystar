@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { bucketEnd, bucketStart, startOfIsoWeek } from "@/lib/dates";
 import {
   classifyPurchase,
+  classifySale,
   EXPENSE_CATEGORIES,
   expenseStatus,
   purchaseCategorySqlCase,
+  saleCategorySqlCase,
   type ExpenseCategory,
 } from "@/modules/mining/pnl/categories";
 import { parsePnlFilters, pnlQueryString } from "@/modules/mining/pnl/filters";
-import type { ActivityStats, ExpenseRow, IncomeRow } from "@/modules/mining/pnl/queries";
+import type { ActivityStats, ExpenseRow, IncomeRow, SaleRow } from "@/modules/mining/pnl/queries";
 import { allocateByShare, buildPnlReport } from "@/modules/mining/pnl/report";
 import { pnlScope } from "@/modules/mining/pnl/scope";
 
@@ -74,6 +76,38 @@ describe("purchase auto-tagging", () => {
     expect(s(null, "other", true, false)).toEqual({ category: "other", included: true, status: "counted" });
     expect(s("crystals", "ships", null, false)).toEqual({ category: "ships", included: false, status: "suggested" });
     expect(EXPENSE_CATEGORIES).toContain("subscription");
+  });
+});
+
+describe("sale auto-tagging", () => {
+  it("tags ore, its compressed variants and refined products by group", () => {
+    expect(classifySale(462, 25)).toBe("ore"); // (Compressed) Veldspar
+    expect(classifySale(18, 4)).toBe("ore"); // Mineral
+    expect(classifySale(1884, 25)).toBe("moon"); // (Compressed) Ubiquitous moon ore
+    expect(classifySale(427, 4)).toBe("moon"); // Moon Materials
+    expect(classifySale(465, 25)).toBe("ice"); // (Compressed) Ice: asteroid category, but ice
+    expect(classifySale(903, 25)).toBe("ice");
+    expect(classifySale(423, 4)).toBe("ice"); // Ice Product
+    expect(classifySale(711, 2)).toBe("gas");
+    expect(classifySale(4168, 2)).toBe("gas"); // Compressed Gas
+    expect(classifySale(543, 6)).toBeNull(); // an Exhumer
+    expect(classifySale(null, null)).toBeNull();
+  });
+
+  it("has an SQL twin checking groups before the Asteroid category", () => {
+    const sqlCase = saleCategorySqlCase("t.group_id", "g.category_id");
+    for (const [groupId, categoryId] of [
+      [18, 4],
+      [1923, 25],
+      [427, 4],
+      [465, 25],
+      [423, 4],
+      [4168, 2],
+    ] as const) {
+      expect(sqlCase).toContain(`WHEN t.group_id = ${groupId} THEN '${classifySale(groupId, categoryId)}'`);
+    }
+    expect(sqlCase.indexOf("t.group_id = 465")).toBeLessThan(sqlCase.indexOf("g.category_id = 25"));
+    expect(sqlCase.endsWith("WHEN g.category_id = 25 THEN 'ore' ELSE NULL END")).toBe(true);
   });
 });
 
@@ -208,6 +242,53 @@ describe("P&L report", () => {
       { category: "crystals", amount: 400 },
       { category: "subscription", amount: 100 },
     ]);
+  });
+
+  it("counts wallet sales as income when the income comes from sales", () => {
+    const sale = (date: string, characterId: number, category: SaleRow["category"], amount: number, status: SaleRow["status"] = "counted"): SaleRow => ({
+      date,
+      characterId,
+      category,
+      status,
+      amount,
+      count: 1,
+    });
+    const input = {
+      ...base,
+      income: [income("2026-09-28", 1, "ore", 1000, 10), income("2026-09-28", 2, "ice", 1000, 30)],
+      sales: [sale("2026-10-02", 1, "ore", 900), sale("2026-10-02", 2, "moon", 300, "suggested"), sale("2026-10-05", 2, null, 50)],
+      expenses: [expense("2026-09-29", 1, 100)],
+      activity: {
+        total: { hours: 2, value: 1000 },
+        byCharacter: new Map([[1, { hours: 2, value: 1000 }]]),
+        byActivity: new Map([["ore" as const, { hours: 2, value: 1000 }]]),
+        trackedSince: null,
+      },
+    };
+
+    const mined = buildPnlReport(input);
+    expect(mined.incomeSource).toBe("mined");
+    expect(mined.totals).toMatchObject({ income: 2000, minedIncome: 2000, salesIncome: 950 });
+
+    const r = buildPnlReport({ ...input, incomeSource: "sales" });
+    expect(r.totals).toMatchObject({ income: 950, minedIncome: 2000, salesIncome: 950, expenses: 100, net: 850, volume: 40 });
+    expect(r.sales.suggested).toEqual({ amount: 300, count: 1 });
+    // Sales land on the day of the sale, by income category (untagged-but-counted as "other").
+    expect(r.buckets.map((b) => b.income)).toEqual([0, 900, 50]);
+    expect(r.buckets[1].incomeByClass.ore).toBe(900);
+    expect(r.buckets[2].incomeByClass.other).toBe(50);
+    expect(r.characters.map((c) => [c.characterId, c.income, c.volume])).toEqual([
+      [1, 900, 10],
+      [2, 50, 30],
+    ]);
+    expect(r.activities.map((a) => [a.activity, a.income])).toEqual([
+      ["ore", 900],
+      ["ice", 0],
+      ["other", 50],
+    ]);
+    // Activity still values the mined ore: half of the mined income was measured.
+    expect(r.activity.measuredShare).toBe(0.5);
+    expect(r.iskPerHour.gross).toBe(500);
   });
 
   it("returns nulls rather than dividing by zero", () => {

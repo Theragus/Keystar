@@ -992,6 +992,53 @@ describe.skipIf(!enabled)("integration", async () => {
       ]);
     });
 
+    it("classifies sales like purchases and counts them as income when switched to sales", async () => {
+      const sell = { isBuy: false };
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 11, 62516, sell), // compressed Veldspar, Bravo: auto-count off -> suggested
+        tx(3, 12, 34, sell), // Tritanium, Bravo Alt: auto-count on -> counted
+        tx(3, 13, 45490, { ...sell, quantity: 2 }), // Zeolites, counted
+        tx(2, 14, 18066, sell), // a mining crystal resold: untagged
+        tx(2, 15, 1230, { ...sell, clientId: 3 }), // to your own alt: not income
+        tx(2, 16, 1230), // a purchase is never income
+        { ...tx(2, 17, 1230, sell), userId: userA }, // imported by another account
+      ]);
+      await db().insert(schema.miningPnlCharacters).values({ userId: userB, characterId: 3, autoIncludeSales: true });
+      await db().insert(schema.miningPnlTxOverrides).values({ userId: userB, characterId: 3, transactionId: 13, category: "other" });
+      const status = async (s: "counted" | "suggested" | "excluded" | "untagged") =>
+        (await pnl.getSales(scopeB(), { status: s, limit: 50, offset: 0 })).rows.map((r) => [r.transactionId, r.category]);
+      expect(await status("suggested")).toEqual([[11, "ore"]]);
+      expect((await status("counted")).sort()).toEqual([
+        [12, "ore"],
+        [13, "other"],
+      ]);
+      expect(await status("untagged")).toEqual([[14, null]]);
+      expect((await pnl.getPurchases(scopeB(), { status: "untagged", limit: 50, offset: 0 })).rows.map((r) => r.transactionId)).toEqual([16]);
+
+      const report = buildPnlReport({
+        ...range,
+        bucket: "month",
+        incomeSource: "sales",
+        income: await pnl.getIncomeRows(scopeB()),
+        sales: await pnl.getSaleRows(scopeB()),
+        expenses: [],
+        manual: [],
+        activity: await pnl.getActivityStats(scopeB()),
+        characters: [
+          { characterId: 2, name: "Bravo" },
+          { characterId: 3, name: "Bravo Alt" },
+        ],
+      });
+      expect(report.totals.income).toBe(12_000);
+      expect(report.totals.minedIncome).toBe(await income(scopeB()));
+      expect(report.sales.suggested).toEqual({ amount: 10_000, count: 1 });
+      expect(report.characters.find((c) => c.characterId === 3)?.income).toBe(12_000);
+
+      expect(await pnl.getPnlSettings(userB)).toEqual({ ratePct: 100, incomeSource: "mined" });
+      await db().insert(schema.miningPnlSettings).values({ userId: userB, incomeSource: "sales" });
+      expect((await pnl.getPnlSettings(userB)).incomeSource).toBe("sales");
+    });
+
     it("spreads manual entries over their days; account-wide ones only without a character filter", async () => {
       await db().insert(schema.miningPnlEntries).values([
         { userId: userB, characterId: 3, date: "2026-08-17", spreadDays: 30, category: "subscription", amount: 3000 },

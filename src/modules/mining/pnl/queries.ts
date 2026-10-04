@@ -5,9 +5,17 @@ import { addDays, utcDayBounds } from "@/lib/dates";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
 import type { ChartClass } from "../class-colors";
 import { ledgerCte, ORE_CLASS_SQL } from "../queries";
-import { isExpenseCategory, purchaseCategorySqlCase, type ExpenseCategory, type ExpenseStatus } from "./categories";
+import {
+  isExpenseCategory,
+  isIncomeCategory,
+  purchaseCategorySqlCase,
+  saleCategorySqlCase,
+  type ExpenseCategory,
+  type ExpenseStatus,
+  type IncomeCategory,
+} from "./categories";
 import { pnlLedgerFilters, type StatusFilter } from "./filters";
-import type { PnlScope } from "./scope";
+import { isIncomeSource, type IncomeSource, type PnlScope } from "./scope";
 
 /**
  * Data access for the personal mining P&L. Every query is limited to the
@@ -163,21 +171,31 @@ function internalTrade(s: PnlScope): SQL {
   return own.length ? sql`AND w.client_id NOT IN (${list(own)})` : sql``;
 }
 
-/** Wallet purchases with their effective category, inclusion and status (mirrors expenseStatus()). */
-function purchasesCte(s: PnlScope): SQL {
+export type WalletSide = "buy" | "sell";
+
+const SALE_CATEGORY_SQL = sql.raw(saleCategorySqlCase("t.group_id", "g.category_id"));
+
+/**
+ * Wallet purchases (`buy`) or sales (`sell`) with their effective category, inclusion and status (mirrors
+ * expenseStatus()). Purchases are tagged as mining costs, sales as mining income; each side has its own
+ * per-character "count automatically" switch.
+ */
+function walletTxCte(s: PnlScope, side: WalletSide): SQL {
   const { start, end } = utcDayBounds(s.from, s.to);
+  const buy = side === "buy";
   return sql`purchases AS (
     SELECT w.character_id, w.transaction_id, w.date, w.type_id, w.quantity, w.unit_price,
            (w.quantity * w.unit_price)::float8 AS amount, t.name AS type_name, t.group_id,
-           ${PURCHASE_CATEGORY_SQL} AS auto_category,
+           ${buy ? PURCHASE_CATEGORY_SQL : SALE_CATEGORY_SQL} AS auto_category,
            o.category AS o_category, o.included AS o_included,
-           COALESCE(pc.auto_include_expenses, false) AS auto_include
+           COALESCE(${buy ? sql`pc.auto_include_expenses` : sql`pc.auto_include_sales`}, false) AS auto_include
     FROM wallet_transactions w
     LEFT JOIN eve_types t ON t.type_id = w.type_id
+    LEFT JOIN eve_groups g ON g.group_id = t.group_id
     LEFT JOIN mining_pnl_tx_overrides o
       ON o.user_id = w.user_id AND o.character_id = w.character_id AND o.transaction_id = w.transaction_id
     LEFT JOIN mining_pnl_characters pc ON pc.user_id = w.user_id AND pc.character_id = w.character_id
-    WHERE w.user_id = ${s.userId}::uuid AND w.character_id IN (${list(s.characterIds)}) AND w.is_buy
+    WHERE w.user_id = ${s.userId}::uuid AND w.character_id IN (${list(s.characterIds)}) AND w.is_buy = ${buy}
       AND w.date >= ${start}::timestamptz AND w.date < ${end}::timestamptz
       ${internalTrade(s)}
   ),
@@ -193,36 +211,51 @@ function purchasesCte(s: PnlScope): SQL {
   )`;
 }
 
-export interface ExpenseRow {
+interface WalletRow<C> {
   date: string;
   characterId: number;
-  category: ExpenseCategory | null;
+  category: C | null;
   status: ExpenseStatus;
   amount: number;
   count: number;
 }
 
-/** Wallet purchases per day, character, category and status. */
-export async function getExpenseRows(s: PnlScope): Promise<ExpenseRow[]> {
+export type ExpenseRow = WalletRow<ExpenseCategory>;
+export type SaleRow = WalletRow<IncomeCategory>;
+
+async function walletRows(s: PnlScope, side: WalletSide): Promise<Record<string, unknown>[]> {
   if (!s.characterIds.length) return [];
-  const rows = await getDb().execute<Record<string, unknown>>(sql`
-    WITH ${purchasesCte(s)}
+  return getDb().execute<Record<string, unknown>>(sql`
+    WITH ${walletTxCte(s, side)}
     SELECT to_char((c.date AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') AS date, c.character_id, c.category, c.status,
            SUM(c.amount)::float8 AS amount, COUNT(*)::int AS count
     FROM classified c
     GROUP BY 1, 2, 3, 4
     ORDER BY 1`);
-  return rows.map((r) => ({
+}
+
+function walletRow<C>(r: Record<string, unknown>, isCategory: (v: unknown) => v is C): WalletRow<C> {
+  return {
     date: String(r.date),
     characterId: num(r.character_id),
-    category: isExpenseCategory(r.category) ? r.category : null,
+    category: isCategory(r.category) ? r.category : null,
     status: String(r.status) as ExpenseStatus,
     amount: num(r.amount),
     count: num(r.count),
-  }));
+  };
 }
 
-export interface PurchaseRow {
+/** Wallet purchases per day, character, category and status. */
+export async function getExpenseRows(s: PnlScope): Promise<ExpenseRow[]> {
+  return (await walletRows(s, "buy")).map((r) => walletRow(r, isExpenseCategory));
+}
+
+/** Wallet sales per day, character, income category and status. */
+export async function getSaleRows(s: PnlScope): Promise<SaleRow[]> {
+  return (await walletRows(s, "sell")).map((r) => walletRow(r, isIncomeCategory));
+}
+
+interface WalletTx<C> {
   characterId: number;
   characterName: string | null;
   transactionId: number;
@@ -233,24 +266,28 @@ export interface PurchaseRow {
   quantity: number;
   unitPrice: number;
   amount: number;
-  autoCategory: ExpenseCategory | null;
-  category: ExpenseCategory | null;
+  autoCategory: C | null;
+  category: C | null;
   status: ExpenseStatus;
   /** Your include/exclude decision (null = automatic). */
   overrideIncluded: boolean | null;
 }
 
-/** One page of wallet purchases for review, newest first. */
-export async function getPurchases(
+export type PurchaseRow = WalletTx<ExpenseCategory>;
+export type SaleTxRow = WalletTx<IncomeCategory>;
+
+async function walletTransactionsPage<C>(
   s: PnlScope,
+  side: WalletSide,
+  isCategory: (v: unknown) => v is C,
   opts: { status: StatusFilter; limit: number; offset: number },
-): Promise<{ rows: PurchaseRow[]; total: number }> {
+): Promise<{ rows: WalletTx<C>[]; total: number }> {
   if (!s.characterIds.length) return { rows: [], total: 0 };
   const where = opts.status === "mining" ? sql`c.status <> 'untagged'` : sql`c.status = ${opts.status}`;
   const db = getDb();
   const [rows, count] = await Promise.all([
     db.execute<Record<string, unknown>>(sql`
-      WITH ${purchasesCte(s)}
+      WITH ${walletTxCte(s, side)}
       SELECT c.*, ch.name AS character_name, g.name AS group_name,
              to_char(c.date AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date_iso
       FROM classified c
@@ -260,7 +297,7 @@ export async function getPurchases(
       ORDER BY c.date DESC, c.transaction_id DESC
       LIMIT ${opts.limit} OFFSET ${opts.offset}`),
     db.execute<Record<string, unknown>>(sql`
-      WITH ${purchasesCte(s)}
+      WITH ${walletTxCte(s, side)}
       SELECT COUNT(*)::int AS n FROM classified c WHERE ${where}`),
   ]);
   return {
@@ -276,12 +313,28 @@ export async function getPurchases(
       quantity: num(r.quantity),
       unitPrice: num(r.unit_price),
       amount: num(r.amount),
-      autoCategory: isExpenseCategory(r.auto_category) ? r.auto_category : null,
-      category: isExpenseCategory(r.category) ? r.category : null,
+      autoCategory: isCategory(r.auto_category) ? r.auto_category : null,
+      category: isCategory(r.category) ? r.category : null,
       status: String(r.status) as ExpenseStatus,
       overrideIncluded: r.o_included === null || r.o_included === undefined ? null : Boolean(r.o_included),
     })),
   };
+}
+
+/** One page of wallet purchases for review, newest first. */
+export function getPurchases(
+  s: PnlScope,
+  opts: { status: StatusFilter; limit: number; offset: number },
+): Promise<{ rows: PurchaseRow[]; total: number }> {
+  return walletTransactionsPage(s, "buy", isExpenseCategory, opts);
+}
+
+/** One page of wallet sales for review, newest first. */
+export function getSales(
+  s: PnlScope,
+  opts: { status: StatusFilter; limit: number; offset: number },
+): Promise<{ rows: SaleTxRow[]; total: number }> {
+  return walletTransactionsPage(s, "sell", isIncomeCategory, opts);
 }
 
 export interface ManualDailyRow {
@@ -449,10 +502,11 @@ export async function getMinedTypes(characterIds: number[], since: string): Prom
   return rows.map((r) => ({ id: num(r.type_id), name: String(r.name) }));
 }
 
-export async function getPnlSettings(userId: string): Promise<{ ratePct: number }> {
+export async function getPnlSettings(userId: string): Promise<{ ratePct: number; incomeSource: IncomeSource }> {
   const rows = await getDb().execute<Record<string, unknown>>(sql`
-    SELECT income_rate_pct FROM mining_pnl_settings WHERE user_id = ${userId}::uuid`);
-  return { ratePct: rows[0] ? num(rows[0].income_rate_pct) : 100 };
+    SELECT income_rate_pct, income_source FROM mining_pnl_settings WHERE user_id = ${userId}::uuid`);
+  const source = rows[0]?.income_source;
+  return { ratePct: rows[0] ? num(rows[0].income_rate_pct) : 100, incomeSource: isIncomeSource(source) ? source : "mined" };
 }
 
 export interface WalletCharacterStatus {
@@ -465,6 +519,8 @@ export interface WalletCharacterStatus {
   grantedScopes: string[];
   tokenStatus: "active" | "invalid" | null;
   autoInclude: boolean;
+  /** Count tagged sales as income without reviewing them. */
+  autoIncludeSales: boolean;
   jobEnabled: boolean;
   lastSuccessAt: Date | null;
   lastStatus: string | null;
@@ -476,12 +532,12 @@ export interface WalletCharacterStatus {
   activityLastObservedAt: Date | null;
 }
 
-
 /** Wallet import and activity tracking state of each of the account's characters. */
 export async function getWalletStatus(userId: string): Promise<WalletCharacterStatus[]> {
   const rows = await getDb().execute<Record<string, unknown>>(sql`
     SELECT c.character_id, c.name, t.scopes, t.disabled_scopes, t.status AS token_status,
            COALESCE(pc.auto_include_expenses, false) AS auto_include,
+           COALESCE(pc.auto_include_sales, false) AS auto_include_sales,
            j.enabled AS job_enabled, j.last_success_at, j.last_status, j.last_error,
            w.n AS transactions, w.first_at, w.last_at,
            cov.since AS activity_since, cov.last_observed_at
@@ -510,6 +566,7 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
       grantedScopes: scopes,
       tokenStatus: r.token_status === "active" || r.token_status === "invalid" ? r.token_status : null,
       autoInclude: Boolean(r.auto_include),
+      autoIncludeSales: Boolean(r.auto_include_sales),
       jobEnabled: Boolean(r.job_enabled),
       lastSuccessAt: toDate(r.last_success_at),
       lastStatus: str(r.last_status),

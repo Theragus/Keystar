@@ -85,6 +85,13 @@
       "when": 1791072409956,
       "tag": "0011_remove-intel-rescan",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791109546890,
+      "tag": "0012_pnl_sales_income",
+      "breakpoints": true
     }
   ]
 }
