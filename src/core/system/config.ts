@@ -31,6 +31,10 @@ const CONFIG: { name: string; kind: ConfigKind; optional?: boolean }[] = [
   { name: "LOG_LEVEL", kind: "value" },
   { name: "DB_POOL_SIZE", kind: "value", optional: true },
   { name: "SKIP_MIGRATIONS", kind: "value", optional: true },
+  // Proxy URLs can hold credentials and an internal host: only whether they are set.
+  { name: "HTTPS_PROXY", kind: "private", optional: true },
+  { name: "HTTP_PROXY", kind: "private", optional: true },
+  { name: "NO_PROXY", kind: "private", optional: true },
 ];
 
 const DEFAULT_ENDPOINTS: Record<string, string> = {
