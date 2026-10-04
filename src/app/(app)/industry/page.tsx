@@ -13,7 +13,7 @@ import { IndustryFilterBar } from "@/modules/industry/components/filter-bar";
 import { JobsTable } from "@/modules/industry/components/jobs-table";
 import { industryQueryString, parseIndustryFilters } from "@/modules/industry/filters";
 import { INDUSTRY_MANAGE_HREF, INDUSTRY_PERMISSIONS } from "@/modules/industry/module";
-import { getIndustryCoverage, getIndustryFilterOptions, getIndustryJobs, getIndustrySummary } from "@/modules/industry/queries";
+import { enabledCharacterIds, getIndustryCoverage, getIndustryFilterOptions, getIndustryJobs, getIndustrySummary } from "@/modules/industry/queries";
 
 const PAGE_SIZE = 50;
 
@@ -27,14 +27,15 @@ export default async function IndustryPage({ searchParams }: PageProps<"/industr
   const { t, f } = await getI18n();
   const m = t.industry;
   const filters = parseIndustryFilters(await searchParams);
-  const scope = { ownCharacterIds: user.characterIds };
+  // Only characters with industry access on are read; the coverage panel still counts the others.
+  const scope = { ownCharacterIds: await enabledCharacterIds(user.characterIds) };
   const now = new Date();
 
   const [{ jobs, total }, summary, options, coverage] = await Promise.all([
     getIndustryJobs(filters, scope, { limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
     getIndustrySummary(filters, scope, now),
     getIndustryFilterOptions(scope, m.filters),
-    getIndustryCoverage(scope),
+    getIndustryCoverage(user.characterIds),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageLink = (page: number) => `?${industryQueryString(filters, { page })}`;
@@ -95,7 +96,7 @@ export default async function IndustryPage({ searchParams }: PageProps<"/industr
                 <StatTile icon={Coins} label={m.stats.cost} value={f.compact(summary.cost)} unit="ISK" hint={m.stats.costHint} />
               </div>
 
-              {!hasAnyJobs && coverage.tracked === 0 ? (
+              {coverage.tracked === 0 ? (
                 <Glass>
                   <EmptyState
                     icon={Factory}

@@ -68,7 +68,7 @@ export default async function IndustrySettingsPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  {anyGranted || a.switchedOff ? (
+                  {a.granted || partial || a.switchedOff ? (
                     // In Keystar only: the token keeps the scopes until the character is re-authorised.
                     <ActionForm
                       action={setIndustryAccess.bind(null, a.characterId, !anyGranted)}
@@ -96,7 +96,8 @@ export default async function IndustrySettingsPage() {
                       <Factory className="size-3.5" aria-hidden /> {m.enable}
                     </ButtonLink>
                   )}
-                  {anyGranted && a.tokenStatus === "invalid" && !demo && (
+                  {/* A revoked token, or one holding only one of the scopes, needs the EVE login to get both. */}
+                  {anyGranted && (a.tokenStatus === "invalid" || partial) && !demo && (
                     <ButtonLink href={enable} size="sm" variant="primary">
                       <KeyRound className="size-3.5" aria-hidden /> {m.reauthorize}
                     </ButtonLink>

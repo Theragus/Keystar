@@ -10,8 +10,21 @@ import { INDUSTRY_JOBS_SCOPE, INDUSTRY_SCOPES, STRUCTURES_SCOPE } from "./module
  */
 
 export interface IndustryScope {
-  /** The viewer's characters, whatever their corporation. */
+  /**
+   * The viewer's characters that currently share their industry jobs (active token holding the jobs scope). A
+   * character that switched access off keeps its stored jobs until they are deleted on the access page, but the
+   * page no longer shows them, like a skill queue that is no longer shared.
+   */
   ownCharacterIds: number[];
+}
+
+/** Of the viewer's characters, those with industry access on: the only ones the jobs page reads. */
+export async function enabledCharacterIds(characterIds: number[]): Promise<number[]> {
+  if (!characterIds.length) return [];
+  const rows = await getDb().execute<{ character_id: unknown }>(sql`
+    SELECT character_id FROM esi_tokens
+    WHERE character_id IN (${list(characterIds)}) AND status = 'active' AND scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}]::text[]`);
+  return rows.map((r) => num(r.character_id));
 }
 
 const num = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
@@ -179,7 +192,7 @@ export interface IndustryFilterOptions {
   locations: { id: number; name: string; systemName: string | null }[];
 }
 
-/** What the pickers offer: the viewer's characters, and the activities, systems and locations their jobs use. */
+/** What the pickers offer: the characters in scope, and the activities, systems and locations their jobs use. */
 export async function getIndustryFilterOptions(scope: IndustryScope, t: { unknownLocation: (id: number) => string }): Promise<IndustryFilterOptions> {
   if (!scope.ownCharacterIds.length) return { characters: [], activities: [], systems: [], locations: [] };
   const db = getDb();
@@ -219,8 +232,9 @@ export interface IndustryCoverage {
   lastSync: Date | null;
 }
 
-export async function getIndustryCoverage(scope: IndustryScope): Promise<IndustryCoverage> {
-  if (!scope.ownCharacterIds.length) return { tracked: 0, notEnabled: 0, invalidTokens: 0, lastSync: null };
+/** Over all of the viewer's characters, not only those in scope. */
+export async function getIndustryCoverage(characterIds: number[]): Promise<IndustryCoverage> {
+  if (!characterIds.length) return { tracked: 0, notEnabled: 0, invalidTokens: 0, lastSync: null };
   const [row] = await getDb().execute<Record<string, unknown>>(sql`
     SELECT count(*) FILTER (WHERE t.status = 'active' AND t.scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}]::text[]) AS tracked,
            count(*) FILTER (WHERE t.status = 'active' AND NOT (t.scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}]::text[])) AS not_enabled,
@@ -229,7 +243,7 @@ export async function getIndustryCoverage(scope: IndustryScope): Promise<Industr
     FROM characters c
     LEFT JOIN esi_tokens t ON t.character_id = c.character_id
     LEFT JOIN sync_jobs j ON j.job_key = 'industry.character-jobs' AND j.owner_type = 'character' AND j.owner_id = c.character_id
-    WHERE c.character_id IN (${list(scope.ownCharacterIds)})`);
+    WHERE c.character_id IN (${list(characterIds)})`);
   return {
     tracked: num(row?.tracked),
     notEnabled: num(row?.not_enabled),
