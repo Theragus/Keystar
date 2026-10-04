@@ -39,6 +39,20 @@ export const admin = {
       "Keystar roles control what each account can see and change. They are independent of in-game corporation roles.",
     awaitingApproval: (count: number) => `Awaiting approval (${n(count)})`,
     awaitingApprovalHint: "Signed in from outside the home corporation or before auto-approval",
+    outsideGuests: {
+      title: (count: number) => `Guests outside the corporation (${n(count)})`,
+      hint: "Sign-ups are now limited to members, but these accounts registered before. Disabling signs them out and can be undone per account; approved accounts are not affected.",
+      disable: "Disable these accounts",
+      confirm: (count: number) =>
+        `Disable ${n(count)} guest ${count === 1 ? "account" : "accounts"} from outside the corporation? They are signed out immediately.`,
+      done: "Outside guest accounts disabled",
+      failed: "Couldn't disable the accounts",
+      errors: {
+        forbidden: "You no longer have permission to manage users.",
+        notRestricted: "Sign-ups are no longer restricted to members, so nothing was changed.",
+        unknown: "Something went wrong. Reload the page and try again.",
+      },
+    },
     unknown: "Unknown",
     registered: (when: string) => `registered ${when}`,
     approve: "Approve as member",
@@ -284,6 +298,12 @@ export const admin = {
       autoCorpHint: (member: string, guest: string) => `They start as ${member}; everyone else starts as ${guest}.`,
       autoAlliance: "Auto-approve alliance members",
       autoAllianceHint: "Characters in the home corporation's alliance.",
+      restrict: "Only members can sign up",
+      restrictHint:
+        "Characters outside the home corporation (or its alliance, if auto-approved above) get no account at all instead of waiting as guests. Turn this off while recruiting through the join link. Existing accounts stay as they are.",
+      outsideGuests: (count: number) =>
+        `${n(count)} ${count === 1 ? "guest account is" : "guest accounts are"} from outside the corporation.`,
+      reviewOutsideGuests: "Review in Users",
       ssoConfigured: "Configured",
       ssoNotConfigured: "Not configured — set EVE_CLIENT_ID and EVE_CLIENT_SECRET.",
       callbackUrl: (url: ReactNode) => <>Callback URL for developers.eveonline.com: {url}</>,

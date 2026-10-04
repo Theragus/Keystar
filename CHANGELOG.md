@@ -33,6 +33,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - The sidebar footer of an unreleased image (`:main`) shows its tag and commit next to the version, e.g.
   `Keystar v0.12.0 · main @ c7bfb85`, on an amber warning badge whose tooltip notes that the build may be unstable,
   and links to that commit instead of the releases page.
+- **Only members can sign up.** A new switch under Settings → Access stops Keystar from creating accounts for
+  characters outside the home corporation (or its alliance, when alliance members are auto-approved). They see a
+  message on the login page instead of waiting as guests, and each refused attempt is in the audit log. Existing
+  accounts and linked alts are unaffected; guests who registered from outside before can be disabled in one go on
+  the Users page.
 
 ### Changed
 

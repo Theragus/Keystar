@@ -21,12 +21,12 @@ import { optionalScopes } from "@/core/modules/registry";
 import type { Role } from "@/core/rbac/roles";
 import { getSettings, setSetting } from "@/core/settings";
 import { lockUsers } from "./manage-users";
-import { policyRole, reconcileRole } from "./policy";
+import { mayRegister, policyRole, reconcileRole } from "./policy";
 import type { TokenResponse, VerifiedCharacter } from "./sso";
 
 export type SsoIntent = "login" | "join" | "link" | "link-corp";
 
-export type ProvisionErrorCode = "signInFirst" | "linkedElsewhere" | "disabled";
+export type ProvisionErrorCode = "signInFirst" | "linkedElsewhere" | "disabled" | "notMember";
 
 export class ProvisionError extends Error {
   constructor(
@@ -118,11 +118,37 @@ export async function provisionFromSso(params: {
   await ensureNames([verified.characterId, corporationId, ...(allianceId ? [allianceId] : [])]);
 
   const db = getDb();
-  const result = await db.transaction(async (tx) => {
+  const transaction = db.transaction(async (tx) => {
     // Serialise sign-ins so two simultaneous first logins can't both become admin;
     // the user count below is read after the lock, so it sees the other commit.
     await lockUsers(tx);
     const [existing] = await tx.select().from(characters).where(eq(characters.characterId, verified.characterId));
+    const owned = existing && existing.ownerHash === verified.ownerHash ? existing : undefined;
+
+    // Only the very first account is bootstrapped as admin. Counting admins instead would hand admin to the
+    // next sign-in, whoever that is, if the last admin were ever demoted.
+    const [anyUser] = await tx.select({ id: users.id }).from(users).limit(1);
+    const homeCorp = homeCorporationId
+      ? (await tx.select().from(eveCorporations).where(eq(eveCorporations.corporationId, homeCorporationId)))[0]
+      : undefined;
+    const policyInput = {
+      characterId: verified.characterId,
+      corporationId,
+      allianceId,
+      adminCharacterIds: env().ADMIN_CHARACTER_IDS,
+      hasUsers: Boolean(anyUser),
+      homeCorporationId,
+      homeAllianceId: homeCorp?.allianceId ?? null,
+      autoApproveCorpMembers: settings["access.autoApproveCorpMembers"],
+      autoApproveAllianceMembers: settings["access.autoApproveAllianceMembers"],
+    };
+    const policy = policyRole(policyInput);
+
+    // Checked before the account, character or token is touched, so a refused sign-in creates none of them. The
+    // corporation and name lookups above only fill shared caches (and give us the home alliance to check against).
+    if (!linking && !owned && !mayRegister(policyInput, settings["access.restrictToMembers"])) {
+      throw new ProvisionError("notMember", `${verified.name} is not a member of this corporation.`);
+    }
 
     if (existing && existing.ownerHash !== verified.ownerHash) {
       // The character was sold/transferred: the old account loses it entirely.
@@ -137,25 +163,6 @@ export async function provisionFromSso(params: {
         details: { previousUserId: existing.userId, name: verified.name, previousAccountRetired: retired },
       });
     }
-    const owned = existing && existing.ownerHash === verified.ownerHash ? existing : undefined;
-
-    // Only the very first account is bootstrapped as admin. Counting admins instead would hand admin to the
-    // next sign-in, whoever that is, if the last admin were ever demoted.
-    const [anyUser] = await tx.select({ id: users.id }).from(users).limit(1);
-    const homeCorp = homeCorporationId
-      ? (await tx.select().from(eveCorporations).where(eq(eveCorporations.corporationId, homeCorporationId)))[0]
-      : undefined;
-    const policy = policyRole({
-      characterId: verified.characterId,
-      corporationId,
-      allianceId,
-      adminCharacterIds: env().ADMIN_CHARACTER_IDS,
-      hasUsers: Boolean(anyUser),
-      homeCorporationId,
-      homeAllianceId: homeCorp?.allianceId ?? null,
-      autoApproveCorpMembers: settings["access.autoApproveCorpMembers"],
-      autoApproveAllianceMembers: settings["access.autoApproveAllianceMembers"],
-    });
 
     let userId: string;
     let createdUser = false;
@@ -258,6 +265,19 @@ export async function provisionFromSso(params: {
       lostOptionalScopes,
       addedOptionalScopes,
     };
+  });
+  const result = await transaction.catch(async (err: unknown) => {
+    // The refusal rolled the transaction back; record who tried so admins can see it.
+    if (err instanceof ProvisionError && err.code === "notMember") {
+      await audit({
+        actorName: verified.name,
+        action: "user.registration.blocked",
+        targetType: "character",
+        targetId: verified.characterId,
+        details: { intent, corporationId, allianceId },
+      });
+    }
+    throw err;
   });
 
   // The first admin's corporation becomes the home corporation if none is configured.
