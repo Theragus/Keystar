@@ -53,7 +53,7 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 
 - ✅ **Industry jobs** of your own characters: manufacturing, ME/TE research, copying, invention and reactions with
   progress, time left and end time; filters for state, character, activity, system and station; stations and
-  docking-accessible structures named
+  docking-accessible structures named; opt-in per character on the Industry access page
 - 💡 Corporation industry jobs (`esi-industry.read_corporation_jobs.v1`, Factory Manager) for directors
 - 💡 Job cost and output value, profit per job from Jita prices
 - 💡 Live alert when a job is ready to deliver

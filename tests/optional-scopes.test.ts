@@ -26,9 +26,9 @@ function params(href: string) {
 
 describe("optional scopes", () => {
   it("keeps opt-in scopes out of the member and corporation sets", () => {
-    expect(optionalScopes()).toEqual([FLEET_SCOPE, MAIL_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, WALLET_SCOPE]);
-    expect(characterScopes()).toEqual([INDUSTRY_JOBS_SCOPE, MINING, STRUCTURES_SCOPE]);
-    for (const scope of [WALLET_SCOPE, MAIL_SCOPE, FLEET_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE]) {
+    expect(optionalScopes()).toEqual([FLEET_SCOPE, INDUSTRY_JOBS_SCOPE, MAIL_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, STRUCTURES_SCOPE, WALLET_SCOPE]);
+    expect(characterScopes()).toEqual([MINING]);
+    for (const scope of [WALLET_SCOPE, MAIL_SCOPE, FLEET_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, INDUSTRY_JOBS_SCOPE, STRUCTURES_SCOPE]) {
       expect(characterScopes()).not.toContain(scope);
       expect(corporationScopes()).not.toContain(scope);
       expect(memberScopeRequirements().some((s) => s.scope === scope)).toBe(false);
@@ -81,7 +81,7 @@ describe("optional scopes", () => {
     const on = params(reauthorizeHref([MINING], { add: [FLEET_SCOPE], returnTo: "/fleet" }));
     expect(on.get("intent")).toBe("link");
     expect(on.get("with")).toBe(FLEET_SCOPE);
-    expect(scopesForIntent("link", [FLEET_SCOPE])).toEqual([FLEET_SCOPE, INDUSTRY_JOBS_SCOPE, MINING, STRUCTURES_SCOPE]);
+    expect(scopesForIntent("link", [FLEET_SCOPE])).toEqual([FLEET_SCOPE, MINING]);
     const off = params(reauthorizeHref([MINING, FLEET_SCOPE, MAIL_SCOPE], { remove: [FLEET_SCOPE] }));
     expect(off.get("with")).toBe(MAIL_SCOPE);
     expect(off.get("drop")).toBe(FLEET_SCOPE);

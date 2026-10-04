@@ -4,7 +4,7 @@
  *   TEST_DATABASE_URL=postgres://keystar:keystar@localhost:5432/keystar_test pnpm test
  */
 import { sql } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const enabled = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -19,6 +19,8 @@ describe.skipIf(!enabled)("integration", async () => {
   const db = () => getDb();
   const filters = (extra: Record<string, string> = {}) =>
     parseMiningFilters({ from: "2026-09-01", to: "2026-09-30", ...extra }, "2026-10-02");
+  const { parseIndustryFilters } = await import("@/modules/industry/filters");
+  const industry_filters = () => parseIndustryFilters({ state: "all" });
   const corp = { corp: true, ownCharacterIds: [] as number[], homeCorporationId: 100 };
   const own = (ids: number[]) => ({ corp: false, ownCharacterIds: ids, homeCorporationId: 100 });
   const val = { source: "jita_buy" as const, mode: "current" as const };
@@ -42,7 +44,8 @@ describe.skipIf(!enabled)("integration", async () => {
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
       mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
       corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists,
-      corporation_members, skills_queue, skills_character_skills, skills_character, skills_type_attributes
+      corporation_members, skills_queue, skills_character_skills, skills_character, skills_type_attributes,
+      industry_jobs, industry_locations
       RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
@@ -2238,6 +2241,166 @@ describe.skipIf(!enabled)("integration", async () => {
       await disableOptionalScope(2, SKILLS_SCOPE);
       await db().update(schema.esiTokens).set({ status: "invalid" }).where(sql`character_id = 2`);
       expect((await skills.getSkillsAccess(userB))[0]).toMatchObject({ granted: false, switchedOff: false });
+    });
+  });
+
+  describe("industry access", async () => {
+    const { INDUSTRY_JOBS_SCOPE, INDUSTRY_SCOPES, STRUCTURES_SCOPE } = await import("@/modules/industry/module");
+    const industry = await import("@/modules/industry/queries");
+    const job = (jobId: number, characterId: number) => ({
+      jobId,
+      characterId,
+      installerId: characterId,
+      locationId: 60003760,
+      facilityId: 60003760,
+      activityId: 1,
+      activity: "manufacturing" as const,
+      blueprintId: 1,
+      blueprintTypeId: 787,
+      blueprintLocationId: 60003760,
+      outputLocationId: 60003760,
+      runs: 1,
+      duration: 3600,
+      status: "active" as const,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 3600_000),
+    });
+    // Who the server actions run as; null makes the permission check fail.
+    let actor: { id: string; characterIds: number[] } | null = null;
+
+    beforeEach(async () => {
+      await db().insert(schema.esiTokens).values([
+        { characterId: 1, refreshTokenEnc: "x", scopes: [...INDUSTRY_SCOPES] },
+        { characterId: 2, refreshTokenEnc: "x", scopes: [...INDUSTRY_SCOPES] },
+        { characterId: 3, refreshTokenEnc: "x", scopes: [] },
+      ]);
+      await db().insert(schema.industryJobs).values([job(1, 1), job(2, 2)]);
+      vi.doMock("@/core/auth/dal", () => ({
+        assertPermission: async () => {
+          if (!actor) throw new Error("forbidden");
+          return actor;
+        },
+      }));
+      vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+      vi.doMock("server-only", () => ({}));
+    });
+    afterEach(() => {
+      vi.doUnmock("@/core/auth/dal");
+      vi.doUnmock("next/cache");
+      vi.doUnmock("server-only");
+    });
+    const scopesOf = async (characterId: number) =>
+      (await db().select({ scopes: schema.esiTokens.scopes }).from(schema.esiTokens).where(sql`character_id = ${characterId}`))[0].scopes.sort();
+
+    it("switches both scopes off and on together, in Keystar only", async () => {
+      const { setIndustryAccess } = await import("@/app/(app)/industry/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      expect(await industry.enabledCharacterIds([2, 3])).toEqual([2]);
+
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([]);
+      expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ characterId: 2, granted: false, switchedOff: true, hasData: true });
+      // The stored jobs stay, but the page no longer reads the character.
+      expect(await industry.enabledCharacterIds([2, 3])).toEqual([]);
+      expect(await industry.getIndustryCoverage([2, 3])).toMatchObject({ tracked: 0, notEnabled: 2 });
+      expect((await industry.getIndustryJobs(industry_filters(), { ownCharacterIds: [] }, { limit: 10, offset: 0 })).total).toBe(0);
+
+      expect(await setIndustryAccess(2, true)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([...INDUSTRY_SCOPES].sort());
+      expect(await industry.enabledCharacterIds([2, 3])).toEqual([2]);
+      expect(await industry.getIndustryCoverage([2, 3])).toMatchObject({ tracked: 1, notEnabled: 1 });
+
+      // A token that never held the scopes needs the EVE login.
+      expect(await setIndustryAccess(3, true)).toEqual({ ok: false, error: "notHeld" });
+    });
+
+    it("refuses a token holding only one scope rather than enabling half", async () => {
+      const { setIndustryAccess } = await import("@/app/(app)/industry/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      await db().update(schema.esiTokens).set({ scopes: [INDUSTRY_JOBS_SCOPE] }).where(sql`character_id = 2`);
+      expect(await setIndustryAccess(2, true)).toEqual({ ok: false, error: "notHeld" });
+      expect(await scopesOf(2)).toEqual([INDUSTRY_JOBS_SCOPE]);
+      // Partly enabled counts as not enabled everywhere, so the pages agree.
+      expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ granted: false, switchedOff: false });
+      expect(await industry.enabledCharacterIds([2])).toEqual([]);
+      expect(await industry.getIndustryCoverage([2])).toMatchObject({ tracked: 0, notEnabled: 1 });
+      // Switching off a partly enabled character works and clears what it still holds.
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([]);
+      expect(STRUCTURES_SCOPE).toBeTruthy();
+    });
+
+    it("checks the permission and the owner, also against the database", async () => {
+      const { deleteIndustryData, setIndustryAccess } = await import("@/app/(app)/industry/actions");
+      actor = null;
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: false, error: "forbidden" });
+      expect(await deleteIndustryData(2)).toEqual({ ok: false, error: "forbidden" });
+      actor = { id: userB, characterIds: [3] };
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: false, error: "notOwned" });
+      expect(await deleteIndustryData(2)).toEqual({ ok: false, error: "notOwned" });
+      // The session's character list is stale: character 1 belongs to Alpha, not Bravo.
+      actor = { id: userB, characterIds: [1] };
+      expect(await setIndustryAccess(1, false)).toEqual({ ok: false, error: "notOwned" });
+      expect(await deleteIndustryData(1)).toEqual({ ok: false, error: "notOwned" });
+      expect(await scopesOf(1)).toEqual([...INDUSTRY_SCOPES].sort());
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId).sort()).toEqual([1, 2]);
+    });
+
+    it("skips a sync's write once access is off, so deleted jobs stay deleted", async () => {
+      const { characterIndustryJobsJob } = await import("@/modules/industry/jobs");
+      let requests = 0;
+      let offAfterFetch = false;
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        maxRetries: 0,
+        fetchImpl: (async (url: string) => {
+          const path = new URL(String(url)).pathname;
+          const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+          if (/\/industry\/jobs$/.test(path)) {
+            requests++;
+            // Simulates access being switched off while the ESI request is in flight.
+            if (offAfterFetch) await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+            return reply([{ job_id: 900, installer_id: 2, facility_id: 60003760, station_id: 60003760, activity_id: 1, blueprint_id: 5,
+              blueprint_type_id: 787, blueprint_location_id: 60003760, output_location_id: 60003760, runs: 2, cost: 10, duration: 3600,
+              status: "active", start_date: new Date().toISOString(), end_date: new Date(Date.now() + 3600_000).toISOString() }]);
+          }
+          if (/\/universe\/stations\//.test(path)) return reply({ name: "Station", system_id: 30000180, type_id: 1529 });
+          if (/\/universe\/types\//.test(path)) return reply({ type_id: 787, name: "Blueprint", group_id: 462, published: true });
+          return reply([]);
+        }) as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 2, characterId: 2, esi, db: db(), log: undefined as never, meta: {} };
+      // With access on, the run stores the job.
+      expect((await characterIndustryJobsJob.run(ctx))?.summary).toContain("1 running job");
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId).sort()).toEqual([1, 2, 900]);
+
+      // Access off and data deleted: a run claimed before the planner disables the schedule reads nothing from ESI.
+      await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+      await db().delete(schema.industryJobs).where(sql`character_id = 2`);
+      await db().delete(schema.esiCache);
+      const before = requests;
+      expect((await characterIndustryJobsJob.run(ctx))?.summary).toBe("Industry access is switched off");
+      expect(requests).toBe(before);
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+
+      // A run whose ESI request already happened when access went off must not bring the jobs back either.
+      await db().update(schema.esiTokens).set({ scopes: [...INDUSTRY_SCOPES] }).where(sql`character_id = 2`);
+      offAfterFetch = true;
+      expect((await characterIndustryJobsJob.run(ctx))?.summary).toContain("switched industry access off");
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+    });
+
+    it("deletes stored jobs only once access is off", async () => {
+      const { deleteIndustryData, setIndustryAccess } = await import("@/app/(app)/industry/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      expect(await deleteIndustryData(2)).toEqual({ ok: false, error: "stillEnabled" });
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: true });
+      expect(await deleteIndustryData(2)).toEqual({ ok: true });
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+      expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ characterId: 2, hasData: false });
     });
   });
 

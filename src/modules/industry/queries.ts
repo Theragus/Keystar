@@ -2,7 +2,10 @@ import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/core/db";
 import { ENDING_SOON_MS, statusesOf, type IndustryActivity, type JobStatus } from "./activities";
 import type { IndustryFilters } from "./filters";
-import { INDUSTRY_JOBS_SCOPE } from "./module";
+import { INDUSTRY_JOBS_SCOPE, INDUSTRY_SCOPES, STRUCTURES_SCOPE } from "./module";
+
+/** "The token holds both industry scopes", for `esi_tokens` aliased as `t`. */
+const HOLDS_SCOPES = sql`t.scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}, ${STRUCTURES_SCOPE}]::text[]`;
 
 /**
  * Queries for the industry jobs page. Everything is scoped to the viewer's own characters: there is no
@@ -10,8 +13,21 @@ import { INDUSTRY_JOBS_SCOPE } from "./module";
  */
 
 export interface IndustryScope {
-  /** The viewer's characters, whatever their corporation. */
+  /**
+   * The viewer's characters that currently share their industry jobs (active token holding both scopes). A
+   * character that switched access off keeps its stored jobs until they are deleted on the access page, but the
+   * page no longer shows them, like a skill queue that is no longer shared.
+   */
   ownCharacterIds: number[];
+}
+
+/** Of the viewer's characters, those with industry access on: the only ones the jobs page reads. */
+export async function enabledCharacterIds(characterIds: number[]): Promise<number[]> {
+  if (!characterIds.length) return [];
+  const rows = await getDb().execute<{ character_id: unknown }>(sql`
+    SELECT t.character_id FROM esi_tokens t
+    WHERE t.character_id IN (${list(characterIds)}) AND t.status = 'active' AND ${HOLDS_SCOPES}`);
+  return rows.map((r) => num(r.character_id));
 }
 
 const num = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
@@ -179,7 +195,7 @@ export interface IndustryFilterOptions {
   locations: { id: number; name: string; systemName: string | null }[];
 }
 
-/** What the pickers offer: the viewer's characters, and the activities, systems and locations their jobs use. */
+/** What the pickers offer: the characters in scope, and the activities, systems and locations their jobs use. */
 export async function getIndustryFilterOptions(scope: IndustryScope, t: { unknownLocation: (id: number) => string }): Promise<IndustryFilterOptions> {
   if (!scope.ownCharacterIds.length) return { characters: [], activities: [], systems: [], locations: [] };
   const db = getDb();
@@ -211,29 +227,82 @@ export async function getIndustryFilterOptions(scope: IndustryScope, t: { unknow
 }
 
 export interface IndustryCoverage {
-  /** Own characters whose token holds the industry scope and works. */
+  /** Own characters whose token holds both industry scopes and works. */
   tracked: number;
-  /** Own characters whose token lacks the scope (need re-authorising on My Characters). */
-  missingScope: number;
+  /** Own characters with a working token without (full) industry access: the access page turns it on. */
+  notEnabled: number;
   invalidTokens: number;
   lastSync: Date | null;
 }
 
-export async function getIndustryCoverage(scope: IndustryScope): Promise<IndustryCoverage> {
-  if (!scope.ownCharacterIds.length) return { tracked: 0, missingScope: 0, invalidTokens: 0, lastSync: null };
+/** Over all of the viewer's characters, not only those in scope. */
+export async function getIndustryCoverage(characterIds: number[]): Promise<IndustryCoverage> {
+  if (!characterIds.length) return { tracked: 0, notEnabled: 0, invalidTokens: 0, lastSync: null };
   const [row] = await getDb().execute<Record<string, unknown>>(sql`
-    SELECT count(*) FILTER (WHERE t.status = 'active' AND t.scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}]::text[]) AS tracked,
-           count(*) FILTER (WHERE t.status = 'active' AND NOT (t.scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}]::text[])) AS missing_scope,
+    SELECT count(*) FILTER (WHERE t.status = 'active' AND ${HOLDS_SCOPES}) AS tracked,
+           count(*) FILTER (WHERE t.status = 'active' AND NOT (${HOLDS_SCOPES})) AS not_enabled,
            count(*) FILTER (WHERE t.status = 'invalid') AS invalid_tokens,
            max(j.last_success_at) AS last_sync
     FROM characters c
     LEFT JOIN esi_tokens t ON t.character_id = c.character_id
     LEFT JOIN sync_jobs j ON j.job_key = 'industry.character-jobs' AND j.owner_type = 'character' AND j.owner_id = c.character_id
-    WHERE c.character_id IN (${list(scope.ownCharacterIds)})`);
+    WHERE c.character_id IN (${list(characterIds)})`);
   return {
     tracked: num(row?.tracked),
-    missingScope: num(row?.missing_scope),
+    notEnabled: num(row?.not_enabled),
     invalidTokens: num(row?.invalid_tokens),
     lastSync: toDate(row?.last_sync),
   };
+}
+
+export interface IndustryAccessStatus {
+  characterId: number;
+  name: string;
+  grantedScopes: string[];
+  /** Both industry scopes are granted. */
+  granted: boolean;
+  /** Switched off in Keystar while the active token still holds both scopes: can be switched back on without a login. */
+  switchedOff: boolean;
+  tokenStatus: "active" | "invalid" | null;
+  lastSuccessAt: Date | null;
+  lastStatus: string | null;
+  lastError: string | null;
+  /** Jobs are stored for this character. */
+  hasData: boolean;
+}
+
+/** The viewer's characters with their industry access, for the access page. */
+export async function getIndustryAccess(userId: string): Promise<IndustryAccessStatus[]> {
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    SELECT c.character_id, c.name, t.scopes, t.disabled_scopes, t.status AS token_status,
+           j.last_success_at, j.last_status, j.last_error,
+           EXISTS (SELECT 1 FROM industry_jobs ij WHERE ij.character_id = c.character_id) AS has_data
+    FROM characters c
+    JOIN users u ON u.id = c.user_id
+    LEFT JOIN esi_tokens t ON t.character_id = c.character_id
+    LEFT JOIN sync_jobs j ON j.job_key = 'industry.character-jobs' AND j.owner_type = 'character' AND j.owner_id = c.character_id
+    WHERE c.user_id = ${userId}::uuid
+    ORDER BY c.character_id IS NOT DISTINCT FROM u.main_character_id DESC, c.name`);
+  return rows.map((r) => {
+    const scopes = Array.isArray(r.scopes) ? (r.scopes as string[]) : [];
+    const disabled = Array.isArray(r.disabled_scopes) ? (r.disabled_scopes as string[]) : [];
+    const granted = scopes.includes(INDUSTRY_JOBS_SCOPE) && scopes.includes(STRUCTURES_SCOPE);
+    return {
+      characterId: num(r.character_id),
+      name: String(r.name),
+      grantedScopes: scopes,
+      granted,
+      // A revoked token can't be switched back on in Keystar; it needs the EVE login.
+      switchedOff:
+        !granted &&
+        r.token_status === "active" &&
+        INDUSTRY_SCOPES.every((s) => scopes.includes(s) || disabled.includes(s)) &&
+        INDUSTRY_SCOPES.some((s) => disabled.includes(s)),
+      tokenStatus: r.token_status === "active" || r.token_status === "invalid" ? r.token_status : null,
+      lastSuccessAt: toDate(r.last_success_at),
+      lastStatus: str(r.last_status),
+      lastError: str(r.last_error),
+      hasData: Boolean(r.has_data),
+    };
+  });
 }

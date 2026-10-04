@@ -7,8 +7,10 @@ const plural = (count: number, one: string, many: string) => `${n(count)} ${coun
 export const industry: typeof en = {
   module: {
     scopes: {
-      jobs: "Liest deine Industriejobs (Produktion, Forschung, Kopieren, Erfindung, Reaktionen) und wann sie fertig sind.",
-      structures: "Benennt die Spielerstrukturen, in denen deine Industriejobs laufen.",
+      jobs: "Liest deine Industriejobs (Produktion, Forschung, Kopieren, Erfindung, Reaktionen) und wann sie fertig sind (optional).",
+      structures: "Benennt die Spielerstrukturen, in denen deine Industriejobs laufen (optional).",
+      jobsLabel: "Zugriff auf Industriejobs",
+      structuresLabel: "Zugriff auf Strukturnamen",
     },
     jobs: {
       characterJobs: "Industriejobs",
@@ -29,6 +31,7 @@ export const industry: typeof en = {
   page: {
     description: "Was deine Charaktere bauen, erforschen, kopieren und erfinden – und wann jeder Job fertig ist.",
     synced: (when: string) => `Aktualisiert ${when}`,
+    settings: "Zugriff",
   },
 
   states: {
@@ -122,8 +125,8 @@ export const industry: typeof en = {
     title: "Abdeckung",
     subtitle: "Welche deiner Charaktere ihre Jobs melden",
     tracked: "Erfasste Charaktere",
-    missingScope: "Ohne Industrie-Scope",
-    missingScopeHint: "Autorisiere diese Charaktere unter Meine Charaktere neu, um ihre Jobs zu sehen.",
+    notEnabled: "Industrie-Zugriff aus",
+    notEnabledHint: "Schalte den Industrie-Zugriff für diese Charaktere auf der Zugriffsseite ein, um ihre Jobs zu sehen.",
     invalidTokens: "Widerrufene ESI-Token",
     lastSync: "Letzte Aktualisierung",
     note: "ESI führt einen Job als laufend, bis der Installierende das Industriefenster öffnet; Keystar zeigt einen Job, dessen Endzeit vorbei ist, als bereit zur Auslieferung.",
@@ -135,10 +138,51 @@ export const industry: typeof en = {
       body: "Verknüpfe einen Charakter unter Meine Charaktere; seine Industriejobs erscheinen hier nach der ersten Aktualisierung.",
       action: "Meine Charaktere",
     },
+    notEnabled: {
+      title: "Industrie-Zugriff ist aus",
+      body: "Wähle auf der Zugriffsseite, welche deiner Charaktere ihre Industriejobs mit Keystar teilen. Jobs erscheinen wenige Minuten nach dem Einschalten.",
+      action: "Industrie-Zugriff einschalten",
+    },
     noJobs: {
       title: "Noch keine Industriejobs",
       body: "Keiner deiner Charaktere hat einen Industriejob im Datenbestand. Jobs erscheinen wenige Minuten, nachdem sie im Spiel installiert wurden.",
     },
     filtered: "Kein Job passt zu den Filtern.",
+  },
+
+  settings: {
+    metaTitle: "Industrie-Zugriff",
+    description: "Lege für jeden Charakter fest, ob Keystar seine Industriejobs lesen und die Strukturen benennen darf, in denen sie laufen.",
+    title: "Industrie-Zugriff pro Charakter",
+    subtitle: "Das Einschalten autorisiert den Charakter bei EVE neu und fügt die beiden Industrie-Scopes hinzu.",
+    on: "Eingeschaltet",
+    off: "Aus",
+    revoked: "Token widerrufen",
+    partial: "Teilweise eingeschaltet",
+    enable: "Industrie-Zugriff einschalten",
+    stop: "Ausschalten",
+    reauthorize: "Neu autorisieren",
+    demo: "Im Demo-Modus nicht verfügbar",
+    lastSync: (when: string) => `Letzte Aktualisierung ${when}`,
+    firstSync: "Die erste Aktualisierung läuft in wenigen Minuten.",
+    nothing: "Nichts gespeichert.",
+    kept: "Industriejobs von früher sind noch gespeichert.",
+    deleteData: "Industriedaten löschen",
+    deleteDataHint: "Entfernt die gespeicherten Industriejobs dieses Charakters aus Keystar.",
+    accessLabel: "Industrie-Zugriff",
+    toast: {
+      deleted: (name: string) => `Gespeicherte Industriejobs von ${name} gelöscht`,
+      failed: (name: string) => `Die Industriejobs von ${name} konnten nicht gelöscht werden`,
+      errors: {
+        forbidden: "Du hast keinen Zugriff mehr auf Industriejobs in Keystar.",
+        notOwned: "Dieser Charakter ist nicht mehr mit deinem Konto verknüpft.",
+        stillEnabled: "Schalte zuerst den Industrie-Zugriff für diesen Charakter aus.",
+        unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+      },
+    },
+    notes: {
+      scopes: "Keystar liest die Industriejobs des Charakters alle fünf Minuten und benennt die Stationen und Strukturen, in denen sie laufen; Strukturen nur dort, wo der Charakter andocken darf. Nur du siehst die Jobs deiner Charaktere.",
+      stop: "Das Ausschalten beendet das Lesen in Keystar sofort; gespeicherte Jobs bleiben, bis du sie löschst. Autorisiere den Charakter unter Meine Charaktere neu, um die Scopes auch aus seinem EVE-Token zu entfernen.",
+    },
   },
 };

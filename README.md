@@ -53,7 +53,7 @@ long-term journal archive.
   manage roles below their own; admins can tune the minimum role of every permission.
 - **Industry jobs**: every job of your own characters (manufacturing, ME/TE research, copying, invention,
   reactions) with a progress bar, time left and end time, filterable by running/finished, character, activity, system
-  and station. Only you see your characters' jobs.
+  and station. Opt-in per character on the Industry access page; only you see your characters' jobs.
 - **Mining**
   - Personal ledgers *and* corporation moon-observer ledgers, de-duplicated in a combined view
   - Filters for date range, members, ore class, ore type, system and data source — all in the URL

@@ -21,9 +21,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   manufacturing, material and time efficiency research, copying, invention and reactions, each with a progress bar,
   the time left (counting down live) and the end time, and the station or structure it runs in with its system.
   Filter by running or finished jobs, character, activity, system and station; tiles count running jobs, jobs ready
-  to deliver and jobs ending within a day. Members see only their own characters; two new member scopes
-  (`esi-industry.read_character_jobs.v1`, `esi-universe.read_structures.v1`) must be added to the EVE application
-  and characters re-authorised (see `docs/deployment.md`). ([#105](https://github.com/Theragus/Keystar/issues/105))
+  to deliver and jobs ending within a day. Access is opt-in per character on the new Industry access page, like
+  skills and mail, so nobody is asked for the two new scopes (`esi-industry.read_character_jobs.v1`,
+  `esi-universe.read_structures.v1`) at sign-up; add them to the EVE application (see `docs/deployment.md`). Only you
+  see your characters' jobs. ([#105](https://github.com/Theragus/Keystar/issues/105))
 - **Skill queue timeline.** Each character's card shows the queue as one strip, like the training-time bar in
   game: every skill takes a slice proportional to the time it still needs, with day, week or month marks below.
   Pointing at a slice highlights its row in the queue table and the other way round.

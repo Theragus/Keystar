@@ -1,4 +1,4 @@
-import { AlarmClock, AlertTriangle, Coins, Factory, Info, PackageCheck, Users } from "lucide-react";
+import { AlarmClock, AlertTriangle, Coins, Factory, Info, PackageCheck, Settings2, Users } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { ButtonLink } from "@/components/ui/button";
@@ -12,8 +12,8 @@ import { INDUSTRY_ACTIVITIES } from "@/modules/industry/activities";
 import { IndustryFilterBar } from "@/modules/industry/components/filter-bar";
 import { JobsTable } from "@/modules/industry/components/jobs-table";
 import { industryQueryString, parseIndustryFilters } from "@/modules/industry/filters";
-import { INDUSTRY_PERMISSIONS } from "@/modules/industry/module";
-import { getIndustryCoverage, getIndustryFilterOptions, getIndustryJobs, getIndustrySummary } from "@/modules/industry/queries";
+import { INDUSTRY_MANAGE_HREF, INDUSTRY_PERMISSIONS } from "@/modules/industry/module";
+import { enabledCharacterIds, getIndustryCoverage, getIndustryFilterOptions, getIndustryJobs, getIndustrySummary } from "@/modules/industry/queries";
 
 const PAGE_SIZE = 50;
 
@@ -27,14 +27,15 @@ export default async function IndustryPage({ searchParams }: PageProps<"/industr
   const { t, f } = await getI18n();
   const m = t.industry;
   const filters = parseIndustryFilters(await searchParams);
-  const scope = { ownCharacterIds: user.characterIds };
+  // Only characters with industry access on are read; the coverage panel still counts the others.
+  const scope = { ownCharacterIds: await enabledCharacterIds(user.characterIds) };
   const now = new Date();
 
   const [{ jobs, total }, summary, options, coverage] = await Promise.all([
     getIndustryJobs(filters, scope, { limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
     getIndustrySummary(filters, scope, now),
     getIndustryFilterOptions(scope, m.filters),
-    getIndustryCoverage(scope),
+    getIndustryCoverage(user.characterIds),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageLink = (page: number) => `?${industryQueryString(filters, { page })}`;
@@ -48,7 +49,14 @@ export default async function IndustryPage({ searchParams }: PageProps<"/industr
           eyebrow={t.mining.module.navSection}
           title={m.module.nav.jobs}
           description={m.page.description}
-          actions={coverage.lastSync && <span className="text-xs text-ink-3">{m.page.synced(f.relativeTime(coverage.lastSync, now))}</span>}
+          actions={
+            <>
+              {coverage.lastSync && <span className="text-xs text-ink-3">{m.page.synced(f.relativeTime(coverage.lastSync, now))}</span>}
+              <ButtonLink href={INDUSTRY_MANAGE_HREF} size="sm">
+                <Settings2 className="size-3.5" aria-hidden /> {m.page.settings}
+              </ButtonLink>
+            </>
+          }
         />
 
         {user.characterIds.length === 0 ? (
@@ -88,7 +96,21 @@ export default async function IndustryPage({ searchParams }: PageProps<"/industr
                 <StatTile icon={Coins} label={m.stats.cost} value={f.compact(summary.cost)} unit="ISK" hint={m.stats.costHint} />
               </div>
 
-              {!hasAnyJobs ? (
+              {coverage.tracked === 0 ? (
+                <Glass>
+                  <EmptyState
+                    icon={Factory}
+                    title={m.empty.notEnabled.title}
+                    action={
+                      <ButtonLink href={INDUSTRY_MANAGE_HREF} variant="primary">
+                        {m.empty.notEnabled.action}
+                      </ButtonLink>
+                    }
+                  >
+                    {m.empty.notEnabled.body}
+                  </EmptyState>
+                </Glass>
+              ) : !hasAnyJobs ? (
                 <Glass>
                   <EmptyState icon={Factory} title={m.empty.noJobs.title}>
                     {m.empty.noJobs.body}
@@ -140,13 +162,13 @@ export default async function IndustryPage({ searchParams }: PageProps<"/industr
                       <span className="text-ink-2">{m.coverage.tracked}</span>
                       <span className="font-semibold tabular-nums">{f.integer(coverage.tracked)}</span>
                     </li>
-                    {coverage.missingScope > 0 && (
+                    {coverage.notEnabled > 0 && (
                       <li className="flex items-start justify-between gap-4">
-                        <span className="flex items-center gap-1.5 text-ink-2" title={m.coverage.missingScopeHint}>
-                          <AlertTriangle className="size-3.5 text-warning" aria-hidden /> {m.coverage.missingScope}
+                        <span className="flex items-center gap-1.5 text-ink-2" title={m.coverage.notEnabledHint}>
+                          <Info className="size-3.5 text-ink-3" aria-hidden /> {m.coverage.notEnabled}
                         </span>
-                        <Link href="/characters" className="font-semibold text-warning tabular-nums hover:underline">
-                          {f.integer(coverage.missingScope)}
+                        <Link href={INDUSTRY_MANAGE_HREF} className="font-semibold tabular-nums hover:text-accent">
+                          {f.integer(coverage.notEnabled)}
                         </Link>
                       </li>
                     )}

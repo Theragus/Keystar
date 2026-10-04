@@ -1,12 +1,12 @@
 import { eq, inArray, sql } from "drizzle-orm";
-import { characters, type Db } from "@/core/db";
+import { characters, esiTokens, type Db } from "@/core/db";
 import { EsiError, type EsiClient } from "@/core/esi/client";
 import { ensureNames, ensureSystems, ensureTypes } from "@/core/eve/resolver";
 import { createLogger } from "@/core/logger";
 import type { JobDefinition } from "@/core/sync/types";
 import { mapLimit } from "@/lib/concurrency";
 import { isStructureId, jobRows, type EsiIndustryJob } from "./activities";
-import { INDUSTRY_JOBS_SCOPE } from "./module";
+import { INDUSTRY_SCOPES } from "./module";
 import { industryJobs, industryLocations } from "./schema";
 
 const log = createLogger("industry");
@@ -83,14 +83,24 @@ export const characterIndustryJobsJob: JobDefinition = {
   label: (t) => t.industry.module.jobs.characterJobs,
   module: "industry",
   owner: "character",
-  requiredScopes: [INDUSTRY_JOBS_SCOPE],
+  // Both scopes: the access page turns them on together, and a token holding only one is not "enabled".
+  requiredScopes: [...INDUSTRY_SCOPES],
   // ESI caches the list for five minutes.
   intervalSeconds: 300,
   async run({ esi, db, characterId }) {
     const id = characterId!;
-    // Whose character this is at the start: a transfer to another account meanwhile must not get this snapshot.
-    const [owner] = await db.select({ userId: characters.userId }).from(characters).where(eq(characters.characterId, id));
+    // Whose character this is at the start (a transfer to another account meanwhile must not get this snapshot), and
+    // whether access is still on: switching it off promises to stop reading at once, and the planner only disables
+    // this schedule on its next pass.
+    const [owner] = await db
+      .select({ userId: characters.userId, status: esiTokens.status, scopes: esiTokens.scopes })
+      .from(characters)
+      .leftJoin(esiTokens, eq(esiTokens.characterId, characters.characterId))
+      .where(eq(characters.characterId, id));
     if (!owner) return { summary: "Character is no longer linked" };
+    if (owner.status !== "active" || !INDUSTRY_SCOPES.every((s) => owner.scopes?.includes(s))) {
+      return { summary: "Industry access is switched off" };
+    }
     const res = await esi.get<EsiIndustryJob[]>(`/characters/${id}/industry/jobs`, {
       characterId: id,
       query: { include_completed: true },
@@ -99,13 +109,18 @@ export const characterIndustryJobsJob: JobDefinition = {
     const rows = jobRows(id, res.data, now);
     if (!res.notModified) {
       const stillLinked = await db.transaction(async (tx) => {
-        // Unlinking or transferring the character meanwhile deletes its jobs; a write after that would hand the rows
-        // to the character's next owner. The share lock makes the unlink wait for this write, or this write see the
-        // unlink (or a relink to another account).
+        // Unlinking or transferring the character meanwhile deletes its jobs, and switching access off (then deleting
+        // the stored jobs) must stay deleted; a write after either would bring the rows back. The share locks make
+        // those actions wait for this write, or this write see the unlink, the relink to another account, or the
+        // switched-off token.
         const [current] = await tx.execute<{ user_id: string }>(
           sql`SELECT user_id FROM characters WHERE character_id = ${id} FOR SHARE`,
         );
         if (current?.user_id !== owner.userId) return false;
+        const [token] = await tx.execute<{ status: string; scopes: string[] }>(
+          sql`SELECT status, scopes FROM esi_tokens WHERE character_id = ${id} FOR SHARE`,
+        );
+        if (token?.status !== "active" || !INDUSTRY_SCOPES.every((s) => token.scopes.includes(s))) return false;
         for (let i = 0; i < rows.length; i += CHUNK) {
           await tx
             .insert(industryJobs)
@@ -131,7 +146,7 @@ export const characterIndustryJobsJob: JobDefinition = {
         }
         return true;
       });
-      if (!stillLinked) return { summary: "Character changed owner during the sync" };
+      if (!stillLinked) return { summary: "Character changed owner or switched industry access off during the sync" };
     }
     await ensureTypes([...rows.map((r) => r.blueprintTypeId), ...rows.flatMap((r) => (r.productTypeId ? [r.productTypeId] : []))]);
     await ensureNames(rows.flatMap((r) => [r.installerId, ...(r.completedCharacterId ? [r.completedCharacterId] : [])]));
