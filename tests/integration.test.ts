@@ -255,10 +255,10 @@ describe.skipIf(!enabled)("integration", async () => {
       await db().insert(schema.industryJobs).values([job(1, 1), job(2, 3)]);
 
       // Bravo keeps an alt: the account stays active and the alt becomes main.
-      const bravo = await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB, { keepAccount: false }));
+      const bravo = await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB));
       expect(bravo.retired).toBe(false);
       // Alpha loses their only character: disabled and signed out.
-      const alpha = await db().transaction((tx) => detachTransferredCharacter(tx, 1, userA, { keepAccount: false }));
+      const alpha = await db().transaction((tx) => detachTransferredCharacter(tx, 1, userA));
       expect(alpha.retired).toBe(true);
 
       const users = await db().select().from(schema.users);
@@ -270,14 +270,6 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(remaining.map((r) => r.userId)).toEqual([userB]);
       expect((await db().select().from(schema.characters)).map((c) => c.characterId)).toEqual([3]);
       expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([2]);
-    });
-
-    it("keeps the account when it links a transferred character back to itself", async () => {
-      const { detachTransferredCharacter } = await import("@/core/auth/provision");
-      const result = await db().transaction((tx) => detachTransferredCharacter(tx, 1, userA, { keepAccount: true }));
-      expect(result.retired).toBe(false);
-      const [a] = await db().select().from(schema.users).where(sql`id = ${userA}`);
-      expect(a.isDisabled).toBe(false);
     });
 
     it("only invalidates a token on invalid_grant", async () => {
@@ -1583,10 +1575,59 @@ describe.skipIf(!enabled)("integration", async () => {
         { userId: userB, characterId: 3, journalId: 61, included: true },
         { userId: userB, characterId: 2, journalId: 62, included: true },
       ]);
-      await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: false }));
+      await db().transaction((t) => detachTransferredCharacter(t, 3, userB));
       expect((await db().select().from(schema.walletTransactions)).map((r) => r.transactionId)).toEqual([52]);
       expect((await db().select().from(schema.walletFees)).map((r) => r.journalId)).toEqual([62]);
       expect((await db().select().from(schema.miningPnlFeeOverrides)).map((r) => r.journalId)).toEqual([62]);
+    });
+
+    it("keeps a character's history when its own account links it back from another EVE account", async () => {
+      const { encryptToken } = await import("@/core/crypto");
+      const { provisionFromSso } = await import("@/core/auth/provision");
+      await db().insert(schema.walletTransactions).values(tx(3, 51, 18066));
+      await db().insert(schema.walletFees).values({
+        userId: userB,
+        characterId: 3,
+        journalId: 61,
+        date: new Date("2026-09-10T12:00:00Z"),
+        refType: "brokers_fee",
+        amount: 5,
+      });
+      await db().insert(schema.mailLabels).values({ userId: userB, characterId: 3, labelId: 1, name: "Inbox" });
+      await db().insert(schema.esiTokens).values({ characterId: 3, refreshTokenEnc: encryptToken("r"), scopes: [WALLET_SCOPE] });
+      await db()
+        .insert(schema.syncJobs)
+        .values({ jobKey: "wallet.character-transactions", ownerType: "character", ownerId: 3, meta: { newestSeenId: 51 } });
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) =>
+          reply(path.startsWith("/corporations/") ? { name: "Home", ticker: "HOME", member_count: 3 } : { corporation_id: 100 }),
+        ) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      try {
+        // Bravo moved the alt to another of their EVE accounts (new owner hash) and links it to the same Keystar account.
+        const result = await provisionFromSso({
+          verified: { characterId: 3, name: "Bravo Alt", ownerHash: "h3-moved", scopes: [WALLET_SCOPE], expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent: "link",
+          currentUserId: userB,
+        });
+        expect(result).toMatchObject({ userId: userB, newCharacter: false, lostOptionalScopes: [] });
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
+      const [alt] = await db().select().from(schema.characters).where(sql`character_id = 3`);
+      expect(alt).toMatchObject({ userId: userB, ownerHash: "h3-moved" });
+      expect((await db().select().from(schema.walletTransactions)).map((r) => r.transactionId)).toEqual([51]);
+      expect((await db().select().from(schema.walletFees)).map((r) => r.journalId)).toEqual([61]);
+      expect(await db().select().from(schema.mailLabels)).toHaveLength(1);
+      const [cursor] = await db().select().from(schema.syncJobs).where(sql`owner_id = 3`);
+      expect(cursor.meta).toEqual({ newestSeenId: 51 });
+      const [b] = await db().select().from(schema.users).where(sql`id = ${userB}`);
+      expect(b).toMatchObject({ isDisabled: false, mainCharacterId: 2 });
     });
 
     it("reports opt-in scopes that a generic re-link dropped", async () => {
@@ -1844,7 +1885,7 @@ describe.skipIf(!enabled)("integration", async () => {
       const { detachTransferredCharacter } = await import("@/core/auth/provision");
       await run(2);
       await run(3);
-      await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: true }));
+      await db().transaction((t) => detachTransferredCharacter(t, 3, userB));
       const rows = await db().select().from(schema.mailMessages);
       expect(rows.every((r) => r.characterId === 2)).toBe(true);
       expect(await db().select().from(schema.mailLabels).where(sql`character_id = 3`)).toEqual([]);
