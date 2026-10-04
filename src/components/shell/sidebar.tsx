@@ -3,7 +3,7 @@ import { LogOut } from "lucide-react";
 import type { CurrentUser } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { navSections } from "@/core/modules/registry";
-import { KEYSTAR_VERSION } from "@/core/version";
+import { buildInfo, versionLabel } from "@/core/version";
 import { getI18n } from "@/i18n/server";
 import { Portrait } from "@/components/ui/eve-image";
 import { RoleBadge } from "@/components/ui/badge";
@@ -31,6 +31,8 @@ export function visibleNav(user: CurrentUser) {
 export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: string | null }) {
   const { sections, hasNested } = visibleNav(user);
   const { t } = await getI18n();
+  const build = buildInfo();
+  const version = versionLabel(build, env().SOURCE_URL);
   const pilotInfo = (
     <>
       <div className="truncate text-[0.82rem] font-medium">{user.main?.name ?? t.shell.unknownPilot}</div>
@@ -100,13 +102,13 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
             <ThemeSwitcher />
           </div>
           <a
-            href={`${env().SOURCE_URL}/releases`}
+            href={version.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-2 font-mono text-3xs whitespace-nowrap text-ink-3 hover:text-ink-2 group-data-[sidebar=collapsed]/shell:hidden"
-            title={t.shell.releaseNotes}
+            className="block truncate px-2 font-mono text-3xs whitespace-nowrap text-ink-3 hover:text-ink-2 group-data-[sidebar=collapsed]/shell:hidden"
+            title={version.prerelease ? t.shell.buildInfo(build.commit, build.buildDate) : t.shell.releaseNotes}
           >
-            Keystar v{KEYSTAR_VERSION}
+            {version.text}
           </a>
         </div>
         <div className="shrink-0 border-t border-surface-contrast/[0.07] p-3 group-data-[sidebar=collapsed]/shell:px-0">

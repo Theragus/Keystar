@@ -30,6 +30,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
   ([#102](https://github.com/Theragus/Keystar/issues/102))
 - Published images record their git commit, tag and build date, shown in System Info ([#102](https://github.com/Theragus/Keystar/issues/102)).
+- The sidebar footer of an unreleased image (`:main`) shows its tag and commit next to the version, e.g.
+  `Keystar v0.12.0 · main @ c7bfb85`, and links to that commit instead of the releases page.
 
 ### Changed
 
