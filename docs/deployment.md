@@ -291,6 +291,10 @@ data. If the web app doesn't start, create the package from the command line:
 docker compose run --rm --no-deps -T worker node dist/support.mjs > keystar-support.json
 ```
 
+The support package contains no pilot or corporation data. Logs do: `docker compose logs` output carries character
+and corporation IDs and can name pilots, corporations, systems and your server. Replace those before posting logs in
+a GitHub issue, since issues are public.
+
 | Symptom                                               | Fix                                                                                               |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | EVE login shows "Invalid callback URL"                | The callback in the EVE application must match `APP_URL` + `/auth/callback` exactly (https, no trailing slash). |

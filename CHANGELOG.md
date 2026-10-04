@@ -14,7 +14,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   - **Instance details**: the running version and build, the database with its largest tables, the worker and
     background jobs, and the configuration without secret values.
   - **Report an issue** walks through a bug report and opens it on GitHub with the version and a system summary
-    filled in.
+    filled in. Privacy warnings point out where logs or the public issue could expose pilot or corporation names,
+    IDs or the server's address.
 
   ([#102](https://github.com/Theragus/Keystar/issues/102))
 - **Support package** for bug reports:

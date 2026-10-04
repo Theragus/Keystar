@@ -314,6 +314,13 @@ export const admin = {
       recheck: "Run checks again",
       whatNext: "What to do next",
     },
+    /** Warnings wherever private data could leave the instance (logs, the public GitHub issue). */
+    privacy: {
+      label: "Privacy",
+      logs: "Logs contain character and corporation IDs and can contain pilot, corporation and system names or your server's address. Replace them before posting: GitHub issues are public.",
+      report: "GitHub issues are public. Don't put pilot or corporation names, IDs or your server's address in the description or attachments.",
+      package: "Error messages are scrubbed automatically, but a name that isn't in quotes can't always be recognised. Skim the preview before you share it.",
+    },
     checksTitle: "Health checks",
     checksSubtitle: "Automatic checks for the most common causes of problems.",
     status: { ok: "OK", warn: "Warning", fail: "Failed", skip: "Not checked" } satisfies Record<CheckStatus, string>,

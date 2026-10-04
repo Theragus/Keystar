@@ -302,6 +302,13 @@ export const admin: typeof en = {
       recheck: "Erneut prüfen",
       whatNext: "Was jetzt?",
     },
+    /** Warnings wherever private data could leave the instance (logs, the public GitHub issue). */
+    privacy: {
+      label: "Datenschutz",
+      logs: "Logs enthalten Charakter- und Corporation-IDs und können Namen von Piloten, Corporations und Systemen oder die Adresse deines Servers enthalten. Ersetze sie vor dem Posten: GitHub-Issues sind öffentlich.",
+      report: "GitHub-Issues sind öffentlich. Schreibe keine Namen oder IDs von Piloten oder Corporations und nicht die Adresse deines Servers in die Beschreibung oder Anhänge.",
+      package: "Fehlermeldungen werden automatisch bereinigt, aber ein Name ohne Anführungszeichen wird nicht immer erkannt. Sieh dir die Vorschau an, bevor du sie teilst.",
+    },
     checksTitle: "Systemprüfungen",
     checksSubtitle: "Automatische Prüfungen auf die häufigsten Ursachen von Problemen.",
     status: { ok: "OK", warn: "Warnung", fail: "Fehlgeschlagen", skip: "Nicht geprüft" } satisfies Record<CheckStatus, string>,

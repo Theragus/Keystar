@@ -1,6 +1,6 @@
 "use client";
 
-import { Bug, Check, CheckCircle2, Copy, Download, ExternalLink, FileJson, Package, RefreshCw, X } from "lucide-react";
+import { Bug, Check, CheckCircle2, Copy, Download, ExternalLink, FileJson, Package, RefreshCw, ShieldAlert, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useRef, useState, useTransition, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,19 @@ export function SystemDialogs({ data, children }: { data: SystemDialogData; chil
       <PackageDialog ref={packageRef} data={data} />
       <IssueDialog ref={issueRef} data={data} onDownload={() => packageRef.current?.showModal()} />
     </OpenContext.Provider>
+  );
+}
+
+/** A visible warning wherever private data (names, IDs, the server's address) could leave the instance. */
+export function PrivacyNote({ children, className }: { children: ReactNode; className?: string }) {
+  const { t } = useI18n();
+  return (
+    <p className={cn("flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-ink-2 ring-1 ring-warning/25 ring-inset", className)}>
+      <ShieldAlert className="mt-px size-3.5 shrink-0 text-warning" aria-hidden />
+      <span>
+        <span className="font-medium text-warning">{t.admin.system.privacy.label}:</span> {children}
+      </span>
+    </p>
   );
 }
 
@@ -224,6 +237,7 @@ function PackageDialog({ ref, data }: { ref: React.Ref<HTMLDialogElement>; data:
               ))}
             </ul>
           </section>
+          <PrivacyNote>{t.admin.system.privacy.package}</PrivacyNote>
           {removed.length > 0 && (
             <section>
               <h3 className="eve-label mb-2 text-2xs text-ink-3">{tp.removed}</h3>
@@ -362,6 +376,7 @@ function IssueDialog({
             <div className="font-medium">{ti.logs.title}</div>
             <p className="mt-0.5 mb-2 text-xs text-ink-3">{ti.logs.body}</p>
             <CopyField value={data.logsCommand} />
+            <PrivacyNote className="mt-2">{t.admin.system.privacy.logs}</PrivacyNote>
           </Step>
           <Step n={5}>
             <div className="font-medium">{ti.open.title}</div>
@@ -394,6 +409,7 @@ function IssueDialog({
             {copied ? <CheckCircle2 className="size-4 text-good-text" aria-hidden /> : <Copy className="size-4" aria-hidden />}
             {copied ? t.common.copy.copied : ti.copySummary}
           </Button>
+          <PrivacyNote>{t.admin.system.privacy.report}</PrivacyNote>
           <a href={data.bugReportUrl} target="_blank" rel="noopener noreferrer" className={buttonClass("primary")}>
             {ti.openGithub} <ExternalLink className="size-4" aria-hidden />
             <span className="sr-only">{t.common.opensInNewTab}</span>

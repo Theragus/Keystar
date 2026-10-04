@@ -35,7 +35,7 @@ import { bugReportUrl, issueSearchUrl, issueSummary } from "@/core/system/summar
 import { buildSupportPackage, supportPackageFilename } from "@/core/system/support-package";
 import { getI18n } from "@/i18n/server";
 import { isRecent } from "@/lib/format";
-import { CopySummaryButton, OpenDialogButton, RecheckButton, SystemDialogs } from "./system-dialogs";
+import { CopySummaryButton, OpenDialogButton, PrivacyNote, RecheckButton, SystemDialogs } from "./system-dialogs";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -392,6 +392,7 @@ export default async function SystemPage() {
               <div className="mt-2">
                 <CopyField value={LOGS_COMMAND} />
               </div>
+              <PrivacyNote className="mt-2">{ts.privacy.logs}</PrivacyNote>
             </HelpStep>
             <HelpStep
               n={5}
@@ -403,6 +404,7 @@ export default async function SystemPage() {
               }
             >
               {ts.help.report.body}
+              <PrivacyNote className="mt-2">{ts.privacy.report}</PrivacyNote>
             </HelpStep>
           </ol>
         </Panel>
