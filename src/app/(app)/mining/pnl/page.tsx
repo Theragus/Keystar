@@ -2,6 +2,7 @@ import { Box, Clock, Coins, Info, Pickaxe, ReceiptText, Scale, Wallet } from "lu
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { ButtonLink } from "@/components/ui/button";
+import { Portrait } from "@/components/ui/eve-image";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Glass, Panel } from "@/components/ui/glass";
 import { PendingFrame, PendingProvider } from "@/components/ui/pending";
@@ -220,8 +221,15 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                     <tbody>
                       {report.characters.map((c) => (
                         <tr key={c.characterId ?? "account"}>
-                          <td className={c.characterId === null ? "whitespace-nowrap text-ink-3" : "whitespace-nowrap text-ink"}>
-                            {c.characterId === null ? t.pnl.accountWide : (c.name ?? t.pnl.characterFallback(c.characterId))}
+                          <td>
+                            {c.characterId === null ? (
+                              <span className="whitespace-nowrap text-ink-3">{t.pnl.accountWide}</span>
+                            ) : (
+                              <span className="flex items-center gap-2.5 whitespace-nowrap text-ink">
+                                <Portrait id={c.characterId} size={24} />
+                                {c.name ?? t.pnl.characterFallback(c.characterId)}
+                              </span>
+                            )}
                           </td>
                           <td className="num">{c.income ? f.compact(c.income) : "—"}</td>
                           <td className="num text-ink-2">{c.volume ? f.compact(c.volume) : "—"}</td>

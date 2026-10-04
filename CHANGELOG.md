@@ -29,6 +29,29 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   ([#102](https://github.com/Theragus/Keystar/issues/102))
 - Published images record their git commit, tag and build date, shown in System Info ([#102](https://github.com/Theragus/Keystar/issues/102)).
 
+### Changed
+
+- **Ore field estimator**
+  - The ore table can be sorted by any column, including volume, ISK/m³, scanner and Keystar value and share;
+    grades stay under their ore and follow the same order.
+  - The unit price column is replaced by ISK/m³, the value that matters when choosing which rocks to mine.
+  - Fleet yield is entered in m³/s, as mining lasers show it, instead of m³/h.
+- **Mining P&L**: industrial cores, Mining Foreman Burst modules and drone mining augmentor rigs are auto-tagged as
+  "Ships & fittings" expenses, including purchases already imported.
+- **Live fleet**: the fleet structure is drawn as a tree, stepping in from fleet command to wings, squads and
+  pilots, with a pilot count on every wing and squad.
+
+### Removed
+
+- **Ore field estimator**: the max distance filter and the closest-distance note on each grade.
+
+### Fixed
+
+- The P&L overview's per-character table and the manual expenses list show character portraits, like the rest of
+  the mining pages.
+- `docker compose pull` fetches a newer Keystar image again when the tag (e.g. `main` or `latest`) is already
+  present on the server; it used to report "Image is already present locally" and keep the old image.
+
 ## [0.12.0] - 2026-10-04
 
 ### Added

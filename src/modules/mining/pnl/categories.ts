@@ -7,12 +7,33 @@ export const EXPENSE_CATEGORIES = ["crystals", "fuel", "bursts", "drones", "ship
 
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
-/** Types in generic groups (Venture is a "Frigate", Pioneer a "Destroyer"); checked before groups. */
+/**
+ * Types in generic groups (Venture is a "Frigate", Pioneer a "Destroyer"; industrial
+ * cores share "Siege Module" with dreadnought sieges, foreman bursts "Command Burst"
+ * with combat bursts, drone mining rigs "Rig Drones" with combat rigs); checked before groups.
+ */
 const TYPE_CATEGORIES: Record<number, ExpenseCategory> = {
   16272: "fuel", // Heavy Water
   32880: "ships", // Venture
   89240: "ships", // Pioneer
   89647: "ships", // Pioneer Consortium Issue
+  62590: "ships", // Medium Industrial Core I
+  62591: "ships", // Medium Industrial Core II
+  58945: "ships", // Large Industrial Core I
+  58950: "ships", // Large Industrial Core II
+  28583: "ships", // Capital Industrial Core I
+  42890: "ships", // Capital Industrial Core II
+  42528: "ships", // Mining Foreman Burst I
+  43551: "ships", // Mining Foreman Burst II
+  92456: "ships", // Presidential Mining Foreman Burst
+  32041: "ships", // Small Drone Mining Augmentor I
+  32045: "ships", // Small Drone Mining Augmentor II
+  32043: "ships", // Medium Drone Mining Augmentor I
+  32047: "ships", // Medium Drone Mining Augmentor II
+  25918: "ships", // Large Drone Mining Augmentor I
+  26328: "ships", // Large Drone Mining Augmentor II
+  33285: "ships", // Capital Drone Mining Augmentor I
+  33287: "ships", // Capital Drone Mining Augmentor II
 };
 
 const GROUP_CATEGORIES: Record<number, ExpenseCategory> = {

@@ -18,13 +18,21 @@ describe("purchase auto-tagging", () => {
     expect(classifyPurchase(11111, 663)).toBe("crystals");
     expect(classifyPurchase(16272, 423)).toBe("fuel");
     expect(classifyPurchase(16273, 423)).toBeNull(); // other ice products stay out
-    expect(classifyPurchase(43551, 1771)).toBe("bursts");
+    expect(classifyPurchase(42830, 1771)).toBe("bursts"); // Mining Laser Optimization Charge
     expect(classifyPurchase(10246, 101)).toBe("drones");
+    expect(classifyPurchase(62622, 4174)).toBe("ships"); // Medium Asteroid Ore Compressor I
     expect(classifyPurchase(22544, 543)).toBe("ships");
     expect(classifyPurchase(32880, 25)).toBe("ships"); // Venture, in the generic Frigate group
     expect(classifyPurchase(89240, 420)).toBe("ships"); // Pioneer, a Destroyer
     expect(classifyPurchase(587, 25)).toBeNull(); // Rifter
     expect(classifyPurchase(2488, 100)).toBeNull(); // combat drones
+    // Mining items in groups shared with combat gear go by type.
+    expect(classifyPurchase(58950, 515)).toBe("ships"); // Large Industrial Core II
+    expect(classifyPurchase(28583, 515)).toBe("ships"); // Capital Industrial Core I
+    expect(classifyPurchase(20280, 515)).toBeNull(); // Siege Module I
+    expect(classifyPurchase(43551, 1770)).toBe("ships"); // Mining Foreman Burst II
+    expect(classifyPurchase(42529, 1770)).toBeNull(); // Shield Command Burst I
+    expect(classifyPurchase(32047, 778)).toBe("ships"); // Medium Drone Mining Augmentor II
     expect(classifyPurchase(44992, 1875)).toBeNull(); // PLEX: tag it yourself
     expect(classifyPurchase(34, null)).toBeNull();
   });
@@ -34,8 +42,9 @@ describe("purchase auto-tagging", () => {
     for (const [typeId, groupId] of [
       [18066, 482],
       [16272, 423],
-      [43551, 1771],
+      [42830, 1771],
       [10246, 101],
+      [62590, 515],
       [22544, 543],
       [32880, 25],
       [89647, 420],

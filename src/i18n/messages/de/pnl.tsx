@@ -33,7 +33,7 @@ export const pnl: typeof en = {
     fuel: { label: "Treibstoff", hint: "Heavy Water für die Industriekerne von Orca / Rorqual" },
     bursts: { label: "Burst-Ladungen", hint: "Mining-Foreman-Burst-Ladungen" },
     drones: { label: "Mining-Drohnen", hint: "Mining-, Eis- und Excavator-Drohnen" },
-    ships: { label: "Schiffe & Fittings", hint: "Mining-Schiffe, Mining-Module, Rigs, Kompressoren" },
+    ships: { label: "Schiffe & Fittings", hint: "Mining-Schiffe, Mining-Module, Rigs, Kompressoren, Industriekerne" },
     subscription: { label: "PLEX / Omega", hint: "Spielzeit für Mining-Alts" },
     other: { label: "Sonstiges", hint: "Alles andere, was du als Mining-Kosten zählst" },
   },
