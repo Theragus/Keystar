@@ -212,7 +212,9 @@ snapshot, `collectSystemSnapshot()` in `src/core/system/collect.ts`. Each collec
 tokens, settings, clock, audit counts) is wrapped so that one failing collector never takes the page down. The web
 process can't see the worker's process, so the worker reports its runtime and ESI/zKillboard request counters in
 its heartbeat (`worker_heartbeats.info`); the clients count requests in `EsiClient.stats()` and
-`ZkillClient.stats()`.
+`ZkillClient.stats()`. The runtime (`runtime.ts`) includes load figures: the process's CPU share since its previous
+sample (so the worker's covers one heartbeat interval and the web app's the time since System Info was last
+loaded), its memory, the container's cgroup memory and the host's load average.
 
 - `network.ts` probes ESI, EVE SSO (`/oauth/jwks`) and zKillboard with one request each (5 s limit), through
   `EsiClient.ping()` and `ZkillClient.ping()` so the User-Agent, counters and request spacing apply. ESI or SSO

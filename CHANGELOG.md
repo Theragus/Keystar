@@ -6,6 +6,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
+  container's memory against its limit, free host memory and the host's load average.
+
 ## [0.13.0] - 2026-10-04
 
 ### Added
