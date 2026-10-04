@@ -307,36 +307,23 @@ async function includeAllSuggestedOf(side: WalletSide, formData: FormData) {
   revalidate();
 }
 
-async function addEntry(kind: "expense" | "income", formData: FormData) {
+export async function addManualEntry(formData: FormData) {
   const user = await pnlUser();
   const date = optionalDate(formData.get("date"), "Date");
   if (!date) throw new Error("Pick a date");
   const amount = parseAmount(formData.get("amount"));
   if (!(amount > 0 && amount < 1e15)) throw new Error("Enter an amount in ISK");
   const category = String(formData.get("category") ?? "");
-  if (!(kind === "expense" ? isExpenseCategory(category) : isIncomeCategory(category))) throw new Error("Pick a category");
+  if (!isExpenseCategory(category)) throw new Error("Pick a category");
   const spreadDays = Number(formData.get("spreadDays") ?? 1);
   if (!SPREAD_DAYS.includes(spreadDays)) throw new Error("Invalid spread");
   const rawChar = String(formData.get("characterId") ?? "");
   const characterId = rawChar ? ownCharacter(user, rawChar) : null;
   const description = String(formData.get("description") ?? "").trim().slice(0, 200);
-  await getDb()
-    .insert(miningPnlEntries)
-    .values({ userId: user.id, characterId, date, spreadDays, kind, category, description, amount });
+  await getDb().insert(miningPnlEntries).values({ userId: user.id, characterId, date, spreadDays, category, description, amount });
   revalidate();
 }
 
-/** A cost ESI can't see (PLEX/Omega, contracts …). */
-export async function addManualEntry(formData: FormData) {
-  await addEntry("expense", formData);
-}
-
-/** Income ESI can't see (ore sold by contract or to a buyback). */
-export async function addManualIncome(formData: FormData) {
-  await addEntry("income", formData);
-}
-
-/** Deletes a manual cost or income entry of the account. */
 export async function deleteManualEntry(entryId: number) {
   const user = await pnlUser();
   const id = positiveId(entryId, "entry");

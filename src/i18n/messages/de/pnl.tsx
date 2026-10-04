@@ -104,8 +104,7 @@ export const pnl: typeof en = {
         `${income} Einnahmen − ${expenses} Ausgaben${margin ? ` · ${margin} Marge` : ""}`,
       income: "Einnahmen",
       rate: (percent: string) => `${percent} der Bewertung`,
-      fromSales: (count: number, manual: string | null, mined: string) =>
-        `${plural(count, "Wallet-Verkauf", "Wallet-Verkäufe")}${manual ? ` + ${manual} manuell` : ""} · ${mined} abgebaut`,
+      fromSales: (count: number, mined: string) => `${plural(count, "Wallet-Verkauf", "Wallet-Verkäufe")} · ${mined} abgebaut`,
       salesSuggested: (count: number, amount: string) => `${n(count)} Verkäufe vorgeschlagen (${amount})`,
       rules: (count: number) => plural(count, "Preisregel", "Preisregeln"),
       expenses: "Ausgaben",
@@ -171,7 +170,7 @@ export const pnl: typeof en = {
       incomeSales: (mined: string) => (
         <>
           <b className="text-ink">Einnahmen</b> sind der Erlös der Wallet-Verkäufe, die du zählst (Erz, Mineralien,
-          Mondmaterialien, Eisprodukte und Gas), am Tag des Verkaufs, plus manuelle Einnahmen. Das in diesem Zeitraum abgebaute Erz ist zur
+          Mondmaterialien, Eisprodukte und Gas), am Tag des Verkaufs. Das in diesem Zeitraum abgebaute Erz ist zur
           Bewertung {mined} wert; ISK pro Stunde bewertet weiterhin das abgebaute Erz.
         </>
       ),
@@ -224,8 +223,11 @@ export const pnl: typeof en = {
       excludeHint: "Ausschließen: keine Mining-Einnahme",
       page: (page: number, pages: number, total: number) =>
         `Seite ${n(page)} von ${n(pages)} · ${plural(total, "Verkauf", "Verkäufe")}`,
-      footer:
-        "Hier erscheinen nur Marktverkäufe; per Vertrag oder an einen Buyback verkauftes Erz trägst du unten ein. Handel zwischen deinen eigenen Charakteren zählt nicht.",
+      footer: (back: ReactNode) => (
+        <>
+          Marktverkäufe aus deinen importierten Wallets. Handel zwischen deinen eigenen Charakteren zählt nicht. {back}
+        </>
+      ),
     },
     flows: {
       title: "Abgebaut vs. verkauft",
@@ -243,31 +245,7 @@ export const pnl: typeof en = {
       },
       compressed: (share: string) => `${share} komprimiert`,
       notes:
-        "Übrig unter null heißt, du hast Erz verkauft, das vor diesem Zeitraum abgebaut wurde. Ausgeschlossene Verkäufe und Handel zwischen deinen eigenen Charakteren zählen nicht; per Vertrag oder an einen Buyback verkauftes Erz lässt sich nicht zuordnen. Gas wird nicht seiner komprimierten Variante zugeordnet.",
-    },
-    add: {
-      title: "Einnahme erfassen",
-      subtitle: "Per Vertrag oder an einen Buyback verkauftes Erz, alles, was ESI nicht sieht",
-      date: "Datum",
-      amount: "Betrag (ISK)",
-      amountPlaceholder: "z. B. 1,2b oder 450.000.000",
-      category: "Kategorie",
-      spread: "Verteilen über",
-      character: "Charakter",
-      accountWide: "Kontoweit",
-      note: "Notiz",
-      notePlaceholder: "z. B. Buyback-Vertrag",
-      submit: "Einnahme erfassen",
-    },
-    manual: {
-      title: "Manuelle Einnahmen",
-      subtitle: "Einträge, die den gewählten Zeitraum berühren; sie zählen, wenn Einnahmen aus Verkäufen kommen",
-      empty: "Keine manuellen Einnahmen in diesem Zeitraum.",
-      columns: { date: "Datum", category: "Kategorie", character: "Charakter", note: "Notiz", amount: "Betrag", actions: "Aktionen" },
-      spreadDays: (days: number) => `+${n(days - 1)} T.`,
-      deleteHint: "Diese Einnahme löschen",
-      footer: (back: ReactNode) => <>Verteilte Einnahmen zählen pro Tag anteilig, wie verteilte Kosten. {back}</>,
-      back: "Zurück zur Übersicht",
+        "Übrig unter null heißt, du hast Erz verkauft, das vor diesem Zeitraum abgebaut wurde. Ausgeschlossene Verkäufe und Handel zwischen deinen eigenen Charakteren zählen nicht; zugeordnet werden nur Marktverkäufe. Gas wird nicht seiner komprimierten Variante zugeordnet.",
     },
   },
 

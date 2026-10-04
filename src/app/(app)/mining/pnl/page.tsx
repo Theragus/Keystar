@@ -21,7 +21,6 @@ import {
   getExpenseRows,
   getIncomeRows,
   getManualDaily,
-  getManualIncomeDaily,
   getPriceRules,
   getSaleRows,
   getWalletStatus,
@@ -50,21 +49,20 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
 
   const fromSales = ctx.incomeSource === "sales";
-  const [income, sales, manualIncome, expenses, manual, activity, rules, wallet] = await Promise.all([
+  const [income, sales, expenses, manual, activity, rules, wallet] = await Promise.all([
     getIncomeRows(scope),
     fromSales ? getSaleRows(scope) : [],
-    fromSales ? getManualIncomeDaily(scope, user.characterIds) : [],
     getExpenseRows(scope),
     getManualDaily(scope, user.characterIds),
     getActivityStats(scope),
     getPriceRules(user.id),
     getWalletStatus(user.id),
   ]);
-  const report = buildPnlReport({ ...filters, incomeSource: ctx.incomeSource, income, sales, manualIncome, expenses, manual, activity, characters });
+  const report = buildPnlReport({ ...filters, incomeSource: ctx.incomeSource, income, sales, expenses, manual, activity, characters });
   const { totals } = report;
   const query = pnlQueryString(filters, { bucket: "day", page: 1 });
   const walletOn = wallet.filter((w) => w.granted).length;
-  const hasData = income.length > 0 || sales.length > 0 || manualIncome.length > 0 || expenses.length > 0 || manual.length > 0;
+  const hasData = income.length > 0 || sales.length > 0 || expenses.length > 0 || manual.length > 0;
   const ratePct = scope.ratePct;
   const rate = ratePct !== 100 ? f.percent(ratePct / 100, Number.isInteger(ratePct) ? 0 : 1) : null;
   const hours = (h: number) => t.pnl.hours(hoursValue(f, h));
@@ -128,11 +126,7 @@ export default async function MiningPnlPage({ searchParams }: PageProps<"/mining
                       {m.tiles.salesSuggested(report.sales.suggested.count, f.compact(report.sales.suggested.amount))}
                     </Link>
                   ) : (
-                    m.tiles.fromSales(
-                      report.sales.counted.count,
-                      totals.manualIncome > 0 ? f.compact(totals.manualIncome) : null,
-                      f.compact(totals.minedIncome),
-                    )
+                    m.tiles.fromSales(report.sales.counted.count, f.compact(totals.minedIncome))
                   )
                 }
               />

@@ -1,15 +1,15 @@
 import { addDays, bucketEnd, bucketStart, type DateBucket } from "@/lib/dates";
 import { CHART_CLASSES, chartClassOf, type ChartClass } from "../class-colors";
 import { EXPENSE_CATEGORIES, type ExpenseCategory, type ExpenseStatus } from "./categories";
-import type { ActivityStats, ExpenseRow, IncomeRow, ManualDailyRow, ManualIncomeDailyRow, SaleRow } from "./queries";
+import type { ActivityStats, ExpenseRow, IncomeRow, ManualDailyRow, SaleRow } from "./queries";
 import type { IncomeSource } from "./scope";
 
 /**
  * Turns P&L query rows into the sheet: totals, day/week/month buckets,
  * per-character and per-activity splits, ISK/hour and cost per m³. Pure.
  *
- * Income is either the mined ore at the P&L valuation or the counted wallet sales plus manual income entries
- * (`incomeSource`); the other figure is still reported for comparison. Mined volume, active hours and ISK/hour always come from the mined ore.
+ * Income is either the mined ore at the P&L valuation or the counted wallet sales (`incomeSource`); the other figure
+ * is still reported for comparison. Mined volume, active hours and ISK/hour always come from the mined ore.
  */
 
 /** Below this share of income covered by measured activity, expenses are split by m³ instead of hours. */
@@ -74,8 +74,6 @@ export interface PnlReport {
     baseIncome: number;
     /** Counted wallet sales. */
     salesIncome: number;
-    /** Manual income entries (spread ones divided over their days). */
-    manualIncome: number;
     wallet: number;
     manual: number;
     expenses: number;
@@ -129,8 +127,6 @@ export function buildPnlReport(input: {
   income: IncomeRow[];
   /** Wallet sales; only counted ones are income, and only with `incomeSource` "sales". */
   sales?: SaleRow[];
-  /** Manual income entries; income only with `incomeSource` "sales". */
-  manualIncome?: ManualIncomeDailyRow[];
   expenses: ExpenseRow[];
   manual: ManualDailyRow[];
   activity: ActivityStats;
@@ -183,7 +179,7 @@ export function buildPnlReport(input: {
 
   const classIncome = zeroClasses();
   const classVolume = zeroClasses();
-  const addIncome = (date: string, characterId: number | null, cls: ChartClass, value: number) => {
+  const addIncome = (date: string, characterId: number, cls: ChartClass, value: number) => {
     classIncome[cls] += value;
     const b = bucketOf(date);
     if (b) {
@@ -216,12 +212,7 @@ export function buildPnlReport(input: {
     salesIncome += r.amount;
     if (fromSales) addIncome(r.date, r.characterId, r.category ?? "other", r.amount);
   }
-  let manualIncome = 0;
-  for (const r of input.manualIncome ?? []) {
-    manualIncome += r.amount;
-    if (fromSales) addIncome(r.date, r.characterId, r.category, r.amount);
-  }
-  const totalIncome = fromSales ? salesIncome + manualIncome : minedIncome;
+  const totalIncome = fromSales ? salesIncome : minedIncome;
 
   const purchases = statusTotals();
   const byCategory = new Map<ExpenseCategory, number>();
@@ -310,7 +301,6 @@ export function buildPnlReport(input: {
       minedIncome,
       baseIncome,
       salesIncome,
-      manualIncome,
       wallet,
       manual: manualTotal,
       expenses: totalExpenses,
