@@ -6,6 +6,18 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Ore field estimator**
+  - The ore table can be sorted by any column, including volume, ISK/m³, scanner and Keystar value and share;
+    grades stay under their ore and follow the same order.
+  - The unit price column is replaced by ISK/m³, the value that matters when choosing which rocks to mine.
+  - Fleet yield is entered in m³/s, as mining lasers show it, instead of m³/h.
+
+### Removed
+
+- **Ore field estimator**: the max distance filter.
+
 ## [0.12.0] - 2026-10-04
 
 ### Added
