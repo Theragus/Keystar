@@ -79,6 +79,7 @@ export const pnl = {
   spread: (days: number) => (days === 1 ? "One day" : `${n(days)} days`),
   hours: (value: string) => `${value} h`,
   accountWide: "Account-wide entries",
+  typeFallback: (id: number) => `Type ${id}`,
   characterFallback: (id: number) => `Character ${id}`,
   switch: { on: "On", off: "Off" },
 

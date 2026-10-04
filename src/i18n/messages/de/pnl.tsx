@@ -75,6 +75,7 @@ export const pnl: typeof en = {
   spread: (days: number) => (days === 1 ? "Ein Tag" : `${n(days)} Tage`),
   hours: (value: string) => `${value} h`,
   accountWide: "Kontoweite Einträge",
+  typeFallback: (id: number) => `Typ ${id}`,
   characterFallback: (id: number) => `Charakter ${id}`,
   switch: { on: "An", off: "Aus" },
 

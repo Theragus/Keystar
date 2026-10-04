@@ -168,7 +168,7 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
                               <span className="flex items-center gap-2">
                                 <TypeIcon id={s.typeId} size={24} />
                                 <span className="min-w-0">
-                                  <span className="block max-w-[18rem] truncate text-ink">{s.typeName ?? `Type ${s.typeId}`}</span>
+                                  <span className="block max-w-[18rem] truncate text-ink">{s.typeName ?? t.pnl.typeFallback(s.typeId)}</span>
                                   <span className="block max-w-[18rem] truncate text-2xs text-ink-3">
                                     {[s.groupName, s.characterName].filter(Boolean).join(" · ")}
                                   </span>

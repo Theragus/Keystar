@@ -277,6 +277,10 @@ export async function includeAllSuggestedSales(formData: FormData) {
   await includeAllSuggestedOf("sell", formData);
 }
 
+const INCLUDE_BATCH = 5000;
+/** Safety stop for "include all" (250,000 transactions). */
+const MAX_INCLUDE_BATCHES = 50;
+
 async function includeAllSuggestedOf(side: WalletSide, formData: FormData) {
   const user = await pnlUser();
   const filters = parsePnlFilters({
@@ -286,9 +290,11 @@ async function includeAllSuggestedOf(side: WalletSide, formData: FormData) {
   });
   const valuation = miningValuation(await getSettings());
   const scope = pnlScope(user, filters, valuation, 100);
-  const opts = { status: "suggested", limit: 5000, offset: 0 } as const;
-  const { rows } = side === "buy" ? await getPurchases(scope, opts) : await getSales(scope, opts);
-  if (rows.length) {
+  // In batches: included rows leave "suggested", so each query returns the next ones until none are left.
+  const opts = { status: "suggested", limit: INCLUDE_BATCH, offset: 0 } as const;
+  for (let batch = 0; batch < MAX_INCLUDE_BATCHES; batch++) {
+    const { rows } = side === "buy" ? await getPurchases(scope, opts) : await getSales(scope, opts);
+    if (!rows.length) break;
     await getDb()
       .insert(miningPnlTxOverrides)
       .values(rows.map((r) => ({ userId: user.id, characterId: r.characterId, transactionId: r.transactionId, included: true })))
@@ -296,6 +302,7 @@ async function includeAllSuggestedOf(side: WalletSide, formData: FormData) {
         target: [miningPnlTxOverrides.userId, miningPnlTxOverrides.characterId, miningPnlTxOverrides.transactionId],
         set: { included: true, updatedAt: new Date() },
       });
+    if (rows.length < INCLUDE_BATCH) break;
   }
   revalidate();
 }
