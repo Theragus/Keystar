@@ -24,7 +24,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - Calculate danger from combat capability and local relevance, with confidence and escalation evidence kept separate. Show explanatory 0–10 badges (green below 5, orange from 5 to below 8, red from 8); no recent sample is unknown.
 - Move D-scan input and matching results into a header dropdown and generate optional written briefings from the blue Briefing button in a dialog.
 - Replace loading prose with evidence overlays and independent loading indicators for each pending pilot tag/card.
-- Fetch pending statistics from the scan creator’s browser at 100 ms intervals with at most four concurrent requests for private provisional previews and rate-limit backoff. Only server-verified results enter the shared cache and danger scores. Server zKillboard calls are spaced by 200 ms; statistics requests avoid a redirect.
+- Fetch pending statistics from the scan creator’s browser at 100 ms intervals with at most four concurrent requests for private provisional previews and rate-limit backoff. Only server-verified results enter the shared cache and danger scores. Server statistics requests avoid a redirect.
 
 - **More sections have their own colour.** Pilots is violet and Social pink, checked for contrast and colour-vision
   separation in both themes like the existing ones. Finances shares Trade's teal. Overview, Account and
