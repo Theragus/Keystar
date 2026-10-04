@@ -145,6 +145,8 @@ export const skills = {
       title: "Queue shorter than 180 days",
       body: (duration: string) =>
         `With the recommended attributes the queue only runs for ${duration}. A remap locks your attributes in: the yearly remap comes back only after 365 days and bonus remaps are gone once used. Plan at least 180 days of skills with these attributes before you remap.`,
+      bodyCurrent: (duration: string) =>
+        `The queue only runs for ${duration} with the current attributes. A remap locks your attributes in: the yearly remap comes back only after 365 days and bonus remaps are gone once used. Plan at least 180 days of skills before you remap.`,
     },
     availability: {
       now: "Yearly remap available now",
@@ -164,7 +166,7 @@ export const skills = {
       implantsUncertain:
         "Attributes minus implants isn't a valid remap (an active booster or stale data?), so implants are left out of the calculation.",
       notComparable: (total: string) =>
-        `The attributes add up to ${total} instead of 99, so implants (or a booster) add points Keystar doesn't know about. The recommended distribution still holds; share implants to see how much time it saves.`,
+        `The attributes add up to ${total} instead of 99, so implants (or a booster) add points Keystar doesn't know about. They also change which remap is fastest, so no remap is recommended: share implants to get one.`,
       shareImplants: "Share implants",
     },
     empty: {

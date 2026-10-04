@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { TypeIcon } from "@/components/ui/eve-image";
+import { Portrait, TypeIcon } from "@/components/ui/eve-image";
 import { Panel } from "@/components/ui/glass";
 import { PendingFrame, PendingProvider } from "@/components/ui/pending";
 import { getI18n } from "@/i18n/server";
@@ -155,7 +155,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                               <span className="flex items-center gap-2">
                                 <TypeIcon id={p.typeId} size={24} />
                                 <span className="min-w-0">
-                                  <span className="block max-w-[18rem] truncate text-ink">{p.typeName ?? `Type ${p.typeId}`}</span>
+                                  <span className="block max-w-[18rem] truncate text-ink">{p.typeName ?? t.pnl.typeFallback(p.typeId)}</span>
                                   <span className="block max-w-[18rem] truncate text-2xs text-ink-3">
                                     {[p.groupName, p.characterName].filter(Boolean).join(" · ")}
                                   </span>
@@ -325,7 +325,16 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                             {e.spreadDays > 1 && <span className="ml-1 text-2xs text-ink-3">{m.manual.spreadDays(e.spreadDays)}</span>}
                           </td>
                           <td>{t.pnl.categories[e.category].label}</td>
-                          <td className="text-ink-2">{e.characterName ?? m.add.accountWide}</td>
+                          <td className="text-ink-2">
+                            {e.characterId === null ? (
+                              <span className="whitespace-nowrap">{m.add.accountWide}</span>
+                            ) : (
+                              <span className="flex items-center gap-2 whitespace-nowrap">
+                                <Portrait id={e.characterId} size={24} />
+                                {e.characterName ?? t.pnl.characterFallback(e.characterId)}
+                              </span>
+                            )}
+                          </td>
                           <td className="max-w-[16rem] truncate text-ink-2">{e.description || "—"}</td>
                           <td className="num font-semibold">{f.compact(e.amount)}</td>
                           <td className="num">

@@ -58,7 +58,7 @@ long-term journal archive.
   - Valuation by Jita 4-4 buy / sell / split or ESI average, at current or historical prices
   - Full ledger with pagination and CSV export
   - **Ore field estimator**: paste a survey scanner result (German or English client) and get the field's value by
-    ore and grade, with distance filter and time-to-clear
+    ore and grade, with ISK/m³, sortable columns and time-to-clear from your fleet's yield per second
   - **Mining P&L** for pilots mining with alts: ore income valued like the dashboard (with a buyback % and per-ore
     prices), mining costs from opt-in wallet imports (crystals, Heavy Water, burst charges, drones, hulls — suggested
     until you include them) plus manual costs, net profit per day / week / month, ISK per hour from measured ledger

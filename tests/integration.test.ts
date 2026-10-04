@@ -374,6 +374,84 @@ describe.skipIf(!enabled)("integration", async () => {
         postSpy.mockRestore();
       }
     });
+
+    it("gives outsiders no account while sign-ups are restricted to members", async () => {
+      const { provisionFromSso, ProvisionError } = await import("@/core/auth/provision");
+      const { setSetting } = await import("@/core/settings");
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const corpOf: Record<number, number> = { 1: 100, 60: 200, 61: 200 };
+      const getSpy = vi.spyOn(getEsi(), "get").mockImplementation(async (path: string) => {
+        if (path.startsWith("/corporations/")) return reply({ name: "Corp", ticker: "CORP", member_count: 3 });
+        return reply({ corporation_id: corpOf[Number(path.split("/")[2])] });
+      }) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      const signIn = (characterId: number, intent: "login" | "link" = "login", currentUserId: string | null = null) =>
+        provisionFromSso({
+          verified: { characterId, name: `Pilot ${characterId}`, ownerHash: `h${characterId}`, scopes: [], expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent,
+          currentUserId,
+        });
+      try {
+        await setSetting("corp.homeCorporationId", 100);
+        // An outsider who registered before the switch keeps signing in as a guest.
+        expect((await signIn(60)).role).toBe("guest");
+        await setSetting("access.restrictToMembers", true);
+        expect((await signIn(60)).role).toBe("guest");
+
+        const refused = await signIn(61).catch((err: unknown) => err);
+        expect(refused).toBeInstanceOf(ProvisionError);
+        expect((refused as InstanceType<typeof ProvisionError>).code).toBe("notMember");
+        expect(await db().select().from(schema.characters).where(sql`character_id = 61`)).toEqual([]);
+        // audit_log isn't truncated between tests, so look for this attempt specifically.
+        const blocked = await db()
+          .select()
+          .from(schema.auditLog)
+          .where(sql`action = 'user.registration.blocked' AND target_id = '61'`);
+        expect(blocked.length).toBeGreaterThan(0);
+
+        // Members still sign in, and alts outside the corporation can still be linked to an account.
+        expect((await signIn(1)).userId).toBe(userA);
+        expect((await signIn(61, "link", userA)).userId).toBe(userA);
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
+    });
+
+    it("finds enabled guests with no character in the home corporation or its alliance", async () => {
+      const { outsideGuestIds } = await import("@/core/auth/manage-users");
+      const { setSetting } = await import("@/core/settings");
+      const guest = async (characterId: number, corporationId: number, allianceId: number | null = null) => {
+        const [u] = await db().insert(schema.users).values({ role: "guest", mainCharacterId: characterId }).returning();
+        await db()
+          .insert(schema.characters)
+          .values({ characterId, userId: u.id, name: `Pilot ${characterId}`, corporationId, allianceId, ownerHash: `h${characterId}` });
+        return u.id;
+      };
+      const outsider = await guest(70, 200);
+      const allied = await guest(71, 300, 500);
+      const withCorpAlt = await guest(72, 200);
+      await db()
+        .insert(schema.characters)
+        .values({ characterId: 73, userId: withCorpAlt, name: "Corp Alt", corporationId: 100, ownerHash: "h73" });
+      const disabled = await guest(74, 200);
+      await db().update(schema.users).set({ isDisabled: true }).where(sql`id = ${disabled}`);
+      // Bravo is an approved member, now outside: approved accounts are left alone.
+      await db().update(schema.characters).set({ corporationId: 200 }).where(sql`user_id = ${userB}`);
+      // eve_corporations isn't truncated between tests.
+      await db()
+        .insert(schema.eveCorporations)
+        .values({ corporationId: 100, name: "Home", ticker: "HOME", allianceId: 500 })
+        .onConflictDoUpdate({ target: schema.eveCorporations.corporationId, set: { allianceId: 500 } });
+
+      expect(await outsideGuestIds()).toEqual([]);
+      await setSetting("corp.homeCorporationId", 100);
+      expect((await outsideGuestIds()).sort()).toEqual([outsider, allied].sort());
+      await setSetting("access.autoApproveAllianceMembers", true);
+      expect(await outsideGuestIds()).toEqual([outsider]);
+    });
   });
 
   describe("killboard", () => {
@@ -990,6 +1068,77 @@ describe.skipIf(!enabled)("integration", async () => {
         { category: "fuel", amount: 10_000 },
         { category: "other", amount: 10_000 },
       ]);
+    });
+
+    it("classifies sales like purchases and counts them as income when switched to sales", async () => {
+      const sell = { isBuy: false };
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 11, 62516, sell), // compressed Veldspar, Bravo: auto-count off -> suggested
+        tx(3, 12, 34, sell), // Tritanium, Bravo Alt: auto-count on -> counted
+        tx(3, 13, 45490, { ...sell, quantity: 2 }), // Zeolites, counted
+        tx(2, 14, 18066, sell), // a mining crystal resold: untagged
+        tx(2, 15, 1230, { ...sell, clientId: 3 }), // to your own alt: not income
+        tx(2, 16, 1230), // a purchase is never income
+        { ...tx(2, 17, 1230, sell), userId: userA }, // imported by another account
+      ]);
+      await db().insert(schema.miningPnlCharacters).values({ userId: userB, characterId: 3, autoIncludeSales: true });
+      await db().insert(schema.miningPnlTxOverrides).values({ userId: userB, characterId: 3, transactionId: 13, category: "other" });
+      const status = async (s: "counted" | "suggested" | "excluded" | "untagged") =>
+        (await pnl.getSales(scopeB(), { status: s, limit: 50, offset: 0 })).rows.map((r) => [r.transactionId, r.category]);
+      expect(await status("suggested")).toEqual([[11, "ore"]]);
+      expect((await status("counted")).sort()).toEqual([
+        [12, "ore"],
+        [13, "other"],
+      ]);
+      expect(await status("untagged")).toEqual([[14, null]]);
+      expect((await pnl.getPurchases(scopeB(), { status: "untagged", limit: 50, offset: 0 })).rows.map((r) => r.transactionId)).toEqual([16]);
+
+      const report = buildPnlReport({
+        ...range,
+        bucket: "month",
+        incomeSource: "sales",
+        income: await pnl.getIncomeRows(scopeB()),
+        sales: await pnl.getSaleRows(scopeB()),
+        expenses: [],
+        manual: [],
+        activity: await pnl.getActivityStats(scopeB()),
+        characters: [
+          { characterId: 2, name: "Bravo" },
+          { characterId: 3, name: "Bravo Alt" },
+        ],
+      });
+      expect(report.totals.income).toBe(12_000);
+      expect(report.totals.minedIncome).toBe(await income(scopeB()));
+      expect(report.sales.suggested).toEqual({ amount: 10_000, count: 1 });
+      expect(report.characters.find((c) => c.characterId === 3)?.income).toBe(12_000);
+
+      expect(await pnl.getPnlSettings(userB)).toEqual({ ratePct: 100, incomeSource: "mined" });
+      await db().insert(schema.miningPnlSettings).values({ userId: userB, incomeSource: "sales" });
+      expect((await pnl.getPnlSettings(userB)).incomeSource).toBe("sales");
+    });
+
+    it("matches mined ore with sales of it and its compressed variant, in raw units", async () => {
+      // Real portion sizes: compression is 1:1 in units (Veldspar 100 → Compressed Veldspar 100).
+      await db().update(schema.eveTypes).set({ portionSize: 100 }).where(sql`type_id = 62516`);
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 21, 1230, { isBuy: false, quantity: 100, unitPrice: 12 }), // raw Veldspar
+        tx(3, 22, 62516, { isBuy: false, quantity: 300, unitPrice: 11 }), // compressed Veldspar
+        tx(3, 23, 62516, { isBuy: false, quantity: 999, unitPrice: 11 }), // excluded by hand
+        tx(2, 24, 62516, { isBuy: false, quantity: 999, unitPrice: 11, clientId: 3 }), // to your own alt
+        tx(2, 25, 62516, { quantity: 999 }), // a purchase
+        tx(2, 26, 34, { isBuy: false, quantity: 5000, unitPrice: 4 }), // minerals aren't ore
+      ]);
+      await db().insert(schema.miningPnlTxOverrides).values({ userId: userB, characterId: 3, transactionId: 23, included: false });
+      // Veldspar is the only asteroid ore in the fixture ledgers.
+      const minedVeldspar = (await pnl.getIncomeRows(scopeB())).filter((r) => r.oreClass === "ore").reduce((sum, r) => sum + r.quantity, 0);
+
+      const flows = await pnl.getOreFlows(scopeB());
+      const veldspar = flows.find((f) => f.typeId === 1230)!;
+      expect(veldspar).toMatchObject({ mined: minedVeldspar, sold: 400, soldCompressed: 300, soldIsk: 1200 + 3300, sales: 2 });
+      expect(flows.some((f) => f.typeId === 62516 || f.typeId === 34)).toBe(false);
+      // Narrowed to Bravo: only Bravo's own sale.
+      const bravo = (await pnl.getOreFlows(scopeB({ characters: [2] }))).find((f) => f.typeId === 1230);
+      expect(bravo).toMatchObject({ sold: 100, soldCompressed: 0, soldIsk: 1200 });
     });
 
     it("spreads manual entries over their days; account-wide ones only without a character filter", async () => {

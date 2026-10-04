@@ -85,9 +85,10 @@ describe("remap optimiser", () => {
   it("weighs a mixed queue by its skill points", () => {
     const entries = [entry(0, SKILL_PER_WIL, { levelStartSp: 0, trainingStartSp: 0, levelEndSp: 2_000_000 }), entry(1, SKILL_INT_MEM)];
     const result = optimizeRemap({ entries, skillAttributes, effective: DEFAULT, implants: null, now });
-    expect(result.recommendedBase.perception).toBe(27);
-    expect(result.recommendedBase.willpower).toBeGreaterThan(result.recommendedBase.intelligence);
-    expect(isValidBase(result.recommendedBase)).toBe(true);
+    const recommended = result.recommendedBase!;
+    expect(recommended.perception).toBe(27);
+    expect(recommended.willpower).toBeGreaterThan(recommended.intelligence);
+    expect(isValidBase(recommended)).toBe(true);
     // No other remap is faster.
     const groups = [
       { primaryAttribute: PER, secondaryAttribute: WIL, sp: 2_000_000 },
@@ -117,7 +118,7 @@ describe("remap optimiser", () => {
     expect(result.currentBase).toEqual(DEFAULT);
   });
 
-  it("doesn't compare times when the base attributes are unknown", () => {
+  it("recommends nothing when the base attributes are unknown", () => {
     // 110 points: 11 from implants Keystar doesn't know about.
     const effective: AttributeSet = { charisma: 19, intelligence: 24, memory: 27, perception: 20, willpower: 20 };
     const result = optimizeRemap({ entries: [entry(0, SKILL_INT_MEM)], skillAttributes, effective, implants: null, now });
@@ -126,7 +127,23 @@ describe("remap optimiser", () => {
     expect(result.recommendedMinutes).toBeNull();
     expect(result.savedMinutes).toBeNull();
     expect(result.currentMinutes).toBeCloseTo(210745 / (24 + 27 / 2));
-    expect(result.recommendedBase).toEqual({ charisma: 17, intelligence: 27, memory: 21, perception: 17, willpower: 17 });
+    expect(result.recommendedBase).toBeNull();
+  });
+
+  it("lets implants decide the best remap of a mixed queue", () => {
+    // Equal SP on Int/Mem and Per/Wil: with +4 Int/Mem implants, Int 21/Per 27 is already the best remap.
+    const sp = { levelStartSp: 0, trainingStartSp: 0, levelEndSp: 1_000_000 };
+    const entries = [entry(0, SKILL_INT_MEM, sp), entry(1, SKILL_PER_WIL, sp)];
+    const base: AttributeSet = { charisma: 17, intelligence: 21, memory: 17, perception: 27, willpower: 17 };
+    const implants: AttributeSet = { charisma: 0, intelligence: 4, memory: 4, perception: 0, willpower: 0 };
+    const effective: AttributeSet = { ...base, intelligence: 25, memory: 21 };
+    const known = optimizeRemap({ entries, skillAttributes, effective, implants, now });
+    expect(known.optimal).toBe(true);
+    expect(known.recommendedBase).toEqual(base);
+    // Without the implants the base can't be told, and an implant-free guess (Int 24/Per 24) would be slower.
+    const unknown = optimizeRemap({ entries, skillAttributes, effective, implants: null, now });
+    expect(unknown.comparable).toBe(false);
+    expect(unknown.recommendedBase).toBeNull();
   });
 
   it("keeps the current attributes when they are already the best", () => {
@@ -142,7 +159,7 @@ describe("remap optimiser", () => {
     const entries = [entry(0, SKILL_INT_MEM)];
     const current: AttributeSet = { charisma: 17, intelligence: 27, memory: 21, perception: 17, willpower: 17 };
     const result = optimizeRemap({ entries, skillAttributes, effective: current, implants: null, now });
-    expect(result.recommendedBase.charisma).toBe(17);
+    expect(result.recommendedBase?.charisma).toBe(17);
   });
 
   it("uses the SP still to train and skips entries it can't time", () => {

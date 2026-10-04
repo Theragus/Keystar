@@ -68,14 +68,15 @@ Entries without an issue carry no reference.
    If the version is already tagged, CI hasn't passed yet or the CHANGELOG section is missing, the workflow stops
    with an error and publishes nothing. A failed release (e.g. a registry outage) is retried the same way.
 
-The version shows in the sidebar footer and in `GET /api/health`.
+The version shows in the sidebar footer, in System Info and in `GET /api/health`.
 
 ## Trying unreleased changes
 
 Every commit on `main` that passes CI is also published as `ghcr.io/theragus/keystar:main` (and
 `:sha-<commit>`) by the **Main image** workflow (`.github/workflows/main-image.yml`). Set `KEYSTAR_VERSION=main` on a
-test server to follow it. `main` can be unstable and its sidebar shows the last released version; `:latest` and the
-version tags only ever point at releases.
+test server to follow it. `main` can be unstable; its sidebar footer shows the last released version together with the
+image tag and commit it was built from (e.g. `Keystar v0.12.0 · main @ c7bfb85`) on an amber warning badge, and
+links to that commit. `:latest` and the version tags only ever point at releases.
 
 ## One-time setup
 

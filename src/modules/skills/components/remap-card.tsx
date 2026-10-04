@@ -61,7 +61,8 @@ export function RemapCard({
   if (!result.countedEntries) return notice(r.notes.unknownEntries(result.unknownEntries));
 
   const availability = remapAvailability(c, now);
-  // Without known base attributes, the queue as it trains now stands in for the queue after the remap.
+  const recommended = result.recommendedBase;
+  // Without a recommendation, the warning is about the queue as it trains now.
   const queueMinutes = result.recommendedMinutes ?? result.currentMinutes;
   const short = isShortQueue(queueMinutes);
   const notes: string[] = [];
@@ -78,12 +79,12 @@ export function RemapCard({
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Figure label={r.queueNow} value={duration(result.currentMinutes)} />
-        <Figure label={r.queueAfter} value={result.recommendedMinutes === null ? "—" : duration(result.recommendedMinutes)} />
-        <Figure
-          label={r.saved}
-          value={result.savedMinutes === null || result.optimal ? "—" : duration(result.savedMinutes)}
-          accent={result.savedMinutes !== null && !result.optimal}
-        />
+        {result.recommendedMinutes !== null && result.savedMinutes !== null && (
+          <>
+            <Figure label={r.queueAfter} value={duration(result.recommendedMinutes)} />
+            <Figure label={r.saved} value={result.optimal ? "—" : duration(result.savedMinutes)} accent={!result.optimal} />
+          </>
+        )}
       </div>
 
       {short && (
@@ -91,7 +92,9 @@ export function RemapCard({
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
           <div className="min-w-0 text-sm text-ink-2">
             <p className="font-semibold text-ink">{r.shortQueue.title}</p>
-            <p className="mt-0.5 text-xs">{r.shortQueue.body(duration(queueMinutes))}</p>
+            <p className="mt-0.5 text-xs">
+              {recommended ? r.shortQueue.body(duration(queueMinutes)) : r.shortQueue.bodyCurrent(duration(queueMinutes))}
+            </p>
           </div>
         </div>
       )}
@@ -102,49 +105,51 @@ export function RemapCard({
         </p>
       ) : null}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <caption className="sr-only">{r.title}</caption>
-          <thead>
-            <tr className="text-left text-2xs text-ink-3">
-              <th scope="col" className="eve-label py-1 pr-3 font-normal">
-                {r.columns.attribute}
-              </th>
-              <th scope="col" className="eve-label py-1 pr-3 text-right font-normal">
-                {r.columns.current}
-              </th>
-              <th scope="col" className="eve-label py-1 pr-3 text-right font-normal">
-                {r.columns.recommended}
-              </th>
-              <th scope="col" className="eve-label py-1 text-right font-normal">
-                {r.columns.implants}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="tabular-nums">
-            {ATTRIBUTE_NAMES.map((name) => {
-              const delta = result.recommendedBase[name] - result.currentBase[name];
-              return (
-                <tr key={name} className="border-t border-surface-contrast/8">
-                  <th scope="row" className="py-1.5 pr-3 text-left font-normal text-ink-2">
-                    {t.attributes.names[name]}
-                  </th>
-                  <td className="py-1.5 pr-3 text-right text-ink-2">{f.integer(result.currentBase[name])}</td>
-                  <td className="py-1.5 pr-3 text-right font-semibold text-ink">
-                    {f.integer(result.recommendedBase[name])}
-                    {delta !== 0 && result.comparable && (
-                      <span className={delta > 0 ? "ml-1.5 text-xs text-good-text" : "ml-1.5 text-xs text-ink-3"}>
-                        {delta > 0 ? `+${f.integer(delta)}` : `−${f.integer(-delta)}`}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-1.5 text-right text-ink-3">{result.implants[name] ? `+${f.integer(result.implants[name])}` : "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {recommended && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <caption className="sr-only">{r.title}</caption>
+            <thead>
+              <tr className="text-left text-2xs text-ink-3">
+                <th scope="col" className="eve-label py-1 pr-3 font-normal">
+                  {r.columns.attribute}
+                </th>
+                <th scope="col" className="eve-label py-1 pr-3 text-right font-normal">
+                  {r.columns.current}
+                </th>
+                <th scope="col" className="eve-label py-1 pr-3 text-right font-normal">
+                  {r.columns.recommended}
+                </th>
+                <th scope="col" className="eve-label py-1 text-right font-normal">
+                  {r.columns.implants}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="tabular-nums">
+              {ATTRIBUTE_NAMES.map((name) => {
+                const delta = recommended[name] - result.currentBase[name];
+                return (
+                  <tr key={name} className="border-t border-surface-contrast/8">
+                    <th scope="row" className="py-1.5 pr-3 text-left font-normal text-ink-2">
+                      {t.attributes.names[name]}
+                    </th>
+                    <td className="py-1.5 pr-3 text-right text-ink-2">{f.integer(result.currentBase[name])}</td>
+                    <td className="py-1.5 pr-3 text-right font-semibold text-ink">
+                      {f.integer(recommended[name])}
+                      {delta !== 0 && (
+                        <span className={delta > 0 ? "ml-1.5 text-xs text-good-text" : "ml-1.5 text-xs text-ink-3"}>
+                          {delta > 0 ? `+${f.integer(delta)}` : `−${f.integer(-delta)}`}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right text-ink-3">{result.implants[name] ? `+${f.integer(result.implants[name])}` : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {availability.yearlyAvailable ? (
@@ -174,7 +179,7 @@ export function RemapCard({
         </ButtonLink>
       )}
 
-      {!result.optimal && <p className="text-2xs text-ink-3">{r.howTo}</p>}
+      {recommended && !result.optimal && <p className="text-2xs text-ink-3">{r.howTo}</p>}
     </Glass>
   );
 }

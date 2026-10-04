@@ -146,6 +146,8 @@ export const skills: typeof en = {
       title: "Queue kürzer als 180 Tage",
       body: (duration: string) =>
         `Mit den empfohlenen Attributen läuft die Queue nur noch ${duration} lang. Ein Remap legt deine Attribute fest: Der jährliche Remap kommt erst nach 365 Tagen wieder und Bonus-Remaps sind nach Gebrauch weg. Plane mindestens 180 Tage Skills mit diesen Attributen, bevor du remappst.`,
+      bodyCurrent: (duration: string) =>
+        `Mit den aktuellen Attributen läuft die Queue nur noch ${duration} lang. Ein Remap legt deine Attribute fest: Der jährliche Remap kommt erst nach 365 Tagen wieder und Bonus-Remaps sind nach Gebrauch weg. Plane mindestens 180 Tage Skills, bevor du remappst.`,
     },
     availability: {
       now: "Jährlicher Remap jetzt verfügbar",
@@ -166,7 +168,7 @@ export const skills: typeof en = {
       implantsUncertain:
         "Attribute minus Implantate ergeben keinen gültigen Remap (aktiver Booster oder veraltete Daten?), daher bleiben Implantate außen vor.",
       notComparable: (total: string) =>
-        `Die Attribute ergeben ${total} statt 99 Punkte, also bringen Implantate (oder ein Booster) Punkte mit, die Keystar nicht kennt. Die empfohlene Verteilung gilt trotzdem; gib die Implantate frei, um die Zeitersparnis zu sehen.`,
+        `Die Attribute ergeben ${total} statt 99 Punkte, also bringen Implantate (oder ein Booster) Punkte mit, die Keystar nicht kennt. Sie ändern auch, welcher Remap am schnellsten ist, daher gibt es keine Empfehlung: Gib die Implantate frei, um eine zu bekommen.`,
       shareImplants: "Implantate freigeben",
     },
     empty: {

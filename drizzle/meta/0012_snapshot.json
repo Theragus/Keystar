@@ -1,5 +1,5 @@
 {
-  "id": "3d9cbf74-fce3-40be-9270-dc6abcbb9c2c",
+  "id": "f7929d4e-97d3-4250-ba0d-11abb3e9c99a",
   "prevId": "afc0d6f0-e412-4a3f-a91b-53f8b10330c7",
   "version": "7",
   "dialect": "postgresql",
@@ -3483,6 +3483,13 @@
           "notNull": true,
           "default": false
         },
+        "auto_include_sales": {
+          "name": "auto_include_sales",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",
@@ -3736,6 +3743,13 @@
           "notNull": true,
           "default": 100
         },
+        "income_source": {
+          "name": "income_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'mined'"
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",
@@ -3920,12 +3934,6 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
-        },
-        "implants_synced_at": {
-          "name": "implants_synced_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -4008,107 +4016,6 @@
           "columns": [
             "character_id",
             "skill_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.skills_implant_attributes": {
-      "name": "skills_implant_attributes",
-      "schema": "",
-      "columns": {
-        "type_id": {
-          "name": "type_id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "charisma": {
-          "name": "charisma",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "intelligence": {
-          "name": "intelligence",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "memory": {
-          "name": "memory",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "perception": {
-          "name": "perception",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "willpower": {
-          "name": "willpower",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.skills_implants": {
-      "name": "skills_implants",
-      "schema": "",
-      "columns": {
-        "character_id": {
-          "name": "character_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type_id": {
-          "name": "type_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "skills_implants_character_id_type_id_pk": {
-          "name": "skills_implants_character_id_type_id_pk",
-          "columns": [
-            "character_id",
-            "type_id"
           ]
         }
       },

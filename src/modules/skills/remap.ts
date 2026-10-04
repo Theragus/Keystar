@@ -136,7 +136,8 @@ export interface RemapInput {
 export interface RemapResult {
   /** Base attributes now (ESI attributes minus implants; just the ESI attributes when not `comparable`). */
   currentBase: AttributeSet;
-  recommendedBase: AttributeSet;
+  /** The fastest remap; null when not `comparable`, as unknown implants can change which remap is fastest. */
+  recommendedBase: AttributeSet | null;
   /** Implant bonuses assumed (zero when unknown or inconsistent). */
   implants: AttributeSet;
   /** Minutes to train the queue with the current attributes. */
@@ -145,9 +146,8 @@ export interface RemapResult {
   recommendedMinutes: number | null;
   savedMinutes: number | null;
   /**
-   * The base attributes are known (ESI attributes minus implants is a legal remap), so times before and after can be
-   * compared. Otherwise unknown implants (or a booster) add points that a remap keeps, and only the distribution of the
-   * recommendation holds.
+   * The base attributes are known (ESI attributes minus implants is a legal remap). Otherwise unknown implants (or a
+   * booster) add points that a remap keeps; they change which remap is fastest too, so nothing is recommended.
    */
   comparable: boolean;
   /** The current attributes are already the best remap. */
@@ -194,13 +194,23 @@ export function optimizeRemap({ entries, skillAttributes, effective, implants, n
 
   const currentMinutes = queueTrainingMinutes(spGroups, effective);
   const comparable = isValidBase(currentBase);
-  let best = comparable ? currentBase : null;
-  let bestMinutes = comparable ? queueTrainingMinutes(spGroups, add(currentBase, assumedImplants)) : Infinity;
+  const result = {
+    currentBase,
+    implants: assumedImplants,
+    currentMinutes,
+    comparable,
+    unknownEntries,
+    countedEntries: pending.length - unknownEntries,
+    implantsUncertain,
+  };
+  if (!comparable) return { ...result, recommendedBase: null, recommendedMinutes: null, savedMinutes: null, optimal: false };
+
+  let best = currentBase;
+  let bestMinutes = queueTrainingMinutes(spGroups, add(currentBase, assumedImplants));
   const EPSILON = 1e-9;
   for (const candidate of (remapCache ??= allRemaps())) {
     const minutes = queueTrainingMinutes(spGroups, add(candidate, assumedImplants));
     const better =
-      best === null ||
       minutes < bestMinutes - EPSILON ||
       (minutes <= bestMinutes + EPSILON && distance(candidate, currentBase) < distance(best, currentBase));
     if (better) {
@@ -208,22 +218,9 @@ export function optimizeRemap({ entries, skillAttributes, effective, implants, n
       bestMinutes = minutes;
     }
   }
-  const recommendedBase = best!;
-  const optimal = comparable && distance(recommendedBase, currentBase) === 0;
-  const recommendedMinutes = !comparable ? null : optimal ? currentMinutes : bestMinutes;
-  return {
-    currentBase,
-    recommendedBase,
-    implants: assumedImplants,
-    currentMinutes,
-    recommendedMinutes,
-    savedMinutes: recommendedMinutes === null ? null : Math.max(0, currentMinutes - recommendedMinutes),
-    comparable,
-    optimal,
-    unknownEntries,
-    countedEntries: pending.length - unknownEntries,
-    implantsUncertain,
-  };
+  const optimal = distance(best, currentBase) === 0;
+  const recommendedMinutes = optimal ? currentMinutes : bestMinutes;
+  return { ...result, recommendedBase: best, recommendedMinutes, savedMinutes: Math.max(0, currentMinutes - recommendedMinutes), optimal };
 }
 
 function subtract(a: AttributeSet, b: AttributeSet): AttributeSet {

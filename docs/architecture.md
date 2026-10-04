@@ -116,6 +116,12 @@ New users get a role from configuration: `ADMIN_CHARACTER_IDS` → admin; otherw
 corporation (optionally alliance) members → member; everyone else → guest awaiting approval. Logging in never
 demotes anyone.
 
+With **Only members can sign up** (Settings → Access, `access.restrictToMembers`) outsiders get no account at all:
+`mayRegister` in `src/core/auth/policy.ts` refuses a new account unless the character is in the home corporation (or
+its alliance, when alliance members are auto-approved) or would be admin, and the attempt is audited as
+`user.registration.blocked`. Existing accounts and alt links are unaffected. Guests who registered from outside before
+the switch can be disabled in one go on the Users page.
+
 ## Languages
 
 The UI is available in English and German (`src/i18n`). The language is not part of the URL:
@@ -199,6 +205,32 @@ Current jobs:
 | `skills.queue`                   | 15 min   | Skill queue of characters that share their skills; static skill attributes and ranks |
 | `skills.character`               | 1 h      | Trained skills, skill points and attributes of characters that share their skills |
 | `skills.implants`                | 1 h      | Active-clone implants and their attribute bonuses, for characters that share implants |
+
+## System info and support package
+
+Administration → System Info (`/admin/system`, permission `system.view`: admins only, locked) is built from one
+snapshot, `collectSystemSnapshot()` in `src/core/system/collect.ts`. Each collector (database, worker and jobs,
+tokens, settings, clock, audit counts) is wrapped so that one failing collector never takes the page down. The web
+process can't see the worker's process, so the worker reports its runtime and ESI/zKillboard request counters in
+its heartbeat (`worker_heartbeats.info`); the clients count requests in `EsiClient.stats()` and
+`ZkillClient.stats()`.
+
+- `network.ts` probes ESI, EVE SSO (`/oauth/jwks`) and zKillboard with one request each (5 s limit), through
+  `EsiClient.ping()` and `ZkillClient.ping()` so the User-Agent, counters and request spacing apply. ESI or SSO
+  unreachable fails the network check; zKillboard unreachable or answering 403 (blocked User-Agent or IP), or any
+  service answering 5xx, only warns. Each probe is aborted when its time is up.
+- `checks.ts` turns a snapshot into health checks. They are pure, so the page, the support package and the tests
+  agree; their texts live under `admin.system.checks`.
+- `support-package.ts` builds the downloadable package from an **allowlist** of fields. Never add a field that holds
+  a pilot, corporation or alliance name or ID, a secret, the instance's address or an audit actor; free text (job
+  errors) goes through the scrubber in `redact.ts`, and worker ids are hashed with a per-package salt. Bump
+  `SUPPORT_PACKAGE_FORMAT` when the layout changes in a way readers must know about.
+- `summary.ts` writes the Markdown summary for GitHub issues, always in English, and the prefilled bug report URL
+  (the `version` and `system` fields of `.github/ISSUE_TEMPLATE/bug_report.yml`).
+- `src/scripts/support-package.ts` (`dist/support.mjs` in the image) writes the same package to stdout for when the
+  web app doesn't start.
+
+Keystar keeps no logs of its own; the page points admins to `docker compose logs`.
 
 ## Live alerts
 
@@ -301,6 +333,17 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   switched that on (`mining_pnl_characters`, off by default); the user's category/include decisions
   (`mining_pnl_tx_overrides`) always win. Everything else stays out unless tagged. Manual entries
   (`mining_pnl_entries`) cover PLEX/Omega, contracts etc. and can be spread evenly over up to a year.
+- **Income from wallet sales**: the account picks the income basis (`mining_pnl_settings.income_source`): `mined`
+  (default) values the mined ore as above; `sales` counts market sells instead, on the day of the sale. Sells are
+  auto-tagged by the activity they come from (`classifySale`, with an SQL twin): ore, moon ore, ice and gas, raw or
+  compressed, plus minerals, moon materials and ice products. They go through the same suggested/counted/excluded
+  review as purchases, with their own per-character switch (`mining_pnl_characters.auto_include_sales`) and the same
+  override table. Volume, active hours and ISK/h always come from the mined ore. Only market sales count; anything
+  the wallet doesn't show stays out.
+- **Mined vs sold** (`getOreFlows`, `ore-flows.ts`): per raw ore, the mined units of the period against market sells
+  of the ore or its compressed variant, converted to raw units by portion size like the valuation (1:1 for current
+  ores; compression only shrinks the volume). Excluded sales and internal trades are left out; the ore left over is
+  valued at the current valuation. Compressed gas has its own names and group, so it isn't linked to raw gas.
 - **Sale hints**: wallet sells of a mined ore or its compressed variant, converted to raw units with the valuation's
   compression ratio, offered as one-click price rules.
 - **Active hours / ISK per hour**: the ledger job compares each fresh ESI snapshot with the stored ledger in one
@@ -364,9 +407,9 @@ the owner deletes them.
   / 2 SP per minute. ESI's attributes include implant bonuses, so the base is the ESI attributes minus implants. The
   SP still to train is summed per primary/secondary pair, and every legal remap (2,885: 17–27 per attribute, 99 in
   total) is timed with the implants on top; ties keep the current attributes, then the closest remap. When the base
-  isn't a legal remap (unknown implants or a booster), only the distribution is recommended and no times are
-  compared. A queue shorter than 180 days after the remap gets a warning, since the yearly remap only returns after
-  365 days.
+  isn't a legal remap (unknown implants or a booster), nothing is recommended: unknown implants change which remap is
+  fastest, not only the times. A queue shorter than 180 days after the remap (or as it trains now, without a
+  recommendation) gets a warning, since the yearly remap only returns after 365 days.
 - **Planned on top of it**: corporation skill plans checked against `skills_character_skills`.
   ESI has no skill-plan endpoint, so plans would be pasted from the in-game "copy to clipboard" text and resolved
   with `/universe/ids`.

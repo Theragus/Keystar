@@ -17,6 +17,46 @@ The remap optimiser can read implants with a new optional character scope.
 
 ### Added
 
+- **Delete appraisals.** A small trash button next to each of your recent appraisals, and on the appraisal itself,
+  deletes it after a confirmation; its share link stops working. Only the person who created an appraisal can delete it.
+- **System Info for admins.** A new last page under Administration shows the technical state of the instance:
+  - **Health checks** for the database, migrations and schema, the worker and its version, failing or stuck jobs,
+    paused syncing, EVE SSO, `APP_URL`, clock skew and ESI rate limits.
+  - **Network**: whether this server can reach ESI, EVE SSO and zKillboard right now, with the HTTP status and
+    response time of each, or why not (DNS, refused, timeout); proxy settings show whether they are set.
+  - **Instance details**: the running version and build, the database with its largest tables, the worker and
+    background jobs, and the configuration without secret values.
+  - **Report an issue** walks through a bug report and opens it on GitHub with the version and a system summary
+    filled in. Privacy warnings point out where logs or the public issue could expose pilot or corporation names,
+    IDs or the server's address.
+
+  ([#102](https://github.com/Theragus/Keystar/issues/102))
+- **Support package** for bug reports:
+  - A JSON download with what's needed to debug an instance: build, runtime and container limits, health checks,
+    configuration, migrations and schema drift, table sizes, connections, per-job statistics with scrubbed error
+    patterns, ESI and zKillboard request counters, and token and scope counts.
+  - Never contains pilot, corporation or alliance names or IDs, secrets, the instance's address or who did what.
+    Admins see its exact contents before downloading, and every download is recorded in the audit log.
+  - When the web app doesn't start: `pnpm support:package`, or `node dist/support.mjs` in the image.
+
+  ([#102](https://github.com/Theragus/Keystar/issues/102))
+- Published images record their git commit, tag and build date, shown in System Info ([#102](https://github.com/Theragus/Keystar/issues/102)).
+- The sidebar footer of an unreleased image (`:main`) shows its tag and commit next to the version, e.g.
+  `Keystar v0.12.0 · main @ c7bfb85`, on an amber warning badge whose tooltip notes that the build may be unstable,
+  and links to that commit instead of the releases page.
+- **Only members can sign up.** A new switch under Settings → Access stops Keystar from creating accounts for
+  characters outside the home corporation (or its alliance, when alliance members are auto-approved). They see a
+  message on the login page instead of waiting as guests, and each refused attempt is in the audit log. Existing
+  accounts and linked alts are unaffected; guests who registered from outside before can be disabled in one go on
+  the Users page.
+- **Mining P&L**: income can come from what you actually sold instead of the value of the ore you mined. A new
+  Income tab lists your wallet sales; sales of ore, moon ore, ice and gas (raw or compressed), minerals, moon
+  materials and ice products are suggested as mining income and reviewed like purchases (include, exclude,
+  re-categorise, or count them automatically per character). Choose the basis under Settings → Income; it stays
+  on the mined value until you switch.
+- **Mining P&L**: a "Mined vs sold" table on the Income tab compares, per ore, what you mined with what you sold
+  of it, raw or compressed (compressed ore counts 1:1 in units), with what you got per unit against the valuation
+  and the value of the ore still unsold.
 - **Remap optimiser.** A new page under Pilots recommends the neural remap that trains each character's current skill
   queue the fastest.
   - Tries every legal remap (17–27 per attribute, 99 points) against the SP still to train and shows the attributes
@@ -27,6 +67,30 @@ The remap optimiser can read implants with a new optional character scope.
   - Implants can be shared per character (`esi-clones.read_implants.v1`) so their bonuses are told apart from the
     base attributes. Without them, attributes are taken as implant-free and the page says so.
   - Own characters, plus the corporation view for directors; linked from each character on Skill queues.
+
+### Changed
+
+- **Sidebar.** The pilot portrait and name at the bottom of the sidebar link to My Characters, in the expanded sidebar, the collapsed rail and its hover card alike.
+- **Ore field estimator**
+  - The ore table can be sorted by any column, including volume, ISK/m³, scanner and Keystar value and share;
+    grades stay under their ore and follow the same order.
+  - The unit price column is replaced by ISK/m³, the value that matters when choosing which rocks to mine.
+  - Fleet yield is entered in m³/s, as mining lasers show it, instead of m³/h.
+- **Mining P&L**: industrial cores, Mining Foreman Burst modules and drone mining augmentor rigs are auto-tagged as
+  "Ships & fittings" expenses, including purchases already imported.
+- **Live fleet**: the fleet structure is drawn as a tree, stepping in from fleet command to wings, squads and
+  pilots, with a pilot count on every wing and squad.
+
+### Removed
+
+- **Ore field estimator**: the max distance filter and the closest-distance note on each grade.
+
+### Fixed
+
+- The P&L overview's per-character table and the manual expenses list show character portraits, like the rest of
+  the mining pages.
+- `docker compose pull` fetches a newer Keystar image again when the tag (e.g. `main` or `latest`) is already
+  present on the server; it used to report "Image is already present locally" and keep the old image.
 
 ## [0.12.0] - 2026-10-04
 
