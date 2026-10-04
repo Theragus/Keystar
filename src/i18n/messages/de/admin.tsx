@@ -472,6 +472,15 @@ export const admin: typeof en = {
                 ? `${names(v.down)} nicht erreichbar. Prüfe DNS, Firewall und Proxy des Servers.`
                 : refusedText(v.refused),
       },
+      auditLog: {
+        label: "Audit-Log geschrieben",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? "Seit dem Start der Web-App ging kein Audit-Eintrag verloren"
+            : s === "warn"
+              ? `${plural(Number(v.count), "Audit-Eintrag konnte", "Audit-Einträge konnten")} seit dem Start der Web-App nicht geschrieben werden (zuletzt: ${v.action}). Der Fehler steht im Server-Log; meist war die Datenbank kurz nicht erreichbar.`
+              : "Wird nur im Browser geprüft.",
+      },
     },
     keystar: {
       title: "Keystar",

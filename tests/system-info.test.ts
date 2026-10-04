@@ -81,6 +81,7 @@ function snapshot(overrides: Partial<SystemSnapshot> = {}): SystemSnapshot {
     esi: null,
     zkill: null,
     audit: { ok: true, data: {} },
+    auditFailures: { count: 0, lastAt: null, lastAction: null },
     ...overrides,
   };
 }
@@ -316,6 +317,14 @@ describe("health checks", () => {
     for (const id of ["migrations", "schema", "worker", "jobs", "syncPaused", "clock"] as const) {
       expect(status(checks, id)).toBe("skip");
     }
+  });
+
+  it("warn about audit entries the web process failed to write", () => {
+    const failures = { count: 2, lastAt: ago(60), lastAction: "user.login" };
+    const check = runChecks(snapshot({ auditFailures: failures }), NOW).find((c) => c.id === "auditLog");
+    expect(check).toEqual({ id: "auditLog", status: "warn", values: { count: 2, last: ago(60), action: "user.login" } });
+    expect(status(runChecks(snapshot({ auditFailures: null }), NOW), "auditLog")).toBe("skip");
+    expect(MESSAGES.en.admin.system.checks.auditLog.detail("warn", check!.values)).toContain("2 audit entries");
   });
 
   it("have a text for every check and status in every language", () => {

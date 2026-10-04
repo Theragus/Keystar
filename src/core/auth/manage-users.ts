@@ -1,4 +1,5 @@
 import { and, eq, notExists, or, sql } from "drizzle-orm";
+import { auditInTx, type AuditEntry } from "@/core/audit";
 import { characters, eveCorporations, getDb, sessions, users, type Db } from "@/core/db";
 import { allPermissions } from "@/core/modules/registry";
 import { permissionsForRole } from "@/core/rbac/permissions";
@@ -40,13 +41,14 @@ export class UserAccessError extends Error {
  * against what the others committed: two admins demoting or disabling each other
  * at once can't both succeed, an enabled admin always remains, and a manager
  * demoted mid-request can't finish the change. With `onlyFromRole`, a target
- * whose role is no longer that one is left alone (`changed: false`).
+ * whose role is no longer that one is left alone (`changed: false`). `audit`
+ * builds the audit entry, written in the same transaction as the change.
  */
 export async function changeUserAccess(
   actorId: string,
   targetId: string,
   change: UserAccessChange,
-  opts: { onlyFromRole?: Role } = {},
+  opts: { onlyFromRole?: Role; audit?: (from: Role) => AuditEntry } = {},
 ): Promise<{ from: Role; changed: boolean }> {
   if (actorId === targetId) throw new UserAccessError("self", "You can't change your own access");
   const overrides = (await getSettings())["permissions.overrides"];
@@ -68,6 +70,7 @@ export async function changeUserAccess(
       .set({ ...change, updatedAt: new Date() })
       .where(eq(users.id, targetId));
     if ("isDisabled" in change && change.isDisabled) await tx.delete(sessions).where(eq(sessions.userId, targetId));
+    if (opts.audit) await auditInTx(tx, opts.audit(target.role));
     return { from: target.role, changed: true };
   });
 }

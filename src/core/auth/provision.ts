@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import { audit } from "@/core/audit";
+import { audit, auditInTx } from "@/core/audit";
 import { encryptToken } from "@/core/crypto";
 import {
   characters,
@@ -175,7 +175,7 @@ export async function provisionFromSso(params: {
       const { retired } = await detachTransferredCharacter(tx, verified.characterId, existing.userId, {
         keepAccount: linking && existing.userId === currentUserId,
       });
-      await audit({
+      await auditInTx(tx, {
         action: "character.transferred",
         targetType: "character",
         targetId: verified.characterId,
@@ -200,7 +200,7 @@ export async function provisionFromSso(params: {
       if (u.isDisabled) throw new ProvisionError("disabled", "This account has been disabled by an administrator.");
       role = reconcileRole(u.role, policy);
       if (role !== u.role) {
-        await audit({
+        await auditInTx(tx, {
           action: "user.role.auto",
           targetType: "user",
           targetId: userId,
