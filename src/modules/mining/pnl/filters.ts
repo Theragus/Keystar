@@ -16,6 +16,8 @@ export interface PnlFilters {
   /** Expenses page: which purchases to list ("mining" = counted, suggested and excluded). */
   status: StatusFilter;
   page: number;
+  /** Expenses page: page of the taxes & fees list (paged separately from the purchases). */
+  feePage: number;
 }
 
 export const PNL_BUCKETS: DateBucket[] = ["day", "week", "month"];
@@ -33,6 +35,7 @@ export function parsePnlFilters(params: RawParams, today: string = isoDate(new D
   const base = parseMiningFilters(params, today);
   const bucket = first(params.bucket);
   const status = first(params.status);
+  const feePage = Number(first(params.fpage));
   return {
     from: base.from,
     to: base.to,
@@ -40,6 +43,7 @@ export function parsePnlFilters(params: RawParams, today: string = isoDate(new D
     bucket: bucket === "week" || bucket === "month" ? bucket : "day",
     status: (STATUS_FILTERS as string[]).includes(status ?? "") ? (status as StatusFilter) : "mining",
     page: base.page,
+    feePage: Number.isSafeInteger(feePage) && feePage > 1 ? feePage : 1,
   };
 }
 
@@ -53,6 +57,7 @@ export function pnlQueryString(f: PnlFilters, overrides: Partial<PnlFilters> = {
   if (v.bucket !== "day") p.set("bucket", v.bucket);
   if (v.status !== "mining") p.set("status", v.status);
   if (v.page > 1) p.set("page", String(v.page));
+  if (v.feePage > 1) p.set("fpage", String(v.feePage));
   return p.toString();
 }
 

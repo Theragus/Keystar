@@ -31,8 +31,8 @@ export async function generateMetadata() {
 }
 
 const PAGE_SIZE = 50;
-/** Fees listed for review (newest first); the totals always cover all of them. */
-const FEE_LIMIT = 100;
+/** Fees per page of the taxes & fees list (newest first). */
+const FEE_PAGE_SIZE = 50;
 const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink";
 
 const statusTone: Record<ExpenseStatus, "good" | "accent" | "neutral"> = {
@@ -53,7 +53,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
     getFeeRows(scope),
     getPurchases(scope, { status: filters.status, limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
     // Same status tab as the purchases, so taxes on other sales ("Other purchases") can be found and included too.
-    getFees(scope, { status: filters.status, limit: FEE_LIMIT, offset: 0 }),
+    getFees(scope, { status: filters.status, limit: FEE_PAGE_SIZE, offset: (filters.feePage - 1) * FEE_PAGE_SIZE }),
     getManualEntries(user.id, filters.from, filters.to),
     getWalletStatus(user.id),
   ]);
@@ -72,6 +72,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
   const tabCount = (value: string) =>
     value === "mining" ? counts.counted.count + counts.suggested.count + counts.excluded.count : counts[value as ExpenseStatus].count;
   const pages = Math.max(1, Math.ceil(purchases.total / PAGE_SIZE));
+  const feePages = Math.max(1, Math.ceil(fees.total / FEE_PAGE_SIZE));
   const walletOn = wallet.some((w) => w.granted || w.transactions + w.fees > 0);
   const query = pnlQueryString(filters, { page: 1 });
   const today = ctx.today;
@@ -125,7 +126,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                     return (
                       <Link
                         key={s}
-                        href={`?${pnlQueryString(filters, { status: s, page: 1 })}`}
+                        href={`?${pnlQueryString(filters, { status: s, page: 1, feePage: 1 })}`}
                         aria-current={active ? "page" : undefined}
                         title={s === "mining" ? undefined : t.pnl.statuses[s].hint}
                         className={cn(
@@ -332,10 +333,24 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                   </tbody>
                 </table>
               </div>
-              <p className="mt-3 text-2xs text-ink-3">
-                {fees.total > fees.rows.length ? `${m.fees.latest(fees.rows.length, fees.total)} ` : ""}
-                {m.fees.notes}
-              </p>
+              {feePages > 1 && (
+                <div className="mt-4 flex items-center justify-between text-xs text-ink-3">
+                  <span>{m.fees.page(filters.feePage, feePages, fees.total)}</span>
+                  <span className="flex gap-2">
+                    {filters.feePage > 1 && (
+                      <ButtonLink href={`?${pnlQueryString(filters, { feePage: filters.feePage - 1 })}`} size="sm">
+                        <ChevronLeft className="size-3.5" aria-hidden /> {m.purchases.newer}
+                      </ButtonLink>
+                    )}
+                    {filters.feePage < feePages && (
+                      <ButtonLink href={`?${pnlQueryString(filters, { feePage: filters.feePage + 1 })}`} size="sm">
+                        {m.purchases.older} <ChevronRight className="size-3.5" aria-hidden />
+                      </ButtonLink>
+                    )}
+                  </span>
+                </div>
+              )}
+              <p className="mt-3 text-2xs text-ink-3">{m.fees.notes}</p>
             </Panel>
           )}
 

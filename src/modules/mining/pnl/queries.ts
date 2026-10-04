@@ -740,7 +740,11 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
     SELECT c.character_id, c.name, t.scopes, t.disabled_scopes, t.status AS token_status,
            COALESCE(pc.auto_include_expenses, false) AS auto_include,
            COALESCE(pc.auto_include_sales, false) AS auto_include_sales,
-           j.enabled AS job_enabled, j.last_success_at, j.last_status, j.last_error,
+           j.enabled AS job_enabled,
+           -- Transactions and fees are imported by two jobs: the older success and either job's error count.
+           CASE WHEN jf.job_key IS NULL THEN j.last_success_at ELSE LEAST(j.last_success_at, jf.last_success_at) END AS last_success_at,
+           CASE WHEN jf.last_status = 'error' AND j.last_status IS DISTINCT FROM 'error' THEN 'error' ELSE j.last_status END AS last_status,
+           CASE WHEN j.last_status = 'error' THEN j.last_error WHEN jf.last_status = 'error' THEN jf.last_error END AS last_error,
            w.n AS transactions, w.first_at, w.last_at, fe.n AS fees,
            cov.since AS activity_since, cov.last_observed_at
     FROM characters c
@@ -748,6 +752,8 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
     LEFT JOIN mining_pnl_characters pc ON pc.user_id = c.user_id AND pc.character_id = c.character_id
     LEFT JOIN sync_jobs j
       ON j.job_key = 'wallet.character-transactions' AND j.owner_type = 'character' AND j.owner_id = c.character_id
+    LEFT JOIN sync_jobs jf
+      ON jf.job_key = 'wallet.character-fees' AND jf.owner_type = 'character' AND jf.owner_id = c.character_id
     LEFT JOIN LATERAL (
       SELECT COUNT(*)::int AS n, MIN(date) AS first_at, MAX(date) AS last_at
       FROM wallet_transactions wt WHERE wt.character_id = c.character_id AND wt.user_id = c.user_id

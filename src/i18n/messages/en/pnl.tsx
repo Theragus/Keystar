@@ -290,7 +290,7 @@ export const pnl = {
       order: "Market order",
       includeHint: "Count this fee as a mining cost",
       excludeHint: "Exclude: not a mining cost",
-      latest: (shown: number, total: number) => `Latest ${n(shown)} of ${n(total)}.`,
+      page: (page: number, pages: number, total: number) => `Page ${n(page)} of ${n(pages)} · ${plural(total, "fee", "fees")}`,
       notes:
         "Sales tax follows the sale it was paid on: tax on a counted mining sale counts, tax on other sales stays out. Broker fees belong to market orders, which may not be mining orders, so they only count once you include them.",
       minedNote:

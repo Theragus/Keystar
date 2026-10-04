@@ -1346,6 +1346,14 @@ describe.skipIf(!enabled)("integration", async () => {
       expect((await walletFeesJob.run({ ...ctx, meta: first!.meta! }))?.summary).toBe("0 new fees");
       // Fees alone count as wallet history in Settings (so they can be deleted), even without transactions.
       expect((await pnl.getWalletStatus(userB)).find((w) => w.characterId === 3)).toMatchObject({ transactions: 0, fees: 2 });
+
+      // Settings shows the fee import's error too, not only the transaction import's state.
+      const job = { ownerType: "character" as const, ownerId: 3, lastSuccessAt: new Date("2026-09-10T12:00:00Z") };
+      await db().insert(schema.syncJobs).values([
+        { ...job, jobKey: "wallet.character-transactions", lastStatus: "ok" as const },
+        { ...job, jobKey: "wallet.character-fees", lastStatus: "error" as const, lastError: "ESI 503" },
+      ]);
+      expect((await pnl.getWalletStatus(userB)).find((w) => w.characterId === 3)).toMatchObject({ lastStatus: "error", lastError: "ESI 503" });
     });
 
     it("counts sales tax with the sale it was paid on, even in a multi-sell, and leaves broker fees to you", async () => {

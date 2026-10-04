@@ -295,7 +295,8 @@ export const pnl: typeof en = {
       order: "Marktorder",
       includeHint: "Diese Gebühr als Mining-Kosten zählen",
       excludeHint: "Ausschließen: keine Mining-Kosten",
-      latest: (shown: number, total: number) => `Die neuesten ${n(shown)} von ${n(total)}.`,
+      page: (page: number, pages: number, total: number) =>
+        `Seite ${n(page)} von ${n(pages)} · ${plural(total, "Gebühr", "Gebühren")}`,
       notes:
         "Die Verkaufssteuer folgt dem Verkauf, auf den sie gezahlt wurde: Steuer auf einen gezählten Mining-Verkauf zählt, Steuer auf andere Verkäufe bleibt draußen. Maklergebühren gehören zu Marktorders, die nicht unbedingt Mining-Orders sind, und zählen daher erst, wenn du sie übernimmst.",
       minedNote:
