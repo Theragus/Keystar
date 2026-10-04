@@ -298,7 +298,6 @@ export const mining = {
     empty: "Paste a survey scan to see the field broken down by ore and grade.",
     grades: (count: number) => plural(count, "grade", "grades"),
     baseGrade: "Base",
-    closest: (km: string) => `closest ${km} km`,
     columns: {
       ore: "Ore",
       rocks: "Rocks",

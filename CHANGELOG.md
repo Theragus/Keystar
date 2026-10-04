@@ -16,7 +16,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Removed
 
-- **Ore field estimator**: the max distance filter.
+- **Ore field estimator**: the max distance filter and the closest-distance note on each grade.
 
 ## [0.12.0] - 2026-10-04
 

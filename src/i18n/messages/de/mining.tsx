@@ -298,7 +298,6 @@ export const mining: typeof en = {
     empty: "Füge einen Survey-Scan ein, um das Feld nach Erz und Stufe aufgeschlüsselt zu sehen.",
     grades: (count: number) => plural(count, "Stufe", "Stufen"),
     baseGrade: "Basis",
-    closest: (km: string) => `nächster in ${km} km`,
     columns: {
       ore: "Erz",
       rocks: "Asteroiden",

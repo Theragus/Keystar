@@ -356,11 +356,6 @@ export function FieldEstimator({ valuationLabel }: { valuationLabel: string }) {
                                     <span className="rounded border border-surface-contrast/10 px-1.5 py-px font-mono text-3xs text-ink-2">
                                       {g.grade === "Base" ? m.baseGrade : g.grade}
                                     </span>
-                                    {g.minDistanceKm !== null && (
-                                      <span className="text-2xs text-ink-3">
-                                        {m.closest(f.number(g.minDistanceKm, Number.isInteger(g.minDistanceKm) ? 0 : 1))}
-                                      </span>
-                                    )}
                                   </div>
                                 </td>
                                 <td className="num">{f.integer(g.rocks)}</td>
