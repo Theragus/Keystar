@@ -4,6 +4,9 @@ import { ENDING_SOON_MS, statusesOf, type IndustryActivity, type JobStatus } fro
 import type { IndustryFilters } from "./filters";
 import { INDUSTRY_JOBS_SCOPE, INDUSTRY_SCOPES, STRUCTURES_SCOPE } from "./module";
 
+/** "The token holds both industry scopes", for `esi_tokens` aliased as `t`. */
+const HOLDS_SCOPES = sql`t.scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}, ${STRUCTURES_SCOPE}]::text[]`;
+
 /**
  * Queries for the industry jobs page. Everything is scoped to the viewer's own characters: there is no
  * corporation-wide view of industry jobs.
@@ -11,7 +14,7 @@ import { INDUSTRY_JOBS_SCOPE, INDUSTRY_SCOPES, STRUCTURES_SCOPE } from "./module
 
 export interface IndustryScope {
   /**
-   * The viewer's characters that currently share their industry jobs (active token holding the jobs scope). A
+   * The viewer's characters that currently share their industry jobs (active token holding both scopes). A
    * character that switched access off keeps its stored jobs until they are deleted on the access page, but the
    * page no longer shows them, like a skill queue that is no longer shared.
    */
@@ -22,8 +25,8 @@ export interface IndustryScope {
 export async function enabledCharacterIds(characterIds: number[]): Promise<number[]> {
   if (!characterIds.length) return [];
   const rows = await getDb().execute<{ character_id: unknown }>(sql`
-    SELECT character_id FROM esi_tokens
-    WHERE character_id IN (${list(characterIds)}) AND status = 'active' AND scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}]::text[]`);
+    SELECT t.character_id FROM esi_tokens t
+    WHERE t.character_id IN (${list(characterIds)}) AND t.status = 'active' AND ${HOLDS_SCOPES}`);
   return rows.map((r) => num(r.character_id));
 }
 
@@ -224,9 +227,9 @@ export async function getIndustryFilterOptions(scope: IndustryScope, t: { unknow
 }
 
 export interface IndustryCoverage {
-  /** Own characters whose token holds the industry scope and works. */
+  /** Own characters whose token holds both industry scopes and works. */
   tracked: number;
-  /** Own characters with a working token that have not enabled industry access (the access page turns it on). */
+  /** Own characters with a working token without (full) industry access: the access page turns it on. */
   notEnabled: number;
   invalidTokens: number;
   lastSync: Date | null;
@@ -236,8 +239,8 @@ export interface IndustryCoverage {
 export async function getIndustryCoverage(characterIds: number[]): Promise<IndustryCoverage> {
   if (!characterIds.length) return { tracked: 0, notEnabled: 0, invalidTokens: 0, lastSync: null };
   const [row] = await getDb().execute<Record<string, unknown>>(sql`
-    SELECT count(*) FILTER (WHERE t.status = 'active' AND t.scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}]::text[]) AS tracked,
-           count(*) FILTER (WHERE t.status = 'active' AND NOT (t.scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}]::text[])) AS not_enabled,
+    SELECT count(*) FILTER (WHERE t.status = 'active' AND ${HOLDS_SCOPES}) AS tracked,
+           count(*) FILTER (WHERE t.status = 'active' AND NOT (${HOLDS_SCOPES})) AS not_enabled,
            count(*) FILTER (WHERE t.status = 'invalid') AS invalid_tokens,
            max(j.last_success_at) AS last_sync
     FROM characters c

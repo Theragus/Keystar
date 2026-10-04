@@ -6,7 +6,7 @@ import { createLogger } from "@/core/logger";
 import type { JobDefinition } from "@/core/sync/types";
 import { mapLimit } from "@/lib/concurrency";
 import { isStructureId, jobRows, type EsiIndustryJob } from "./activities";
-import { INDUSTRY_JOBS_SCOPE } from "./module";
+import { INDUSTRY_SCOPES } from "./module";
 import { industryJobs, industryLocations } from "./schema";
 
 const log = createLogger("industry");
@@ -83,7 +83,8 @@ export const characterIndustryJobsJob: JobDefinition = {
   label: (t) => t.industry.module.jobs.characterJobs,
   module: "industry",
   owner: "character",
-  requiredScopes: [INDUSTRY_JOBS_SCOPE],
+  // Both scopes: the access page turns them on together, and a token holding only one is not "enabled".
+  requiredScopes: [...INDUSTRY_SCOPES],
   // ESI caches the list for five minutes.
   intervalSeconds: 300,
   async run({ esi, db, characterId }) {
