@@ -8,6 +8,26 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- **System Info for admins.** A new last page under Administration shows the technical state of the instance:
+  - **Health checks** for the database, migrations and schema, the worker and its version, failing or stuck jobs,
+    paused syncing, EVE SSO, `APP_URL`, clock skew and ESI rate limits.
+  - **Instance details**: the running version and build, the database with its largest tables, the worker and
+    background jobs, and the configuration without secret values.
+  - **Report an issue** walks through a bug report and opens it on GitHub with the version and a system summary
+    filled in. Privacy warnings point out where logs or the public issue could expose pilot or corporation names,
+    IDs or the server's address.
+
+  ([#102](https://github.com/Theragus/Keystar/issues/102))
+- **Support package** for bug reports:
+  - A JSON download with what's needed to debug an instance: build, runtime and container limits, health checks,
+    configuration, migrations and schema drift, table sizes, connections, per-job statistics with scrubbed error
+    patterns, ESI and zKillboard request counters, and token and scope counts.
+  - Never contains pilot, corporation or alliance names or IDs, secrets, the instance's address or who did what.
+    Admins see its exact contents before downloading, and every download is recorded in the audit log.
+  - When the web app doesn't start: `pnpm support:package`, or `node dist/support.mjs` in the image.
+
+  ([#102](https://github.com/Theragus/Keystar/issues/102))
+- Published images record their git commit, tag and build date, shown in System Info ([#102](https://github.com/Theragus/Keystar/issues/102)).
 - **Mining P&L**: income can come from what you actually sold instead of the value of the ore you mined. A new
   Income tab lists your wallet sales; sales of ore, moon ore, ice and gas (raw or compressed), minerals, moon
   materials and ice products are suggested as mining income and reviewed like purchases (include, exclude,

@@ -198,3 +198,19 @@ export async function saveSettings(formData: FormData): Promise<SettingsSaveResu
   revalidatePath("/", "layout");
   return { ok: true, homeChanged };
 }
+
+/**
+ * Records a support package download in the audit log. The browser saves the
+ * package the admin previewed (System Info), so this only receives its name.
+ */
+export async function recordSupportPackageDownload(filename: string): Promise<ActionResult<"forbidden">> {
+  const actor = await assertPermission("system.view").catch(() => null);
+  if (!actor) return refused("forbidden");
+  await audit({
+    actorUserId: actor.id,
+    actorName: actor.main?.name,
+    action: "system.support_package",
+    details: { filename: /^keystar-support-[\w.-]{1,80}\.json$/.test(filename) ? filename : "unknown" },
+  });
+  return ok;
+}

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { esiCache, getDb } from "@/core/db";
 import { env } from "@/core/env";
-import { EsiClient, type EsiCacheStore } from "./client";
+import { EsiClient, type EsiCacheStore, type EsiClientStats } from "./client";
 import { KEYSTAR_VERSION } from "@/core/version";
 import { getAccessToken } from "./tokens";
 
@@ -47,4 +47,9 @@ export function getEsi(): EsiClient {
     });
   }
   return client;
+}
+
+/** Counters of the shared client in this process; null when it hasn't been used yet. */
+export function esiStats(): EsiClientStats | null {
+  return client?.stats() ?? null;
 }
