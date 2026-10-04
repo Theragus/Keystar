@@ -22,6 +22,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - The P&L overview's per-character table and the manual expenses list show character portraits, like the rest of
   the mining pages.
+- `docker compose pull` fetches a newer Keystar image again when the tag (e.g. `main` or `latest`) is already
+  present on the server; it used to report "Image is already present locally" and keep the old image.
 
 ## [0.12.0] - 2026-10-04
 
