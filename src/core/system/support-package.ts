@@ -11,7 +11,7 @@ import type { ProcessRuntime } from "./runtime";
 import type { JobSummary } from "./worker";
 
 /** Bump when the layout changes in a way a reader of older packages must know about. */
-export const SUPPORT_PACKAGE_FORMAT = 1;
+export const SUPPORT_PACKAGE_FORMAT = 2;
 
 export interface ErrorSignature {
   jobKey: string;
