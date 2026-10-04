@@ -6,17 +6,6 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
-### Added
-
-- **Sortable ore breakdown.** Click any column header of the mining dashboard's ore breakdown to sort by it; click
-  again to reverse the order.
-- **Grouped ore types.** The ore breakdown combines the grades and variants of each ore (Scordite, Scordite
-  II-Grade, Scordite III-Grade; Blue Ice and Thick Blue Ice; Zeolites and Glistening Zeolites) into one row, with
-  the unit price averaged by units. Clicking a grouped row filters the dashboard to all of its types. "Group ore
-  types" in the panel header switches back to one row per type.
-- **Survey scanner groups ice and anomaly ore variants.** The field estimator now counts Thick Blue Ice, Pristine
-  White Glaze, Hadal Talassonite and similar variants under their base ore.
-
 ### Changed
 
 - Keep browser-fetched zKillboard counters in a private, temporary preview only. Remove browser uploads to the shared pilot cache; the worker verifies statistics before shared profiles and danger scores use them.
@@ -36,12 +25,92 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - Move D-scan input and matching results into a header dropdown and generate optional written briefings from the blue Briefing button in a dialog.
 - Replace loading prose with evidence overlays and independent loading indicators for each pending pilot tag/card.
 - Fetch pending statistics from the scan creator’s browser at 100 ms intervals with at most four concurrent requests for private provisional previews and rate-limit backoff. Only server-verified results enter the shared cache and danger scores. Server zKillboard calls are spaced by 200 ms; statistics requests avoid a redirect.
-- Keep sidebar icons and section-heading prefixes fixed while labels expand to the right. Show three-character collapsed headings, remove fade flicker, use a 300 ms width animation, disable collapsed navigation scrolling, and move branding to the top bar with the toggle in the sidebar.
 
+- **More sections have their own colour.** Pilots is violet and Social pink, checked for contrast and colour-vision
+  separation in both themes like the existing ones. Finances shares Trade's teal. Overview, Account and
+  Administration keep the cyan accent.
+
+### Fixed
+
+- Kill, loss and mail notifications in the corner no longer run out while you're looking elsewhere: their countdown
+  only runs while the Keystar tab is visible and its window has focus, so a kill that came in while you were in game
+  is still there when you switch back.
+- Scrolling the sidebar navigation or the system and multi-select picker lists past their top or bottom no longer
+  scrolls the page behind them.
+- **Desktop notifications switch that did nothing.** When the browser or an extension turns the request down without
+  asking (Safari with websites not allowed to ask, or AdGuard's "Block Push API"), the switch now shows it as blocked
+  instead of silently staying off. The blocked hint also names system settings and extensions, which can block
+  notifications for every site.
+  ([#90](https://github.com/Theragus/Keystar/issues/90))
+
+## [0.11.0] - 2026-10-03
+
+**When updating:** skill queues need two optional character scopes.
+
+1. Add `esi-skills.read_skillqueue.v1` and `esi-skills.read_skills.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>. Nobody is asked for them unless they share their skills on the
+   Skills access page, but without them on the application that EVE login fails with `invalid_scope`.
+2. Update as usual; the database migrations run on start.
+
+### Added
+
+- **Sortable ore breakdown.** Click any column header of the mining dashboard's ore breakdown to sort by it; click
+  again to reverse the order.
+- **Grouped ore types.** The ore breakdown combines the grades and variants of each ore (Scordite, Scordite
+  II-Grade, Scordite III-Grade; Blue Ice and Thick Blue Ice; Zeolites and Glistening Zeolites) into one row, with
+  the unit price averaged by units. Clicking a grouped row filters the dashboard to all of its types. "Group ore
+  types" in the panel header switches back to one row per type.
+- **Survey scanner groups ice and anomaly ore variants.** The field estimator now counts Thick Blue Ice, Pristine
+  White Glaze, Hadal Talassonite and similar variants under their base ore.
+- **Skill queues.** A new Pilots section shows, for each character, the skill in training with its progress, when
+  every queued skill and the whole queue finish, paused, empty and ending-soon queues, and the character's attributes
+  and remap availability. Sharing is opt-in per character on the new Skills access page. Directors also get a
+  corporation view of every home-corporation member who shares. Add `esi-skills.read_skillqueue.v1` and
+  `esi-skills.read_skills.v1` to your EVE application (see docs/deployment.md).
+- **Mail alerts.** New EVE mail for your characters now shows a notification in Keystar, like kills and
+  losses. It shows the subject, sender and receiving character (with the corporation, alliance or mailing list it
+  went to), and clicking it opens the mail. It needs mail access for the character and checks every 30 seconds.
+  Mail usually reaches Keystar within five minutes of arriving in game.
+- **Desktop notifications.** Kill, loss and mail alerts can also appear as system notifications (Windows notification
+  center, macOS Notification Center) while Keystar is open but not in focus, for example in a background tab or
+  behind the EVE client. Clicking one opens the killmail on zKillboard or the mail in Keystar. While a Keystar tab is
+  in focus, alerts stay in-page toasts. This needs the browser's permission and an HTTPS address.
+
+### Changed
+
+
+
+- **Revoking optional access stays in Keystar.** "Revoke access" on the Live fleet page, "Stop wallet import" and
+  "Stop" for EVE mail now switch the access off right away instead of opening the EVE login. Turning it back on works
+  the same way while the character's EVE token still includes it. My Characters notes which access is only switched
+  off in Keystar; re-authorising the character there removes it from the token for good.
+- **Feedback for account and access actions.** A toast now confirms or explains the outcome when you link a
+  character, re-authorise one, grant corporation access, enable or switch off optional access, make a character your
+  main, queue its syncs or remove it, start or stop sharing a fleet, delete imported mail or wallet history, approve,
+  disable or re-enable a user, and run or pause syncs. If linking a character fails while you're signed in, you now
+  return to the page you came from with the reason instead of landing on the dashboard without one.
+- **Re-authorising checks the character.** Re-authorise buttons, and enabling fleet access, wallet import or mail,
+  now only accept the character they are for. Picking another character on the EVE login used to give that
+  character the wrong set of permissions, which could drop its corporation access and stop the corporation sync
+  jobs. Now nothing is changed, and a message says which character to pick.
+- **Alerts menu.** The kill alert button in the top bar is now an "Alerts" menu with switches for kills and losses,
+  EVE mail and desktop notifications. Each choice is saved per browser; an earlier "kill alerts off" choice is kept.
+- **Steadier collapsible sidebar.** Icons and section headings stay in place while the sidebar expands, collapsed
+  section headings show three characters, the width animates over 300 ms without flicker, the collapsed navigation
+  no longer scrolls, and the Keystar branding moves to the top bar with the collapse toggle in the sidebar.
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
   dashboard's killboard button now read "Combat Report".
 - **"Corp wallet journal" instead of "Wallet journal".** The sidebar entry, the journal page heading and the button
   on the corporation wallet page now make clear that the journal covers the corporation's wallets, not your own.
+- **"Moon drills" instead of "Moon Observers" and "Refineries".** The mining menu entry and the ledger source option
+  now use the same name, so it is clear they show the same corporation moon-mining data. The mining overview and
+  ledger only show the Combined / Member ledgers / Moon drills choice when the corporation has moon drills on record,
+  since without them all three show the same entries.
+
+### Fixed
+
+- Page content no longer shifts a few pixels sideways between pages that scroll and pages that don't (with
+  scrollbars that take up space, such as macOS "Show scroll bars: Always" or Windows).
 
 ## [0.10.0] - 2026-10-03
 

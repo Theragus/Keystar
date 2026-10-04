@@ -36,4 +36,15 @@ export const shell = {
     settings: "Settings",
     audit: "Audit Log",
   },
+  /** Live alerts menu in the top bar. */
+  alerts: {
+    button: "Alerts",
+    menu: "Alert settings",
+    desktop: {
+      label: "Desktop notifications",
+      hint: "Show alerts as system notifications while Keystar is in the background",
+      blocked: "Blocked by the browser, system settings or an extension",
+      unsupported: "Not available in this browser here (needs HTTPS)",
+    },
+  },
 };

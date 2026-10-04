@@ -33,6 +33,27 @@ function useMounted() {
   );
 }
 
+function subscribeFocus(onChange: () => void) {
+  window.addEventListener("focus", onChange);
+  window.addEventListener("blur", onChange);
+  // Switching back from another tab may only make the document visible, without a window focus event.
+  document.addEventListener("visibilitychange", onChange);
+  return () => {
+    window.removeEventListener("focus", onChange);
+    window.removeEventListener("blur", onChange);
+    document.removeEventListener("visibilitychange", onChange);
+  };
+}
+
+/** The user is looking at this tab: visible and its window focused. */
+function useLooking() {
+  return useSyncExternalStore(
+    subscribeFocus,
+    () => document.visibilityState === "visible" && document.hasFocus(),
+    () => true,
+  );
+}
+
 function Stack({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section
@@ -61,11 +82,13 @@ export function ToastViewport({ label, children }: { label: string; children: Re
 
 /**
  * One toast: a card with a close button and a countdown bar along the bottom
- * edge. With `href` the whole card is a link. Hovering or focusing it pauses
- * the countdown; when the bar runs out the toast fades and `onDismiss` removes it.
+ * edge. With `href` the whole card is a link. The countdown only runs while
+ * the tab is visible and its window focused, and hovering or focusing the
+ * toast pauses it; when the bar runs out the toast fades and `onDismiss` removes it.
  */
 export function Toast({
   href,
+  newTab = true,
   linkLabel,
   dismissLabel,
   color,
@@ -76,6 +99,8 @@ export function Toast({
   children,
 }: {
   href?: string;
+  /** Open `href` in a new tab (external pages); false for pages of Keystar itself. */
+  newTab?: boolean;
   linkLabel?: string;
   dismissLabel: string;
   /** Edge and countdown colour. */
@@ -90,6 +115,7 @@ export function Toast({
 }) {
   const [paused, setPaused] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const looking = useLooking();
 
   useEffect(() => {
     if (!leaving) return;
@@ -115,8 +141,8 @@ export function Toast({
       {href ? (
         <a
           href={href}
-          target="_blank"
-          rel="noopener noreferrer"
+          target={newTab ? "_blank" : undefined}
+          rel={newTab ? "noopener noreferrer" : undefined}
           title={linkLabel}
           className={cn(body, "transition-colors hover:bg-surface-contrast/5")}
           style={{ borderLeftColor: color }}
@@ -157,7 +183,7 @@ export function Toast({
           style={{
             background: color,
             ["--toast-duration" as string]: `${durationMs}ms`,
-            animationPlayState: paused || leaving ? "paused" : "running",
+            animationPlayState: paused || leaving || !looking ? "paused" : "running",
           }}
           onAnimationEnd={() => setLeaving(true)}
         />
