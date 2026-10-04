@@ -6,6 +6,52 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Changed
+
+- Keep browser-fetched zKillboard counters in a private, temporary preview only. Remove browser uploads to the shared pilot cache; the worker verifies statistics before shared profiles and danger scores use them.
+
+- Remove the retired rescan action, button, translations and scan-parent metadata; users create a new Local snapshot with New scan.
+
+- Widen the Local Situation engagement report and compact ship rows to ship and pilot names inline; remove hull counts and loss labels while retaining red loss backgrounds.
+
+- Add bottom page indicators to the Local Situation engagement report to slide between recorded fights, newest first. Engagement legends, paging and notes stay at the bottom of the card.
+
+- Engagement ship rows support alliance/corporation highlighting and per-side legends, initially selecting the affiliation with the most recorded pilots on each side.
+
+- Reorganize Threat Intel Local Situation around wrapping pilot affiliation tags, last combat evidence, recent observed co-attacks, and the latest engagement with us. Pilot and legend selection highlights matching alliance members, falling back to corporation membership.
+- Show both sides of the latest engagement with observed ships, loss counts and ISK lost; highlight destroyed hulls in red and identify incomplete evidence. Give the engagement column more width than the observed-group column and show recorded pilot names inline beside each hull.
+- Use compact equal-height pilot cards, direct character/corporation/alliance killboard links, and the three latest kills and losses as ship tags with detailed tooltips.
+- Calculate danger from combat capability and local relevance, with confidence and escalation evidence kept separate. Show explanatory 0–10 badges (green below 5, orange from 5 to below 8, red from 8); no recent sample is unknown.
+- Move D-scan input and matching results into a header dropdown and generate optional written briefings from the blue Briefing button in a dialog.
+- Replace loading prose with evidence overlays and independent loading indicators for each pending pilot tag/card.
+- Fetch pending statistics from the scan creator’s browser at 100 ms intervals with at most four concurrent requests for private provisional previews and rate-limit backoff. Only server-verified results enter the shared cache and danger scores. Server statistics requests avoid a redirect.
+
+- **More sections have their own colour.** Pilots is violet and Social pink, checked for contrast and colour-vision
+  separation in both themes like the existing ones. Finances shares Trade's teal. Overview, Account and
+  Administration keep the cyan accent.
+
+### Fixed
+
+- Kill, loss and mail notifications in the corner no longer run out while you're looking elsewhere: their countdown
+  only runs while the Keystar tab is visible and its window has focus, so a kill that came in while you were in game
+  is still there when you switch back.
+- Scrolling the sidebar navigation or the system and multi-select picker lists past their top or bottom no longer
+  scrolls the page behind them.
+- **Desktop notifications switch that did nothing.** When the browser or an extension turns the request down without
+  asking (Safari with websites not allowed to ask, or AdGuard's "Block Push API"), the switch now shows it as blocked
+  instead of silently staying off. The blocked hint also names system settings and extensions, which can block
+  notifications for every site.
+  ([#90](https://github.com/Theragus/Keystar/issues/90))
+
+## [0.11.0] - 2026-10-03
+
+**When updating:** skill queues need two optional character scopes.
+
+1. Add `esi-skills.read_skillqueue.v1` and `esi-skills.read_skills.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>. Nobody is asked for them unless they share their skills on the
+   Skills access page, but without them on the application that EVE login fails with `invalid_scope`.
+2. Update as usual; the database migrations run on start.
+
 ### Added
 
 - **Sortable ore breakdown.** Click any column header of the mining dashboard's ore breakdown to sort by it; click
@@ -32,6 +78,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+
+
 - **Revoking optional access stays in Keystar.** "Revoke access" on the Live fleet page, "Stop wallet import" and
   "Stop" for EVE mail now switch the access off right away instead of opening the EVE login. Turning it back on works
   the same way while the character's EVE token still includes it. My Characters notes which access is only switched
@@ -47,8 +95,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   jobs. Now nothing is changed, and a message says which character to pick.
 - **Alerts menu.** The kill alert button in the top bar is now an "Alerts" menu with switches for kills and losses,
   EVE mail and desktop notifications. Each choice is saved per browser; an earlier "kill alerts off" choice is kept.
-- Keep sidebar icons and section-heading prefixes fixed while labels expand to the right. Show three-character collapsed headings, remove fade flicker, use a 300 ms width animation, disable collapsed navigation scrolling, and move branding to the top bar with the toggle in the sidebar.
-
+- **Steadier collapsible sidebar.** Icons and section headings stay in place while the sidebar expands, collapsed
+  section headings show three characters, the width animates over 300 ms without flicker, the collapsed navigation
+  no longer scrolls, and the Keystar branding moves to the top bar with the collapse toggle in the sidebar.
 - **"Combat Report" instead of "Killboard".** In English, the sidebar entry, the killboard page heading and the
   dashboard's killboard button now read "Combat Report".
 - **"Corp wallet journal" instead of "Wallet journal".** The sidebar entry, the journal page heading and the button
