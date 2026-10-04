@@ -205,6 +205,32 @@ Current jobs:
 | `skills.queue`                   | 15 min   | Skill queue of characters that share their skills; static skill attributes and ranks |
 | `skills.character`               | 1 h      | Trained skills, skill points and attributes of characters that share their skills |
 
+## System info and support package
+
+Administration → System Info (`/admin/system`, permission `system.view`: admins only, locked) is built from one
+snapshot, `collectSystemSnapshot()` in `src/core/system/collect.ts`. Each collector (database, worker and jobs,
+tokens, settings, clock, audit counts) is wrapped so that one failing collector never takes the page down. The web
+process can't see the worker's process, so the worker reports its runtime and ESI/zKillboard request counters in
+its heartbeat (`worker_heartbeats.info`); the clients count requests in `EsiClient.stats()` and
+`ZkillClient.stats()`.
+
+- `network.ts` probes ESI, EVE SSO (`/oauth/jwks`) and zKillboard with one request each (5 s limit), through
+  `EsiClient.ping()` and `ZkillClient.ping()` so the User-Agent, counters and request spacing apply. ESI or SSO
+  unreachable fails the network check; zKillboard unreachable or answering 403 (blocked User-Agent or IP), or any
+  service answering 5xx, only warns. Each probe is aborted when its time is up.
+- `checks.ts` turns a snapshot into health checks. They are pure, so the page, the support package and the tests
+  agree; their texts live under `admin.system.checks`.
+- `support-package.ts` builds the downloadable package from an **allowlist** of fields. Never add a field that holds
+  a pilot, corporation or alliance name or ID, a secret, the instance's address or an audit actor; free text (job
+  errors) goes through the scrubber in `redact.ts`, and worker ids are hashed with a per-package salt. Bump
+  `SUPPORT_PACKAGE_FORMAT` when the layout changes in a way readers must know about.
+- `summary.ts` writes the Markdown summary for GitHub issues, always in English, and the prefilled bug report URL
+  (the `version` and `system` fields of `.github/ISSUE_TEMPLATE/bug_report.yml`).
+- `src/scripts/support-package.ts` (`dist/support.mjs` in the image) writes the same package to stdout for when the
+  web app doesn't start.
+
+Keystar keeps no logs of its own; the page points admins to `docker compose logs`.
+
 ## Live alerts
 
 Modules declare live alerts in their manifest (`alerts`; today `killboard.kills` and `social.mail`) and register a

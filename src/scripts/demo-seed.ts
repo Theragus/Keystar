@@ -37,6 +37,7 @@ import { classifyOre, type OreClass } from "@/core/eve/ore";
 import { characterScopes, corporationScopes } from "@/core/modules/registry";
 import type { Role } from "@/core/rbac/roles";
 import { setSetting } from "@/core/settings";
+import { KEYSTAR_VERSION } from "@/core/version";
 import { mulberry32 } from "@/lib/random";
 import { FLEET_SCOPE } from "@/modules/fleet/logic";
 import { generateSituationReport } from "@/modules/killboard/report/generate";
@@ -475,7 +476,8 @@ async function main() {
       nextRunAt: new Date(now + rand() * 3600_000),
     })),
   );
-  await db.insert(workerHeartbeats).values({ workerId: "demo-worker", version: "demo", info: { demo: true } });
+  // The running version, so System Info doesn't report a worker/web version mismatch in demo mode.
+  await db.insert(workerHeartbeats).values({ workerId: "demo-worker", version: KEYSTAR_VERSION, info: { demo: true } });
 
   // --- Killboard ----------------------------------------------------------
   const combatWeights: Record<string, number> = {

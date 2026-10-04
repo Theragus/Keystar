@@ -4,6 +4,8 @@ import { FORMATTERS } from "@/lib/format";
 export const shell: typeof en = {
   mainNav: "Hauptmenü",
   releaseNotes: "Versionshinweise",
+  unstableBuild: (tag: string | null, commit: string | null, builtAt: string | null) =>
+    `Unveröffentlichter ${tag ?? "Entwicklungs"}-Build: möglicherweise instabil.${commit ? ` Commit ${commit}` : ""}${builtAt ? `, gebaut am ${FORMATTERS.de.dateTime(builtAt)}` : ""}`,
   unknownPilot: "Unbekannter Pilot",
   signOut: "Abmelden",
   noHomeCorp: "Keine Heimat-Corporation",
@@ -35,6 +37,7 @@ export const shell: typeof en = {
     sync: "Sync-Status",
     settings: "Einstellungen",
     audit: "Audit-Log",
+    system: "Systeminfo",
   },
   alerts: {
     button: "Alarme",

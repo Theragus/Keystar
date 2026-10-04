@@ -36,7 +36,7 @@ export const pnl = {
     fuel: { label: "Fuel", hint: "Heavy Water for Orca / Rorqual industrial cores" },
     bursts: { label: "Burst charges", hint: "Mining Foreman burst charges" },
     drones: { label: "Mining drones", hint: "Mining, ice and excavator drones" },
-    ships: { label: "Ships & fittings", hint: "Mining hulls, mining modules, rigs, compressors" },
+    ships: { label: "Ships & fittings", hint: "Mining hulls, mining modules, rigs, compressors, industrial cores" },
     subscription: { label: "PLEX / Omega", hint: "Game time for mining alts" },
     other: { label: "Other", hint: "Anything else you count as a mining cost" },
   } satisfies Record<ExpenseCategory, { label: string; hint: string }>,
