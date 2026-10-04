@@ -232,6 +232,24 @@ export const pnl: typeof en = {
         </>
       ),
     },
+    flows: {
+      title: "Abgebaut vs. verkauft",
+      subtitle: "Pro Erz, in Roh-Einheiten: komprimiertes Erz zählt 1:1, es braucht nur weniger Platz",
+      summary: (sold: string, atValuation: string | null, left: string, volume: string) =>
+        `Verkauft für ${sold}${atValuation ? ` (${atValuation} zur Bewertung)` : ""} · ${left} noch unverkauft zur heutigen Bewertung (${volume} unkomprimiert)`,
+      columns: {
+        ore: "Erz",
+        mined: "Abgebaut",
+        sold: "Verkauft",
+        left: "Übrig",
+        got: "Erlös / Einheit",
+        valuation: "Bewertung / Einheit",
+        isk: "Verkauft für",
+      },
+      compressed: (share: string) => `${share} komprimiert`,
+      notes:
+        "Übrig unter null heißt, du hast Erz verkauft, das vor diesem Zeitraum abgebaut wurde. Ausgeschlossene Verkäufe und Handel zwischen deinen eigenen Charakteren zählen nicht; zugeordnet werden nur Marktverkäufe. Gas wird nicht seiner komprimierten Variante zugeordnet.",
+    },
   },
 
   expenses: {

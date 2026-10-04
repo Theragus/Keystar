@@ -227,6 +227,24 @@ export const pnl = {
         </>
       ),
     },
+    flows: {
+      title: "Mined vs sold",
+      subtitle: "Per ore, in raw units: compressed ore counts 1:1, it only takes less room",
+      summary: (sold: string, atValuation: string | null, left: string, volume: string) =>
+        `Sold for ${sold}${atValuation ? ` (${atValuation} at the valuation)` : ""} · ${left} still unsold at today's valuation (${volume} uncompressed)`,
+      columns: {
+        ore: "Ore",
+        mined: "Mined",
+        sold: "Sold",
+        left: "Left",
+        got: "You got / unit",
+        valuation: "Valuation / unit",
+        isk: "Sold for",
+      },
+      compressed: (share: string) => `${share} compressed`,
+      notes:
+        "Left below zero means you sold ore mined before this period. Sales you excluded and trades between your own characters don't count; only market sales are matched. Gas isn't matched to its compressed variant.",
+    },
   },
 
   expenses: {

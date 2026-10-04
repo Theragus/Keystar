@@ -10,7 +10,8 @@ import {
   type ExpenseCategory,
 } from "@/modules/mining/pnl/categories";
 import { parsePnlFilters, pnlQueryString } from "@/modules/mining/pnl/filters";
-import type { ActivityStats, ExpenseRow, IncomeRow, SaleRow } from "@/modules/mining/pnl/queries";
+import type { ActivityStats, ExpenseRow, IncomeRow, OreFlowRow, SaleRow } from "@/modules/mining/pnl/queries";
+import { summarizeOreFlows } from "@/modules/mining/pnl/ore-flows";
 import { allocateByShare, buildPnlReport } from "@/modules/mining/pnl/report";
 import { pnlScope } from "@/modules/mining/pnl/scope";
 
@@ -328,5 +329,38 @@ describe("P&L report", () => {
     expect(r.allocation).toBeNull();
     expect(r.activities).toEqual([]);
     expect(allocateByShare(100, new Map([["a", 0]]))).toEqual(new Map([["a", 0]]));
+  });
+});
+
+describe("mined vs sold", () => {
+  const row = (extra: Partial<OreFlowRow>): OreFlowRow => ({
+    typeId: 1230,
+    typeName: "Veldspar",
+    oreClass: "ore",
+    mined: 0,
+    unitVolume: 0.1,
+    minedValue: 0,
+    sold: 0,
+    soldCompressed: 0,
+    soldIsk: 0,
+    sales: 0,
+    valuationUnitPrice: 10,
+    ...extra,
+  });
+
+  it("works out what is left, the realised price and the value of unsold ore", () => {
+    const { rows, totals } = summarizeOreFlows([
+      row({ mined: 1000, minedValue: 10_000, sold: 600, soldCompressed: 450, soldIsk: 6600, sales: 2 }),
+      // Sold more than was mined in the period: nothing left to value.
+      row({ typeId: 45490, typeName: "Zeolites", oreClass: "moon_r4", unitVolume: 10, mined: 10, sold: 50, soldIsk: 400, valuationUnitPrice: null }),
+    ]);
+    expect(rows[0]).toMatchObject({ left: 400, soldUnitPrice: 11, vsValuation: 1.1, compressedShare: 0.75, leftValue: 4000 });
+    expect(rows[1]).toMatchObject({ left: -40, soldUnitPrice: 8, vsValuation: null, leftValue: 0 });
+    expect(totals).toEqual({ minedValue: 10_000, soldIsk: 7000, soldAtValuation: 6000, leftValue: 4000, leftVolume: 40 });
+  });
+
+  it("leaves prices empty when nothing was sold", () => {
+    const { rows } = summarizeOreFlows([row({ mined: 100 })]);
+    expect(rows[0]).toMatchObject({ soldUnitPrice: null, vsValuation: null, compressedShare: 0, leftValue: 1000 });
   });
 });
