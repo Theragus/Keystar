@@ -1344,6 +1344,8 @@ describe.skipIf(!enabled)("integration", async () => {
       ]);
       // Nothing newer than the cursor: nothing new stored.
       expect((await walletFeesJob.run({ ...ctx, meta: first!.meta! }))?.summary).toBe("0 new fees");
+      // Fees alone count as wallet history in Settings (so they can be deleted), even without transactions.
+      expect((await pnl.getWalletStatus(userB)).find((w) => w.characterId === 3)).toMatchObject({ transactions: 0, fees: 2 });
     });
 
     it("counts sales tax with the sale it was paid on, even in a multi-sell, and leaves broker fees to you", async () => {

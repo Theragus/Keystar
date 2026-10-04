@@ -726,6 +726,8 @@ export interface WalletCharacterStatus {
   lastStatus: string | null;
   lastError: string | null;
   transactions: number;
+  /** Imported sales tax and broker fees (a character can have fees without transactions, e.g. unfilled orders). */
+  fees: number;
   firstTransactionAt: Date | null;
   lastTransactionAt: Date | null;
   activitySince: Date | null;
@@ -739,7 +741,7 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
            COALESCE(pc.auto_include_expenses, false) AS auto_include,
            COALESCE(pc.auto_include_sales, false) AS auto_include_sales,
            j.enabled AS job_enabled, j.last_success_at, j.last_status, j.last_error,
-           w.n AS transactions, w.first_at, w.last_at,
+           w.n AS transactions, w.first_at, w.last_at, fe.n AS fees,
            cov.since AS activity_since, cov.last_observed_at
     FROM characters c
     LEFT JOIN esi_tokens t ON t.character_id = c.character_id
@@ -750,6 +752,9 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
       SELECT COUNT(*)::int AS n, MIN(date) AS first_at, MAX(date) AS last_at
       FROM wallet_transactions wt WHERE wt.character_id = c.character_id AND wt.user_id = c.user_id
     ) w ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS n FROM wallet_fees wf WHERE wf.character_id = c.character_id AND wf.user_id = c.user_id
+    ) fe ON true
     LEFT JOIN mining_activity_coverage cov ON cov.character_id = c.character_id
     JOIN users u ON u.id = c.user_id
     WHERE c.user_id = ${userId}::uuid
@@ -772,6 +777,7 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
       lastStatus: str(r.last_status),
       lastError: str(r.last_error),
       transactions: num(r.transactions),
+      fees: num(r.fees),
       firstTransactionAt: toDate(r.first_at),
       lastTransactionAt: toDate(r.last_at),
       activitySince: toDate(r.activity_since),

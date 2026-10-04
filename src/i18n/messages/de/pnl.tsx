@@ -344,7 +344,7 @@ export const pnl: typeof en = {
         `${plural(count, "Transaktion", "Transaktionen")} seit ${since} · synchronisiert ${synced}`,
       noTransactions: (synced: string) => `Keine Markttransaktionen in den letzten 30 Tagen · synchronisiert ${synced}`,
       firstImport: "Erster Import in wenigen Minuten",
-      kept: (count: number) => `${plural(count, "importierte Transaktion bleibt", "importierte Transaktionen bleiben")} erhalten`,
+      kept: (count: number) => `${plural(count, "importierter Wallet-Eintrag bleibt", "importierte Wallet-Einträge bleiben")} erhalten`,
       nothing: "Nichts importiert",
       activitySince: (date: string) => `Mining-Aktivität gemessen seit ${date}`,
       activityNext: "Die Mining-Aktivität wird ab dem nächsten Ledger-Sync gemessen",

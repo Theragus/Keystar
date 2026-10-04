@@ -14,7 +14,7 @@ import { PnlFilterBar } from "@/modules/mining/pnl/components/pnl-filter-bar";
 import { PnlTabs } from "@/modules/mining/pnl/components/pnl-tabs";
 import { pnlQueryString, STATUS_FILTERS } from "@/modules/mining/pnl/filters";
 import { pnlPageContext } from "@/modules/mining/pnl/page-context";
-import { getExpenseRows, getFees, getManualEntries, getPurchases, getWalletStatus } from "@/modules/mining/pnl/queries";
+import { getExpenseRows, getFeeRows, getFees, getManualEntries, getPurchases, getWalletStatus } from "@/modules/mining/pnl/queries";
 import { SPREAD_DAYS } from "@/modules/mining/pnl/spread";
 import {
   addManualEntry,
@@ -48,8 +48,9 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
   const m = t.pnl.expenses;
   const { filters, scope, user } = ctx;
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
-  const [summary, purchases, fees, entries, wallet] = await Promise.all([
+  const [purchaseRows, feeRows, purchases, fees, entries, wallet] = await Promise.all([
     getExpenseRows(scope),
+    getFeeRows(scope),
     getPurchases(scope, { status: filters.status, limit: PAGE_SIZE, offset: (filters.page - 1) * PAGE_SIZE }),
     // Same status tab as the purchases, so taxes on other sales ("Other purchases") can be found and included too.
     getFees(scope, { status: filters.status, limit: FEE_LIMIT, offset: 0 }),
@@ -57,6 +58,9 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
     getWalletStatus(user.id),
   ]);
 
+  // The status tabs cover purchases and fees; "Include all suggested" only includes purchases.
+  const summary = [...purchaseRows, ...feeRows];
+  const suggestedPurchases = purchaseRows.filter((r) => r.status === "suggested").reduce((n, r) => n + r.count, 0);
   const byStatus = (status: ExpenseStatus) =>
     summary
       .filter((r) => r.status === status)
@@ -68,7 +72,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
   const tabCount = (value: string) =>
     value === "mining" ? counts.counted.count + counts.suggested.count + counts.excluded.count : counts[value as ExpenseStatus].count;
   const pages = Math.max(1, Math.ceil(purchases.total / PAGE_SIZE));
-  const walletOn = wallet.some((w) => w.granted || w.transactions > 0);
+  const walletOn = wallet.some((w) => w.granted || w.transactions + w.fees > 0);
   const query = pnlQueryString(filters, { page: 1 });
   const today = ctx.today;
 
@@ -89,13 +93,13 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
             title={m.purchases.title}
             subtitle={m.purchases.subtitle}
             actions={
-              counts.suggested.count > 0 && (
+              suggestedPurchases > 0 && (
                 <form action={includeAllSuggested}>
                   <input type="hidden" name="from" value={filters.from} />
                   <input type="hidden" name="to" value={filters.to} />
                   <input type="hidden" name="chars" value={filters.characters.join(",")} />
                   <SubmitButton variant="primary" title={m.purchases.includeAllHint}>
-                    <CheckCheck className="size-3.5" aria-hidden /> {m.purchases.includeAll(counts.suggested.count)}
+                    <CheckCheck className="size-3.5" aria-hidden /> {m.purchases.includeAll(suggestedPurchases)}
                   </SubmitButton>
                 </form>
               )

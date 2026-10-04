@@ -336,7 +336,7 @@ export const pnl = {
         `${plural(count, "transaction", "transactions")} since ${since} · synced ${synced}`,
       noTransactions: (synced: string) => `No market transactions in the last 30 days · synced ${synced}`,
       firstImport: "First import within a few minutes",
-      kept: (count: number) => `${plural(count, "imported transaction", "imported transactions")} kept`,
+      kept: (count: number) => `${plural(count, "imported wallet entry", "imported wallet entries")} kept`,
       nothing: "Nothing imported",
       activitySince: (date: string) => `Mining activity measured since ${date}`,
       activityNext: "Mining activity is measured from the next ledger sync",
