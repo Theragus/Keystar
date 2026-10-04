@@ -41,6 +41,15 @@ export function worstStatus(checks: CheckResult[]): CheckStatus {
   return checks.reduce<CheckStatus>((worst, c) => (SEVERITY[c.status] > SEVERITY[worst] ? c.status : worst), "ok");
 }
 
+/**
+ * A service that answers but won't serve us: any 5xx (down, or ESI's daily downtime), and zKillboard's
+ * 403, which it sends to unknown User-Agents and busy IPs. A 403 from ESI or SSO to these anonymous
+ * requests isn't a known failure mode, so it doesn't count.
+ */
+export function isRefused(target: string, status: number | null): boolean {
+  return (status ?? 0) >= 500 || (target === "zkill" && status === 403);
+}
+
 /** Health checks over a snapshot. Pure, so they are easy to test and identical on the page and in the package. */
 export function runChecks(s: SystemSnapshot, now = Date.now()): CheckResult[] {
   const results: CheckResult[] = [];
@@ -125,9 +134,8 @@ export function runChecks(s: SystemSnapshot, now = Date.now()): CheckResult[] {
   if (!s.network) add("network", "skip");
   else {
     const down = s.network.filter((p) => !p.reachable).map((p) => p.target);
-    // Reachable but refusing us: zKillboard blocks unknown User-Agents and busy IPs with 403, ESI answers 5xx when down.
     const refused = s.network
-      .filter((p) => p.reachable && (p.status === 403 || (p.status ?? 0) >= 500))
+      .filter((p) => p.reachable && isRefused(p.target, p.status))
       .map((p) => `${p.target}:${p.status}`);
     const critical = down.some((t) => t === "esi" || t === "sso");
     if (down.length) add("network", critical ? "fail" : "warn", { down: down.join(","), refused: refused.join(",") });

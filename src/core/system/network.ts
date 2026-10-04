@@ -17,8 +17,8 @@ export interface NetworkProbe {
   error: string | null;
 }
 
-/** A probe: resolves with the HTTP status of one request, throws when no answer arrives. */
-export type Probe = () => Promise<{ status: number }>;
+/** A probe: resolves with the HTTP status of one request, throws when no answer arrives. Must stop when `signal` aborts. */
+export type Probe = (signal: AbortSignal) => Promise<{ status: number }>;
 
 /** Each probe gives up after this long, so an unreachable service can't stall the page. */
 export const PROBE_TIMEOUT_MS = 5_000;
@@ -27,20 +27,23 @@ export const PROBE_TIMEOUT_MS = 5_000;
 export function networkError(err: unknown): string {
   const cause = (err as { cause?: { code?: string; message?: string } })?.cause;
   if (cause?.code) return cause.code;
-  if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) return "timeout";
+  if ((err instanceof Error || err instanceof DOMException) && (err.name === "TimeoutError" || err.name === "AbortError")) {
+    return "timeout";
+  }
   return errorMessage(cause?.message ? cause : err).slice(0, 200);
 }
 
 async function probe(target: NetworkTarget, run: Probe, timeoutMs: number): Promise<NetworkProbe> {
   const started = performance.now();
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  // Aborting cancels the request itself, so nothing keeps running (or updates the clients' counters) after the timeout.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new DOMException("timeout", "TimeoutError")), timeoutMs);
+  const aborted = new Promise<never>((_, reject) =>
+    controller.signal.addEventListener("abort", () => reject(controller.signal.reason), { once: true }),
+  );
   try {
-    const { status } = await Promise.race([
-      run(),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(Object.assign(new Error("timeout"), { name: "TimeoutError" })), timeoutMs);
-      }),
-    ]);
+    // The race also covers a probe that ignores its signal.
+    const { status } = await Promise.race([run(controller.signal), aborted]);
     return { target, reachable: true, status, ms: Math.round(performance.now() - started), error: null };
   } catch (err) {
     return { target, reachable: false, status: null, ms: Math.round(performance.now() - started), error: networkError(err) };
@@ -52,14 +55,14 @@ async function probe(target: NetworkTarget, run: Probe, timeoutMs: number): Prom
 /** The real probes. ESI and zKillboard go through their clients (User-Agent, counters, request spacing). */
 export function defaultProbes(): Record<NetworkTarget, Probe> {
   return {
-    esi: () => getEsi().ping("/status"),
+    esi: (signal) => getEsi().ping("/status", signal),
     // The key set every sign-in needs to verify EVE's tokens (src/core/auth/sso.ts).
-    sso: async () => {
-      const res = await fetch(new URL("/oauth/jwks", env().SSO_BASE_URL), { signal: AbortSignal.timeout(10_000) });
+    sso: async (signal) => {
+      const res = await fetch(new URL("/oauth/jwks", env().SSO_BASE_URL), { signal });
       await res.body?.cancel().catch(() => undefined);
       return { status: res.status };
     },
-    zkill: () => getZkill().ping(),
+    zkill: (signal) => getZkill().ping(signal),
   };
 }
 

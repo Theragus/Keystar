@@ -302,7 +302,7 @@ export class EsiClient {
    * One uncached GET without retries or rate-limit waits, for reachability checks
    * (System Info). Any HTTP answer resolves with its status; network errors throw.
    */
-  async ping(path = "/status"): Promise<{ status: number }> {
+  async ping(path = "/status", signal: AbortSignal = AbortSignal.timeout(10_000)): Promise<{ status: number }> {
     const sentAt = this.now();
     let res: Response;
     try {
@@ -312,7 +312,7 @@ export class EsiClient {
           "User-Agent": this.opts.userAgent,
           "X-Compatibility-Date": this.opts.compatibilityDate,
         },
-        signal: AbortSignal.timeout(10_000),
+        signal,
       });
     } catch (err) {
       this.counters.requests.network++;

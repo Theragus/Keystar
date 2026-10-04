@@ -457,6 +457,26 @@ describe("network", () => {
     expect(networkError(new Error("socket hang up"))).toBe("socket hang up");
   });
 
+  it("cancels a probe's request when it times out", async () => {
+    let aborted = false;
+    const [result] = await collectNetwork(
+      {
+        esi: (signal) =>
+          new Promise((_, reject) =>
+            signal.addEventListener("abort", () => {
+              aborted = true;
+              reject(signal.reason);
+            }),
+          ),
+        sso: ok(200),
+        zkill: ok(200),
+      },
+      20,
+    );
+    expect(result).toMatchObject({ target: "esi", reachable: false, error: "timeout" });
+    expect(aborted).toBe(true);
+  });
+
   it("fails when ESI or EVE SSO are unreachable, warns for zKillboard, a 403 or an ESI outage", () => {
     const probes = (overrides: Partial<Record<"esi" | "sso" | "zkill", { reachable: boolean; status: number | null }>>) =>
       (["esi", "sso", "zkill"] as const).map((target) => ({
@@ -480,7 +500,10 @@ describe("network", () => {
     expect(check(null)?.status).toBe("skip");
     const en = MESSAGES.en.admin.system.checks.network;
     expect(en.detail("fail", { down: "esi,sso", refused: "" })).toContain("ESI, EVE SSO");
-    expect(en.detail("warn", { down: "", refused: "zkill:403" })).toContain("zKillboard refused requests (HTTP 403)");
+    expect(en.detail("warn", { down: "", refused: "zkill:403" })).toContain("zKillboard blocks this server (HTTP 403)");
+    expect(en.detail("warn", { down: "", refused: "esi:503" })).toBe("ESI answers with an error (HTTP 503) and may be down.");
+    // A 403 means "blocked" only from zKillboard; ESI's or SSO's isn't flagged (or blamed on ESI_CONTACT).
+    expect(check(probes({ esi: { reachable: true, status: 403 } }))?.status).toBe("ok");
   });
 
   it("scrubs host names from network errors in the support package", () => {

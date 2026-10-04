@@ -14,12 +14,18 @@ const names = (list: string | number) =>
     .filter(Boolean)
     .map((e) => NETWORK_NAMES[e.split(":")[0]] ?? e)
     .join(", ");
-const codes = (list: string | number) =>
+/** One sentence per service that answered with an error ("zkill:403", "esi:503"). */
+const refusedText = (list: string | number) =>
   String(list)
     .split(",")
     .filter(Boolean)
-    .map((e) => `HTTP ${e.split(":")[1]}`)
-    .join(", ");
+    .map((e) => {
+      const [name, code] = e.split(":");
+      return name === "zkill" && code === "403"
+        ? "zKillboard sperrt diesen Server (HTTP 403): Es braucht einen User-Agent mit Kontaktdaten, setze ESI_CONTACT."
+        : `${NETWORK_NAMES[name] ?? name} antwortet mit einem Fehler (HTTP ${code}) und ist vielleicht ausgefallen.`;
+    })
+    .join(" ");
 
 export const admin: typeof en = {
   users: {
@@ -444,7 +450,7 @@ export const admin: typeof en = {
               ? "Nicht geprüft."
               : v.down
                 ? `${names(v.down)} nicht erreichbar. Prüfe DNS, Firewall und Proxy des Servers.`
-                : `${names(v.refused)} lehnt Anfragen ab (${codes(v.refused)}). zKillboard sperrt fehlende User-Agents: setze ESI_CONTACT.`,
+                : refusedText(v.refused),
       },
     },
     keystar: {
