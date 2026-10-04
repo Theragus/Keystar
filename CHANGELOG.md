@@ -11,6 +11,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
   container's memory against its limit, free host memory and the host's load average.
 
+### Changed
+
+- **Mining P&L**: when income comes from wallet sales, it is now net of sales tax instead of counting the tax as an
+  expense: each sale on the Income tab shows the tax paid on it and its net, and the tax counts whenever the sale
+  does, without a review of its own. Broker fees stay expenses and are easier to review: each shows the journal's
+  description and time, and "Include all" counts every suggested broker fee at once.
+
 ## [0.13.0] - 2026-10-04
 
 ### Added
@@ -55,10 +62,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **Mining P&L**: a "Mined vs sold" table on the Income tab compares, per ore, what you mined with what you sold
   of it, raw or compressed (compressed ore counts 1:1 in units), with what you got per unit against the valuation
   and the value of the ore still unsold.
-- **Mining P&L**: Keystar reads sales tax and broker fees from your characters' wallet journals (same wallet access,
-  no new login). When income comes from wallet sales, it is net of sales tax: each sale on the Income tab shows the
-  tax paid on it, matched even in a multi-sell, and the tax counts whenever the sale does. Broker fees are reviewed
-  on the Expenses tab with the journal's description, one by one or all at once, and count once you include them.
+- **Mining P&L**: sales tax and broker fees from your characters' wallet journals count as a "Taxes & fees" expense
+  when income comes from wallet sales (same wallet access, no new login). Sales tax follows the sale it was paid on,
+  even in a multi-sell, so tax on counted mining sales counts on the character that sold; broker fees are suggested
+  until you include them.
 
 ### Changed
 
