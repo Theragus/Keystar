@@ -6,6 +6,7 @@ import { audit } from "@/core/audit";
 import { assertPermission } from "@/core/auth/dal";
 import { disableOptionalScope, enableOptionalScope } from "@/core/auth/scope-switch";
 import { esiTokens, getDb, industryJobs, type Db } from "@/core/db";
+import { forgetCharacterEsiCache } from "@/core/esi";
 import { ok, refused, type ActionResult } from "@/lib/action-result";
 import { INDUSTRY_PERMISSIONS, INDUSTRY_SCOPES } from "@/modules/industry/module";
 
@@ -81,6 +82,8 @@ export async function deleteIndustryData(characterId: number): Promise<ActionRes
       const [token] = await tx.select({ scopes: esiTokens.scopes }).from(esiTokens).where(eq(esiTokens.characterId, characterId)).for("update");
       if (INDUSTRY_SCOPES.some((s) => token?.scopes.includes(s))) throw new StillEnabled();
       await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
+      // The cached ESI copy is the same data, and would answer the next sync with "not modified".
+      await forgetCharacterEsiCache(tx, characterId, `/characters/${characterId}/industry/`);
     });
   } catch (err) {
     if (err instanceof StillEnabled) return refused("stillEnabled");

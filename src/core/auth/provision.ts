@@ -19,7 +19,7 @@ import {
   type Db,
 } from "@/core/db";
 import { env } from "@/core/env";
-import { getEsi } from "@/core/esi";
+import { forgetCharacterEsiCache, getEsi } from "@/core/esi";
 import { ensureNames, refreshCorporations } from "@/core/eve/resolver";
 import { optionalScopes } from "@/core/modules/registry";
 import type { Role } from "@/core/rbac/roles";
@@ -60,6 +60,8 @@ export async function detachTransferredCharacter(
   await tx.delete(characters).where(eq(characters.characterId, characterId));
   // Wallet history, mail and industry jobs imported for the previous owner are theirs, not the new owner's.
   await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
+  // ESI responses cached with the previous owner's token hold their private data too.
+  await forgetCharacterEsiCache(tx, characterId);
   await tx
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, previousUserId)));

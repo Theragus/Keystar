@@ -22,6 +22,7 @@ import {
   industryJobs,
   walletTransactions,
 } from "@/core/db";
+import { forgetCharacterEsiCache } from "@/core/esi";
 import { optionalScopePermission, optionalScopes } from "@/core/modules/registry";
 import { triggerJobs } from "@/core/sync/scheduler";
 import { ok, refused, type ActionResult } from "@/lib/action-result";
@@ -74,6 +75,7 @@ export async function removeCharacter(characterId: number): Promise<ActionResult
     // character that changed hands meanwhile keeps its new owner's jobs.
     if (removed.length) {
       await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
+      await forgetCharacterEsiCache(tx, characterId);
       await tx
         .update(syncJobs)
         .set({ meta: null })

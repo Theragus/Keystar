@@ -2396,11 +2396,132 @@ describe.skipIf(!enabled)("integration", async () => {
     it("deletes stored jobs only once access is off", async () => {
       const { deleteIndustryData, setIndustryAccess } = await import("@/app/(app)/industry/actions");
       actor = { id: userB, characterIds: [2, 3] };
+      await db().insert(schema.esiCache).values(
+        ["2:GET /characters/2/industry/jobs?include_completed=true", "2:GET /characters/2/roles"].map((key) => ({ key, body: [] })),
+      );
       expect(await deleteIndustryData(2)).toEqual({ ok: false, error: "stillEnabled" });
       expect(await setIndustryAccess(2, false)).toEqual({ ok: true });
       expect(await deleteIndustryData(2)).toEqual({ ok: true });
       expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+      // The cached copy of the jobs goes too; other cached responses stay.
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key)).toEqual(["2:GET /characters/2/roles"]);
       expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ characterId: 2, hasData: false });
+    });
+  });
+
+  describe("ESI answers \"not modified\"", async () => {
+    const { INDUSTRY_SCOPES } = await import("@/modules/industry/module");
+    type CachedEntry = import("@/core/esi/client").CachedEntry;
+    let expires = new Date(0);
+    let body: unknown = [];
+    let requests = 0;
+    // Serves `body` with ETag "v1", and 304 when the client already holds it.
+    const esiFor = (pathPattern: RegExp) => {
+      const store = new Map<string, CachedEntry>();
+      return new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        maxRetries: 0,
+        cache: { get: async (k) => store.get(k) ?? null, set: async (k, e) => void store.set(k, e) },
+        fetchImpl: (async (url: string, init?: RequestInit) => {
+          if (!pathPattern.test(new URL(String(url)).pathname)) return new Response("{}", { status: 404 });
+          requests++;
+          const headers = { "content-type": "application/json", etag: '"v1"', expires: expires.toUTCString() };
+          if ((init?.headers as Record<string, string>)["If-None-Match"] === '"v1"') return new Response(null, { status: 304, headers });
+          return new Response(JSON.stringify(body), { status: 200, headers });
+        }) as typeof fetch,
+      });
+    };
+    const ctx = (esi: InstanceType<typeof EsiClient>, ownerType: "global" | "character" | "corporation", ownerId: number, characterId: number | null) =>
+      ({ jobId: 1, ownerType, ownerId, characterId, esi, db: db(), log: undefined as never, meta: {} });
+
+    beforeEach(async () => {
+      expires = new Date(0);
+      requests = 0;
+      // Everything the jobs would look up is known, so they make no other requests.
+      await db().insert(schema.eveEntities).values([1, 2].map((id) => ({ id, name: `Pilot ${id}`, category: "character" })));
+      await db().insert(schema.eveTypes).values({ typeId: 787, name: "Blueprint", groupId: 462 });
+      await db().insert(schema.industryLocations).values({ locationId: 60003760, kind: "station", name: "Station", resolvedAt: new Date() });
+      await db().insert(schema.esiTokens).values({ characterId: 2, refreshTokenEnc: "x", scopes: [...INDUSTRY_SCOPES] });
+    });
+
+    it("stores industry jobs again that are missing although ESI reports the list unchanged", async () => {
+      const { characterIndustryJobsJob } = await import("@/modules/industry/jobs");
+      body = [{ job_id: 900, installer_id: 2, facility_id: 60003760, station_id: 60003760, activity_id: 1, blueprint_id: 5,
+        blueprint_type_id: 787, blueprint_location_id: 60003760, output_location_id: 60003760, runs: 2, cost: 10, duration: 3600,
+        status: "active", start_date: new Date().toISOString(), end_date: new Date(Date.now() + 3600_000).toISOString() }];
+      const esi = esiFor(/\/industry\/jobs$/);
+      const jobIds = async () => (await db().select().from(schema.industryJobs)).map((j) => j.jobId);
+      expect((await characterIndustryJobsJob.run(ctx(esi, "character", 2, 2)))?.summary).toBe("1 running job, 1 listed");
+      expect(await jobIds()).toEqual([900]);
+
+      // The stored jobs are gone (a failed write, or an unlink and relink) while the cached ETag stays: ESI answers 304.
+      await db().delete(schema.industryJobs);
+      expect((await characterIndustryJobsJob.run(ctx(esi, "character", 2, 2)))?.summary).toBe("1 running job, 1 listed (unchanged)");
+      expect(await jobIds()).toEqual([900]);
+      expect(requests).toBe(2);
+
+      // The same for a run served from Keystar's own cache before Expires.
+      expires = new Date(Date.now() + 300_000);
+      await characterIndustryJobsJob.run(ctx(esi, "character", 2, 2));
+      await db().delete(schema.industryJobs);
+      expect((await characterIndustryJobsJob.run(ctx(esi, "character", 2, 2)))?.summary).toContain("(unchanged)");
+      expect(requests).toBe(3);
+      expect(await jobIds()).toEqual([900]);
+    });
+
+    it("brings the corporation roster up to date although ESI reports the member list unchanged", async () => {
+      const { corporationMembersJob } = await import("@/core/sync/core-jobs");
+      body = [1, 2, 9];
+      const esi = esiFor(/\/corporations\/100\/members$/);
+      const roster = async () =>
+        (await db().select().from(schema.corporationMembers)).map((m) => m.characterId).sort((a, b) => a - b);
+      await corporationMembersJob.run(ctx(esi, "corporation", 100, 1));
+      expect(await roster()).toEqual([1, 2, 9]);
+      const [nine] = await db().select().from(schema.corporationMembers).where(sql`character_id = 9`);
+
+      // A write that never landed: the table holds an older roster, and ESI answers 304.
+      await db().delete(schema.corporationMembers).where(sql`character_id = 2`);
+      await db().insert(schema.corporationMembers).values({ corporationId: 100, characterId: 50 });
+      expect((await corporationMembersJob.run(ctx(esi, "corporation", 100, 1)))?.summary).toBe("3 members");
+      expect(await roster()).toEqual([1, 2, 9]);
+      expect(requests).toBe(2);
+      // Members that stayed are left alone.
+      expect((await db().select().from(schema.corporationMembers).where(sql`character_id = 9`))[0]).toEqual(nine);
+
+      body = [];
+      await db().delete(schema.esiCache);
+      const fresh = esiFor(/\/corporations\/100\/members$/);
+      expect((await corporationMembersJob.run(ctx(fresh, "corporation", 100, 1)))?.summary).toBe("0 members");
+      expect(await roster()).toEqual([]);
+    });
+
+    it("forgets a character's cached ESI responses when it changes hands", async () => {
+      const { detachTransferredCharacter } = await import("@/core/auth/provision");
+      await db().insert(schema.esiCache).values(
+        ["2:GET /characters/2/industry/jobs", "2:GET /characters/2/roles", "21:GET /characters/21/roles", "0:GET /status"].map((key) => ({
+          key,
+          body: {},
+          expiresAt: new Date(Date.now() + 60_000),
+        })),
+      );
+      await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB, { keepAccount: true }));
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key).sort()).toEqual(["0:GET /status", "21:GET /characters/21/roles"]);
+    });
+
+    it("purges cache entries without an expiry once they are a week old", async () => {
+      const { housekeepingJob } = await import("@/core/sync/core-jobs");
+      const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
+      await db().insert(schema.esiCache).values([
+        { key: "0:GET /old-no-expiry", body: {}, expiresAt: null, updatedAt: daysAgo(8) },
+        { key: "0:GET /new-no-expiry", body: {}, expiresAt: null, updatedAt: daysAgo(1) },
+        { key: "0:GET /expired", body: {}, expiresAt: daysAgo(8) },
+        { key: "0:GET /fresh", body: {}, expiresAt: daysAgo(1) },
+      ]);
+      await housekeepingJob.run(ctx(esiFor(/^$/), "global", 0, null));
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key).sort()).toEqual(["0:GET /fresh", "0:GET /new-no-expiry"]);
     });
   });
 
