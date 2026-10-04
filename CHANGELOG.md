@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- In English, the killboard's permissions in Users & Roles, its background jobs and its browser tab title now
+  say "Combat Report" like the sidebar, instead of "Killboard".
 - Wallet imports read ESI's available history again after deleting wallet data or relinking a character, instead
   of skipping it because of a stale sync cursor. ([#138](https://github.com/Theragus/Keystar/issues/138))
 - Mail sync no longer removes older stored messages if ESI ignores a paging cursor or returns an empty page while
