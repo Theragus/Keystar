@@ -46,10 +46,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
     lifetime, E end of life, 7/8/9 mass, Del, / to add a system, F to fit.
   - Everyone with the map open sees edits within a few seconds.
   - Permissions: view and edit (member), manage — home system, clear map (director).
+
+  ([PR #32](https://github.com/Theragus/Keystar/pull/32))
 - **System lookup** (Exploration → System lookup): any J-code or known-space system with class, effect, statics,
   the wormholes that can appear there (lifetime, mass, largest ship) and links.
+  ([PR #32](https://github.com/Theragus/Keystar/pull/32))
 - Wormhole data is bundled (CCP's static data export and anoik.is, credited in the app); `pnpm wh:data` regenerates
-  it.
+  it. ([PR #32](https://github.com/Theragus/Keystar/pull/32))
 - **Industry jobs.** A new Industry Jobs page under Industry lists the industry jobs of your own characters:
   manufacturing, material and time efficiency research, copying, invention and reactions, each with a progress bar,
   the time left (counting down live) and the end time, and the station or structure it runs in with its system.
