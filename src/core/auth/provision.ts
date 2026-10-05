@@ -26,7 +26,7 @@ import type { Role } from "@/core/rbac/roles";
 import { getSettings, setSetting } from "@/core/settings";
 import { lockUsers } from "./manage-users";
 import { mayRegister, policyRole, reconcileRole } from "./policy";
-import type { TokenResponse, VerifiedCharacter } from "./sso";
+import { SsoError, type TokenResponse, type VerifiedCharacter } from "./sso";
 
 export type SsoIntent = "login" | "join" | "link" | "link-corp";
 
@@ -121,6 +121,8 @@ export async function provisionFromSso(params: {
   currentUserId: string | null;
 }): Promise<ProvisionResult> {
   const { verified, tokens, intent, currentUserId } = params;
+  // A token with scopes is only stored with a refresh token; without one it would expire unusable.
+  if (verified.scopes.length > 0 && !tokens.refresh_token) throw new SsoError("SSO granted scopes but returned no refresh token");
   const linking = intent === "link" || intent === "link-corp";
   if (linking && !currentUserId) throw new ProvisionError("signInFirst", "Sign in before linking another character.");
 
@@ -255,7 +257,7 @@ export async function provisionFromSso(params: {
       lostOptionalScopes = optionalScopes().filter((s) => previous?.scopes.includes(s) && !verified.scopes.includes(s));
       addedOptionalScopes = optionalScopes().filter((s) => verified.scopes.includes(s) && !previous?.scopes.includes(s));
       const tokenValues = {
-        refreshTokenEnc: encryptToken(tokens.refresh_token),
+        refreshTokenEnc: encryptToken(tokens.refresh_token!),
         accessTokenEnc: encryptToken(tokens.access_token),
         accessTokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000),
         scopes: verified.scopes,
