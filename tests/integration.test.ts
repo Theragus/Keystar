@@ -293,6 +293,131 @@ describe.skipIf(!enabled)("integration", async () => {
       [row] = await db().select().from(schema.esiTokens);
       expect(row.status).toBe("invalid");
     });
+
+    it("stores a rotated refresh token even when verifying the new access token fails", async () => {
+      const { decryptToken, encryptToken } = await import("@/core/crypto");
+      const { getAccessToken } = await import("@/core/esi/tokens");
+      const { exportJWK, generateKeyPair, SignJWT } = await import("jose");
+      const { privateKey, publicKey } = await generateKeyPair("RS256");
+      const jwk = { ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256", use: "sig" };
+      const accessToken = (scopes: string[]) =>
+        new SignJWT({ name: "Alpha", owner: "h1", scp: scopes })
+          .setProtectedHeader({ alg: "RS256", kid: "k1" })
+          .setSubject("CHARACTER:EVE:1")
+          .setIssuer("https://login.eveonline.com")
+          .setAudience(["test-client-id", "EVE Online"])
+          .setExpirationTime("20m")
+          .sign(privateKey);
+      let jwksUp = false;
+      const sso = (token: Record<string, unknown>) =>
+        vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+          const url = String(input instanceof Request ? input.url : input);
+          if (url.endsWith("/oauth/jwks")) {
+            return jwksUp ? Response.json({ keys: [jwk] }) : new Response("unavailable", { status: 503 });
+          }
+          return Response.json(token);
+        });
+      const stored = async () => (await db().select().from(schema.esiTokens))[0];
+      await db().insert(schema.esiTokens).values({
+        characterId: 1,
+        refreshTokenEnc: encryptToken("refresh-1"),
+        scopes: ["a", "b"],
+        disabledScopes: ["b"],
+      });
+
+      // SSO rotates the refresh token, then CCP's JWKS is unreachable: the new refresh token is kept anyway.
+      let mock = sso({ access_token: await accessToken(["a", "b"]), refresh_token: "refresh-2", expires_in: 1200, token_type: "Bearer" });
+      await expect(getAccessToken(1)).rejects.toThrow();
+      mock.mockRestore();
+      let row = await stored();
+      expect(decryptToken(row.refreshTokenEnc)).toBe("refresh-2");
+      expect(row).toMatchObject({ status: "active", accessTokenEnc: null });
+
+      // No refresh token in the response: the stored one stays usable.
+      mock = sso({ access_token: await accessToken(["a", "b"]), expires_in: 1200, token_type: "Bearer" });
+      await expect(getAccessToken(1)).rejects.toThrow();
+      mock.mockRestore();
+      expect(decryptToken((await stored()).refreshTokenEnc)).toBe("refresh-2");
+
+      // A malformed response changes nothing.
+      mock = sso({ refresh_token: "refresh-x", expires_in: 1200 });
+      await expect(getAccessToken(1)).rejects.toThrow(/no access token/);
+      mock.mockRestore();
+      expect(decryptToken((await stored()).refreshTokenEnc)).toBe("refresh-2");
+
+      // Once verification works, the access token and its scopes are stored; switched-off scopes stay off.
+      jwksUp = true;
+      const fresh = await accessToken(["a", "b"]);
+      mock = sso({ access_token: fresh, refresh_token: "refresh-3", expires_in: 1200, token_type: "Bearer" });
+      expect(await getAccessToken(1)).toBe(fresh);
+      mock.mockRestore();
+      row = await stored();
+      expect(decryptToken(row.refreshTokenEnc)).toBe("refresh-3");
+      expect(decryptToken(row.accessTokenEnc!)).toBe(fresh);
+      expect(row).toMatchObject({ status: "active", scopes: ["a"], disabledScopes: ["b"], lastError: null });
+      expect(await getAccessToken(1)).toBe(fresh);
+    });
+
+    it("hands out the current token when the row changes while a refreshed token is verified", async () => {
+      const { decryptToken, encryptToken } = await import("@/core/crypto");
+      const { getAccessToken, TokenInvalidError } = await import("@/core/esi/tokens");
+      const sso = await import("@/core/auth/sso");
+      const refresh = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async () =>
+          Response.json({ access_token: "refreshed", refresh_token: "rotated", expires_in: 1200, token_type: "Bearer" }),
+        );
+      // While the refreshed access token is being verified, `meanwhile` changes the row.
+      const verifying = (meanwhile: () => Promise<unknown>) =>
+        vi.spyOn(sso, "verifyAccessToken").mockImplementation(async () => {
+          await meanwhile();
+          return { characterId: 1, name: "Alpha", ownerHash: "h1", scopes: ["a"], expiresAt: new Date(Date.now() + 1_200_000) };
+        });
+      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: encryptToken("old"), scopes: ["a"] });
+
+      // A new login: its token is handed out and kept, not the one refreshed from the grant it replaced.
+      let verify = verifying(() =>
+        getDb()
+          .update(schema.esiTokens)
+          .set({
+            refreshTokenEnc: encryptToken("from-login"),
+            accessTokenEnc: encryptToken("login-access"),
+            accessTokenExpiresAt: new Date(Date.now() + 1_200_000),
+          }),
+      );
+      expect(await getAccessToken(1, { forceRefresh: true })).toBe("login-access");
+      verify.mockRestore();
+      const [row] = await db().select().from(schema.esiTokens);
+      expect(decryptToken(row.refreshTokenEnc)).toBe("from-login");
+      expect(decryptToken(row.accessTokenEnc!)).toBe("login-access");
+
+      // The character is removed: no token at all.
+      verify = verifying(() => getDb().delete(schema.esiTokens));
+      await expect(getAccessToken(1, { forceRefresh: true })).rejects.toBeInstanceOf(TokenInvalidError);
+      verify.mockRestore();
+      refresh.mockRestore();
+    });
+
+    it("does not overwrite a token a login stored during the refresh", async () => {
+      const { decryptToken, encryptToken } = await import("@/core/crypto");
+      const { getAccessToken } = await import("@/core/esi/tokens");
+      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: encryptToken("old"), scopes: [] });
+      // While SSO answers the refresh, a new EVE login replaces the token with a fresh one.
+      const mock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        await getDb()
+          .update(schema.esiTokens)
+          .set({
+            refreshTokenEnc: encryptToken("from-login"),
+            accessTokenEnc: encryptToken("login-access"),
+            accessTokenExpiresAt: new Date(Date.now() + 1_200_000),
+          });
+        return Response.json({ access_token: "unused", refresh_token: "rotated-old", expires_in: 1200, token_type: "Bearer" });
+      });
+      expect(await getAccessToken(1)).toBe("login-access");
+      mock.mockRestore();
+      const [row] = await db().select().from(schema.esiTokens);
+      expect(decryptToken(row.refreshTokenEnc)).toBe("from-login");
+    });
   });
 
   describe("user management", () => {

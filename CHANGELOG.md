@@ -8,6 +8,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- A token refresh keeps the new refresh token EVE SSO hands out even if checking the new access token then fails
+  (for example when CCP's key endpoint is unreachable), so pilots are no longer asked to re-authorise for nothing.
+  Refreshes no longer hold the token row locked while waiting on CCP, so switching scopes or logging in doesn't stall
+  behind them, and a malformed SSO response no longer leaves a token that can't be refreshed.
+  ([#141](https://github.com/Theragus/Keystar/issues/141))
 - The corporation roster and industry jobs are stored again after a failed sync, or after a character was
   unlinked and linked again, instead of waiting until ESI's data changes. Unlinking or transferring a character, and
   deleting its industry data, also removes the ESI responses Keystar had cached for it, and cached responses
