@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- **Map and Intel review fixes.** Cache map route lookups; let scan viewers read saved briefings without regenerating them, keep rewriting permission-gated, restore a pilot profile shortcut and align briefing severity with the three-tier danger model. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
+
 - A token refresh keeps the new refresh token EVE SSO hands out even if checking the new access token then fails
   (for example when CCP's key endpoint is unreachable), so pilots are no longer asked to re-authorise for nothing.
   Refreshes no longer hold the token row locked while waiting on CCP, so switching scopes or logging in doesn't stall
@@ -40,6 +42,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- **3D universe map.** Add a searchable star map under Combat with system names, security status and real positions; Threat Intel system links focus the map and show jump range and light-year distances. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
+- **Travel and jump planning.** Calculate shortest stargate routes with two-hour gate-kill evidence and linked killmails, plus carrier, jump freighter and Black Ops range highlighting with Jump Drive Calibration selection. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
+
 - **Industry jobs.** A new Industry Jobs page under Industry lists the industry jobs of your own characters:
   manufacturing, material and time efficiency research, copying, invention and reactions, each with a progress bar,
   the time left (counting down live) and the end time, and the station or structure it runs in with its system.
@@ -55,6 +60,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   container's memory against its limit, free host memory and the host's load average.
 
 ### Changed
+
+- **Map interaction.** Use compact glass panels, batched rendering and cached geometry; support mouse rotation and panning, looping route illumination, system focus with fading rotation, reduced motion and wheel zoom without page scrolling. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
 
 - **Mining P&L**: when income comes from wallet sales, it is now net of sales tax instead of counting the tax as an
   expense: each sale on the Income tab shows the tax paid on it and its net, and the tax counts whenever the sale
