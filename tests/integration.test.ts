@@ -2622,6 +2622,22 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(rows.every((r) => !r.enabled)).toBe(true);
     });
 
+    it("pauses character jobs while the account is disabled", async () => {
+      const def = job(async () => {});
+      const enabledOwners = async () =>
+        (await db().select().from(schema.syncJobs)).filter((r) => r.enabled).map((r) => r.ownerId);
+      await scheduler.planJobs([def]);
+      expect(await enabledOwners()).toEqual([1]);
+
+      await db().execute(sql`UPDATE users SET is_disabled = true WHERE id = ${userA}`);
+      await scheduler.planJobs([def]);
+      expect(await enabledOwners()).toEqual([]);
+
+      await db().execute(sql`UPDATE users SET is_disabled = false WHERE id = ${userA}`);
+      await scheduler.planJobs([def]);
+      expect(await enabledOwners()).toEqual([1]);
+    });
+
     it("claims due jobs exactly once and records success", async () => {
       const def = job(async () => {});
       await scheduler.planJobs([def]);

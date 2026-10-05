@@ -36,7 +36,7 @@ export async function trackedCorporations(): Promise<number[]> {
 /**
  * Ensures a schedule row exists for every eligible (job, owner) pair and
  * disables rows whose owner is no longer eligible (token revoked, scope
- * removed, character left the corporation, …).
+ * removed, account disabled, character left the corporation, …).
  */
 export async function planJobs(jobs: JobDefinition[], db: Db = getDb()): Promise<void> {
   const corps = await trackedCorporations();
@@ -48,9 +48,13 @@ export async function planJobs(jobs: JobDefinition[], db: Db = getDb()): Promise
     if (job.owner === "global") {
       eligible = [0];
     } else if (job.owner === "character") {
+      // A disabled account's characters stay idle until it is enabled again.
       const rows = await db.execute<{ id: string }>(sql`
-        SELECT character_id AS id FROM esi_tokens
-        WHERE status = 'active' AND scopes @> ${pgTextArray(scopes)}`);
+        SELECT t.character_id AS id
+        FROM esi_tokens t
+        JOIN characters c ON c.character_id = t.character_id
+        JOIN users u ON u.id = c.user_id
+        WHERE t.status = 'active' AND t.scopes @> ${pgTextArray(scopes)} AND NOT u.is_disabled`);
       eligible = rows.map((r) => Number(r.id));
     } else {
       if (!corps.length) {

@@ -8,6 +8,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- Disabling an account now pauses its characters' background syncs (wallet, mail, industry, skills) and token
+  refreshes until it is enabled again. Unlinking a character also deletes its imported wallet and mail data in the
+  same step as the link, so an interrupted unlink can't leave it behind to reappear when the character is linked
+  again. ([#151](https://github.com/Theragus/Keystar/issues/151))
 - The corporation roster and industry jobs are stored again after a failed sync, or after a character was
   unlinked and linked again, instead of waiting until ESI's data changes. Unlinking or transferring a character, and
   deleting its industry data, also removes the ESI responses Keystar had cached for it, and cached responses
