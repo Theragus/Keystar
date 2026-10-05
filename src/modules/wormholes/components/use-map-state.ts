@@ -56,13 +56,19 @@ export function useMapState(initial: MapState, types: Record<string, WormholeTyp
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     let cancelled = false;
+    let stopped = false;
+    // A poll still on its way schedules the next one itself; showing the tab again mustn't start a second loop.
+    let inFlight = false;
     let delay = POLL_MS;
     const tick = async () => {
-      if (cancelled) return;
+      if (cancelled || stopped || inFlight) return;
       if (document.visibilityState === "visible") {
+        inFlight = true;
         const result = await poll();
+        inFlight = false;
         if (cancelled) return;
         if (result === "stop") {
+          stopped = true;
           setSync({ kind: "stopped" });
           return;
         }
@@ -74,7 +80,7 @@ export function useMapState(initial: MapState, types: Record<string, WormholeTyp
       timer = setTimeout(tick, delay);
     };
     const onVisible = () => {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible" || inFlight || stopped) return;
       clearTimeout(timer);
       void tick();
     };

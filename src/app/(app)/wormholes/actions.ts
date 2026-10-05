@@ -25,7 +25,9 @@ async function edit(
   permission: Permission,
   fn: (ctx: { mapId: number; actor: maps.Actor; userId: string; actorName: string | undefined }) => Promise<unknown>,
 ): Promise<MapActionResult> {
-  const user = await assertPermission(permission);
+  // Thresholds can be overridden one by one, so editing doesn't imply seeing the map this answers with.
+  const user = await assertPermission(WH_PERMISSIONS.view);
+  if (!user.can(permission)) throw new Error("You do not have permission to do that");
   const db = getDb();
   const map = await maps.getCorpMap(db);
   const actor = { id: user.id, name: user.main?.name ?? null };

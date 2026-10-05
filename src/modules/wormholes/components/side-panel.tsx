@@ -55,12 +55,12 @@ export function SidePanel(props: SidePanelProps) {
 function PanelHeader({ title, children, onClose }: { title: string; children?: React.ReactNode; onClose: () => void }) {
   const { t } = useI18n();
   return (
-    <div className="flex items-start gap-2 border-b border-white/6 px-4 py-3">
+    <div className="flex items-start gap-2 border-b border-surface-contrast/6 px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="eve-label text-2xs text-ink-3">{title}</div>
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">{children}</div>
       </div>
-      <button type="button" onClick={onClose} className="rounded-md p-1 text-ink-3 hover:bg-white/6 hover:text-ink">
+      <button type="button" onClick={onClose} className="rounded-md p-1 text-ink-3 hover:bg-surface-contrast/6 hover:text-ink">
         <X className="size-4" aria-hidden />
         <span className="sr-only">{t.wormholes.panel.close}</span>
       </button>
@@ -140,7 +140,7 @@ function SystemPanel({
                   <button
                     type="button"
                     onClick={() => onSelect({ kind: "connection", id: c.id })}
-                    className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs hover:bg-white/6"
+                    className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs hover:bg-surface-contrast/6"
                   >
                     <span className="truncate text-ink">{nameOf(c.a === system.id ? c.b : c.a)}</span>
                     <span className="ml-auto shrink-0 text-2xs font-medium text-ink-2 tabular-nums">{connectionLabel(c, types, now, tw)}</span>
@@ -181,7 +181,7 @@ function SystemPanel({
         <DataCredit />
       </div>
       {(canEdit || (canManage && !home)) && (
-        <div className="flex flex-wrap gap-2 border-t border-white/6 px-4 py-3">
+        <div className="flex flex-wrap gap-2 border-t border-surface-contrast/6 px-4 py-3">
           {canEdit && (
             <Button size="sm" variant="ghost" onClick={() => onPin(system.id, !system.pinned)} title={tw.panel.pinned}>
               {system.pinned ? <PinOff className="size-3.5" aria-hidden /> : <Pin className="size-3.5" aria-hidden />}
@@ -330,7 +330,7 @@ function ConnectionPanel({
         </div>
       </div>
       {canEdit && (
-        <div className="flex border-t border-white/6 px-4 py-3">
+        <div className="flex border-t border-surface-contrast/6 px-4 py-3">
           <Button size="sm" variant="danger" className="ml-auto" onClick={() => onRemoveConnection(conn)}>
             <Trash2 className="size-3.5" aria-hidden />
             {tw.panel.removeConnection}

@@ -18,9 +18,10 @@ export const DASH: Record<LifeState, string | undefined> = {
 
 export const MASS_WIDTH = { stable: 4, reduced: 2.5, critical: 1.5 } as const;
 
-const INK_2 = "#a3a8b2";
-const WARNING = "#fab219";
-const CRITICAL_TEXT = "#f07a7a";
+// Theme tokens, so the lines follow light and dark mode (SVG strokes are set through `style`).
+export const INK_2 = "var(--color-ink-2)";
+const WARNING = "var(--color-warning)";
+const CRITICAL_TEXT = "var(--color-critical-text)";
 
 export interface EdgeLook {
   band: LifeState;

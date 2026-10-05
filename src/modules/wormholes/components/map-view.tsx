@@ -164,7 +164,7 @@ export default function MapView({
       onPaneClick={() => onSelect(null)}
       className="wh-map"
     >
-      <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} color="#2a2e36" />
+      <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
       <Controls showInteractive={false} position="bottom-left" />
       <MiniMap
         pannable
@@ -174,7 +174,6 @@ export default function MapView({
           const s = (n as SystemNode).data.system;
           return classBadgeStyle(s.cls, s.sec).background;
         }}
-        maskColor="rgba(11, 12, 14, 0.7)"
         style={{ width: 160, height: 110 }}
       />
     </ReactFlow>

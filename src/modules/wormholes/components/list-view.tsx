@@ -53,7 +53,7 @@ export function ListView({
               <tr
                 key={c.id}
                 onClick={() => onSelect({ kind: "connection", id: c.id })}
-                className={cn("cursor-pointer", selected && "bg-white/6", look.collapsed && "opacity-50")}
+                className={cn("cursor-pointer", selected && "bg-surface-contrast/6", look.collapsed && "opacity-50")}
               >
                 {[from, to].map((s, i) => (
                   <td key={i}>

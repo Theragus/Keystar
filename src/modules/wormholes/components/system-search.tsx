@@ -138,7 +138,7 @@ export function SystemSearch({
               aria-selected={i === active}
               className={cn(
                 "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm",
-                i === active ? "bg-white/10" : "hover:bg-white/6",
+                i === active ? "bg-surface-contrast/10" : "hover:bg-surface-contrast/6",
               )}
               onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={() => setActive(i)}

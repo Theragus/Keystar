@@ -3,7 +3,7 @@
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type Edge, type EdgeProps } from "@xyflow/react";
 import { memo } from "react";
 import { cn } from "@/lib/utils";
-import type { EdgeLook } from "../presentation";
+import { INK_2, type EdgeLook } from "../presentation";
 
 /** `bow`: both ends in one column (a loop between siblings); the edge curves out to the right instead of crossing nodes. */
 export type ConnectionEdgeData = { look: EdgeLook; label: string; bow: boolean; onSelect: () => void };
@@ -36,7 +36,7 @@ export const ConnectionEdgeView = memo(function ConnectionEdgeView({
   const { look } = data;
   return (
     <>
-      {selected && <path d={path} fill="none" stroke="#5cc8ff" strokeOpacity={0.25} strokeWidth={12} />}
+      {selected && <path d={path} fill="none" strokeWidth={12} style={{ stroke: "var(--color-accent)", strokeOpacity: 0.25 }} />}
       <BaseEdge
         id={id}
         path={path}
@@ -55,12 +55,12 @@ export const ConnectionEdgeView = memo(function ConnectionEdgeView({
           onClick={data.onSelect}
           className={cn(
             "nodrag nopan pointer-events-auto absolute rounded-full border bg-space-900 px-2.5 py-0.5 font-sans text-2xs font-medium whitespace-nowrap text-ink tabular-nums",
-            selected ? "border-accent" : "border-white/12",
+            selected ? "border-accent" : "border-surface-contrast/12",
             look.collapsed && "opacity-50",
           )}
           style={{
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            borderColor: selected ? undefined : look.color === "#a3a8b2" ? undefined : look.color,
+            borderColor: selected ? undefined : look.color === INK_2 ? undefined : look.color,
           }}
         >
           {data.label}

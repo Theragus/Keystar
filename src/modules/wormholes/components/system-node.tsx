@@ -22,12 +22,12 @@ export const SystemNodeView = memo(function SystemNodeView({ data, selected }: N
     <div
       className={cn(
         "group relative flex flex-col justify-center gap-1 rounded-[10px] border bg-space-800 px-2.5",
-        selected ? "border-accent shadow-[0_0_0_2px_rgba(92,200,255,0.35)]" : "border-white/12",
+        selected ? "border-accent shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-accent)_35%,transparent)]" : "border-surface-contrast/12",
       )}
       style={{ width: NODE_W, height: NODE_H }}
     >
       {s.label && (
-        <span className="absolute -top-[18px] left-1 max-w-[190px] truncate rounded-t-md bg-white/8 px-1.5 text-3xs leading-[18px] text-ink-2">
+        <span className="absolute -top-[18px] left-1 max-w-[190px] truncate rounded-t-md bg-surface-contrast/8 px-1.5 text-3xs leading-[18px] text-ink-2">
           {s.label}
         </span>
       )}

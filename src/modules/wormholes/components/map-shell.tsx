@@ -225,9 +225,9 @@ export function MapShell({
             onClose={() => setMenu(null)}
             align="right"
             trigger={
-              <Button size="sm" variant="ghost" onClick={() => setMenu(menu === "more" ? null : "more")}>
+              <Button size="sm" variant="ghost" onClick={() => setMenu(menu === "more" ? null : "more")} title={tw.toolbar.more}>
                 <Ellipsis className="size-3.5" aria-hidden />
-                <span className="sr-only">…</span>
+                <span className="sr-only">{tw.toolbar.more}</span>
               </Button>
             }
             className="w-60 p-1.5"
@@ -235,7 +235,7 @@ export function MapShell({
             {canEdit && (
               <button
                 type="button"
-                className="w-full rounded-md px-3 py-2 text-left text-sm text-ink hover:bg-white/6"
+                className="w-full rounded-md px-3 py-2 text-left text-sm text-ink hover:bg-surface-contrast/6"
                 onClick={() => arrange(true)}
               >
                 {tw.toolbar.arrangeAll}
@@ -268,7 +268,15 @@ export function MapShell({
               <span className={cn("size-1.5 rounded-full", saving ? "bg-warning" : "bg-good-text")} aria-hidden />
               {tw.toolbar.synced(f.relativeTime(new Date(sync.at), new Date(Math.max(now, sync.at))))}
             </>
-          ) : null}
+          ) : (
+            <>
+              <WifiOff className="size-3.5 text-critical-text" aria-hidden />
+              {tw.toolbar.stopped}
+              <button type="button" className="underline" onClick={() => window.location.reload()}>
+                {tw.toolbar.reload}
+              </button>
+            </>
+          )}
         </span>
       </div>
       {error && (
@@ -322,9 +330,9 @@ export function MapShell({
 function Legend() {
   const { t } = useI18n();
   const tw = t.wormholes;
-  const line = (dash: string | undefined, width: number, color = "#a3a8b2") => (
+  const line = (dash: string | undefined, width: number, color = "var(--color-ink-2)") => (
     <svg width="44" height="10" aria-hidden className="shrink-0">
-      <line x1="2" y1="5" x2="42" y2="5" stroke={color} strokeWidth={width} strokeDasharray={dash} strokeLinecap="round" />
+      <line x1="2" y1="5" x2="42" y2="5" strokeWidth={width} strokeDasharray={dash} strokeLinecap="round" style={{ stroke: color }} />
     </svg>
   );
   return (
@@ -333,7 +341,7 @@ function Legend() {
         <div className="eve-label mb-1.5 text-2xs text-ink-3">{tw.legend.lifetime}</div>
         {LIFE_STATES.filter((s) => s !== "closing").map((s) => (
           <div key={s} className="flex items-center gap-2 py-0.5">
-            {line(DASH[s], 4, s === "lt4h" || s === "lt1h" ? "#fab219" : undefined)}
+            {line(DASH[s], 4, s === "lt4h" || s === "lt1h" ? "var(--color-warning)" : undefined)}
             <span className="text-ink-2">{tw.life[s]}</span>
           </div>
         ))}
@@ -342,7 +350,7 @@ function Legend() {
         <div className="eve-label mb-1.5 text-2xs text-ink-3">{tw.legend.mass}</div>
         {(["stable", "reduced", "critical"] as const).map((m) => (
           <div key={m} className="flex items-center gap-2 py-0.5">
-            {line(undefined, MASS_WIDTH[m], m === "critical" ? "#f07a7a" : undefined)}
+            {line(undefined, MASS_WIDTH[m], m === "critical" ? "var(--color-critical-text)" : undefined)}
             <span className="text-ink-2">
               {tw.mass[m]}
               {m !== "stable" && <span className="ml-1.5 font-mono text-ink-3">{tw.massShort[m]}</span>}
