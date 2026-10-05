@@ -209,7 +209,7 @@ Current jobs:
 | `intel.housekeeping`             | 6 h      | Retention of killmail digests, pilot profiles and scans    |
 | `intel.corporation-contacts`     | 15 min   | Home corporation contacts (standings), any member's token  |
 | `intel.alliance-contacts`        | 15 min   | Home alliance contacts (standings), any member's token     |
-| `trade.housekeeping`             | 6 h      | Deletes appraisals older than a year                       |
+| `trade.housekeeping`             | 6 h      | Deletes appraisals older than a year, old rate-limit rows  |
 | `wallet.character-transactions`  | 1 h      | Market transactions of characters that opted in to wallets |
 | `wallet.corporation-wallets`     | 1 h      | Corporation balances, journal and transactions, all divisions (Accountant / Junior Accountant) |
 | `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
@@ -528,6 +528,7 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
   hours, are priced live with the same code as the hourly price job, which then keeps them fresh for 14 days after
   the last appraisal that asked for them. An appraisal is refused if any of them can't be priced.
 - An appraisal is a snapshot (items, unit prices, totals, unrecognised lines, input) in `appraisals`, opened by an
-  unguessable id. "Appraise again" creates a new snapshot at current prices. A user can create
-  `APPRAISAL_RATE_LIMIT` appraisals per ten minutes; `trade.housekeeping` deletes them after
+  unguessable id. "Appraise again" creates a new snapshot at current prices. A user can start
+  `APPRAISAL_RATE_LIMIT` appraisals per ten minutes (counted in `appraisal_attempts`, so failed, empty and deleted
+  ones count too); `trade.housekeeping` deletes them after
   `APPRAISAL_RETENTION_DAYS` (a year), and their share links stop working.

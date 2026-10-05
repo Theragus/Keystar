@@ -11,9 +11,9 @@ import { TRADE_PERMISSIONS } from "@/modules/trade/module";
 import {
   appraise,
   AppraisalLimitError,
-  appraisalRateLimited,
   AppraisalUnavailableError,
   MAX_INPUT_CHARS,
+  reserveAppraisalAttempt,
   saveAppraisal,
 } from "@/modules/trade/appraisal/appraise";
 import { countItemLines, MAX_LINES } from "@/modules/trade/appraisal/parse";
@@ -34,7 +34,7 @@ export async function createAppraisal(_prev: AppraisalFormState, formData: FormD
   if (lines > MAX_LINES) return { error: errors.tooManyLines(lines, MAX_LINES) };
   const percent = Math.round(Number(formData.get("percent") ?? 100));
   const pricePercent = Number.isFinite(percent) ? Math.min(200, Math.max(1, percent)) : 100;
-  if (await appraisalRateLimited(user.id)) return { error: errors.rateLimited };
+  if (!(await reserveAppraisalAttempt(user.id))) return { error: errors.rateLimited };
 
   let result: Awaited<ReturnType<typeof appraise>>;
   try {
