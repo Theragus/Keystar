@@ -13,6 +13,7 @@ import {
 } from "@/core/modules/registry";
 import { FLEET_SCOPE } from "@/modules/fleet/logic";
 import { IMPLANTS_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE } from "@/modules/skills/module";
+import { INDUSTRY_JOBS_SCOPE, STRUCTURES_SCOPE } from "@/modules/industry/module";
 import { MAIL_SCOPE } from "@/modules/social/module";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
 
@@ -25,9 +26,9 @@ function params(href: string) {
 
 describe("optional scopes", () => {
   it("keeps opt-in scopes out of the member and corporation sets", () => {
-    expect(optionalScopes()).toEqual([IMPLANTS_SCOPE, FLEET_SCOPE, MAIL_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, WALLET_SCOPE]);
+    expect(optionalScopes()).toEqual([IMPLANTS_SCOPE, FLEET_SCOPE, INDUSTRY_JOBS_SCOPE, MAIL_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, STRUCTURES_SCOPE, WALLET_SCOPE]);
     expect(characterScopes()).toEqual([MINING]);
-    for (const scope of [WALLET_SCOPE, MAIL_SCOPE, FLEET_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, IMPLANTS_SCOPE]) {
+    for (const scope of [WALLET_SCOPE, MAIL_SCOPE, FLEET_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, INDUSTRY_JOBS_SCOPE, STRUCTURES_SCOPE, IMPLANTS_SCOPE]) {
       expect(characterScopes()).not.toContain(scope);
       expect(corporationScopes()).not.toContain(scope);
       expect(memberScopeRequirements().some((s) => s.scope === scope)).toBe(false);

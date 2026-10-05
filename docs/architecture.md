@@ -32,7 +32,7 @@ Keystar is one TypeScript codebase that runs as two processes against one Postgr
 ```
 src/
   app/                 Next.js routes
-    (app)/             signed-in area (sidebar shell): dashboard, mining, characters, admin
+    (app)/             signed-in area (sidebar shell): dashboard, mining, industry, characters, admin
     auth/              SSO login / callback / logout / demo routes
     setup/             first-start walkthrough for the first admin
     login/, join/      public pages
@@ -48,6 +48,7 @@ src/
     settings.ts        typed app settings (stored as JSON rows)
   modules/
     mining/            the mining module: schema, jobs, queries, filters, UI components, estimator
+    industry/          opt-in industry jobs of the viewer's own characters: schema, sync job, station/structure names, UI
     killboard/         zKillboard client and sync, combat aggregates, situation report (Claude or template), UI
     intel/             threat intel: paste parser, scans, zKillboard worker, scoring, standings, history with us,
                        d-scan matching, briefings and dossiers (Claude or template), UI
@@ -190,6 +191,7 @@ Current jobs:
 | `mining.character-ledger`        | 15 min   | Personal mining ledgers; records mining activity windows   |
 | `mining.corporation-observers`   | 1 h      | Moon-refinery observer ledgers (Accountant)                |
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
+| `industry.character-jobs`        | 5 min    | Industry jobs of each character (incl. finished ones), names their stations and structures |
 | `killboard.zkill-sync`           | 1 h      | Home corporation kills/losses from zKillboard (no token)   |
 | `killboard.live-feed`            | 10 s     | zKillboard's live feed (R2Z2): home-corporation killmails within seconds, for the live notifications |
 | `killboard.situation-report`     | 1 h      | Writes the weekly situation report once a week has closed  |
@@ -213,7 +215,9 @@ snapshot, `collectSystemSnapshot()` in `src/core/system/collect.ts`. Each collec
 tokens, settings, clock, audit counts) is wrapped so that one failing collector never takes the page down. The web
 process can't see the worker's process, so the worker reports its runtime and ESI/zKillboard request counters in
 its heartbeat (`worker_heartbeats.info`); the clients count requests in `EsiClient.stats()` and
-`ZkillClient.stats()`.
+`ZkillClient.stats()`. The runtime (`runtime.ts`) includes load figures: the process's CPU share since its previous
+sample (so the worker's covers one heartbeat interval and the web app's the time since System Info was last
+loaded), its memory, the container's cgroup memory and the host's load average.
 
 - `network.ts` probes ESI, EVE SSO (`/oauth/jwks`) and zKillboard with one request each (5 s limit), through
   `EsiClient.ping()` and `ZkillClient.ping()` so the User-Agent, counters and request spacing apply. ESI or SSO
@@ -344,6 +348,16 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   of the ore or its compressed variant, converted to raw units by portion size like the valuation (1:1 for current
   ores; compression only shrinks the volume). Excluded sales and internal trades are left out; the ore left over is
   valued at the current valuation. Compressed gas has its own names and group, so it isn't linked to raw gas.
+- **Taxes & fees**: `wallet.character-fees` reads the personal wallet journal with the same opt-in scope and keeps only
+  `transaction_tax` and `brokers_fee` entries (`wallet_fees`, owned and deleted like `wallet_transactions`; the
+  cursor is the newest journal id seen). Sales tax is matched to its sale by the journal's market transaction id,
+  else the character's sale whose journal entry (`journal_ref_id`) comes right before the tax at the same time (a
+  multi-sell books sale, tax, sale, tax …). Sales tax has no review of its own: it is deducted from its sale, so sale
+  rows, the report's income and the mined-vs-sold table are net of tax. Broker fees belong to orders (ESI gives no
+  context, so the stored journal `description` is shown), stay suggested until included, and are wallet expenses in
+  the "fees" category, only when income comes from wallet sales. `mining_pnl_fee_overrides` holds the user's
+  include/exclude decisions on broker fees. The job reads ESI's 30 days once more to fill in descriptions of fees
+  imported before they were kept (`descriptions` in the job meta).
 - **Sale hints**: wallet sells of a mined ore or its compressed variant, converted to raw units with the valuation's
   compression ratio, offered as one-click price rules.
 - **Active hours / ISK per hour**: the ledger job compares each fresh ESI snapshot with the stored ledger in one
@@ -498,7 +512,10 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
 - Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` when `APP_URL` is https.
 - Every server action re-checks permissions; members' queries are scoped to their own character IDs in SQL.
 - CSV export neutralises spreadsheet formulas; security headers are set in `next.config.ts` and Caddy.
-- Administrative actions are written to the audit log.
+- Administrative actions are written to the audit log (`src/core/audit.ts`). Role and access changes, settings and
+  scope switches use `auditInTx` inside the change's own transaction, so the change and its entry commit or roll
+  back together. Everything else uses `audit`, which never throws: a failed write is logged and counted, and System
+  Info's "Audit log written" check warns about it.
 
 ## Appraisal
 

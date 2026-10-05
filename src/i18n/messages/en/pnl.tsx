@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { DateBucket } from "@/lib/dates";
 import { FORMATTERS } from "@/lib/format";
-import type { ExpenseCategory, ExpenseStatus, IncomeCategory } from "@/modules/mining/pnl/categories";
+import type { ExpenseCategory, ExpenseStatus, FeeKind, IncomeCategory } from "@/modules/mining/pnl/categories";
 import type { StatusFilter } from "@/modules/mining/pnl/filters";
 import type { IncomeSource } from "@/modules/mining/pnl/scope";
 
@@ -40,6 +40,7 @@ export const pnl = {
     bursts: { label: "Burst charges", hint: "Mining Foreman burst charges" },
     drones: { label: "Mining drones", hint: "Mining, ice and excavator drones" },
     ships: { label: "Ships & fittings", hint: "Mining hulls, mining modules, rigs, compressors, industrial cores" },
+    fees: { label: "Broker fees", hint: "Broker fees from your wallet journal" },
     subscription: { label: "PLEX / Omega", hint: "Game time for mining alts" },
     other: { label: "Other", hint: "Anything else you count as a mining cost" },
   } satisfies Record<ExpenseCategory, { label: string; hint: string }>,
@@ -131,7 +132,7 @@ export const pnl = {
       subtitle: "Counted purchases and manual entries",
       review: "Review",
       empty: "No expenses counted in this period.",
-      split: "Wallet purchases · manual entries",
+      split: "Wallet · manual entries",
       walletOff: (enable: ReactNode) => (
         <>Wallet import is off for all your characters. {enable} to pick up crystals, fuel, burst charges, drones and hulls you buy.</>
       ),
@@ -169,7 +170,7 @@ export const pnl = {
       incomeSales: (mined: string) => (
         <>
           <b className="text-ink">Income</b> is what the wallet sales you counted brought in (ore, minerals, moon
-          materials, ice products and gas), on the day of the sale. The ore mined in this period is worth {mined} at the
+          materials, ice products and gas) after their sales tax, on the day of the sale. The ore mined in this period is worth {mined} at the
           valuation; ISK per hour still values the mined ore.
         </>
       ),
@@ -177,7 +178,8 @@ export const pnl = {
         <>
           <b className="text-ink">Expenses</b> are wallet purchases you counted (or that are counted automatically for
           characters where you switched that on) plus manual entries; spread entries are divided evenly over their days.
-          Trades between your own characters don&apos;t count.
+          When income comes from wallet sales, the broker fees you include come from the wallet journal (sales tax is
+          deducted from the sales instead). Trades between your own characters don&apos;t count.
         </>
       ),
       iskPerHour: (wallClock: string, characterHours: string, since: string | null, share: string) => (
@@ -206,6 +208,14 @@ export const pnl = {
     ),
     switchToSales: "Switch to wallet sales",
     sales: {
+      salesTax: {
+        none: "No sales tax imported for these sales.",
+        counted: (amount: string, count: number) =>
+          `Sales tax: ${amount} deducted from ${plural(count, "counted sale", "counted sales")}.`,
+        pending: (amount: string) => ` ${amount} more on sales you haven't reviewed yet, deducted once you include them.`,
+      },
+      columns: { tax: "Sales tax" },
+      net: (amount: string) => `net ${amount}`,
       title: "Wallet sales",
       subtitle: "Auto-tagged by item group: ore (raw or compressed), minerals, moon materials, ice products and gas",
       includeAll: (count: number) => `Include all ${n(count)} suggested`,
@@ -280,6 +290,24 @@ export const pnl = {
       newer: "Newer",
       older: "Older",
     },
+    fees: {
+      title: "Broker fees",
+      subtitle: "Charged when you place or change a market order, from your wallet journal",
+      columns: { description: "Fee" },
+      kinds: { transaction_tax: "Sales tax", brokers_fee: "Broker fee" } satisfies Record<FeeKind, string>,
+      time: (time: string) => `${time} EVE`,
+      empty: "No broker fees here for this period.",
+      includeAll: (count: number) => `Include all ${n(count)} broker fees`,
+      includeAllHint: "Count every suggested broker fee in this period",
+      includeHint: "Count this broker fee as a mining cost",
+      excludeHint: "Exclude: not a mining order",
+      page: (page: number, pages: number, total: number) =>
+        `Page ${n(page)} of ${n(pages)} · ${plural(total, "broker fee", "broker fees")}`,
+      notes:
+        "ESI doesn't say which order a broker fee was for, so the journal's own description is all there is; they only count once you include them. Sales tax isn't listed here: it is deducted from the sale it was paid on (Income tab).",
+      minedNote:
+        "Income is currently the value of the ore you mine, so broker fees don't count; your income rate covers them. They count once income comes from wallet sales (Settings → Income).",
+    },
     add: {
       title: "Add a cost",
       subtitle: "PLEX / Omega for alts, contracts, anything ESI can't see",
@@ -312,7 +340,7 @@ export const pnl = {
     description: "Wallet import per character, how income is counted, and what you really sell for.",
     wallet: {
       title: "Wallet import",
-      subtitle: "Optional and per character. Keystar then reads that character's market purchases and sales; only you see them.",
+      subtitle: "Optional and per character. Keystar then reads that character's market purchases and sales and the taxes and fees paid on them; only you see them.",
       revoked: "Token revoked",
       on: "Wallet import on",
       off: "Wallet import off",
@@ -320,7 +348,7 @@ export const pnl = {
         `${plural(count, "transaction", "transactions")} since ${since} · synced ${synced}`,
       noTransactions: (synced: string) => `No market transactions in the last 30 days · synced ${synced}`,
       firstImport: "First import within a few minutes",
-      kept: (count: number) => `${plural(count, "imported transaction", "imported transactions")} kept`,
+      kept: (count: number) => `${plural(count, "imported wallet entry", "imported wallet entries")} kept`,
       nothing: "Nothing imported",
       activitySince: (date: string) => `Mining activity measured since ${date}`,
       activityNext: "Mining activity is measured from the next ledger sync",

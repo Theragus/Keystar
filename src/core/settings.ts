@@ -1,6 +1,6 @@
 import { inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { appSettings, getDb } from "@/core/db";
+import { appSettings, getDb, type Db } from "@/core/db";
 import { ROLES } from "@/core/rbac/roles";
 
 /**
@@ -43,6 +43,8 @@ export const SETTING_DEFAULTS: Settings = {
   "setup.completedAt": null,
 };
 
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
 const KEYS = Object.keys(settingSchemas) as SettingKey[];
 
 export async function getSettings(): Promise<Settings> {
@@ -65,9 +67,15 @@ export async function getSetting<K extends SettingKey>(key: K): Promise<Settings
   return (parsed?.success ? parsed.data : SETTING_DEFAULTS[key]) as Settings[K];
 }
 
-export async function setSetting<K extends SettingKey>(key: K, value: Settings[K], updatedBy?: string | null): Promise<void> {
+/** Pass `tx` to save the setting together with its audit entry (see `auditInTx`). */
+export async function setSetting<K extends SettingKey>(
+  key: K,
+  value: Settings[K],
+  updatedBy?: string | null,
+  tx: Db | Tx = getDb(),
+): Promise<void> {
   const parsed = settingSchemas[key].parse(value);
-  await getDb()
+  await tx
     .insert(appSettings)
     .values({ key, value: parsed as object, updatedBy: updatedBy ?? null })
     .onConflictDoUpdate({

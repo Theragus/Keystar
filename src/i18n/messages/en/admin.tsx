@@ -482,6 +482,15 @@ export const admin = {
                 ? `Can't reach ${names(v.down)}. Check the server's DNS, firewall and proxy settings.`
                 : refusedText(v.refused),
       },
+      auditLog: {
+        label: "Audit log written",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? "No audit entry lost since the web app started"
+            : s === "warn"
+              ? `${plural(Number(v.count), "audit entry", "audit entries")} couldn't be written since the web app started (last: ${v.action}). The server log has the error; usually the database was briefly unavailable.`
+              : "Only checked in the browser.",
+      },
     },
     keystar: {
       title: "Keystar",
@@ -504,6 +513,24 @@ export const admin = {
         [platform, `${n(cpus)} CPU`, memory ? `${memory} limit` : null].filter(Boolean).join(" · "),
       environment: "Environment",
       demo: "demo mode",
+    },
+    load: {
+      title: "Load",
+      subtitle:
+        "The web app's figures cover the time since this page was last loaded, the worker's last heartbeat interval (30 s). The load average is the whole host's, not the container's.",
+      columns: { web: "Web app", worker: "Worker" },
+      cpu: "CPU",
+      cpuValue: (percent: string, cores: string) => `${percent} of ${cores} CPU`,
+      memory: "Memory (RSS)",
+      memoryValue: (used: string, limit: string | null) => (limit ? `${used} of ${limit}` : used),
+      heap: "JS heap",
+      container: "Container memory",
+      hostFree: "Free on host",
+      hostFreeValue: (free: string, total: string) => `${free} of ${total}`,
+      loadAverage: "Load average (1 · 5 · 15 min)",
+      loadValue: (one: string, five: string, fifteen: string) => `${one} · ${five} · ${fifteen}`,
+      workerStale: "No heartbeat in the last 2 minutes.",
+      workerOld: "This worker runs an older version that doesn't report its load.",
     },
     database: {
       title: "Database",

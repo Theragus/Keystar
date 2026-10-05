@@ -101,8 +101,8 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
                         : w.lastSuccessAt
                           ? m.wallet.noTransactions(f.relativeTime(w.lastSuccessAt))
                           : m.wallet.firstImport
-                      : w.transactions > 0
-                        ? m.wallet.kept(w.transactions)
+                      : w.transactions + w.fees > 0
+                        ? m.wallet.kept(w.transactions + w.fees)
                         : m.wallet.nothing}
                     {w.granted && w.lastStatus === "error" && w.lastError ? ` · ${w.lastError}` : ""}
                   </p>
@@ -154,7 +154,7 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
                       <Wallet className="size-3.5" aria-hidden /> {m.wallet.enable}
                     </ButtonLink>
                   )}
-                  {!w.granted && w.transactions > 0 && (
+                  {!w.granted && w.transactions + w.fees > 0 && (
                     <ActionForm
                       action={deleteWalletData.bind(null, w.characterId)}
                       success={m.wallet.toast.deleted(w.name)}

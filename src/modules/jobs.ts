@@ -10,6 +10,7 @@ import {
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
 import type { Messages } from "@/i18n/messages";
 import { fleetJobs } from "./fleet/jobs";
+import { industrySyncJobs } from "./industry/jobs";
 import { intelJobs } from "./intel/jobs";
 import { killboardJobs } from "./killboard/jobs";
 import { miningJobs, miningPriceInterest } from "./mining/jobs";
@@ -32,6 +33,7 @@ export const JOBS: JobDefinition[] = [
   housekeepingJob,
   universeSystemsJob,
   ...miningJobs,
+  ...industrySyncJobs,
   ...killboardJobs,
   ...fleetJobs,
   ...intelJobs,

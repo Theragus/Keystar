@@ -6,7 +6,7 @@ import type { SystemSnapshot } from "@/core/system/collect";
 import { appUrlMatches, collectConfig, originFromHeaders } from "@/core/system/config";
 import { compareMigrations, compareSchema, readJournal } from "@/core/system/database";
 import { createRedactor, errorSignature } from "@/core/system/redact";
-import { parseCpuLimit, parseMemoryLimit, processRuntime } from "@/core/system/runtime";
+import { cpuPercent, parseCpuLimit, parseMemoryLimit, parseMemoryUsage, processRuntime } from "@/core/system/runtime";
 import { bugReportUrl, issueSummary } from "@/core/system/summary";
 import { buildSupportPackage, supportPackageFilename } from "@/core/system/support-package";
 import { collectNetwork, networkError } from "@/core/system/network";
@@ -81,6 +81,7 @@ function snapshot(overrides: Partial<SystemSnapshot> = {}): SystemSnapshot {
     esi: null,
     zkill: null,
     audit: { ok: true, data: {} },
+    auditFailures: { count: 0, lastAt: null, lastAction: null },
     ...overrides,
   };
 }
@@ -146,6 +147,23 @@ describe("runtime", () => {
     expect(parseCpuLimit("max 100000", null, null)).toBeNull();
     expect(parseCpuLimit(null, "50000", "100000")).toBe(0.5);
     expect(parseCpuLimit(null, "-1", "100000")).toBeNull();
+  });
+
+  it("turns CPU time into a share of the available cores", () => {
+    // 1.5 s of CPU over 10 s on 2 cores: 7.5 %.
+    expect(cpuPercent(1_500_000, 10_000, 2)).toBe(7.5);
+    expect(cpuPercent(10_000_000, 10_000, 1)).toBe(100);
+    expect(cpuPercent(123, 0, 2)).toBe(0);
+    expect(parseMemoryUsage("268435456")).toBe(256);
+    expect(parseMemoryUsage("garbage")).toBeNull();
+    expect(parseMemoryUsage(null)).toBeNull();
+  });
+
+  it("reports load figures of this process", () => {
+    const rt = processRuntime();
+    expect(rt.cpuPercent).toBeGreaterThanOrEqual(0);
+    expect(rt.freeMemoryMb).toBeGreaterThan(0);
+    if (rt.loadAverage) expect(rt.loadAverage).toHaveLength(3);
   });
 });
 
@@ -299,6 +317,14 @@ describe("health checks", () => {
     for (const id of ["migrations", "schema", "worker", "jobs", "syncPaused", "clock"] as const) {
       expect(status(checks, id)).toBe("skip");
     }
+  });
+
+  it("warn about audit entries the web process failed to write", () => {
+    const failures = { count: 2, lastAt: ago(60), lastAction: "user.login" };
+    const check = runChecks(snapshot({ auditFailures: failures }), NOW).find((c) => c.id === "auditLog");
+    expect(check).toEqual({ id: "auditLog", status: "warn", values: { count: 2, last: ago(60), action: "user.login" } });
+    expect(status(runChecks(snapshot({ auditFailures: null }), NOW), "auditLog")).toBe("skip");
+    expect(MESSAGES.en.admin.system.checks.auditLog.detail("warn", check!.values)).toContain("2 audit entries");
   });
 
   it("have a text for every check and status in every language", () => {

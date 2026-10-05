@@ -15,6 +15,59 @@ The remap optimiser can read implants with a new optional character scope.
    without it on the application that EVE login fails with `invalid_scope`. Sharing skills keeps working without it.
 2. Update as usual; the database migrations run on start.
 
+### Fixed
+
+- In English, the killboard's permissions in Users & Roles, its background jobs and its browser tab title now
+  say "Combat Report" like the sidebar, instead of "Killboard".
+- Wallet imports read ESI's available history again after deleting wallet data or relinking a character, instead
+  of skipping it because of a stale sync cursor. ([#138](https://github.com/Theragus/Keystar/issues/138))
+- Mail sync no longer removes older stored messages if ESI ignores a paging cursor or returns an empty page while
+  listing a mailbox. ([#137](https://github.com/Theragus/Keystar/issues/137))
+- Right-aligned column headers in tables (the Load and Database tables on System Info, the actions column on
+  Users) now line up with their values instead of sitting on the left.
+- Role and access changes, settings changes and scope switches now write their audit log entry in the same
+  transaction as the change, so a database error can no longer leave a change without an audit trail. Other audit
+  entries that can't be written are counted, and System Info warns about them in a new "Audit log written" check.
+  ([#156](https://github.com/Theragus/Keystar/issues/156))
+
+### Added
+
+- **Industry jobs.** A new Industry Jobs page under Industry lists the industry jobs of your own characters:
+  manufacturing, material and time efficiency research, copying, invention and reactions, each with a progress bar,
+  the time left (counting down live) and the end time, and the station or structure it runs in with its system.
+  Filter by running or finished jobs, character, activity, system and station; tiles count running jobs, jobs ready
+  to deliver and jobs ending within a day. Access is opt-in per character on the new Industry access page, like
+  skills and mail, so nobody is asked for the two new scopes (`esi-industry.read_character_jobs.v1`,
+  `esi-universe.read_structures.v1`) at sign-up; add them to the EVE application (see `docs/deployment.md`). Only you
+  see your characters' jobs. ([#105](https://github.com/Theragus/Keystar/issues/105))
+- **Skill queue timeline.** Each character's card shows the queue as one strip, like the training-time bar in
+  game: every skill takes a slice proportional to the time it still needs, with day, week or month marks below.
+  Pointing at a slice highlights its row in the queue table and the other way round.
+- **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
+  container's memory against its limit, free host memory and the host's load average.
+- **Remap optimiser.** A new page under Pilots recommends the neural remap that trains each character's current skill
+  queue the fastest.
+  - Tries every legal remap (17–27 per attribute, 99 points) against the SP still to train and shows the attributes
+    to remap to, the queue time now and after the remap, and the time saved.
+  - Warns when the queue runs less than 180 days with the recommended attributes: the yearly remap only comes back
+    after 365 days and bonus remaps are gone once used.
+  - Shows whether the yearly remap or a bonus remap is available, and when the next one is.
+  - Implants can be shared per character (`esi-clones.read_implants.v1`) so their bonuses are told apart from the
+    base attributes. Without them, attributes are taken as implant-free and the page says so; when the attributes
+    don't add up to 99 (implants or a booster Keystar doesn't know about), no remap is recommended.
+  - Own characters, plus the corporation view for directors; linked from each character on Skill queues.
+
+### Changed
+
+- **Mining P&L**: when income comes from wallet sales, it is now net of sales tax instead of counting the tax as an
+  expense: each sale on the Income tab shows the tax paid on it and its net, and the tax counts whenever the sale
+  does, without a review of its own. Broker fees stay expenses and are easier to review: each shows the journal's
+  description and time, and "Include all" counts every suggested broker fee at once.
+- Null-sec security status (0.0 and below) is shown in red instead of purple in every security pill, so the
+  security colours run from blue at 1.0 to red.
+
+## [0.13.0] - 2026-10-04
+
 ### Added
 
 - **Delete appraisals.** A small trash button next to each of your recent appraisals, and on the appraisal itself,
@@ -57,16 +110,10 @@ The remap optimiser can read implants with a new optional character scope.
 - **Mining P&L**: a "Mined vs sold" table on the Income tab compares, per ore, what you mined with what you sold
   of it, raw or compressed (compressed ore counts 1:1 in units), with what you got per unit against the valuation
   and the value of the ore still unsold.
-- **Remap optimiser.** A new page under Pilots recommends the neural remap that trains each character's current skill
-  queue the fastest.
-  - Tries every legal remap (17–27 per attribute, 99 points) against the SP still to train and shows the attributes
-    to remap to, the queue time now and after the remap, and the time saved.
-  - Warns when the queue runs less than 180 days with the recommended attributes: the yearly remap only comes back
-    after 365 days and bonus remaps are gone once used.
-  - Shows whether the yearly remap or a bonus remap is available, and when the next one is.
-  - Implants can be shared per character (`esi-clones.read_implants.v1`) so their bonuses are told apart from the
-    base attributes. Without them, attributes are taken as implant-free and the page says so.
-  - Own characters, plus the corporation view for directors; linked from each character on Skill queues.
+- **Mining P&L**: sales tax and broker fees from your characters' wallet journals count as a "Taxes & fees" expense
+  when income comes from wallet sales (same wallet access, no new login). Sales tax follows the sale it was paid on,
+  even in a multi-sell, so tax on counted mining sales counts on the character that sold; broker fees are suggested
+  until you include them.
 
 ### Changed
 

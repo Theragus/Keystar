@@ -472,6 +472,15 @@ export const admin: typeof en = {
                 ? `${names(v.down)} nicht erreichbar. Prüfe DNS, Firewall und Proxy des Servers.`
                 : refusedText(v.refused),
       },
+      auditLog: {
+        label: "Audit-Log geschrieben",
+        detail: (s: CheckStatus, v: CheckValues): string =>
+          s === "ok"
+            ? "Seit dem Start der Web-App ging kein Audit-Eintrag verloren"
+            : s === "warn"
+              ? `${plural(Number(v.count), "Audit-Eintrag konnte", "Audit-Einträge konnten")} seit dem Start der Web-App nicht geschrieben werden (zuletzt: ${v.action}). Der Fehler steht im Server-Log; meist war die Datenbank kurz nicht erreichbar.`
+              : "Wird nur im Browser geprüft.",
+      },
     },
     keystar: {
       title: "Keystar",
@@ -494,6 +503,24 @@ export const admin: typeof en = {
         [platform, `${n(cpus)} CPU`, memory ? `Limit ${memory}` : null].filter(Boolean).join(" · "),
       environment: "Umgebung",
       demo: "Demo-Modus",
+    },
+    load: {
+      title: "Auslastung",
+      subtitle:
+        "Die Werte der Web-App gelten seit dem letzten Aufruf dieser Seite, die des Workers für seinen letzten Heartbeat (30 s). Der Load Average gilt für den ganzen Host, nicht den Container.",
+      columns: { web: "Web-App", worker: "Worker" },
+      cpu: "CPU",
+      cpuValue: (percent: string, cores: string) => `${percent} von ${cores} CPU`,
+      memory: "Speicher (RSS)",
+      memoryValue: (used: string, limit: string | null) => (limit ? `${used} von ${limit}` : used),
+      heap: "JS-Heap",
+      container: "Container-Speicher",
+      hostFree: "Frei auf dem Host",
+      hostFreeValue: (free: string, total: string) => `${free} von ${total}`,
+      loadAverage: "Load Average (1 · 5 · 15 Min.)",
+      loadValue: (one: string, five: string, fifteen: string) => `${one} · ${five} · ${fifteen}`,
+      workerStale: "Kein Heartbeat in den letzten 2 Minuten.",
+      workerOld: "Dieser Worker läuft in einer älteren Version und meldet seine Auslastung noch nicht.",
     },
     database: {
       title: "Datenbank",

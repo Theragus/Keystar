@@ -164,6 +164,19 @@ export const miningPnlTxOverrides = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.characterId, t.transactionId] })],
 );
 
+/** The user's include/exclude decision on a sales tax or broker fee from the wallet journal (`wallet_fees`). */
+export const miningPnlFeeOverrides = pgTable(
+  "mining_pnl_fee_overrides",
+  {
+    userId: owner(),
+    characterId: bigint("character_id", { mode: "number" }).notNull(),
+    journalId: bigint("journal_id", { mode: "number" }).notNull(),
+    included: boolean("included").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.characterId, t.journalId] })],
+);
+
 /**
  * Costs ESI can't see (PLEX/Omega for alts, contracts …). `spread_days` > 1
  * spreads the amount evenly over that many days from `date`, so a year of

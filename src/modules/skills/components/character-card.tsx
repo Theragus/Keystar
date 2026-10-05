@@ -11,7 +11,9 @@ import { SKILLS_MANAGE_HREF, SKILLS_REMAP_HREF } from "../module";
 import type { QueueRow, SkillCharacter } from "../queries";
 import { ATTRIBUTE_NAMES, romanLevel, summarizeQueue, type QueueStatus } from "../queue";
 import { Countdown } from "./countdown";
+import { QueueHoverProvider } from "./queue-hover";
 import { QueueTable } from "./queue-table";
+import { QueueTimeline } from "./queue-timeline";
 
 const STATUS_BADGE: Record<QueueStatus, "ok" | "warning" | "pending"> = {
   training: "ok",
@@ -88,7 +90,7 @@ export function SkillCharacterCard({
       ) : !synced ? (
         <p className="text-sm text-ink-3">{t.card.waiting}</p>
       ) : (
-        <>
+        <QueueHoverProvider>
           {active ? (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
@@ -118,6 +120,7 @@ export function SkillCharacterCard({
                   <div className="h-full rounded-full bg-accent" style={{ width: `${summary.activeProgress.fraction * 100}%` }} />
                 </div>
               )}
+              <QueueTimeline entries={summary.entries} t={t} now={now} className="pt-1" />
               <p className="text-xs text-ink-3">
                 {t.card.queued(summary.entries.length)}
                 {summary.status === "paused" && ` · ${t.card.pausedHint}`}
@@ -163,7 +166,7 @@ export function SkillCharacterCard({
               </div>
             </details>
           )}
-        </>
+        </QueueHoverProvider>
       )}
     </Glass>
   );

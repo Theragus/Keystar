@@ -5,6 +5,7 @@ import * as core from "./schema/core";
 import * as eve from "./schema/eve";
 import * as sync from "./schema/sync";
 import * as fleet from "@/modules/fleet/schema";
+import * as industry from "@/modules/industry/schema";
 import * as intel from "@/modules/intel/schema";
 import * as killboard from "@/modules/killboard/schema";
 import * as mining from "@/modules/mining/schema";
@@ -13,7 +14,7 @@ import * as social from "@/modules/social/schema";
 import * as trade from "@/modules/trade/schema";
 import * as wallet from "@/modules/wallet/schema";
 
-export const schema = { ...core, ...eve, ...sync, ...mining, ...killboard, ...fleet, ...trade, ...intel, ...wallet, ...social, ...skills };
+export const schema = { ...core, ...eve, ...sync, ...mining, ...killboard, ...fleet, ...trade, ...intel, ...wallet, ...social, ...skills, ...industry };
 
 export type Db = PostgresJsDatabase<typeof schema>;
 
@@ -62,3 +63,4 @@ export * from "@/modules/intel/schema";
 export * from "@/modules/wallet/schema";
 export * from "@/modules/social/schema";
 export * from "@/modules/skills/schema";
+export * from "@/modules/industry/schema";

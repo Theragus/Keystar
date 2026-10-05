@@ -1,5 +1,5 @@
-import { and, asc, eq, sql } from "drizzle-orm";
-import { audit } from "@/core/audit";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { audit, auditInTx } from "@/core/audit";
 import { encryptToken } from "@/core/crypto";
 import {
   characters,
@@ -9,8 +9,12 @@ import {
   mailLabels,
   mailLists,
   mailMessages,
+  miningPnlFeeOverrides,
   sessions,
+  syncJobs,
   users,
+  walletFees,
+  industryJobs,
   walletTransactions,
   type Db,
 } from "@/core/db";
@@ -54,10 +58,25 @@ export async function detachTransferredCharacter(
   opts: { keepAccount: boolean },
 ): Promise<{ retired: boolean }> {
   await tx.delete(characters).where(eq(characters.characterId, characterId));
-  // Wallet history and mail imported for the previous owner are theirs, not the new owner's.
+  // Wallet history, mail and industry jobs imported for the previous owner are theirs, not the new owner's.
+  await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
   await tx
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, previousUserId)));
+  await tx.delete(walletFees).where(and(eq(walletFees.characterId, characterId), eq(walletFees.userId, previousUserId)));
+  await tx
+    .update(syncJobs)
+    .set({ meta: null })
+    .where(
+      and(
+        eq(syncJobs.ownerType, "character"),
+        eq(syncJobs.ownerId, characterId),
+        inArray(syncJobs.jobKey, ["wallet.character-transactions", "wallet.character-fees"]),
+      ),
+    );
+  await tx
+    .delete(miningPnlFeeOverrides)
+    .where(and(eq(miningPnlFeeOverrides.characterId, characterId), eq(miningPnlFeeOverrides.userId, previousUserId)));
   await tx.delete(mailMessages).where(and(eq(mailMessages.characterId, characterId), eq(mailMessages.userId, previousUserId)));
   await tx.delete(mailLabels).where(and(eq(mailLabels.characterId, characterId), eq(mailLabels.userId, previousUserId)));
   await tx.delete(mailLists).where(and(eq(mailLists.characterId, characterId), eq(mailLists.userId, previousUserId)));
@@ -156,7 +175,7 @@ export async function provisionFromSso(params: {
       const { retired } = await detachTransferredCharacter(tx, verified.characterId, existing.userId, {
         keepAccount: linking && existing.userId === currentUserId,
       });
-      await audit({
+      await auditInTx(tx, {
         action: "character.transferred",
         targetType: "character",
         targetId: verified.characterId,
@@ -181,7 +200,7 @@ export async function provisionFromSso(params: {
       if (u.isDisabled) throw new ProvisionError("disabled", "This account has been disabled by an administrator.");
       role = reconcileRole(u.role, policy);
       if (role !== u.role) {
-        await audit({
+        await auditInTx(tx, {
           action: "user.role.auto",
           targetType: "user",
           targetId: userId,

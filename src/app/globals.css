@@ -471,75 +471,77 @@ select option:disabled {
 }
 
 /* ------------------------------------------------------------------ Tables */
-
-.ks-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 0.875rem;
-}
-.ks-table th {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-size: var(--text-2xs);
-  color: var(--color-ink-3);
-  text-align: left;
-  padding: 0.6rem 0.9rem;
-  border-bottom: 1px solid var(--hairline);
-  white-space: nowrap;
-}
-.ks-table td {
-  padding: 0.6rem 0.9rem;
-  border-bottom: 1px solid var(--row-rule);
-  vertical-align: middle;
-}
-.ks-table tbody tr {
-  transition: background-color 120ms ease;
-}
-.ks-table tbody tr:hover {
-  background: color-mix(in srgb, var(--color-surface-contrast) 2.5%, transparent);
-}
-/* Group header row (e.g. a day in the mining ledger): body text, not column-header styling. */
-.ks-table .ks-group-row > th,
-.ks-table .ks-group-row > td {
-  font-family: inherit;
-  font-weight: 500;
-  letter-spacing: normal;
-  text-transform: none;
-  font-size: 0.8125rem;
-  color: var(--color-ink-2);
-  white-space: normal;
-  background: color-mix(in srgb, var(--color-surface-contrast) 3.5%, transparent);
-  border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
-}
-.ks-table tbody:first-of-type .ks-group-row > * {
-  border-top: 0;
-}
-.ks-table tbody tr.ks-group-row:hover > * {
-  background: color-mix(in srgb, var(--color-surface-contrast) 5.5%, transparent);
-}
-/* Rows of a collapsed group: invisible and zero-height, but still sizing the columns
-   (`visibility: collapse` would do this, but Safari treats it as `hidden`). */
-.ks-table [data-collapsed] > tr:not(.ks-group-row) > td {
-  visibility: hidden;
-  padding-block: 0;
-  border-bottom: 0;
-  line-height: 0;
-}
-.ks-table [data-collapsed] > tr:not(.ks-group-row) > td > * {
-  max-height: 0;
-  padding-block: 0;
-  border-block-width: 0;
-  vertical-align: top;
-  overflow: hidden;
-}
-.ks-table .num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+/* In the components layer so a cell's utilities (text-right, padding) win over these defaults. */
+@layer components {
+  .ks-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.875rem;
+  }
+  .ks-table th {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: var(--text-2xs);
+    color: var(--color-ink-3);
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--hairline);
+    white-space: nowrap;
+  }
+  .ks-table td {
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--row-rule);
+    vertical-align: middle;
+  }
+  .ks-table tbody tr {
+    transition: background-color 120ms ease;
+  }
+  .ks-table tbody tr:hover {
+    background: color-mix(in srgb, var(--color-surface-contrast) 2.5%, transparent);
+  }
+  /* Group header row (e.g. a day in the mining ledger): body text, not column-header styling. */
+  .ks-table .ks-group-row > th,
+  .ks-table .ks-group-row > td {
+    font-family: inherit;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+    font-size: 0.8125rem;
+    color: var(--color-ink-2);
+    white-space: normal;
+    background: color-mix(in srgb, var(--color-surface-contrast) 3.5%, transparent);
+    border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .ks-table tbody:first-of-type .ks-group-row > * {
+    border-top: 0;
+  }
+  .ks-table tbody tr.ks-group-row:hover > * {
+    background: color-mix(in srgb, var(--color-surface-contrast) 5.5%, transparent);
+  }
+  /* Rows of a collapsed group: invisible and zero-height, but still sizing the columns
+     (`visibility: collapse` would do this, but Safari treats it as `hidden`). */
+  .ks-table [data-collapsed] > tr:not(.ks-group-row) > td {
+    visibility: hidden;
+    padding-block: 0;
+    border-bottom: 0;
+    line-height: 0;
+  }
+  .ks-table [data-collapsed] > tr:not(.ks-group-row) > td > * {
+    max-height: 0;
+    padding-block: 0;
+    border-block-width: 0;
+    vertical-align: top;
+    overflow: hidden;
+  }
+  .ks-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
 }
 
 /* Scrollbars that fit the theme. */

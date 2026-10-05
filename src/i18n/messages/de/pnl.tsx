@@ -36,6 +36,7 @@ export const pnl: typeof en = {
     bursts: { label: "Burst-Ladungen", hint: "Mining-Foreman-Burst-Ladungen" },
     drones: { label: "Mining-Drohnen", hint: "Mining-, Eis- und Excavator-Drohnen" },
     ships: { label: "Schiffe & Fittings", hint: "Mining-Schiffe, Mining-Module, Rigs, Kompressoren, Industriekerne" },
+    fees: { label: "Maklergebühren", hint: "Maklergebühren aus deinem Wallet-Journal" },
     subscription: { label: "PLEX / Omega", hint: "Spielzeit für Mining-Alts" },
     other: { label: "Sonstiges", hint: "Alles andere, was du als Mining-Kosten zählst" },
   },
@@ -127,7 +128,7 @@ export const pnl: typeof en = {
       subtitle: "Gezählte Käufe und manuelle Einträge",
       review: "Prüfen",
       empty: "In diesem Zeitraum wurden keine Ausgaben gezählt.",
-      split: "Wallet-Käufe · manuelle Einträge",
+      split: "Wallet · manuelle Einträge",
       walletOff: (enable: ReactNode) => (
         <>
           Der Wallet-Import ist für alle deine Charaktere aus. {enable}, damit gekaufte Kristalle, Treibstoff,
@@ -170,7 +171,7 @@ export const pnl: typeof en = {
       incomeSales: (mined: string) => (
         <>
           <b className="text-ink">Einnahmen</b> sind der Erlös der Wallet-Verkäufe, die du zählst (Erz, Mineralien,
-          Mondmaterialien, Eisprodukte und Gas), am Tag des Verkaufs. Das in diesem Zeitraum abgebaute Erz ist zur
+          Mondmaterialien, Eisprodukte und Gas) nach Verkaufssteuer, am Tag des Verkaufs. Das in diesem Zeitraum abgebaute Erz ist zur
           Bewertung {mined} wert; ISK pro Stunde bewertet weiterhin das abgebaute Erz.
         </>
       ),
@@ -178,7 +179,9 @@ export const pnl: typeof en = {
         <>
           <b className="text-ink">Ausgaben</b> sind Wallet-Käufe, die du gezählt hast (oder die bei Charakteren mit
           eingeschalteter automatischer Zählung automatisch zählen), plus manuelle Einträge; verteilte Einträge werden
-          gleichmäßig auf ihre Tage aufgeteilt. Handel zwischen deinen eigenen Charakteren zählt nicht.
+          gleichmäßig auf ihre Tage aufgeteilt. Kommen Einnahmen aus Wallet-Verkäufen, kommen übernommene Maklergebühren
+          aus dem Wallet-Journal dazu (die Verkaufssteuer wird stattdessen von den Verkäufen abgezogen). Handel zwischen
+          deinen eigenen Charakteren zählt nicht.
         </>
       ),
       iskPerHour: (wallClock: string, characterHours: string, since: string | null, share: string) => (
@@ -209,6 +212,14 @@ export const pnl: typeof en = {
     ),
     switchToSales: "Auf Wallet-Verkäufe umstellen",
     sales: {
+      salesTax: {
+        none: "Für diese Verkäufe wurde keine Verkaufssteuer importiert.",
+        counted: (amount: string, count: number) =>
+          `Verkaufssteuer: ${amount} von ${plural(count, "gezähltem Verkauf", "gezählten Verkäufen")} abgezogen.`,
+        pending: (amount: string) => ` Weitere ${amount} auf noch nicht geprüfte Verkäufe, abgezogen, sobald du sie übernimmst.`,
+      },
+      columns: { tax: "Verkaufssteuer" },
+      net: (amount: string) => `netto ${amount}`,
       title: "Wallet-Verkäufe",
       subtitle: "Automatisch nach Item-Gruppe erkannt: Erz (roh oder komprimiert), Mineralien, Mondmaterialien, Eisprodukte und Gas",
       includeAll: (count: number) => `Alle ${n(count)} Vorschläge übernehmen`,
@@ -284,6 +295,24 @@ export const pnl: typeof en = {
       newer: "Neuer",
       older: "Älter",
     },
+    fees: {
+      title: "Maklergebühren",
+      subtitle: "Fallen beim Erstellen oder Ändern einer Marktorder an, aus deinem Wallet-Journal",
+      columns: { description: "Gebühr" },
+      kinds: { transaction_tax: "Verkaufssteuer", brokers_fee: "Maklergebühr" },
+      time: (time: string) => `${time} EVE`,
+      empty: "Keine Maklergebühren in diesem Zeitraum.",
+      includeAll: (count: number) => `Alle ${n(count)} Maklergebühren übernehmen`,
+      includeAllHint: "Jede vorgeschlagene Maklergebühr in diesem Zeitraum zählen",
+      includeHint: "Diese Maklergebühr als Mining-Kosten zählen",
+      excludeHint: "Ausschließen: keine Mining-Order",
+      page: (page: number, pages: number, total: number) =>
+        `Seite ${n(page)} von ${n(pages)} · ${plural(total, "Maklergebühr", "Maklergebühren")}`,
+      notes:
+        "ESI sagt nicht, für welche Order eine Maklergebühr anfiel; die Beschreibung aus dem Journal ist alles, was es gibt. Sie zählen erst, wenn du sie übernimmst. Die Verkaufssteuer steht nicht hier: Sie wird vom Verkauf abgezogen, auf den sie gezahlt wurde (Tab „Einnahmen“).",
+      minedNote:
+        "Einnahmen sind derzeit der Wert des abgebauten Erzes, daher zählen Maklergebühren nicht; dein Einnahmen-Anteil deckt sie ab. Sie zählen, sobald Einnahmen aus Wallet-Verkäufen kommen (Einstellungen → Einnahmen).",
+    },
     add: {
       title: "Kosten erfassen",
       subtitle: "PLEX / Omega für Alts, Contracts, alles, was ESI nicht sieht",
@@ -319,7 +348,7 @@ export const pnl: typeof en = {
     wallet: {
       title: "Wallet-Import",
       subtitle:
-        "Optional und pro Charakter. Keystar liest dann die Marktkäufe und -verkäufe dieses Charakters; sehen kannst sie nur du.",
+        "Optional und pro Charakter. Keystar liest dann die Marktkäufe und -verkäufe dieses Charakters und die darauf gezahlten Steuern und Gebühren; sehen kannst sie nur du.",
       revoked: "Token widerrufen",
       on: "Wallet-Import an",
       off: "Wallet-Import aus",
@@ -327,7 +356,7 @@ export const pnl: typeof en = {
         `${plural(count, "Transaktion", "Transaktionen")} seit ${since} · synchronisiert ${synced}`,
       noTransactions: (synced: string) => `Keine Markttransaktionen in den letzten 30 Tagen · synchronisiert ${synced}`,
       firstImport: "Erster Import in wenigen Minuten",
-      kept: (count: number) => `${plural(count, "importierte Transaktion bleibt", "importierte Transaktionen bleiben")} erhalten`,
+      kept: (count: number) => `${plural(count, "importierter Wallet-Eintrag bleibt", "importierte Wallet-Einträge bleiben")} erhalten`,
       nothing: "Nichts importiert",
       activitySince: (date: string) => `Mining-Aktivität gemessen seit ${date}`,
       activityNext: "Die Mining-Aktivität wird ab dem nächsten Ledger-Sync gemessen",

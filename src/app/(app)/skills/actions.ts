@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { audit } from "@/core/audit";
+import { audit, auditInTx } from "@/core/audit";
 import { assertPermission } from "@/core/auth/dal";
 import { disableOptionalScope, enableOptionalScope } from "@/core/auth/scope-switch";
 import { esiTokens, getDb, skillsCharacter, skillsCharacterSkills, skillsImplants, skillsQueue } from "@/core/db";
@@ -22,9 +22,8 @@ export async function setSkillsSharing(characterId: number, enabled: boolean): P
   const user = await assertPermission(SKILLS_PERMISSIONS.viewOwn).catch(() => null);
   if (!user) return refused("forbidden");
   if (!user.characterIds.includes(characterId)) return refused("notOwned");
-  let implants;
   try {
-    implants = await getDb().transaction(async (tx) => {
+    await getDb().transaction(async (tx) => {
       await tx.select({ id: esiTokens.characterId }).from(esiTokens).where(eq(esiTokens.characterId, characterId)).for("update");
       const outcomes = [];
       for (const scope of SKILLS_SCOPES) {
@@ -33,23 +32,25 @@ export async function setSkillsSharing(characterId: number, enabled: boolean): P
       // On: both scopes or neither. Off: a partly shared character only holds one of them.
       if (enabled ? outcomes.some((o) => o !== "ok") : outcomes.every((o) => o !== "ok")) throw new NotHeld();
       // Implants are optional on top: switched along when held, ignored otherwise.
-      return enabled ? enableOptionalScope(characterId, IMPLANTS_SCOPE, tx) : disableOptionalScope(characterId, IMPLANTS_SCOPE, tx);
+      const implants = enabled
+        ? await enableOptionalScope(characterId, IMPLANTS_SCOPE, tx)
+        : await disableOptionalScope(characterId, IMPLANTS_SCOPE, tx);
+      for (const scope of implants === "ok" ? [...SKILLS_SCOPES, IMPLANTS_SCOPE] : SKILLS_SCOPES) {
+        await auditInTx(tx, {
+          actorUserId: user.id,
+          actorName: user.main?.name,
+          action: enabled ? "esi.scope.enabled" : "esi.scope.disabled",
+          targetType: "character",
+          targetId: characterId,
+          details: { scope },
+        });
+      }
     });
   } catch (err) {
     if (err instanceof NotHeld) return refused("notHeld");
     throw err;
   }
   // The worker's planner (every 30 seconds) starts or stops the skills jobs.
-  for (const scope of implants === "ok" ? [...SKILLS_SCOPES, IMPLANTS_SCOPE] : SKILLS_SCOPES) {
-    await audit({
-      actorUserId: user.id,
-      actorName: user.main?.name,
-      action: enabled ? "esi.scope.enabled" : "esi.scope.disabled",
-      targetType: "character",
-      targetId: characterId,
-      details: { scope },
-    });
-  }
   revalidatePath("/", "layout");
   return ok;
 }

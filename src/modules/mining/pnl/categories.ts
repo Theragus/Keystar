@@ -6,7 +6,7 @@ import type { ChartClass } from "../class-colors";
  * type/group, plus the income categories of wallet sales. Isomorphic; labels are in the dictionaries (`t.pnl.categories`). Group and type ids from ESI /universe/groups and
  * /universe/types (checked against Tranquility).
  */
-export const EXPENSE_CATEGORIES = ["crystals", "fuel", "bursts", "drones", "ships", "subscription", "other"] as const;
+export const EXPENSE_CATEGORIES = ["crystals", "fuel", "bursts", "drones", "ships", "fees", "subscription", "other"] as const;
 
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
@@ -119,6 +119,9 @@ export function saleCategorySqlCase(groupCol: string, categoryCol: string): stri
   const groups = Object.entries(SALE_GROUPS).map(([id, c]) => `WHEN ${groupCol} = ${id} THEN '${c}'`);
   return `CASE ${groups.join(" ")} WHEN ${categoryCol} = ${ASTEROID_CATEGORY_ID} THEN 'ore' ELSE NULL END`;
 }
+
+/** Wallet journal fees the P&L counts as "fees" expenses; labels in `t.pnl.expenses.fees.kinds`. */
+export type FeeKind = "transaction_tax" | "brokers_fee";
 
 /** Review state of a wallet transaction; purchases and sales share it. */
 export type ExpenseStatus = "counted" | "suggested" | "excluded" | "untagged";

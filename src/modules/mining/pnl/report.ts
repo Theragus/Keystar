@@ -24,7 +24,7 @@ export interface PnlBucket {
   end: string;
   income: number;
   incomeByClass: ClassValues;
-  /** Counted wallet purchases. */
+  /** Counted wallet purchases and broker fees. */
   wallet: number;
   /** Manual entries (spread ones divided over their days). */
   manual: number;
@@ -72,9 +72,14 @@ export interface PnlReport {
     minedIncome: number;
     /** The same ore at the dashboard valuation (no rate or price rules). */
     baseIncome: number;
-    /** Counted wallet sales. */
+    /** Counted wallet sales, net of sales tax. */
     salesIncome: number;
+    /** Sales tax deducted from the counted sales. */
+    salesTax: number;
+    /** Counted wallet purchases and broker fees. */
     wallet: number;
+    /** Of `wallet`: counted broker fees. */
+    fees: number;
     manual: number;
     expenses: number;
     net: number;
@@ -83,6 +88,7 @@ export interface PnlReport {
   };
   purchases: Record<ExpenseStatus, StatusTotal>;
   sales: Record<ExpenseStatus, StatusTotal>;
+  fees: Record<ExpenseStatus, StatusTotal>;
   byCategory: { category: ExpenseCategory; amount: number }[];
   buckets: PnlBucket[];
   characters: PnlCharacterRow[];
@@ -128,6 +134,8 @@ export function buildPnlReport(input: {
   /** Wallet sales; only counted ones are income, and only with `incomeSource` "sales". */
   sales?: SaleRow[];
   expenses: ExpenseRow[];
+  /** Broker fees (category "fees"); counted ones are wallet expenses, with `incomeSource` "sales" only. */
+  fees?: ExpenseRow[];
   manual: ManualDailyRow[];
   activity: ActivityStats;
   characters: { characterId: number; name: string }[];
@@ -205,29 +213,38 @@ export function buildPnlReport(input: {
 
   const sales = statusTotals();
   let salesIncome = 0;
+  let salesTax = 0;
+  // Sale amounts are net of the sales tax paid on them.
   for (const r of input.sales ?? []) {
     sales[r.status].amount += r.amount;
     sales[r.status].count += r.count;
     if (r.status !== "counted") continue;
     salesIncome += r.amount;
+    salesTax += r.tax;
     if (fromSales) addIncome(r.date, r.characterId, r.category ?? "other", r.amount);
   }
   const totalIncome = fromSales ? salesIncome : minedIncome;
 
   const purchases = statusTotals();
   const byCategory = new Map<ExpenseCategory, number>();
+  const fees = statusTotals();
   let wallet = 0;
-  for (const r of expenses) {
-    purchases[r.status].amount += r.amount;
-    purchases[r.status].count += r.count;
-    if (r.status !== "counted") continue;
+  let feeTotal = 0;
+  const countWallet = (r: ExpenseRow, stats: Record<ExpenseStatus, StatusTotal>) => {
+    stats[r.status].amount += r.amount;
+    stats[r.status].count += r.count;
+    if (r.status !== "counted") return 0;
     wallet += r.amount;
     const category = r.category ?? "other";
     byCategory.set(category, (byCategory.get(category) ?? 0) + r.amount);
     const b = bucketOf(r.date);
     if (b) b.wallet += r.amount;
     charRow(r.characterId).expenses += r.amount;
-  }
+    return r.amount;
+  };
+  for (const r of expenses) countWallet(r, purchases);
+  // Broker fees are a cost of selling: they only count when the sales are the income (a mined-value rate covers them).
+  if (fromSales) for (const r of input.fees ?? []) feeTotal += countWallet(r, fees);
   let manualTotal = 0;
   for (const r of manual) {
     manualTotal += r.amount;
@@ -301,7 +318,9 @@ export function buildPnlReport(input: {
       minedIncome,
       baseIncome,
       salesIncome,
+      salesTax,
       wallet,
+      fees: feeTotal,
       manual: manualTotal,
       expenses: totalExpenses,
       net: totalIncome - totalExpenses,
@@ -310,6 +329,7 @@ export function buildPnlReport(input: {
     },
     purchases,
     sales,
+    fees,
     byCategory: EXPENSE_CATEGORIES.filter((c) => byCategory.has(c)).map((c) => ({ category: c, amount: byCategory.get(c)! })),
     buckets: [...buckets.values()],
     characters,

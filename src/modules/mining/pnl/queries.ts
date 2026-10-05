@@ -12,6 +12,7 @@ import {
   saleCategorySqlCase,
   type ExpenseCategory,
   type ExpenseStatus,
+  type FeeKind,
   type IncomeCategory,
 } from "./categories";
 import { pnlLedgerFilters, type StatusFilter } from "./filters";
@@ -221,15 +222,29 @@ interface WalletRow<C> {
 }
 
 export type ExpenseRow = WalletRow<ExpenseCategory>;
-export type SaleRow = WalletRow<IncomeCategory>;
+/** Sales are net of the sales tax paid on them (`tax`): income is what the sale actually brought in. */
+export type SaleRow = WalletRow<IncomeCategory> & { gross: number; tax: number };
 
 async function walletRows(s: PnlScope, side: WalletSide): Promise<Record<string, unknown>[]> {
   if (!s.characterIds.length) return [];
+  if (side === "buy") {
+    return getDb().execute<Record<string, unknown>>(sql`
+      WITH ${walletTxCte(s, side)}
+      SELECT to_char((c.date AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') AS date, c.character_id, c.category, c.status,
+             SUM(c.amount)::float8 AS amount, COUNT(*)::int AS count
+      FROM classified c
+      GROUP BY 1, 2, 3, 4
+      ORDER BY 1`);
+  }
+  // Sales net of their sales tax.
   return getDb().execute<Record<string, unknown>>(sql`
-    WITH ${walletTxCte(s, side)}
+    WITH ${walletTxCte(s, side)}, ${taxPaidCte(s)},
+    sale_tax AS (SELECT character_id, transaction_id, SUM(amount) AS tax FROM tax_paid GROUP BY 1, 2)
     SELECT to_char((c.date AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') AS date, c.character_id, c.category, c.status,
-           SUM(c.amount)::float8 AS amount, COUNT(*)::int AS count
+           SUM(c.amount)::float8 AS gross, COALESCE(SUM(st.tax), 0)::float8 AS tax,
+           (SUM(c.amount) - COALESCE(SUM(st.tax), 0))::float8 AS amount, COUNT(*)::int AS count
     FROM classified c
+    LEFT JOIN sale_tax st ON st.character_id = c.character_id AND st.transaction_id = c.transaction_id
     GROUP BY 1, 2, 3, 4
     ORDER BY 1`);
 }
@@ -250,9 +265,9 @@ export async function getExpenseRows(s: PnlScope): Promise<ExpenseRow[]> {
   return (await walletRows(s, "buy")).map((r) => walletRow(r, isExpenseCategory));
 }
 
-/** Wallet sales per day, character, income category and status. */
+/** Wallet sales per day, character, income category and status, net of sales tax. */
 export async function getSaleRows(s: PnlScope): Promise<SaleRow[]> {
-  return (await walletRows(s, "sell")).map((r) => walletRow(r, isIncomeCategory));
+  return (await walletRows(s, "sell")).map((r) => ({ ...walletRow(r, isIncomeCategory), gross: num(r.gross), tax: num(r.tax) }));
 }
 
 interface WalletTx<C> {
@@ -271,6 +286,8 @@ interface WalletTx<C> {
   status: ExpenseStatus;
   /** Your include/exclude decision (null = automatic). */
   overrideIncluded: boolean | null;
+  /** Sales only: the sales tax paid on it (null when none was imported). */
+  tax: number | null;
 }
 
 export type PurchaseRow = WalletTx<ExpenseCategory>;
@@ -285,10 +302,12 @@ async function walletTransactionsPage<C>(
   if (!s.characterIds.length) return { rows: [], total: 0 };
   const where = opts.status === "mining" ? sql`c.status <> 'untagged'` : sql`c.status = ${opts.status}`;
   const db = getDb();
+  const sell = side === "sell";
   const [rows, count] = await Promise.all([
     db.execute<Record<string, unknown>>(sql`
-      WITH ${walletTxCte(s, side)}
+      WITH ${walletTxCte(s, side)}${sell ? sql`, ${taxPaidCte(s)}` : sql``}
       SELECT c.*, ch.name AS character_name, g.name AS group_name,
+             ${sell ? sql`(SELECT SUM(tp.amount) FROM tax_paid tp WHERE tp.character_id = c.character_id AND tp.transaction_id = c.transaction_id)::float8` : sql`NULL::float8`} AS tax,
              to_char(c.date AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date_iso
       FROM classified c
       LEFT JOIN characters ch ON ch.character_id = c.character_id
@@ -317,6 +336,7 @@ async function walletTransactionsPage<C>(
       category: isCategory(r.category) ? r.category : null,
       status: String(r.status) as ExpenseStatus,
       overrideIncluded: r.o_included === null || r.o_included === undefined ? null : Boolean(r.o_included),
+      tax: r.tax === null || r.tax === undefined ? null : num(r.tax),
     })),
   };
 }
@@ -335,6 +355,146 @@ export function getSales(
   opts: { status: StatusFilter; limit: number; offset: number },
 ): Promise<{ rows: SaleTxRow[]; total: number }> {
   return walletTransactionsPage(s, "sell", isIncomeCategory, opts);
+}
+
+/**
+ * Each sales tax of the selected characters with the sale it was paid on: the journal's market transaction id, else
+ * the sale whose journal entry comes right before the tax at the same time (each sale's own journal entry precedes
+ * its tax, even in a multi-sell).
+ */
+function taxPaidCte(s: PnlScope): SQL {
+  const { start, end } = utcDayBounds(s.from, s.to);
+  return sql`tax_paid AS (
+    SELECT f.character_id, f.journal_id, f.amount::float8 AS amount, paid.transaction_id
+    FROM wallet_fees f
+    LEFT JOIN LATERAL (
+      SELECT w.transaction_id FROM wallet_transactions w
+      WHERE w.user_id = f.user_id AND w.character_id = f.character_id AND NOT w.is_buy
+        AND ((f.context_id_type = 'market_transaction_id' AND w.transaction_id = f.context_id)
+             OR (w.date = f.date AND w.journal_ref_id < f.journal_id))
+      -- The exact transaction first; the journal order when it isn't imported.
+      ORDER BY (f.context_id_type = 'market_transaction_id' AND w.transaction_id = f.context_id) DESC, w.journal_ref_id DESC
+      LIMIT 1
+    ) paid ON true
+    WHERE f.ref_type = 'transaction_tax' AND f.user_id = ${s.userId}::uuid AND f.character_id IN (${list(s.characterIds)})
+      AND f.date >= ${start}::timestamptz AND f.date < ${end}::timestamptz
+  )`;
+}
+
+/**
+ * Sales tax and broker fees of the selected characters with their status. Sales tax is part of its sale: it takes
+ * the sale's status (counted with a counted mining sale, out with other sales) and has no review of its own. Broker
+ * fees belong to orders, not sales, so they stay suggested until you include them.
+ */
+function feesCte(s: PnlScope): SQL {
+  const { start, end } = utcDayBounds(s.from, s.to);
+  return sql`${walletTxCte(s, "sell")},
+  ${taxPaidCte(s)},
+  fees AS (
+    SELECT f.character_id, f.journal_id, f.date, f.ref_type, f.amount::float8 AS amount, f.description,
+           sale.transaction_id AS sale_id, sale.type_id AS sale_type_id, sale.type_name AS sale_type_name,
+           sale.amount AS sale_amount, sale.status AS sale_status, o.included AS o_included
+    FROM wallet_fees f
+    LEFT JOIN tax_paid tp ON tp.character_id = f.character_id AND tp.journal_id = f.journal_id
+    -- Sales outside "classified" (to your own characters) leave the tax untagged.
+    LEFT JOIN classified sale ON sale.character_id = f.character_id AND sale.transaction_id = tp.transaction_id
+    LEFT JOIN mining_pnl_fee_overrides o
+      ON o.user_id = f.user_id AND o.character_id = f.character_id AND o.journal_id = f.journal_id
+    WHERE f.user_id = ${s.userId}::uuid AND f.character_id IN (${list(s.characterIds)})
+      AND f.date >= ${start}::timestamptz AND f.date < ${end}::timestamptz
+  ),
+  fee_status AS (
+    SELECT fe.*, CASE
+      WHEN fe.ref_type = 'transaction_tax'
+        THEN CASE WHEN fe.sale_status IN ('counted', 'suggested', 'excluded') THEN fe.sale_status ELSE 'untagged' END
+      WHEN fe.o_included THEN 'counted'
+      WHEN fe.o_included = false THEN 'excluded'
+      -- Broker fees belong to orders, which may not be mining orders: never counted without you.
+      ELSE 'suggested' END AS status
+    FROM fees fe
+  )`;
+}
+
+/**
+ * Broker fees per day, character and status, as expense rows ("fees"). Sales tax isn't an expense: it is deducted
+ * from the sale it was paid on (see getSaleRows).
+ */
+export async function getFeeRows(s: PnlScope): Promise<ExpenseRow[]> {
+  if (!s.characterIds.length) return [];
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    WITH ${feesCte(s)}
+    SELECT to_char((f.date AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') AS date, f.character_id, f.status,
+           SUM(f.amount)::float8 AS amount, COUNT(*)::int AS count
+    FROM fee_status f
+    WHERE f.ref_type = 'brokers_fee'
+    GROUP BY 1, 2, 3
+    ORDER BY 1`);
+  return rows.map((r) => ({
+    date: String(r.date),
+    characterId: num(r.character_id),
+    category: "fees" as const,
+    status: String(r.status) as ExpenseStatus,
+    amount: num(r.amount),
+    count: num(r.count),
+  }));
+}
+
+export interface FeeRow {
+  characterId: number;
+  characterName: string | null;
+  journalId: number;
+  date: string;
+  kind: FeeKind;
+  amount: number;
+  /** The journal's own description, as the EVE client shows it (null for entries imported before it was kept). */
+  description: string | null;
+  /** The sale a sales tax was paid on (null for broker fees, or when it can't be matched). */
+  sale: { typeId: number; typeName: string | null; amount: number } | null;
+  status: ExpenseStatus;
+  /** Your include/exclude decision (null = automatic). */
+  overrideIncluded: boolean | null;
+}
+
+/** Fees, newest first, optionally of one kind (`mining`: all but tax on other sales). */
+export async function getFees(
+  s: PnlScope,
+  opts: { status: StatusFilter; kind?: FeeKind; limit: number; offset: number },
+): Promise<{ rows: FeeRow[]; total: number }> {
+  if (!s.characterIds.length) return { rows: [], total: 0 };
+  const byStatus = opts.status === "mining" ? sql`f.status <> 'untagged'` : sql`f.status = ${opts.status}`;
+  const where = opts.kind ? sql`${byStatus} AND f.ref_type = ${opts.kind}` : byStatus;
+  const db = getDb();
+  const [rows, count] = await Promise.all([
+    db.execute<Record<string, unknown>>(sql`
+      WITH ${feesCte(s)}
+      SELECT f.*, ch.name AS character_name, to_char(f.date AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date_iso
+      FROM fee_status f
+      LEFT JOIN characters ch ON ch.character_id = f.character_id
+      WHERE ${where}
+      ORDER BY f.date DESC, f.journal_id DESC
+      LIMIT ${opts.limit} OFFSET ${opts.offset}`),
+    db.execute<Record<string, unknown>>(sql`
+      WITH ${feesCte(s)}
+      SELECT COUNT(*)::int AS n FROM fee_status f WHERE ${where}`),
+  ]);
+  return {
+    total: num(count[0]?.n),
+    rows: rows.map((r) => ({
+      characterId: num(r.character_id),
+      characterName: str(r.character_name),
+      journalId: num(r.journal_id),
+      date: String(r.date_iso),
+      kind: r.ref_type === "brokers_fee" ? "brokers_fee" : "transaction_tax",
+      amount: num(r.amount),
+      description: str(r.description),
+      sale:
+        r.sale_id === null || r.sale_id === undefined
+          ? null
+          : { typeId: num(r.sale_type_id), typeName: str(r.sale_type_name), amount: num(r.sale_amount) },
+      status: String(r.status) as ExpenseStatus,
+      overrideIncluded: r.o_included === null || r.o_included === undefined ? null : Boolean(r.o_included),
+    })),
+  };
 }
 
 export interface ManualDailyRow {
@@ -506,7 +666,7 @@ export interface OreFlowRow {
   sold: number;
   /** Of `sold`, the units sold compressed. */
   soldCompressed: number;
-  /** ISK the sales brought in. */
+  /** ISK the sales brought in, after sales tax. */
   soldIsk: number;
   sales: number;
   /** Current valuation per raw unit (null: no price yet). */
@@ -537,12 +697,16 @@ export async function getOreFlows(s: PnlScope): Promise<OreFlowRow[]> {
       FROM eve_types r JOIN eve_types c ON c.type_id = r.compressed_type_id
       WHERE r.portion_size IS NOT NULL
     ),
+    ${taxPaidCte(s)},
+    sale_tax AS (SELECT character_id, transaction_id, SUM(amount) AS tax FROM tax_paid GROUP BY 1, 2),
     sold AS (
       SELECT v.raw_id, SUM(w.quantity * v.ratio)::float8 AS units,
              COALESCE(SUM(w.quantity * v.ratio) FILTER (WHERE v.compressed), 0)::float8 AS compressed_units,
-             SUM(w.quantity * w.unit_price)::float8 AS isk, COUNT(*)::int AS sales
+             -- What the sales brought in after sales tax.
+             SUM(w.quantity * w.unit_price - COALESCE(st.tax, 0))::float8 AS isk, COUNT(*)::int AS sales
       FROM wallet_transactions w
       JOIN variants v ON v.sold_id = w.type_id AND v.ratio IS NOT NULL
+      LEFT JOIN sale_tax st ON st.character_id = w.character_id AND st.transaction_id = w.transaction_id
       LEFT JOIN mining_pnl_tx_overrides o
         ON o.user_id = w.user_id AND o.character_id = w.character_id AND o.transaction_id = w.transaction_id
       WHERE w.user_id = ${s.userId}::uuid AND w.character_id IN (${list(s.characterIds)}) AND NOT w.is_buy
@@ -611,6 +775,8 @@ export interface WalletCharacterStatus {
   lastStatus: string | null;
   lastError: string | null;
   transactions: number;
+  /** Imported sales tax and broker fees (a character can have fees without transactions, e.g. unfilled orders). */
+  fees: number;
   firstTransactionAt: Date | null;
   lastTransactionAt: Date | null;
   activitySince: Date | null;
@@ -623,18 +789,27 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
     SELECT c.character_id, c.name, t.scopes, t.disabled_scopes, t.status AS token_status,
            COALESCE(pc.auto_include_expenses, false) AS auto_include,
            COALESCE(pc.auto_include_sales, false) AS auto_include_sales,
-           j.enabled AS job_enabled, j.last_success_at, j.last_status, j.last_error,
-           w.n AS transactions, w.first_at, w.last_at,
+           j.enabled AS job_enabled,
+           -- Transactions and fees are imported by two jobs: the older success and either job's error count.
+           CASE WHEN jf.job_key IS NULL THEN j.last_success_at ELSE LEAST(j.last_success_at, jf.last_success_at) END AS last_success_at,
+           CASE WHEN jf.last_status = 'error' AND j.last_status IS DISTINCT FROM 'error' THEN 'error' ELSE j.last_status END AS last_status,
+           CASE WHEN j.last_status = 'error' THEN j.last_error WHEN jf.last_status = 'error' THEN jf.last_error END AS last_error,
+           w.n AS transactions, w.first_at, w.last_at, fe.n AS fees,
            cov.since AS activity_since, cov.last_observed_at
     FROM characters c
     LEFT JOIN esi_tokens t ON t.character_id = c.character_id
     LEFT JOIN mining_pnl_characters pc ON pc.user_id = c.user_id AND pc.character_id = c.character_id
     LEFT JOIN sync_jobs j
       ON j.job_key = 'wallet.character-transactions' AND j.owner_type = 'character' AND j.owner_id = c.character_id
+    LEFT JOIN sync_jobs jf
+      ON jf.job_key = 'wallet.character-fees' AND jf.owner_type = 'character' AND jf.owner_id = c.character_id
     LEFT JOIN LATERAL (
       SELECT COUNT(*)::int AS n, MIN(date) AS first_at, MAX(date) AS last_at
       FROM wallet_transactions wt WHERE wt.character_id = c.character_id AND wt.user_id = c.user_id
     ) w ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS n FROM wallet_fees wf WHERE wf.character_id = c.character_id AND wf.user_id = c.user_id
+    ) fe ON true
     LEFT JOIN mining_activity_coverage cov ON cov.character_id = c.character_id
     JOIN users u ON u.id = c.user_id
     WHERE c.user_id = ${userId}::uuid
@@ -657,6 +832,7 @@ export async function getWalletStatus(userId: string): Promise<WalletCharacterSt
       lastStatus: str(r.last_status),
       lastError: str(r.last_error),
       transactions: num(r.transactions),
+      fees: num(r.fees),
       firstTransactionAt: toDate(r.first_at),
       lastTransactionAt: toDate(r.last_at),
       activitySince: toDate(r.activity_since),

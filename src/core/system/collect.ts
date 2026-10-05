@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { auditFailures, type AuditFailures } from "@/core/audit";
 import { getDb } from "@/core/db";
 import { esiStats } from "@/core/esi";
 import type { EsiClientStats } from "@/core/esi/client";
@@ -79,6 +80,8 @@ export interface SystemSnapshot {
   zkill: ZkillClientStats | null;
   /** Action → count over the last 7 days. */
   audit: Section<Record<string, number>>;
+  /** Audit entries this process failed to write since it started; null from the CLI, whose process just started. */
+  auditFailures: AuditFailures | null;
 }
 
 async function collectSettings(): Promise<SettingsSummary> {
@@ -183,5 +186,6 @@ export async function collectSystemSnapshot(opts: {
     esi: esiStats(),
     zkill: zkillStats(),
     audit,
+    auditFailures: opts.source === "web" ? auditFailures() : null,
   };
 }
