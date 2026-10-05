@@ -8,14 +8,22 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- The corporation roster and industry jobs are stored again after a failed sync, or after a character was
+  unlinked and linked again, instead of waiting until ESI's data changes. Unlinking or transferring a character, and
+  deleting its industry data, also removes the ESI responses Keystar had cached for it, and cached responses
+  without an expiry are cleaned up after a week. ([#139](https://github.com/Theragus/Keystar/issues/139))
 - In English, the killboard's permissions in Users & Roles, its background jobs and its browser tab title now
   say "Combat Report" like the sidebar, instead of "Killboard".
 - Wallet imports read ESI's available history again after deleting wallet data or relinking a character, instead
   of skipping it because of a stale sync cursor. ([#138](https://github.com/Theragus/Keystar/issues/138))
+- Linking a character back to your own account after moving it to another of your EVE accounts no longer deletes
+  its wallet history, mail and industry jobs; they are only removed when a character changes hands.
+  ([#140](https://github.com/Theragus/Keystar/issues/140))
 - Mail sync no longer removes older stored messages if ESI ignores a paging cursor or returns an empty page while
   listing a mailbox. ([#137](https://github.com/Theragus/Keystar/issues/137))
 - Right-aligned column headers in tables (the Load and Database tables on System Info, the actions column on
   Users) now line up with their values instead of sitting on the left.
+  ([PR #133](https://github.com/Theragus/Keystar/pull/133))
 - Role and access changes, settings changes and scope switches now write their audit log entry in the same
   transaction as the change, so a database error can no longer leave a change without an audit trail. Other audit
   entries that can't be written are counted, and System Info warns about them in a new "Audit log written" check.
