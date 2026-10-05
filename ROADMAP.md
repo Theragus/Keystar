@@ -190,3 +190,7 @@ Route planning for ships with a jump drive.
 - 💡 Saved views / dashboards per user
 - 💡 Custom roles in addition to the built-in hierarchy
 - 💡 SDE import for reprocessing values (refined ore value) and offline type data
+
+## Universe map
+
+- ✅ Interactive 3D map under Combat with system search, names and security status from CCP static data.
