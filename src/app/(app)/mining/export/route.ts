@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 
   const filters = parseMiningFilters(Object.fromEntries(request.nextUrl.searchParams));
   const settings = await getSettings();
-  const scope = miningScope(user, settings["corp.homeCorporationId"]);
+  const scope = miningScope(user, settings["corp.homeCorporationId"], filters.view);
   const valuation = { source: settings["mining.valuationSource"], mode: settings["mining.valuationMode"] };
 
   // One count up front for the audit log; the stream itself pages until empty.

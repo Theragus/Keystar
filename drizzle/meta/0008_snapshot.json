@@ -1,5 +1,5 @@
 {
-  "id": "696169a4-8a2a-4266-8cf7-35464ee13ee7",
+  "id": "d3892e0e-b418-4031-a0c3-9ed88a15e82a",
   "prevId": "5c197799-08c6-4bb6-a61f-952506c95640",
   "version": "7",
   "dialect": "postgresql",
@@ -993,6 +993,32 @@
           ]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.price_interest": {
+      "name": "price_interest",
+      "schema": "",
+      "columns": {
+        "type_id": {
+          "name": "type_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "last_requested_at": {
+          "name": "last_requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -4794,401 +4820,6 @@
         }
       },
       "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.wh_connections": {
-      "name": "wh_connections",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "map_id": {
-          "name": "map_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "a_system_id": {
-          "name": "a_system_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "b_system_id": {
-          "name": "b_system_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type_code": {
-          "name": "type_code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "type_side": {
-          "name": "type_side",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "life_state": {
-          "name": "life_state",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'fresh'"
-        },
-        "life_set_at": {
-          "name": "life_set_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "mass_state": {
-          "name": "mass_state",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'stable'"
-        },
-        "size_override": {
-          "name": "size_override",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "first_seen_at": {
-          "name": "first_seen_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "expires_by": {
-          "name": "expires_by",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_by": {
-          "name": "updated_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_by_name": {
-          "name": "updated_by_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "removed_at": {
-          "name": "removed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "removed_reason": {
-          "name": "removed_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "wh_connections_active_pair_idx": {
-          "name": "wh_connections_active_pair_idx",
-          "columns": [
-            {
-              "expression": "map_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "a_system_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "b_system_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"wh_connections\".\"removed_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wh_connections_expires_idx": {
-          "name": "wh_connections_expires_idx",
-          "columns": [
-            {
-              "expression": "expires_by",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"wh_connections\".\"removed_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wh_connections_removed_idx": {
-          "name": "wh_connections_removed_idx",
-          "columns": [
-            {
-              "expression": "removed_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "wh_connections_map_id_wh_maps_id_fk": {
-          "name": "wh_connections_map_id_wh_maps_id_fk",
-          "tableFrom": "wh_connections",
-          "tableTo": "wh_maps",
-          "columnsFrom": [
-            "map_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "wh_connections_created_by_users_id_fk": {
-          "name": "wh_connections_created_by_users_id_fk",
-          "tableFrom": "wh_connections",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "wh_connections_updated_by_users_id_fk": {
-          "name": "wh_connections_updated_by_users_id_fk",
-          "tableFrom": "wh_connections",
-          "tableTo": "users",
-          "columnsFrom": [
-            "updated_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "wh_connections_ordered": {
-          "name": "wh_connections_ordered",
-          "value": "\"wh_connections\".\"a_system_id\" < \"wh_connections\".\"b_system_id\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.wh_map_systems": {
-      "name": "wh_map_systems",
-      "schema": "",
-      "columns": {
-        "map_id": {
-          "name": "map_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "system_id": {
-          "name": "system_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "x": {
-          "name": "x",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "y": {
-          "name": "y",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "pinned": {
-          "name": "pinned",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "added_by": {
-          "name": "added_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "added_at": {
-          "name": "added_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "wh_map_systems_map_id_wh_maps_id_fk": {
-          "name": "wh_map_systems_map_id_wh_maps_id_fk",
-          "tableFrom": "wh_map_systems",
-          "tableTo": "wh_maps",
-          "columnsFrom": [
-            "map_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "wh_map_systems_added_by_users_id_fk": {
-          "name": "wh_map_systems_added_by_users_id_fk",
-          "tableFrom": "wh_map_systems",
-          "tableTo": "users",
-          "columnsFrom": [
-            "added_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "wh_map_systems_map_id_system_id_pk": {
-          "name": "wh_map_systems_map_id_system_id_pk",
-          "columns": [
-            "map_id",
-            "system_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.wh_maps": {
-      "name": "wh_maps",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "home_system_id": {
-          "name": "home_system_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "revision": {
-          "name": "revision",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "wh_maps_key_unique": {
-          "name": "wh_maps_key_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "key"
-          ]
-        }
-      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

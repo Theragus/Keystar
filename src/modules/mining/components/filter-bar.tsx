@@ -9,7 +9,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { displaySecurity } from "@/core/eve/images";
 import { ORE_CLASSES, type OreClass } from "@/core/eve/ore";
 import { useI18n } from "@/i18n/client";
-import { MINING_METRICS, MINING_SOURCES, miningQueryString, type MiningFilters } from "../filters";
+import { MINING_METRICS, MINING_SOURCES, miningQueryString, type MiningFilters, type MiningView } from "../filters";
 import type { FilterOptions } from "../queries";
 
 export function MiningFilterBar({
@@ -18,17 +18,24 @@ export function MiningFilterBar({
   presets,
   showMetric = true,
   showSource = true,
+  showView = false,
 }: {
   filters: MiningFilters;
   options: FilterOptions;
   presets: RangePreset[];
   showMetric?: boolean;
   showSource?: boolean;
+  /** Corporation / "My characters" switch, for viewers with corporation access. */
+  showView?: boolean;
 }) {
   const { t } = useI18n();
   const { navigate } = usePendingNavigation();
   const all = t.common.multiSelect.all;
   const apply = (overrides: Partial<MiningFilters>) => navigate(miningQueryString(filters, { ...overrides, page: 1 }));
+
+  // Like the other pickers, offer only classes that appear in the visible ledgers (plus any still selected).
+  const mined = new Set<OreClass>([...options.types.map((type) => type.oreClass), ...filters.classes]);
+  const classes = ORE_CLASSES.filter((c) => c !== "other" && mined.has(c));
 
   const isFiltered =
     filters.characters.length + filters.types.length + filters.classes.length + filters.systems.length > 0 ||
@@ -36,6 +43,19 @@ export function MiningFilterBar({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {showView && (
+        <Segmented<MiningView>
+          label={t.mining.view.label}
+          value={filters.view}
+          // Selected members may not exist in the other view.
+          onChange={(view) => apply({ view, characters: [] })}
+          options={[
+            { value: "corp", label: t.mining.view.corp, title: t.mining.view.corpHint },
+            { value: "own", label: t.mining.view.own, title: t.mining.view.ownHint },
+          ]}
+        />
+      )}
+
       <DateRangePicker from={filters.from} to={filters.to} presets={presets} onChange={(r) => apply(r)} />
 
       <MultiSelect
@@ -58,7 +78,7 @@ export function MiningFilterBar({
         icon={<Layers className="size-3.5 text-accent" aria-hidden />}
         selected={filters.classes}
         onApply={(v) => apply({ classes: v as OreClass[] })}
-        options={ORE_CLASSES.filter((c) => c !== "other").map((c) => ({ value: c, label: t.eve.oreClasses[c].label }))}
+        options={classes.map((c) => ({ value: c, label: t.eve.oreClasses[c].label }))}
       />
 
       <MultiSelect
@@ -112,7 +132,7 @@ export function MiningFilterBar({
           onClick={() =>
             apply({ characters: [], types: [], classes: [], systems: [], source: "all" })
           }
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs text-ink-3 transition hover:bg-white/6 hover:text-ink"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs text-ink-3 transition hover:bg-surface-contrast/6 hover:text-ink"
         >
           <RotateCcw className="size-3.5" aria-hidden /> {t.mining.filters.reset}
         </button>

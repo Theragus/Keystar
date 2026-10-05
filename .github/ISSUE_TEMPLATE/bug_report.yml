@@ -1,0 +1,79 @@
+name: Bug report
+description: Something in Keystar is broken or behaves unexpectedly.
+type: Bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please search the [open issues](https://github.com/Theragus/Keystar/issues) first.
+        **Security problems** (sign-in, permissions, data exposure) belong in a
+        [private report](https://github.com/Theragus/Keystar/security/advisories/new), not here.
+        Issues are public: leave out pilot, corporation and alliance names and IDs, and your server's address.
+  - type: input
+    id: version
+    attributes:
+      label: Keystar version
+      description: Shown at the bottom of the sidebar, in Administration → System Info and at `/api/health`.
+      placeholder: "0.8.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - Docker Compose (docs/deployment.md)
+        - Other container setup
+        - Local development (pnpm dev)
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Mining
+        - Killboard
+        - Fleet
+        - Threat Intel
+        - Trade / appraisal
+        - Wallets
+        - Social / EVE Mail
+        - Sign-in, roles and permissions
+        - Background worker / ESI sync
+        - Self-hosting / deployment
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+      description: What you expected to happen and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: system
+    attributes:
+      label: System summary
+      description: |
+        Admins: Administration → System Info → Report an issue fills this in. Please also attach the
+        support package from there; it contains technical details only, no pilot or corporation data.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Relevant output of `docker compose logs app` or `docker compose logs worker`.
+        Remove tokens and secrets, and replace character and corporation IDs and names, system names and your
+        server's address: logs contain them, and this issue is public.
+      render: text

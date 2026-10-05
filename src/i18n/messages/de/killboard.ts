@@ -8,6 +8,7 @@ export const killboard: typeof en = {
   module: {
     navSection: "Kampf",
     nav: { killboard: "Killboard" },
+    alerts: { kills: { label: "Kills und Verluste", hint: "Wenn ein Corp-Mitglied einen Kill hat oder ein Schiff verliert" } },
     permissionGroup: "Killboard",
     permissions: {
       view: {
@@ -18,6 +19,7 @@ export const killboard: typeof en = {
     },
     jobs: {
       zkillSync: "Killboard (zKillboard)",
+      liveFeed: "Killboard-Live-Feed (zKillboard)",
       situationReport: "Killboard-Lagebericht",
     },
   },
@@ -124,6 +126,19 @@ export const killboard: typeof en = {
     empty: "Keine Kills oder Verluste in diesem Zeitraum.",
     kind: { kill: "Kill", loss: "Verlust" },
     solo: "solo",
+  },
+  live: {
+    api: { unauthorized: "Nicht angemeldet", forbidden: "Kein Zugriff" },
+    region: "Live-Kill-Benachrichtigungen",
+    kind: { kill: "Kill", loss: "Verlust" },
+    finalBlow: "Final Blow",
+    topDamage: "Höchster Schaden",
+    killedBy: "Getötet von",
+    others: (n: number) => `+${n} weitere`,
+    npc: "NPC",
+    noPilot: "Kein Pilot",
+    open: "Diese Killmail auf zKillboard öffnen",
+    dismiss: "Schließen",
   },
   ships: {
     entity: "Schiff",

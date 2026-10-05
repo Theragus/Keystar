@@ -2,7 +2,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/core/db";
 import type { ValuationSource } from "@/core/db/schema/eve";
 import { ORE_CLASSES, oreClassSqlCase, type OreClass } from "@/core/eve/ore";
-import { addDays, daysBetween, type MiningFilters } from "./filters";
+import { addDays, daysBetween, type MiningFilters, type MiningView } from "./filters";
 
 /**
  * Aggregation queries for the mining dashboards. Every query starts from the
@@ -12,26 +12,37 @@ import { addDays, daysBetween, type MiningFilters } from "./filters";
 
 export interface MiningScope {
   /**
-   * May see corporation-wide mining (mining.view.corp): characters currently
-   * in the home corporation plus refineries owned by it.
+   * Shows corporation-wide mining (mining.view.corp, corporation view):
+   * characters currently in the home corporation plus refineries owned by it.
+   * Otherwise only the viewer's own characters.
    */
   corp: boolean;
-  /** The viewer's own characters (always visible, whatever their corporation). */
+  /**
+   * The viewer's own characters, whatever their corporation (alts in other
+   * corporations included). They make up the "My characters" view.
+   */
   ownCharacterIds: number[];
   /** Corporation whose data corporation-wide views are limited to. */
   homeCorporationId: number | null;
 }
 
+/** Whether the viewer can switch between the corporation and "My characters" views. */
+export function canViewCorpMining(user: { can: (permission: string) => boolean }, homeCorporationId: number | null): boolean {
+  return user.can("mining.view.corp") && homeCorporationId !== null;
+}
+
 /**
  * Corporation-wide access needs a home corporation to isolate to; until one is
  * configured, users with corporation access see their own characters only.
+ * The "own" view narrows corporation access to the viewer's own characters.
  */
 export function miningScope(
   user: { can: (permission: string) => boolean; characterIds: number[] },
   homeCorporationId: number | null,
+  view: MiningView = "corp",
 ): MiningScope {
   return {
-    corp: user.can("mining.view.corp") && homeCorporationId !== null,
+    corp: view === "corp" && canViewCorpMining(user, homeCorporationId),
     ownCharacterIds: user.characterIds,
     homeCorporationId,
   };
@@ -444,6 +455,41 @@ export async function getLedgerRows(
   };
 }
 
+export interface LedgerDayTotals {
+  date: string;
+  entries: number;
+  characters: number;
+  quantity: number;
+  volume: number;
+  value: number;
+}
+
+/**
+ * Per-day totals for the ledger's day groups, newest first. Rows are paged, so a
+ * day can straddle pages; its header still sums every entry of that day. The
+ * entry counts add up to the ledger's row count.
+ */
+export async function getLedgerDayTotals(f: MiningFilters, scope: MiningScope, val: Valuation): Promise<LedgerDayTotals[]> {
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    WITH ${ledgerCte(f, scope, val)}
+    SELECT to_char(l.date, 'YYYY-MM-DD') AS date, COUNT(*)::int AS entries,
+           COUNT(DISTINCT l.character_id)::int AS characters,
+           SUM(l.quantity)::float8 AS quantity,
+           SUM(l.quantity * l.unit_volume)::float8 AS volume,
+           SUM(l.quantity * l.unit_price)::float8 AS value
+    FROM ledger l
+    GROUP BY l.date
+    ORDER BY l.date DESC`);
+  return rows.map((r) => ({
+    date: String(r.date),
+    entries: num(r.entries),
+    characters: num(r.characters),
+    quantity: num(r.quantity),
+    volume: num(r.volume),
+    value: num(r.value),
+  }));
+}
+
 export interface FilterOptions {
   characters: { id: number; name: string; registered: boolean }[];
   types: { id: number; name: string; oreClass: OreClass; groupName: string | null }[];
@@ -483,8 +529,12 @@ export async function getFilterOptions(scope: MiningScope): Promise<FilterOption
     db.execute<Record<string, unknown>>(sql`
       SELECT x.id::float8 AS id, COALESCE(s.name, 'System ' || x.id) AS name, s.security_status::float8 AS security
       FROM (SELECT DISTINCT solar_system_id AS id FROM mining_character_ledger ${personalScope("character_id")}
-            UNION SELECT DISTINCT solar_system_id FROM mining_observers WHERE solar_system_id IS NOT NULL ${
-              scope.corp ? homeCorp.observer("corporation_id") : sql`AND false`
+            UNION ${
+              scope.corp
+                ? sql`SELECT DISTINCT solar_system_id FROM mining_observers WHERE solar_system_id IS NOT NULL ${homeCorp.observer("corporation_id")}`
+                : sql`SELECT DISTINCT obs.solar_system_id FROM mining_observer_ledger o
+                      JOIN mining_observers obs ON obs.observer_id = o.observer_id
+                      ${charScope("o.character_id")} AND obs.solar_system_id IS NOT NULL`
             }) x
       LEFT JOIN eve_systems s ON s.system_id = x.id
       ORDER BY 2`),
@@ -515,6 +565,14 @@ export interface ObserverSummary {
   foreignMiners: number;
   byClass: ClassValues;
   topMiners: { characterId: number; name: string; value: number; quantity: number; foreign: boolean }[];
+}
+
+/** Whether the home corporation has any moon-drill structures (ESI observers) on record. */
+export async function hasObservers(homeCorporationId: number | null): Promise<boolean> {
+  if (homeCorporationId === null) return false;
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    SELECT EXISTS (SELECT 1 FROM mining_observers WHERE corporation_id = ${homeCorporationId}) AS present`);
+  return rows[0]?.present === true;
 }
 
 /** Per-refinery totals for the date range (corporation scope only). */

@@ -11,7 +11,8 @@ import { memberAuditHref } from "@/core/member-audit-filters";
 import { getI18n } from "@/i18n/server";
 import { delta } from "@/lib/format";
 import { toChartClasses } from "@/modules/mining/class-colors";
-import { ClassComposition, MemberLeaderboard, OreTable, SystemTable } from "@/modules/mining/components/breakdowns";
+import { ClassComposition, MemberLeaderboard, SystemTable } from "@/modules/mining/components/breakdowns";
+import { OreBreakdown } from "@/modules/mining/components/ore-table";
 import { DailyChart } from "@/modules/mining/components/daily-chart";
 import { MiningFilterBar } from "@/modules/mining/components/filter-bar";
 import { GroupByToggle } from "@/modules/mining/components/group-toggle";
@@ -26,6 +27,8 @@ import {
   getMiningSummary,
   getSystemBreakdown,
   getTypeBreakdown,
+  canViewCorpMining,
+  hasObservers,
 } from "@/modules/mining/queries";
 
 export async function generateMetadata() {
@@ -39,7 +42,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
   const m = t.mining.overview;
   const { filters, scope, valuation, user } = ctx;
 
-  const [summary, daily, members, types, systems, options, coverage] = await Promise.all([
+  const [summary, daily, members, types, systems, options, coverage, observersOnRecord] = await Promise.all([
     getMiningSummary(filters, scope, valuation),
     getDailySeries(filters, scope, valuation),
     getMemberBreakdown(filters, scope, valuation),
@@ -47,6 +50,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
     getSystemBreakdown(filters, scope, valuation),
     getFilterOptions(scope),
     getCoverage(scope),
+    hasObservers(ctx.homeCorporationId),
   ]);
 
   const { current, previous } = summary;
@@ -55,6 +59,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
   const byClass: Partial<Record<OreClass, number>> = {};
   for (const type of types) byClass[type.oreClass] = (byClass[type.oreClass] ?? 0) + type[filters.metric];
   const hasAnyData = options.characters.length > 0;
+  const canSwitchView = canViewCorpMining(user, ctx.homeCorporationId);
 
   return (
     <PendingProvider>
@@ -65,7 +70,9 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
           description={
             scope.corp
               ? m.description.corp
-              : user.can(MINING_PERMISSIONS.viewCorp)
+              : canSwitchView
+                ? m.description.ownView
+                : user.can(MINING_PERMISSIONS.viewCorp)
                 ? m.description.noHomeCorp
                 : m.description.own
           }
@@ -77,7 +84,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
               {user.can(MINING_PERMISSIONS.export) && (
                 <a
                   href={`/mining/export?${miningQueryString(filters)}`}
-                  className="glass-chip inline-flex h-8 items-center gap-2 rounded-lg px-3.5 text-xs font-medium hover:bg-white/10"
+                  className="glass-chip inline-flex h-8 items-center gap-2 rounded-lg px-3.5 text-xs font-medium hover:bg-surface-contrast/10"
                 >
                   <Download className="size-4" aria-hidden /> {t.mining.exportCsv}
                 </a>
@@ -86,7 +93,14 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
           }
         />
 
-        <MiningFilterBar filters={filters} options={options} presets={ctx.presets} />
+        <MiningFilterBar
+          filters={filters}
+          options={options}
+          presets={ctx.presets}
+          showView={canSwitchView}
+          // Without moon drills every source shows the same rows; keep it while a URL still selects one.
+          showSource={observersOnRecord || filters.source !== "all"}
+        />
 
         {!hasAnyData ? (
           <Glass>
@@ -177,13 +191,14 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
                   <p className="py-8 text-center text-sm text-ink-3">{m.noMiners}</p>
                 )}
               </Panel>
-              <Panel className="xl:col-span-7" title={m.oreBreakdown} subtitle={ctx.valuationLabel}>
-                {types.length ? (
-                  <OreTable rows={types} filters={filters} metric={filters.metric} />
-                ) : (
-                  <p className="py-8 text-center text-sm text-ink-3">{m.noOre}</p>
-                )}
-              </Panel>
+              <OreBreakdown
+                className="xl:col-span-7"
+                title={m.oreBreakdown}
+                subtitle={ctx.valuationLabel}
+                rows={types}
+                filters={filters}
+                emptyText={m.noOre}
+              />
             </div>
 
             <div className="grid gap-4 xl:grid-cols-12">
@@ -240,7 +255,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
                       {m.coverage.unpriced(current.unpricedRows)}
                     </li>
                   )}
-                  <li className="flex items-start gap-1.5 border-t border-white/8 pt-3 text-xs text-ink-3">
+                  <li className="flex items-start gap-1.5 border-t border-surface-contrast/8 pt-3 text-xs text-ink-3">
                     <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                     {m.coverage.note(ctx.valuationLabel)}
                   </li>

@@ -39,12 +39,12 @@ export default async function IntelPage() {
     <div className="space-y-6">
       <PageHeader eyebrow={t.killboard.module.navSection} title={text.title} description={text.description} />
       <div className="grid items-start gap-4 xl:grid-cols-12">
-        <Panel title={text.scanTitle} className="xl:col-span-8">
+        <Panel title={text.scanTitle} className="z-10 xl:col-span-8">
           <ScanForm action={createScan} defaultSystem={defaultSystem} />
         </Panel>
         <Panel title={text.recentTitle} className="xl:col-span-4">
           {recent.length ? (
-            <ul className="divide-y divide-white/6">
+            <ul className="divide-y divide-surface-contrast/6">
               {recent.map((scan) => (
                 <li key={scan.id}>
                   <Link href={`/intel/${scan.id}`} className="flex items-center gap-3 py-2.5 hover:text-accent">

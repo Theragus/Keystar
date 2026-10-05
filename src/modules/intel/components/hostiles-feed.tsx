@@ -21,7 +21,7 @@ export async function HostilesFeed({
   if (!sightings.length) return <p className="text-sm text-ink-3">{t.intel.feed.none}</p>;
   return (
     <div>
-      <ul className="divide-y divide-white/6">
+      <ul className="divide-y divide-surface-contrast/6">
         {sightings.map((s) => {
           const system = s.systemId ? (names.systems.get(s.systemId)?.name ?? null) : null;
           const score: PilotScore | null =

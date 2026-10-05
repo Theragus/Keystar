@@ -1,0 +1,39 @@
+# CodeQL as a workflow ("advanced setup") rather than GitHub's default setup, because default setup doesn't
+# analyse pull requests from forks: their head commit never gets the required CodeQL checks, so the PR stays
+# blocked. Default setup must be turned off (Settings → Code security → CodeQL analysis) for this workflow's
+# uploads to be accepted. The job names match the required checks "Analyze (actions)" and
+# "Analyze (javascript-typescript)"; the "CodeQL" check comes from the uploaded results.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

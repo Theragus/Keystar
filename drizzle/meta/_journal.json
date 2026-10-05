@@ -61,8 +61,64 @@
     {
       "idx": 8,
       "version": "7",
-      "when": 1791000039508,
-      "tag": "0008_wormholes",
+      "when": 1791025326673,
+      "tag": "0008_price_interest",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791062739110,
+      "tag": "0009_esi_disabled_scopes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791066576038,
+      "tag": "0010_skills",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791072409956,
+      "tag": "0011_remove-intel-rescan",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791109546890,
+      "tag": "0012_pnl_sales_income",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791113537102,
+      "tag": "0013_wallet_fees",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791127774088,
+      "tag": "0014_wallet_fee_description",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791131870309,
+      "tag": "0015_industry",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791183794800,
+      "tag": "0016_wormholes",
       "breakpoints": true
     }
   ]

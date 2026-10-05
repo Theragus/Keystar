@@ -9,12 +9,14 @@ export const wallet: typeof en = {
     scopes: {
       characterWallet:
         "Liest Marktkäufe und -verkäufe, damit die Mining-GuV Mining-Kosten und Verkaufspreise berücksichtigen kann (optional).",
+      characterWalletLabel: "Wallet-Import",
       corporationWallets:
         "Liest Kontostände, Journal und Markttransaktionen der Corporation-Wallets für die Finanzseiten (braucht Accountant oder Junior Accountant).",
       divisions: "Liest die Namen der Wallet-Divisionen der Corporation (braucht Director).",
     },
     jobs: {
       transactions: "Wallet-Transaktionen",
+      fees: "Wallet-Steuern und -Gebühren",
       corporationWallets: "Corporation-Wallets",
       corporationDivisions: "Namen der Wallet-Divisionen",
     },
@@ -28,7 +30,7 @@ export const wallet: typeof en = {
     navSection: "Finanzen",
     nav: {
       corporationWallet: "Corporation-Wallet",
-      journal: "Wallet-Journal",
+      journal: "Corp-Wallet-Journal",
     },
   },
 
@@ -36,7 +38,7 @@ export const wallet: typeof en = {
     defaultDivisionName: (division: number) => (division === 1 ? "Hauptkonto" : `${division}. Wallet-Division`),
     metaTitle: {
       overview: "Corporation-Wallet",
-      journal: "Wallet-Journal",
+      journal: "Corp-Wallet-Journal",
     },
     categories: {
       bounties: "Kopfgelder & ESS",
@@ -100,7 +102,7 @@ export const wallet: typeof en = {
     overview: {
       description:
         "Kontostände, Einnahmen und Ausgaben aller Wallet-Divisionen. Keystar bewahrt das Journal dauerhaft auf; ESI liefert nur die letzten 30 Tage.",
-      journalLink: "Wallet-Journal",
+      journalLink: "Corp-Wallet-Journal",
       tiles: {
         balance: "Kontostand",
         balanceHint: (when: string) => `Stand ${when}`,

@@ -4,6 +4,8 @@ import { FORMATTERS } from "@/lib/format";
 export const shell = {
   mainNav: "Main",
   releaseNotes: "Release notes",
+  unstableBuild: (tag: string | null, commit: string | null, builtAt: string | null) =>
+    `Unreleased ${tag ?? "development"} build: may be unstable.${commit ? ` Commit ${commit}` : ""}${builtAt ? `, built ${FORMATTERS.en.dateTime(builtAt)}` : ""}`,
   unknownPilot: "Unknown pilot",
   signOut: "Sign out",
   noHomeCorp: "No home corporation",
@@ -14,6 +16,10 @@ export const shell = {
     title: "Awaiting approval.",
     body: "A director has to approve your account before you can see corporation data. You can already link your characters and grant ESI access.",
   },
+  theme: {
+    light: "Light", dark: "Dark", toLight: "Switch to light mode", toDark: "Switch to dark mode",
+  },
+  sidebar: { collapse: "Collapse sidebar", expand: "Expand sidebar" },
   language: {
     label: "Language",
     change: "Change language",
@@ -31,5 +37,17 @@ export const shell = {
     sync: "Sync Status",
     settings: "Settings",
     audit: "Audit Log",
+    system: "System Info",
+  },
+  /** Live alerts menu in the top bar. */
+  alerts: {
+    button: "Alerts",
+    menu: "Alert settings",
+    desktop: {
+      label: "Desktop notifications",
+      hint: "Show alerts as system notifications while Keystar is in the background",
+      blocked: "Blocked by the browser, system settings or an extension",
+      unsupported: "Not available in this browser here (needs HTTPS)",
+    },
   },
 };

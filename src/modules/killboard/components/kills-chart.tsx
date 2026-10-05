@@ -124,7 +124,7 @@ export function KillsChart({ rows }: { rows: DailyActivity[] }) {
                 tick={{ fontSize: 12 }}
               />
               <ReferenceLine y={0} stroke="var(--axis)" />
-              <Tooltip cursor={{ fill: "rgba(255,255,255,0.045)" }} content={<ChartTooltip />} isAnimationActive={false} />
+              <Tooltip cursor={{ fill: "var(--chart-cursor)" }} content={<ChartTooltip />} isAnimationActive={false} />
               <Bar dataKey="kills" stackId="day" fill={KILL_COLOR} maxBarSize={24} isAnimationActive={false} shape={<KillShape />} name={t.killboard.terms.kills} />
               <Bar dataKey="lossesNeg" stackId="day" fill={LOSS_COLOR} maxBarSize={24} isAnimationActive={false} shape={<LossShape />} name={t.killboard.terms.losses} />
             </BarChart>
@@ -145,7 +145,7 @@ export function KillsChart({ rows }: { rows: DailyActivity[] }) {
             <tbody>
               {[...rows].reverse().map((r) => (
                 <tr key={r.date}>
-                  <td className="tabular-nums text-ink-2">{r.date}</td>
+                  <td className="tabular-nums text-ink-2">{f.date(r.date)}</td>
                   <td className="num">{r.kills ? f.integer(r.kills) : "—"}</td>
                   <td className="num">{r.losses ? f.integer(r.losses) : "—"}</td>
                   <td className="num">{r.destroyed ? f.compact(r.destroyed) : "—"}</td>

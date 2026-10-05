@@ -1,15 +1,18 @@
-import { eq, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import {
   characterCorpRoles,
   characters,
   corporationMembers,
   esiCache,
+  eveConstellations,
+  eveSystems,
   workerHeartbeats,
 } from "@/core/db";
 import { purgeExpiredSessions } from "@/core/auth/session";
 import { fetchAffiliations } from "@/core/eve/affiliation";
-import { syncPrices } from "@/core/eve/prices";
-import { ensureNames, refreshCorporations } from "@/core/eve/resolver";
+import { recentPriceInterest, syncPrices } from "@/core/eve/prices";
+import { ensureConstellations, ensureNames, ensureSystems, refreshCorporations } from "@/core/eve/resolver";
+import { isListedSystem } from "@/core/eve/systems";
 import { setSetting } from "@/core/settings";
 import { trackedCorporations } from "./scheduler";
 import type { JobDefinition, PriceInterestProvider } from "./types";
@@ -119,13 +122,67 @@ export function marketPricesJob(providers: PriceInterestProvider[]): JobDefiniti
     async run({ esi, db }) {
       const ids = new Set<number>();
       for (const provider of providers) for (const id of await provider(db)) ids.add(id);
-      // Anything valued before (e.g. by the ore field estimator) stays fresh too.
-      const valued = await db.execute<{ type_id: number }>(sql`SELECT DISTINCT type_id FROM type_values`);
-      for (const r of valued) ids.add(Number(r.type_id));
-      return { summary: await syncPrices(db, esi, [...ids]) };
+      // Types appraised or estimated recently stay fresh too; older ones are priced again on demand.
+      for (const id of await recentPriceInterest(db)) ids.add(id);
+      const result = await syncPrices(db, esi, [...ids]);
+      // What was priced is written; failing the run makes the scheduler wait for the limit to lift.
+      if (result.rateLimited) throw result.rateLimited;
+      return { summary: result.summary };
     },
   };
 }
+
+/** Systems and constellations fetched per run while the list fills; the first load spreads over about half an hour. */
+const SYSTEMS_PER_RUN = 500;
+const CONSTELLATIONS_PER_RUN = 300;
+/** New systems are rare (a handful per decade); unknown names are still looked up on demand. */
+const SYSTEMS_RECHECK_MS = 30 * 24 * 3600 * 1000;
+/** A run that resolved nothing (ESI trouble) waits this long before the next try. */
+const SYSTEMS_STALLED_MS = 6 * 3600 * 1000;
+
+/** Every known-space and wormhole system with its region, so the system picker can offer them all. */
+export const universeSystemsJob: JobDefinition = {
+  key: "core.universe-systems",
+  label: (t) => t.core.jobs.universeSystems,
+  module: "core",
+  owner: "global",
+  // A floor only: while anything is missing the job runs again a minute later, then nextRunAt spaces it out.
+  intervalSeconds: 60,
+  async run({ esi, db }) {
+    const res = await esi.get<number[]>("/universe/systems");
+    const listed = res.data.filter(isListedSystem);
+    const known = new Set((await db.select({ id: eveSystems.systemId }).from(eveSystems)).map((r) => r.id));
+    const missingSystems = listed.filter((id) => !known.has(id));
+    const systemBatch = missingSystems.slice(0, SYSTEMS_PER_RUN);
+    await ensureSystems(systemBatch);
+
+    // Constellations carry the region; ensureConstellations also names new regions.
+    const missingConstellations = await db
+      .selectDistinct({ id: eveSystems.constellationId })
+      .from(eveSystems)
+      .leftJoin(eveConstellations, eq(eveConstellations.constellationId, eveSystems.constellationId))
+      .where(and(isNotNull(eveSystems.constellationId), isNull(eveConstellations.constellationId)))
+      .then((rows) => rows.map((r) => r.id!));
+    const constellationBatch = missingConstellations.slice(0, CONSTELLATIONS_PER_RUN);
+    await ensureConstellations(constellationBatch);
+    // Region names an earlier run could not fetch; known names are skipped.
+    await ensureNames((await db.selectDistinct({ id: eveConstellations.regionId }).from(eveConstellations)).map((r) => r.id));
+
+    const systems = systemBatch.length ? await db.$count(eveSystems, inArray(eveSystems.systemId, systemBatch)) : 0;
+    const constellations = constellationBatch.length
+      ? await db.$count(eveConstellations, inArray(eveConstellations.constellationId, constellationBatch))
+      : 0;
+    if (!missingSystems.length && !missingConstellations.length) {
+      return { summary: `All ${listed.length} systems known`, nextRunAt: new Date(Date.now() + SYSTEMS_RECHECK_MS) };
+    }
+    return {
+      summary:
+        `Loaded ${systems} systems (${missingSystems.length - systems} remaining), ` +
+        `${constellations} constellations (${missingConstellations.length - constellations} remaining)`,
+      nextRunAt: systems + constellations === 0 ? new Date(Date.now() + SYSTEMS_STALLED_MS) : null,
+    };
+  },
+};
 
 export const housekeepingJob: JobDefinition = {
   key: "core.housekeeping",

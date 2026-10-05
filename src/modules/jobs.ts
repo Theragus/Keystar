@@ -5,13 +5,16 @@ import {
   housekeepingJob,
   marketPricesJob,
   serverStatusJob,
+  universeSystemsJob,
 } from "@/core/sync/core-jobs";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
 import type { Messages } from "@/i18n/messages";
 import { fleetJobs } from "./fleet/jobs";
+import { industrySyncJobs } from "./industry/jobs";
 import { intelJobs } from "./intel/jobs";
 import { killboardJobs } from "./killboard/jobs";
 import { miningJobs, miningPriceInterest } from "./mining/jobs";
+import { skillsJobs } from "./skills/jobs";
 import { socialJobs } from "./social/jobs";
 import { walletJobs } from "./wallet/jobs";
 import { wormholesJobs } from "./wormholes/jobs";
@@ -29,12 +32,15 @@ export const JOBS: JobDefinition[] = [
   corporationMembersJob,
   marketPricesJob(PRICE_INTEREST),
   housekeepingJob,
+  universeSystemsJob,
   ...miningJobs,
+  ...industrySyncJobs,
   ...killboardJobs,
   ...fleetJobs,
   ...intelJobs,
   ...walletJobs,
   ...socialJobs,
+  ...skillsJobs,
   ...wormholesJobs,
 ];
 

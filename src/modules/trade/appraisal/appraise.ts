@@ -1,8 +1,9 @@
 import { and, inArray, sql } from "drizzle-orm";
 import { appraisals, eveTypes, getDb, typeValues } from "@/core/db";
-import { getEsi } from "@/core/esi";
-import { syncPrices } from "@/core/eve/prices";
+import { EsiError, getEsi } from "@/core/esi";
+import { notePriceInterest, PRICE_MAX_AGE_MS, syncPrices } from "@/core/eve/prices";
 import { ensureTypes } from "@/core/eve/resolver";
+import { createLogger, errorMessage } from "@/core/logger";
 import { shareId } from "@/lib/share-id";
 import { assignTypes, candidateNames, parseAppraisalInput } from "./parse";
 import { totalsOf, type AppraisalItem, type AppraisalTotals, type UnparsedLine } from "./types";
@@ -23,11 +24,29 @@ export class AppraisalLimitError extends Error {
     this.name = "AppraisalLimitError";
   }
 }
-export const MAX_INPUT_CHARS = 200_000;
-/** Prices older than this are refreshed before appraising. */
-const PRICE_MAX_AGE_MS = 2 * 3600 * 1000;
 
-/** Lower-cased item name → type id: local static data first, then ESI /universe/ids. */
+/**
+ * ESI failed while resolving names or pricing items (an outage or a rate-limit
+ * pause). Refused rather than saved: the snapshot would list real items as
+ * unrecognised or carry missing and stale prices.
+ */
+export class AppraisalUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super(`ESI unavailable: ${errorMessage(cause)}`, { cause });
+    this.name = "AppraisalUnavailableError";
+  }
+}
+
+const log = createLogger("appraisal");
+
+export const MAX_INPUT_CHARS = 200_000;
+/** ESI /universe/ids rejects the whole batch if any name is longer; no item name is. */
+const MAX_NAME_LENGTH = 100;
+
+/**
+ * Lower-cased item name → type id: local static data first, then ESI /universe/ids.
+ * Throws AppraisalUnavailableError when ESI fails, so a broken call isn't taken for "no such item".
+ */
 export async function resolveTypeNames(names: string[]): Promise<Map<string, number>> {
   const db = getDb();
   const byLower = new Map<string, number>();
@@ -43,22 +62,41 @@ export async function resolveTypeNames(names: string[]): Promise<Map<string, num
   };
   await findLocal(lower);
 
-  const unknown = names.filter((n) => !byLower.has(n.toLowerCase()));
+  const unknown = names.filter((n) => !byLower.has(n.toLowerCase()) && n.length <= MAX_NAME_LENGTH);
   const found: number[] = [];
   for (let i = 0; i < unknown.length; i += 500) {
     const res = await getEsi()
       .post<{ inventory_types?: { id: number; name: string }[] }>("/universe/ids", unknown.slice(i, i + 500))
-      .catch(() => null);
-    for (const t of res?.data.inventory_types ?? []) {
+      .catch((err: unknown) => {
+        log.warn("Could not resolve item names", { names: unknown.length, error: errorMessage(err) });
+        throw new AppraisalUnavailableError(err);
+      });
+    for (const t of res.data.inventory_types ?? []) {
       byLower.set(t.name.toLowerCase(), t.id);
       found.push(t.id);
     }
   }
-  if (found.length) await ensureTypes(found);
+  if (found.length) {
+    // ensureTypes skips types ESI fails to return, which would leave resolved ids without a name or volume.
+    await ensureTypes(found).catch((err: unknown) => {
+      if (!(err instanceof EsiError)) throw err;
+      log.warn("Could not load item types", { types: found.length, error: errorMessage(err) });
+      throw new AppraisalUnavailableError(err);
+    });
+    const stored = await db.select({ typeId: eveTypes.typeId }).from(eveTypes).where(inArray(eveTypes.typeId, found));
+    const missing = new Set(found).size - stored.length;
+    if (missing) {
+      log.warn("Could not load item types", { types: missing });
+      throw new AppraisalUnavailableError(`${missing} resolved item types could not be loaded`);
+    }
+  }
   return byLower;
 }
 
-/** Current Jita 4-4 buy/sell per type, pricing unknown or stale types live first. */
+/**
+ * Current Jita 4-4 buy/sell per type, pricing unknown or stale types live first.
+ * Throws AppraisalUnavailableError when that live pricing fails.
+ */
 export async function jitaPrices(typeIds: number[]): Promise<Map<number, { buy: number | null; sell: number | null }>> {
   const db = getDb();
   const load = () =>
@@ -66,6 +104,7 @@ export async function jitaPrices(typeIds: number[]): Promise<Map<number, { buy: 
       .select()
       .from(typeValues)
       .where(and(inArray(typeValues.typeId, typeIds), inArray(typeValues.source, ["jita_buy", "jita_sell"])));
+  await notePriceInterest(db, typeIds);
   let rows = typeIds.length ? await load() : [];
   // A type is fresh only when both sides were valued recently. A recent row with a
   // fallback basis (e.g. the ESI average) counts: it records that Jita had no
@@ -79,7 +118,12 @@ export async function jitaPrices(typeIds: number[]): Promise<Map<number, { buy: 
   const [buyFresh, sellFresh] = [recent("jita_buy"), recent("jita_sell")];
   const stale = typeIds.filter((id) => !buyFresh.has(id) || !sellFresh.has(id));
   if (stale.length) {
-    await syncPrices(db, getEsi(), stale).catch(() => undefined);
+    const { failed } = await syncPrices(db, getEsi(), stale).catch((err: unknown) => {
+      if (!(err instanceof EsiError)) throw err;
+      log.warn("Could not price items", { types: stale.length, error: errorMessage(err) });
+      throw new AppraisalUnavailableError(err);
+    });
+    if (failed.length) throw new AppraisalUnavailableError(`${failed.length} items could not be priced`);
     rows = await load();
   }
   const out = new Map<number, { buy: number | null; sell: number | null }>();

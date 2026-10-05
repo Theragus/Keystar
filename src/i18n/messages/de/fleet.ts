@@ -14,6 +14,7 @@ export const fleet: typeof en = {
     },
     scopes: {
       readFleet: "Liest die Flotte, in der du bist; als Flottenboss auch Mitglieder, Schiffe und Wings.",
+      readFleetLabel: "Flottenzugriff",
     },
     jobs: { live: "Live-Flotte" },
   },
@@ -56,7 +57,24 @@ export const fleet: typeof en = {
       stopped: "Kein Tracking",
     },
     checked: (when: string) => `geprüft ${when}`,
-    missingScope: "Flottenzugriff nicht erteilt. Autorisiere den Charakter unter Meine Charaktere neu.",
+    enable: "Flottenzugriff aktivieren",
+    enableHint: "Öffnet den EVE-Login, um diesem Charakter Flottenzugriff zu geben. Nur der Charakter, der Flottenboss ist, braucht ihn.",
+    enableAgainHint: "Schaltet den Flottenzugriff wieder ein. Der EVE-Token des Charakters enthält ihn noch, ein Login ist nicht nötig.",
+    revoke: "Zugriff entziehen",
+    revokeHint: "Keystar nutzt den Flottenzugriff dieses Charakters ab sofort nicht mehr, ohne EVE-Login.",
+    toast: {
+      started: (name: string) => `Flotte von ${name} wird geteilt`,
+      startedDetail: "Der Worker liest sie innerhalb weniger Sekunden.",
+      stopped: (name: string) => `Flotte von ${name} wird nicht mehr geteilt`,
+      failed: (name: string) => `Flotten-Tracking für ${name} konnte nicht geändert werden`,
+      errors: {
+        forbidden: "Du darfst keine Flotten mehr teilen.",
+        notOwned: "Dieser Charakter ist nicht mehr mit deinem Konto verknüpft.",
+        noScope: "Dieser Charakter hat keinen Flottenzugriff. Aktiviere ihn zuerst.",
+        unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+      },
+    },
+    demo: "In der Demo nicht verfügbar",
     noCharacters: "Verknüpfe einen Charakter, um Flotten zu teilen.",
   },
   live: {
@@ -74,7 +92,7 @@ export const fleet: typeof en = {
       duration: "Läuft seit",
     },
     composition: { title: "Zusammensetzung", subtitle: "Mitglieder pro Schiffsklasse", ships: "Schiffe" },
-    structure: { title: "Flottenstruktur", command: "Flottenkommando", commander: "Commander" },
+    structure: { title: "Flottenstruktur", command: "Flottenkommando", pilots: (value: number) => count(value, "Pilot", "Piloten") },
     columns: { pilot: "Pilot", ship: "Schiff", system: "System", role: "Rolle", joined: "Beigetreten" },
     activity: {
       title: "Beitritte & Abgänge",

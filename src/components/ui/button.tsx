@@ -10,10 +10,10 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary:
-    "text-space-950 border border-[#7fd6ff]/60 bg-[linear-gradient(180deg,#7fd3ff,#3dbbf7)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] hover:brightness-110",
-  gold: "text-space-950 border border-[#ffd98c]/60 bg-[linear-gradient(180deg,#ffd27a,#e8a83a)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] hover:brightness-110",
-  glass: "glass-chip text-ink hover:bg-white/10",
-  ghost: "text-ink-2 hover:bg-white/6 hover:text-ink",
+    "text-[#0b0c0e] border border-[#7fd6ff]/60 bg-[linear-gradient(180deg,#7fd3ff,#3dbbf7)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] hover:brightness-110",
+  gold: "text-[#0b0c0e] border border-[#ffd98c]/60 bg-[linear-gradient(180deg,#ffd27a,#e8a83a)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] hover:brightness-110",
+  glass: "glass-chip text-ink hover:bg-surface-contrast/10",
+  ghost: "text-ink-2 hover:bg-surface-contrast/6 hover:text-ink",
   danger: "glass-chip text-critical-text hover:bg-critical/15",
 };
 

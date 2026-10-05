@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  allPermissions,
   applicationScopes,
   characterScopes,
   corporationScopes,
   memberScopeRequirements,
+  optionalScopePermission,
   optionalScopes,
   parseOptionalScopes,
   reauthorizeHref,
   scopesForIntent,
 } from "@/core/modules/registry";
+import { FLEET_SCOPE } from "@/modules/fleet/logic";
+import { SKILLQUEUE_SCOPE, SKILLS_SCOPE } from "@/modules/skills/module";
+import { INDUSTRY_JOBS_SCOPE, STRUCTURES_SCOPE } from "@/modules/industry/module";
 import { MAIL_SCOPE } from "@/modules/social/module";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
 
@@ -21,9 +26,9 @@ function params(href: string) {
 
 describe("optional scopes", () => {
   it("keeps opt-in scopes out of the member and corporation sets", () => {
-    expect(optionalScopes()).toEqual([MAIL_SCOPE, WALLET_SCOPE]);
-    expect(characterScopes()).toContain(MINING);
-    for (const scope of [WALLET_SCOPE, MAIL_SCOPE]) {
+    expect(optionalScopes()).toEqual([FLEET_SCOPE, INDUSTRY_JOBS_SCOPE, MAIL_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, STRUCTURES_SCOPE, WALLET_SCOPE]);
+    expect(characterScopes()).toEqual([MINING]);
+    for (const scope of [WALLET_SCOPE, MAIL_SCOPE, FLEET_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE, INDUSTRY_JOBS_SCOPE, STRUCTURES_SCOPE]) {
       expect(characterScopes()).not.toContain(scope);
       expect(corporationScopes()).not.toContain(scope);
       expect(memberScopeRequirements().some((s) => s.scope === scope)).toBe(false);
@@ -31,7 +36,7 @@ describe("optional scopes", () => {
   });
 
   it("lists every scope for the EVE developer application", () => {
-    expect(applicationScopes()).toEqual(expect.arrayContaining([MINING, CORP_MINING, WALLET_SCOPE]));
+    expect(applicationScopes()).toEqual(expect.arrayContaining([MINING, CORP_MINING, WALLET_SCOPE, MAIL_SCOPE, FLEET_SCOPE]));
   });
 
   it("adds known opt-in scopes only when linking", () => {
@@ -70,6 +75,31 @@ describe("optional scopes", () => {
     const mailOff = params(reauthorizeHref([MINING, WALLET_SCOPE, MAIL_SCOPE], { remove: [MAIL_SCOPE] }));
     expect(mailOff.get("with")).toBe(WALLET_SCOPE);
     expect(mailOff.get("drop")).toBe(MAIL_SCOPE);
+  });
+
+  it("turns fleet access on and off like the other opt-in scopes", () => {
+    const on = params(reauthorizeHref([MINING], { add: [FLEET_SCOPE], returnTo: "/fleet" }));
+    expect(on.get("intent")).toBe("link");
+    expect(on.get("with")).toBe(FLEET_SCOPE);
+    expect(scopesForIntent("link", [FLEET_SCOPE])).toEqual([FLEET_SCOPE, MINING]);
+    const off = params(reauthorizeHref([MINING, FLEET_SCOPE, MAIL_SCOPE], { remove: [FLEET_SCOPE] }));
+    expect(off.get("with")).toBe(MAIL_SCOPE);
+    expect(off.get("drop")).toBe(FLEET_SCOPE);
+  });
+
+  it("names the permission that switches each opt-in scope", () => {
+    const permissions = new Set(allPermissions().map((p) => p.key));
+    for (const scope of optionalScopes()) {
+      const permission = optionalScopePermission(scope);
+      expect(permission, scope).toBeDefined();
+      expect(permissions.has(permission!), scope).toBe(true);
+    }
+    expect(optionalScopePermission(MINING)).toBeUndefined();
+  });
+
+  it("names the character being re-authorised", () => {
+    expect(params(reauthorizeHref([MINING], { characterId: 2120000001 })).get("character")).toBe("2120000001");
+    expect(params(reauthorizeHref([MINING])).get("character")).toBeNull();
   });
 
   it("parses with=/drop= lists down to known opt-in scopes", () => {

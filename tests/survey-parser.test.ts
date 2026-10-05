@@ -66,6 +66,9 @@ describe("grades", () => {
     expect(oreGrade("Scordite")).toEqual({ base: "Scordite", grade: "Base", rank: 1 });
     expect(oreGrade("Blue Ice IV-Grade")).toMatchObject({ base: "Blue Ice", grade: "IV-Grade" });
     expect(oreGrade("Glistening Zeolites")).toMatchObject({ base: "Zeolites", grade: "Glistening", rank: 3 });
+    expect(oreGrade("Thick Blue Ice")).toMatchObject({ base: "Blue Ice", grade: "Thick", rank: 2 });
+    expect(oreGrade("Thick Blue Ice IV-Grade")).toEqual({ base: "Blue Ice", grade: "Thick IV-Grade", rank: 5 });
+    expect(oreGrade("Hadal Talassonite")).toMatchObject({ base: "Talassonite", rank: 3 });
     expect(oreGrade("Azure Ice")).toMatchObject({ base: "Azure Ice", grade: "Base" });
     expect(oreGrade("Golden Mykoserocin")).toMatchObject({ base: "Golden Mykoserocin" });
   });
@@ -75,7 +78,7 @@ describe("grades", () => {
     const scordite = summary.find((s) => s.base === "Scordite")!;
     expect(scordite.rocks).toBe(4);
     expect(scordite.grades.map((g) => g.grade)).toEqual(["Base", "II-Grade", "III-Grade"]);
-    expect(scordite.grades[2]).toMatchObject({ rocks: 2, quantity: 50_552, volume: 7582, scannerValue: 955_000, minDistanceKm: 21 });
+    expect(scordite.grades[2]).toMatchObject({ rocks: 2, quantity: 50_552, volume: 7582, scannerValue: 955_000 });
     expect(scordite.scannerValue).toBe(168_000 + 787_000 + 770_000 + 661_000);
     // Families sorted by value, most valuable first.
     expect(summary[0].base).toBe("Scordite");

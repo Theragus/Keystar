@@ -1,20 +1,23 @@
 import { sql } from "drizzle-orm";
-import { ArrowRight, Ban, CheckCircle2, UserCheck } from "lucide-react";
+import { ArrowRight, Ban, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge, RoleBadge, StatusBadge } from "@/components/ui/badge";
+import { ActionForm } from "@/components/ui/action-form";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Portrait } from "@/components/ui/eve-image";
 import { Glass, Panel } from "@/components/ui/glass";
 import { requirePermission } from "@/core/auth/dal";
+import { outsideGuestIds } from "@/core/auth/manage-users";
 import { getDb } from "@/core/db";
 import { memberAuditHref } from "@/core/member-audit-filters";
 import { characterScopes } from "@/core/modules/registry";
-import { getSetting } from "@/core/settings";
+import { getSettings } from "@/core/settings";
 import { assignableRoles, canManageRole, isRole, ROLES, type Role } from "@/core/rbac/roles";
 import { getI18n } from "@/i18n/server";
 import { zkillCharacter } from "@/modules/killboard/links";
-import { approveUser, setUserDisabled, updateUserRole } from "../actions";
+import { approveUser, disableOutsideGuests, setUserDisabled } from "../actions";
+import { RoleSelect } from "./role-select";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -42,7 +45,10 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
   const roleParam = (await searchParams).role;
   const roleFilter = isRole(roleParam) ? roleParam : null;
   const required = characterScopes();
-  const home = await getSetting("corp.homeCorporationId");
+  const settings = await getSettings();
+  const home = settings["corp.homeCorporationId"];
+  // Once sign-ups are restricted to members, guests who registered from outside before can be cleared in one go.
+  const outsideGuests = canManage && settings["access.restrictToMembers"] ? (await outsideGuestIds()).length : 0;
 
   const rows = await getDb().execute<Record<string, unknown>>(sql`
     SELECT u.id, u.role, u.is_disabled, u.last_login_at, u.created_at,
@@ -117,9 +123,25 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
         })}
       </div>
 
+      {outsideGuests > 0 && (
+        <Panel title={tu.outsideGuests.title(outsideGuests)} subtitle={tu.outsideGuests.hint}>
+          <ActionForm
+            action={disableOutsideGuests}
+            confirm={tu.outsideGuests.confirm(outsideGuests)}
+            success={tu.outsideGuests.done}
+            failed={tu.outsideGuests.failed}
+            errors={tu.outsideGuests.errors}
+          >
+            <Button size="sm" variant="danger" type="submit">
+              <Ban className="size-3.5" aria-hidden /> {tu.outsideGuests.disable}
+            </Button>
+          </ActionForm>
+        </Panel>
+      )}
+
       {pending.length > 0 && canManage && (
         <Panel title={tu.awaitingApproval(pending.length)} subtitle={tu.awaitingApprovalHint}>
-          <ul className="divide-y divide-white/6">
+          <ul className="divide-y divide-surface-contrast/6">
             {pending.map((u) => (
               <li key={u.id} className="flex items-center gap-3 py-2.5">
                 {u.main_id && <Portrait id={Number(u.main_id)} size={32} />}
@@ -130,11 +152,16 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                     {tu.registered(f.relativeTime(u.created_at))}
                   </div>
                 </div>
-                <form action={approveUser.bind(null, u.id)}>
+                <ActionForm
+                  action={approveUser.bind(null, u.id)}
+                  success={tu.access.approved(u.main_name ?? tu.unknown)}
+                  failed={tu.access.failed(u.main_name ?? tu.unknown)}
+                  errors={tu.access.errors}
+                >
                   <Button size="sm" variant="primary" type="submit">
                     <UserCheck className="size-3.5" aria-hidden /> {tu.approve}
                   </Button>
-                </form>
+                </ActionForm>
               </li>
             ))}
           </ul>
@@ -244,23 +271,15 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                     <td className="text-ink-2">{f.relativeTime(u.last_login_at)}</td>
                     <td>
                       {canChange ? (
-                        <form action={updateUserRole.bind(null, u.id)} className="flex items-center gap-1.5">
-                          <select
-                            name="role"
-                            defaultValue={u.role}
-                            className="glass-inset h-8 rounded-lg px-2.5 text-xs text-ink [color-scheme:dark]"
-                            aria-label={tu.roleFor(u.main_name)}
-                          >
-                            {ROLES.filter((r) => assignable.includes(r) || r === u.role).map((r) => (
-                              <option key={r} value={r} disabled={!assignable.includes(r)}>
-                                {t.common.roles[r].label}
-                              </option>
-                            ))}
-                          </select>
-                          <Button size="sm" type="submit" title={tu.saveRole}>
-                            <CheckCircle2 className="size-3.5" aria-hidden />
-                          </Button>
-                        </form>
+                        <RoleSelect
+                          userId={u.id}
+                          userName={u.main_name}
+                          role={u.role}
+                          options={ROLES.filter((r) => assignable.includes(r) || r === u.role).map((r) => ({
+                            role: r,
+                            assignable: assignable.includes(r),
+                          }))}
+                        />
                       ) : (
                         <RoleBadge role={u.role} />
                       )}
@@ -268,11 +287,16 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                     {showActions && (
                       <td className="text-right">
                         {canChange ? (
-                          <form action={setUserDisabled.bind(null, u.id, !u.is_disabled)}>
+                          <ActionForm
+                            action={setUserDisabled.bind(null, u.id, !u.is_disabled)}
+                            success={(u.is_disabled ? tu.access.enabled : tu.access.disabled)(u.main_name ?? tu.unknown)}
+                            failed={tu.access.failed(u.main_name ?? tu.unknown)}
+                            errors={tu.access.errors}
+                          >
                             <Button size="sm" variant={u.is_disabled ? "glass" : "danger"} type="submit">
                               <Ban className="size-3.5" aria-hidden /> {u.is_disabled ? tu.enable : tu.disable}
                             </Button>
-                          </form>
+                          </ActionForm>
                         ) : (
                           <span
                             className="text-ink-3"

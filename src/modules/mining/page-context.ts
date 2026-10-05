@@ -37,10 +37,11 @@ export async function miningPageContext(
   const settings = await getSettings();
   const valuation = miningValuation(settings);
   const { t } = await getI18n();
+  const filters = parseMiningFilters(searchParams, today);
   return {
     user,
-    filters: parseMiningFilters(searchParams, today),
-    scope: miningScope(user, settings["corp.homeCorporationId"]),
+    filters,
+    scope: miningScope(user, settings["corp.homeCorporationId"], filters.view),
     valuation,
     valuationLabel: valuationLabel(t, valuation),
     presets: DATE_PRESETS.map((p) => ({ id: p.id, label: t.common.datePresets[p.id], ...p.range(today) })),

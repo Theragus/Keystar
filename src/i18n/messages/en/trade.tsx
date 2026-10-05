@@ -28,6 +28,20 @@ export const trade = {
     /** Recent appraisal label: first item names, then how many more. */
     more: (count: number) => `+${n(count)}`,
   },
+  /** Deleting one of your own appraisals (small trash button in the list and on the result). */
+  delete: {
+    button: "Delete",
+    /** Tooltip and accessible name of the icon-only button. */
+    hint: "Delete this appraisal",
+    confirm: "Delete this appraisal? Its share link stops working.",
+    deleted: "Appraisal deleted",
+    failed: "Couldn't delete the appraisal",
+    errors: {
+      notOwned: "Only the person who created an appraisal can delete it.",
+      notFound: "This appraisal was already deleted.",
+      unknown: "Something went wrong. Reload the page and try again.",
+    },
+  },
   result: {
     description: (date: string, by: string | null) => `Jita 4-4 prices from ${date}${by ? ` · by ${by}` : ""}`,
     newAppraisal: "New appraisal",
@@ -86,6 +100,7 @@ Nanite Repair Paste x 50
       `That paste has ${n(lines)} lines; appraise at most ${n(max)} at a time.`,
     tooManyTypes: (types: number, max: number) =>
       `That paste contains ${n(types)} different items; appraise at most ${n(max)} at a time.`,
+    esiUnavailable: "EVE's ESI is unavailable right now, so the items couldn't be identified or priced. Nothing was saved; try again in a few minutes.",
     noItems: "No known items found. Paste item names from EVE (inventory, contract, fitting, d-scan or a list).",
   },
 };

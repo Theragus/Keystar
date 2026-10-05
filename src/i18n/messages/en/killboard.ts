@@ -11,18 +11,20 @@ type AwardKind = "isk" | "finalBlows" | "solo" | "efficiency";
 export const killboard = {
   module: {
     navSection: "Combat",
-    nav: { killboard: "Killboard" },
-    permissionGroup: "Killboard",
+    nav: { killboard: "Combat Report" },
+    alerts: { kills: { label: "Kills and losses", hint: "When a corporation member gets a kill or loses a ship" } },
+    permissionGroup: "Combat Report",
     permissions: {
       view: {
-        label: "View killboard",
+        label: "View combat report",
         description: "See the corporation's kills, losses, ship and pilot statistics and the situation report.",
       },
-      manage: { label: "Manage killboard", description: "Rewrite the weekly situation report." },
+      manage: { label: "Manage combat report", description: "Rewrite the weekly situation report." },
     },
     jobs: {
-      zkillSync: "Killboard (zKillboard)",
-      situationReport: "Killboard situation report",
+      zkillSync: "Combat Report (zKillboard)",
+      liveFeed: "Combat Report live feed (zKillboard)",
+      situationReport: "Combat Report situation report",
     },
   },
   /** Words shared by tables, tiles and charts. */
@@ -46,7 +48,7 @@ export const killboard = {
     system: "Unknown system",
   },
   page: {
-    metaTitle: "Killboard",
+    metaTitle: "Combat Report",
     description: (corp: string) => `${corp} · combat performance from zKillboard`,
     noCorp: {
       title: "No home corporation set",
@@ -134,6 +136,20 @@ export const killboard = {
     empty: "No kills or losses in this period.",
     kind: { kill: "Kill", loss: "Loss" } satisfies Record<"kill" | "loss", string>,
     solo: "solo",
+  },
+  live: {
+    api: { unauthorized: "Not signed in", forbidden: "Forbidden" },
+    region: "Live kill notifications",
+    kind: { kill: "Kill", loss: "Loss" } satisfies Record<"kill" | "loss", string>,
+    /** Kill: the corp pilot who scored it; loss: who killed the corp pilot. */
+    finalBlow: "Final blow",
+    topDamage: "Top damage",
+    killedBy: "Killed by",
+    others: (n: number) => `+${n} more`,
+    npc: "NPC",
+    noPilot: "No pilot",
+    open: "Open this killmail on zKillboard",
+    dismiss: "Dismiss",
   },
   ships: {
     entity: "Ship",

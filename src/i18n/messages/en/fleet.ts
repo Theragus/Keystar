@@ -14,6 +14,7 @@ export const fleet = {
     },
     scopes: {
       readFleet: "Reads the fleet you are in; while you are fleet boss, also its members, ships and wings.",
+      readFleetLabel: "Fleet access",
     },
     jobs: { live: "Live fleet" },
   },
@@ -56,7 +57,24 @@ export const fleet = {
       stopped: "Not tracking",
     } as Record<string, string>,
     checked: (when: string) => `checked ${when}`,
-    missingScope: "Fleet access not granted. Re-authorise this character under My Characters.",
+    enable: "Enable fleet access",
+    enableHint: "Opens the EVE login to add fleet access to this character. Only the character that holds fleet boss needs it.",
+    enableAgainHint: "Switches fleet access back on. The character's EVE token still includes it, so no login is needed.",
+    revoke: "Revoke access",
+    revokeHint: "Keystar stops using fleet access for this character right away, without an EVE login.",
+    toast: {
+      started: (name: string) => `Sharing ${name}'s fleet`,
+      startedDetail: "The worker reads it within a few seconds.",
+      stopped: (name: string) => `Stopped sharing ${name}'s fleet`,
+      failed: (name: string) => `Couldn't change fleet tracking for ${name}`,
+      errors: {
+        forbidden: "You no longer have permission to share fleets.",
+        notOwned: "That character isn't linked to your account any more.",
+        noScope: "This character has no fleet access. Enable it first.",
+        unknown: "Something went wrong. Reload the page and try again.",
+      },
+    },
+    demo: "Not available in the demo",
     noCharacters: "Link a character to share fleets.",
   },
   live: {
@@ -74,7 +92,7 @@ export const fleet = {
       duration: "Running for",
     },
     composition: { title: "Composition", subtitle: "Members per ship class", ships: "Ships" },
-    structure: { title: "Fleet structure", command: "Fleet command", commander: "Commander" },
+    structure: { title: "Fleet structure", command: "Fleet command", pilots: (value: number) => count(value, "pilot", "pilots") },
     columns: { pilot: "Pilot", ship: "Ship", system: "System", role: "Role", joined: "Joined" },
     activity: {
       title: "Joins & leaves",

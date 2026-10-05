@@ -103,7 +103,7 @@ export function SearchField({
         search(text);
       }}
     >
-      <label className="glass-inset flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-3">
+      <label className="glass-inset field-focus flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-3">
         {isPending ? (
           <Loader2 className="size-4 shrink-0 animate-spin text-ink-3" aria-hidden />
         ) : (
@@ -125,7 +125,7 @@ export function SearchField({
           maxLength={maxLength}
           autoComplete="off"
           spellCheck={false}
-          className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-3 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+          className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-3 outline-none [&::-webkit-search-cancel-button]:hidden"
         />
       </label>
       {text && (

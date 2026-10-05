@@ -1,15 +1,19 @@
-import { LogOut } from "lucide-react";
+import { LogOut, TriangleAlert } from "lucide-react";
 import Link from "next/link";
+
 import type { CurrentUser } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { navSections } from "@/core/modules/registry";
-import { KEYSTAR_VERSION } from "@/core/version";
+import { buildInfo, versionLabel } from "@/core/version";
 import { getI18n } from "@/i18n/server";
+import { cn } from "@/lib/utils";
 import { Portrait } from "@/components/ui/eve-image";
 import { RoleBadge } from "@/components/ui/badge";
+import { ThemeSwitcher } from "./theme-switcher";
 import { LanguageSwitcher } from "./language-switcher";
-import { KeystarMark } from "./logo";
+import { SidebarToggle } from "./sidebar-state";
 import { NavLink } from "./nav-link";
+import { RailFlyout } from "./rail-flyout";
 
 export function visibleNav(user: CurrentUser) {
   const sections = navSections()
@@ -20,72 +24,138 @@ export function visibleNav(user: CurrentUser) {
   return { sections, hasNested };
 }
 
-/** Docked, full-height sidebar with a translucent glass surface and a hairline edge. */
+/**
+ * Docked, full-height sidebar with a translucent glass surface and a hairline edge.
+ * Collapses to an icon rail via `data-sidebar` on the shell root (see SectionScope);
+ * hidden labels stay in the accessibility tree as `sr-only`, and hovering a section
+ * or the portrait shows what the rail hides in a card beside it (RailFlyout).
+ */
 export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: string | null }) {
   const { sections, hasNested } = visibleNav(user);
   const { t } = await getI18n();
+  const build = buildInfo();
+  const version = versionLabel(build, env().SOURCE_URL);
+  const pilotLinkHover = "transition-colors hover:bg-surface-contrast/[0.06] focus-visible:bg-surface-contrast/[0.06]";
+  const pilotInfo = (
+    <>
+      <div className="truncate text-[0.82rem] font-medium">{user.main?.name ?? t.shell.unknownPilot}</div>
+      <div className="mt-0.5 flex items-center gap-1.5">
+        <RoleBadge role={user.role} />
+        {corpTicker && <span className="font-mono text-3xs text-ink-3">[{corpTicker}]</span>}
+      </div>
+    </>
+  );
 
   return (
-    <aside className="sticky top-0 flex h-screen w-[232px] shrink-0 flex-col border-r border-white/[0.07] bg-space-900/70 backdrop-blur-xl">
-      <Link href="/" className="flex h-14 items-center gap-2.5 border-b border-white/[0.07] px-4">
-        <KeystarMark className="size-7" />
-        <span className="font-display text-[1.05rem] font-bold tracking-[0.2em] text-ink">KEYSTAR</span>
-      </Link>
-      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label={t.shell.mainNav}>
-        {sections.map((section) => (
-          <div key={section.id} className="group">
-            <div className="eve-label px-2.5 pb-1.5 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))]">
-              {section.label(t)}
-            </div>
-            <ul className="space-y-0.5">
-              {section.items.map((item) => (
-                <li key={item.href}>
-                  <NavLink href={item.href} exact={hasNested(item.href)}>
-                    <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
-                    {item.label(t)}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </nav>
-      <div className="flex items-center justify-between gap-2 px-3 pb-2">
-        <LanguageSwitcher />
-        <a
-          href={`${env().SOURCE_URL}/releases`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-2 font-mono text-3xs whitespace-nowrap text-ink-3 hover:text-ink-2"
-          title={t.shell.releaseNotes}
+    <aside
+      id="app-sidebar"
+      className="relative z-30 w-[232px] shrink-0 self-stretch border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl transition-[width] duration-300 ease-out group-data-[sidebar=collapsed]/shell:w-14 motion-reduce:transition-none"
+    >
+      {/* Preserve heading space so collapsed icons keep their vertical positions. */}
+      <div className="sticky top-0 flex h-dvh flex-col ">
+        <div className="flex h-14 shrink-0 items-center border-b border-surface-contrast/[0.07] px-4">
+          <SidebarToggle />
+        </div>
+        <nav
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 group-data-[sidebar=collapsed]/shell:overflow-clip"
+          aria-label={t.shell.mainNav}
         >
-          Keystar v{KEYSTAR_VERSION}
-        </a>
-      </div>
-      <div className="border-t border-white/[0.07] p-3">
-        <div className="flex items-center gap-2.5">
-          {user.main ? (
-            <Portrait id={user.main.characterId} size={32} />
-          ) : (
-            <div className="size-8 rounded-full bg-space-700" />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[0.82rem] font-medium">{user.main?.name ?? t.shell.unknownPilot}</div>
-            <div className="mt-0.5 flex items-center gap-1.5">
-              <RoleBadge role={user.role} />
-              {corpTicker && <span className="font-mono text-3xs text-ink-3">[{corpTicker}]</span>}
-            </div>
-          </div>
-          <form action="/auth/logout" method="post">
-            <button
-              type="submit"
-              title={t.shell.signOut}
-              aria-label={t.shell.signOut}
-              className="grid size-7 place-items-center rounded-md text-ink-3 transition hover:bg-white/[0.06] hover:text-ink"
+          {sections.map((section) => (
+            <RailFlyout
+              key={section.id}
+              className="group"
+              tone={section.tone}
+              card={
+                <>
+                  <div className="eve-label px-2.5 pt-1.5 pb-1 text-2xs text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))]">
+                    {section.label(t)}
+                  </div>
+                  <ul className="space-y-0.5" data-flyout-anchor>
+                    {section.items.map((item) => (
+                      <li key={item.href}>
+                        <NavLink href={item.href} exact={hasNested(item.href)} inFlyout>
+                          <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
+                          <span className="truncate">{item.label(t)}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              }
             >
-              <LogOut className="size-3.5" aria-hidden />
-            </button>
-          </form>
+              <div className="eve-label pb-1.5 pl-[calc((2rem-3ch)/2)] text-2xs whitespace-nowrap text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))]" title={section.label(t)}>
+                <span>{Array.from(section.label(t)).slice(0, 3).join("")}</span><span className="group-data-[sidebar=collapsed]/shell:hidden">{Array.from(section.label(t)).slice(3).join("")}</span>
+              </div>
+              <ul className="space-y-0.5" data-flyout-anchor>
+                {section.items.map((item) => (
+                  <li key={item.href}>
+                    <NavLink href={item.href} exact={hasNested(item.href)}>
+                      <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
+                      <span className="truncate group-data-[sidebar=collapsed]/shell:sr-only">{item.label(t)}</span>
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </RailFlyout>
+          ))}
+        </nav>
+        <div className="shrink-0 space-y-1 px-3 pb-2 group-data-[sidebar=collapsed]/shell:px-2">
+          <div className="flex flex-wrap items-center gap-1 group-data-[sidebar=collapsed]/shell:flex-col">
+            <LanguageSwitcher />
+            <ThemeSwitcher />
+          </div>
+          <a
+            href={version.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex items-center gap-1.5 px-2 font-mono text-3xs whitespace-nowrap group-data-[sidebar=collapsed]/shell:hidden",
+              version.prerelease
+                ? "rounded-md bg-warning/12 py-1 text-warning ring-1 ring-warning/30 ring-inset hover:bg-warning/20"
+                : "text-ink-3 hover:text-ink-2",
+            )}
+            title={version.prerelease ? t.shell.unstableBuild(build.imageTag, build.commit, build.buildDate) : t.shell.releaseNotes}
+          >
+            {version.prerelease && <TriangleAlert className="size-3 shrink-0" aria-hidden />}
+            <span className="truncate">{version.text}</span>
+          </a>
+        </div>
+        <div className="shrink-0 border-t border-surface-contrast/[0.07] p-3 group-data-[sidebar=collapsed]/shell:px-0">
+          <div className="flex items-center gap-2.5 group-data-[sidebar=collapsed]/shell:flex-col group-data-[sidebar=collapsed]/shell:gap-2">
+            <RailFlyout
+              className="min-w-0 flex-1 group-data-[sidebar=collapsed]/shell:flex-none"
+              card={
+                <Link href="/characters" tabIndex={-1} className={cn("block rounded-md px-2.5 py-1.5", pilotLinkHover)} data-flyout-anchor>
+                  {pilotInfo}
+                </Link>
+              }
+            >
+              {/* One link for portrait and name: the collapsed rail keeps a single tab stop. */}
+              <Link
+                href="/characters"
+                title={t.shell.nav.characters}
+                className={cn(
+                  "-mx-1.5 flex items-center gap-2.5 rounded-md px-1.5 py-1 group-data-[sidebar=collapsed]/shell:mx-0 group-data-[sidebar=collapsed]/shell:rounded-full group-data-[sidebar=collapsed]/shell:p-0",
+                  pilotLinkHover,
+                )}
+              >
+                <div className="shrink-0" data-flyout-anchor>
+                  {user.main ? <Portrait id={user.main.characterId} size={32} /> : <div className="size-8 rounded-full bg-space-700" />}
+                </div>
+                <div className="min-w-0 flex-1 group-data-[sidebar=collapsed]/shell:sr-only">{pilotInfo}</div>
+              </Link>
+            </RailFlyout>
+            <form action="/auth/logout" method="post">
+              <button
+                type="submit"
+                title={t.shell.signOut}
+                aria-label={t.shell.signOut}
+                className="grid size-7 place-items-center rounded-md text-ink-3 transition hover:bg-surface-contrast/[0.06] hover:text-ink"
+              >
+                <LogOut className="size-3.5" aria-hidden />
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </aside>

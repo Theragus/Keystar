@@ -82,6 +82,27 @@ export class EsiRateLimitedError extends EsiError {
   }
 }
 
+/** Request counters since the client was created, for System Info and the support package. */
+export interface EsiClientStats {
+  since: string;
+  requests: { ok: number; notModified: number; clientError: number; serverError: number; network: number };
+  /** GETs answered from the local cache without contacting ESI. */
+  cacheHits: number;
+  retries: number;
+  tokenRefreshes: number;
+  rateLimited: { errorLimit: number; group: number };
+  /** Last X-ESI-Error-Limit-Remain seen; null before the first response that reports it. */
+  errorLimitRemain: number | null;
+  /** Set while requests wait for the error limit to reset. */
+  errorLimitPausedUntil: string | null;
+  /** Rate-limit groups currently paused, with when they resume. */
+  pausedGroups: { group: string; until: string }[];
+  /** Last X-Ratelimit-Remaining seen per rate-limit group. */
+  groupRemaining: Record<string, number>;
+  /** ESI's clock (Date header) minus ours, from the last response; positive when ours is behind. */
+  clockOffsetMs: number | null;
+}
+
 export interface EsiClientOptions {
   baseUrl: string;
   userAgent: string;
@@ -121,9 +142,21 @@ export class EsiClient {
   private errorLimitPauseUntil = 0;
   private readonly groupPauseUntil = new Map<string, number>();
   private readonly patternGroup = new Map<string, string>();
+  private readonly counters = {
+    since: new Date().toISOString(),
+    requests: { ok: 0, notModified: 0, clientError: 0, serverError: 0, network: 0 },
+    cacheHits: 0,
+    retries: 0,
+    tokenRefreshes: 0,
+    rateLimited: { errorLimit: 0, group: 0 },
+    errorLimitRemain: null as number | null,
+    groupRemaining: {} as Record<string, number>,
+    clockOffsetMs: null as number | null,
+  };
 
   constructor(private readonly opts: EsiClientOptions) {
-    this.fetchImpl = opts.fetchImpl ?? fetch;
+    // Look the global up per call, so a stubbed fetch applies to an already-created shared client.
+    this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
     this.sleep = opts.sleep ?? defaultSleep;
     this.now = opts.now ?? Date.now;
   }
@@ -137,6 +170,7 @@ export class EsiClient {
 
     const cached = useCache ? await this.opts.cache!.get(cacheKey) : null;
     if (cached && cached.expiresAt && cached.expiresAt.getTime() > this.now()) {
+      this.counters.cacheHits++;
       return {
         data: cached.body as T,
         status: 200,
@@ -174,11 +208,14 @@ export class EsiClient {
       }
 
       let res: Response;
+      const sentAt = this.now();
       try {
         res = await this.fetchImpl(url, { method, headers, body, signal: AbortSignal.timeout(30_000) });
       } catch (err) {
+        this.counters.requests.network++;
         if (attempt < (this.opts.maxRetries ?? 2)) {
           attempt++;
+          this.counters.retries++;
           await this.sleep(1000 * 2 ** attempt);
           continue;
         }
@@ -186,6 +223,7 @@ export class EsiClient {
       }
 
       this.trackLimits(pattern, res);
+      this.count(res, sentAt);
       const expiresAt = parseExpires(res.headers.get("expires"));
       const pages = Number(res.headers.get("x-pages") ?? "1") || 1;
       const lastModified = parseExpires(res.headers.get("last-modified"));
@@ -207,18 +245,22 @@ export class EsiClient {
 
       if (res.status === 401 && options.characterId !== undefined && !refreshedToken) {
         refreshedToken = true;
+        this.counters.tokenRefreshes++;
         continue;
       }
       if (res.status === 403) throw new EsiForbiddenError(path, errBody);
       if (res.status === 420 || res.status === 429) {
         const retryAfter = Number(res.headers.get("retry-after") ?? res.headers.get("x-esi-error-limit-reset") ?? 60);
         const retryAt = new Date(this.now() + Math.max(1, retryAfter) * 1000);
+        if (res.status === 420) this.counters.rateLimited.errorLimit++;
+        else this.counters.rateLimited.group++;
         if (res.status === 420) this.errorLimitPauseUntil = retryAt.getTime();
         else this.groupPauseUntil.set(this.patternGroup.get(pattern) ?? pattern, retryAt.getTime());
         throw new EsiRateLimitedError(path, res.status, retryAt);
       }
       if (res.status >= 500 && attempt < (this.opts.maxRetries ?? 2)) {
         attempt++;
+        this.counters.retries++;
         await this.sleep(1000 * 2 ** attempt);
         continue;
       }
@@ -256,6 +298,64 @@ export class EsiClient {
     return { data, expiresAt, notModified, fromCache, lastModified: first.lastModified };
   }
 
+  /**
+   * One uncached GET without retries or rate-limit waits, for reachability checks
+   * (System Info). Any HTTP answer resolves with its status; network errors throw.
+   */
+  async ping(path = "/status", signal: AbortSignal = AbortSignal.timeout(10_000)): Promise<{ status: number }> {
+    const sentAt = this.now();
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.opts.baseUrl}${path}`, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": this.opts.userAgent,
+          "X-Compatibility-Date": this.opts.compatibilityDate,
+        },
+        signal,
+      });
+    } catch (err) {
+      this.counters.requests.network++;
+      throw err;
+    }
+    this.trackLimits(routePattern(path), res);
+    this.count(res, sentAt);
+    await res.body?.cancel().catch(() => undefined);
+    return { status: res.status };
+  }
+
+  /** A snapshot of the request counters and current back-off state. */
+  stats(): EsiClientStats {
+    const now = this.now();
+    const c = this.counters;
+    return {
+      since: c.since,
+      requests: { ...c.requests },
+      cacheHits: c.cacheHits,
+      retries: c.retries,
+      tokenRefreshes: c.tokenRefreshes,
+      rateLimited: { ...c.rateLimited },
+      errorLimitRemain: c.errorLimitRemain,
+      errorLimitPausedUntil: this.errorLimitPauseUntil > now ? new Date(this.errorLimitPauseUntil).toISOString() : null,
+      pausedGroups: [...this.groupPauseUntil]
+        .filter(([, until]) => until > now)
+        .map(([group, until]) => ({ group, until: new Date(until).toISOString() })),
+      groupRemaining: { ...c.groupRemaining },
+      clockOffsetMs: c.clockOffsetMs,
+    };
+  }
+
+  private count(res: Response, sentAt: number): void {
+    const r = this.counters.requests;
+    if (res.status === 304) r.notModified++;
+    else if (res.status >= 500) r.serverError++;
+    else if (res.status >= 400) r.clientError++;
+    else r.ok++;
+    // The Date header has one-second resolution; the request's midpoint is our best local estimate.
+    const date = Date.parse(res.headers.get("date") ?? "");
+    if (Number.isFinite(date)) this.counters.clockOffsetMs = Math.round(date - (sentAt + this.now()) / 2);
+  }
+
   private async waitForBudget(pattern: string): Promise<void> {
     const group = this.patternGroup.get(pattern) ?? pattern;
     const until = Math.max(this.errorLimitPauseUntil, this.groupPauseUntil.get(group) ?? 0);
@@ -273,21 +373,27 @@ export class EsiClient {
     const group = res.headers.get("x-ratelimit-group");
     if (group) this.patternGroup.set(pattern, group);
 
-    // Number(null) is 0: only a response that actually reports the error limit may pause the client.
-    const remainHeader = res.headers.get("x-esi-error-limit-remain");
-    const resetHeader = res.headers.get("x-esi-error-limit-reset");
-    const remain = remainHeader === null ? NaN : Number(remainHeader);
-    const reset = resetHeader === null ? NaN : Number(resetHeader);
+    // Only a response that actually reports the error limit may pause the client.
+    const remain = numericHeader(res, "x-esi-error-limit-remain");
+    const reset = numericHeader(res, "x-esi-error-limit-reset");
+    if (Number.isFinite(remain)) this.counters.errorLimitRemain = remain;
     if (Number.isFinite(remain) && Number.isFinite(reset) && remain < (this.opts.errorLimitFloor ?? 20)) {
       this.errorLimitPauseUntil = this.now() + (reset + 1) * 1000;
     }
 
-    const rlRemaining = Number(res.headers.get("x-ratelimit-remaining"));
+    const rlRemaining = numericHeader(res, "x-ratelimit-remaining");
+    if (group && Number.isFinite(rlRemaining)) this.counters.groupRemaining[group] = rlRemaining;
     if (group && Number.isFinite(rlRemaining) && rlRemaining <= 5) {
       // Nearly drained: give the floating window a moment to return tokens.
       this.groupPauseUntil.set(group, this.now() + 15_000);
     }
   }
+}
+
+/** Reads a numeric header; NaN when it is absent or blank (Number(null) and Number("") would be 0). */
+function numericHeader(res: Response, name: string): number {
+  const value = res.headers.get(name)?.trim();
+  return value ? Number(value) : NaN;
 }
 
 /** Parses an HTTP date header (Expires, Last-Modified). */

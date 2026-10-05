@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/core/db";
+import { CURSOR_FORMAT, formatLiveCursor, type LiveCursor } from "@/core/live-cursor";
 import { addDays, utcDayBounds } from "@/lib/dates";
 import { spanOf, type DateRange, type KillboardWindows } from "./filters";
 
@@ -385,4 +386,113 @@ export async function getDailyActivity(corp: number, r: DateRange): Promise<Dail
     });
   }
   return out;
+}
+
+/** How old a killmail may be and still be announced live (older ones arrive through backfills). */
+const LIVE_MAX_AGE_HOURS = 3;
+const LIVE_LIMIT = 10;
+
+export { formatLiveCursor, liveCursorNow, parseLiveCursor, type LiveCursor } from "@/core/live-cursor";
+
+export interface LiveEvent {
+  killmailId: number;
+  kind: "kill" | "loss";
+  time: string;
+  /** The destroyed hull: lost by the corporation (loss) or destroyed by it (kill). */
+  shipTypeId: number;
+  shipName: string | null;
+  victimId: number | null;
+  victimName: string | null;
+  victimTicker: string | null;
+  /**
+   * Loss: the final blow (an outsider). Kill: the corporation's pilot who landed
+   * the final blow, or did the most damage when an outsider landed it.
+   */
+  attacker: {
+    characterId: number | null;
+    name: string | null;
+    ticker: string | null;
+    shipTypeId: number | null;
+    shipName: string | null;
+    finalBlow: boolean;
+  } | null;
+  attackerCount: number;
+  systemId: number;
+  systemName: string | null;
+  security: number | null;
+  regionName: string | null;
+  value: number;
+  solo: boolean;
+}
+
+/** Kills and losses stored after the cursor (oldest first), with everything a notification shows. */
+export async function getLiveEvents(corp: number, since: LiveCursor): Promise<{ events: LiveEvent[]; cursor: string }> {
+  const fresh = sql`(k.first_seen_at, k.killmail_id) > (${since.at}::timestamptz, ${since.id})
+    AND k.killmail_time > now() - make_interval(hours => ${LIVE_MAX_AGE_HOURS})`;
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    WITH ev AS (
+      SELECT 'kill'::text AS kind, k.* FROM killmails k
+      WHERE ${fresh}
+        AND k.victim_corporation_id IS DISTINCT FROM ${corp}
+        AND EXISTS (SELECT 1 FROM killmail_attackers a WHERE a.killmail_id = k.killmail_id AND a.corporation_id = ${corp})
+      UNION ALL
+      SELECT 'loss'::text AS kind, k.* FROM killmails k WHERE ${fresh} AND k.victim_corporation_id = ${corp}
+    )
+    SELECT ev.kind, ev.killmail_id::float8 AS id, ev.killmail_time AS time,
+           to_char(ev.first_seen_at AT TIME ZONE 'UTC', ${CURSOR_FORMAT}) AS seen,
+           ev.victim_ship_type_id AS ship_id, st.name AS ship,
+           ev.victim_character_id::float8 AS victim_id, ve.name AS victim, vc.ticker AS victim_ticker,
+           a.idx IS NOT NULL AS has_attacker, a.character_id::float8 AS attacker_id, ae.name AS attacker,
+           ac.ticker AS attacker_ticker, a.ship_type_id AS attacker_ship_id, ast.name AS attacker_ship, a.final_blow,
+           ev.attacker_count, ev.solar_system_id::float8 AS system_id, s.name AS system,
+           s.security_status::float8 AS security, re.name AS region, ev.total_value::float8 AS value, ev.solo
+    FROM ev
+    LEFT JOIN LATERAL (
+      SELECT a.* FROM killmail_attackers a
+      WHERE a.killmail_id = ev.killmail_id AND (ev.kind = 'loss' OR a.corporation_id = ${corp})
+      ORDER BY a.final_blow DESC, a.damage_done DESC, a.idx
+      LIMIT 1
+    ) a ON true
+    LEFT JOIN eve_types st ON st.type_id = ev.victim_ship_type_id
+    LEFT JOIN eve_entities ve ON ve.id = ev.victim_character_id
+    LEFT JOIN eve_corporations vc ON vc.corporation_id = ev.victim_corporation_id
+    LEFT JOIN eve_entities ae ON ae.id = a.character_id
+    LEFT JOIN eve_corporations ac ON ac.corporation_id = a.corporation_id
+    LEFT JOIN eve_types ast ON ast.type_id = a.ship_type_id
+    LEFT JOIN eve_systems s ON s.system_id = ev.solar_system_id
+    LEFT JOIN eve_constellations c ON c.constellation_id = s.constellation_id
+    LEFT JOIN eve_entities re ON re.id = c.region_id
+    ORDER BY ev.first_seen_at, ev.killmail_id
+    LIMIT ${LIVE_LIMIT}`);
+  const events = rows.map(
+    (r): LiveEvent => ({
+      killmailId: num(r.id),
+      kind: r.kind === "loss" ? "loss" : "kill",
+      time: new Date(String(r.time)).toISOString(),
+      shipTypeId: num(r.ship_id),
+      shipName: str(r.ship),
+      victimId: r.victim_id === null ? null : num(r.victim_id),
+      victimName: str(r.victim),
+      victimTicker: str(r.victim_ticker),
+      attacker: r.has_attacker
+        ? {
+            characterId: r.attacker_id === null ? null : num(r.attacker_id),
+            name: str(r.attacker),
+            ticker: str(r.attacker_ticker),
+            shipTypeId: r.attacker_ship_id === null ? null : num(r.attacker_ship_id),
+            shipName: str(r.attacker_ship),
+            finalBlow: r.final_blow === true,
+          }
+        : null,
+      attackerCount: num(r.attacker_count),
+      systemId: num(r.system_id),
+      systemName: str(r.system),
+      security: r.security === null ? null : num(r.security),
+      regionName: str(r.region),
+      value: num(r.value),
+      solo: r.solo === true,
+    }),
+  );
+  const last = rows.at(-1);
+  return { events, cursor: formatLiveCursor(last ? { at: String(last.seen), id: num(last.id) } : since) };
 }

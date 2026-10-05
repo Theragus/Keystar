@@ -16,8 +16,7 @@ const DAY = 86400_000;
 /** Recent mail by relative time, older mail by date (with the year once it isn't this year). */
 export function listDate(date: Date, now: Date, f: Formatter): string {
   if (now.getTime() - date.getTime() < 7 * DAY) return f.relativeTime(date, now);
-  const iso = date.toISOString().slice(0, 10);
-  return date.getUTCFullYear() === now.getUTCFullYear() ? f.shortDate(iso) : iso;
+  return date.getUTCFullYear() === now.getUTCFullYear() ? f.shortDate(date.toISOString().slice(0, 10)) : f.date(date);
 }
 
 export function MailSearch({ params, t }: { params: MailParams; t: T }) {
@@ -25,7 +24,7 @@ export function MailSearch({ params, t }: { params: MailParams; t: T }) {
     <form action="/mail" className="flex items-center gap-2" role="search">
       {params.characterId && <input type="hidden" name="character" value={params.characterId} />}
       {params.folder.kind !== "all" && <input type="hidden" name="folder" value={folderKey(params.folder)} />}
-      <label className="glass-inset flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-3">
+      <label className="glass-inset field-focus flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-3">
         <Search className="size-4 shrink-0 text-ink-3" aria-hidden />
         <span className="sr-only">{t.list.searchLabel}</span>
         <input
@@ -34,7 +33,7 @@ export function MailSearch({ params, t }: { params: MailParams; t: T }) {
           defaultValue={params.q}
           placeholder={t.list.search}
           maxLength={100}
-          className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-3 focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-3 outline-none"
         />
       </label>
       {params.q && (
@@ -72,7 +71,7 @@ export function MailList({
   const from = (params.page - 1) * PAGE_SIZE + 1;
   return (
     <div>
-      <ul className="-mx-2 divide-y divide-white/5">
+      <ul className="-mx-2 divide-y divide-surface-contrast/5">
         {items.map((m) => {
           const open = params.open?.mailId === m.mailId;
           const firstRecipient = m.recipients[0];
@@ -93,7 +92,7 @@ export function MailList({
                 scroll={false}
                 aria-current={open ? "true" : undefined}
                 className={cn(
-                  "relative flex gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-white/5",
+                  "relative flex gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-surface-contrast/5",
                   open && "bg-accent/10 hover:bg-accent/12",
                 )}
               >
@@ -129,7 +128,7 @@ export function MailList({
         })}
       </ul>
       {total > PAGE_SIZE && (
-        <nav className="mt-3 flex items-center justify-between gap-2 border-t border-white/5 pt-3 text-xs text-ink-3">
+        <nav className="mt-3 flex items-center justify-between gap-2 border-t border-surface-contrast/5 pt-3 text-xs text-ink-3">
           {params.page > 1 ? (
             <Link href={mailHref(params, { page: params.page - 1, open: null })} className="inline-flex items-center gap-1 hover:text-ink">
               <ChevronLeft className="size-3.5" aria-hidden /> {t.list.newer}

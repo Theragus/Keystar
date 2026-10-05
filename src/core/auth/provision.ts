@@ -1,5 +1,5 @@
-import { and, asc, eq, sql } from "drizzle-orm";
-import { audit } from "@/core/audit";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { audit, auditInTx } from "@/core/audit";
 import { encryptToken } from "@/core/crypto";
 import {
   characters,
@@ -9,8 +9,12 @@ import {
   mailLabels,
   mailLists,
   mailMessages,
+  miningPnlFeeOverrides,
   sessions,
+  syncJobs,
   users,
+  walletFees,
+  industryJobs,
   walletTransactions,
   type Db,
 } from "@/core/db";
@@ -20,16 +24,19 @@ import { ensureNames, refreshCorporations } from "@/core/eve/resolver";
 import { optionalScopes } from "@/core/modules/registry";
 import type { Role } from "@/core/rbac/roles";
 import { getSettings, setSetting } from "@/core/settings";
-import { policyRole, reconcileRole } from "./policy";
+import { lockUsers } from "./manage-users";
+import { mayRegister, policyRole, reconcileRole } from "./policy";
 import type { TokenResponse, VerifiedCharacter } from "./sso";
 
 export type SsoIntent = "login" | "join" | "link" | "link-corp";
 
-/** Advisory lock id that serialises provisioning (first-admin bootstrap, linking). */
-const PROVISION_LOCK = 727_275;
+export type ProvisionErrorCode = "signInFirst" | "linkedElsewhere" | "disabled" | "notMember";
 
 export class ProvisionError extends Error {
-  constructor(message: string) {
+  constructor(
+    readonly code: ProvisionErrorCode,
+    message: string,
+  ) {
     super(message);
     this.name = "ProvisionError";
   }
@@ -41,7 +48,7 @@ type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
  * Removes a character whose EVE account changed (sold or transferred) from its
  * previous Keystar account. An account left without characters is retired:
  * disabled and signed out everywhere, so the previous owner can't keep using an
- * existing session. It keeps its role, so a former admin still counts for the
+ * existing session. The account itself stays, so it still counts for the
  * first-user bootstrap and a newcomer can't become admin that way.
  */
 export async function detachTransferredCharacter(
@@ -51,10 +58,25 @@ export async function detachTransferredCharacter(
   opts: { keepAccount: boolean },
 ): Promise<{ retired: boolean }> {
   await tx.delete(characters).where(eq(characters.characterId, characterId));
-  // Wallet history and mail imported for the previous owner are theirs, not the new owner's.
+  // Wallet history, mail and industry jobs imported for the previous owner are theirs, not the new owner's.
+  await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
   await tx
     .delete(walletTransactions)
     .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, previousUserId)));
+  await tx.delete(walletFees).where(and(eq(walletFees.characterId, characterId), eq(walletFees.userId, previousUserId)));
+  await tx
+    .update(syncJobs)
+    .set({ meta: null })
+    .where(
+      and(
+        eq(syncJobs.ownerType, "character"),
+        eq(syncJobs.ownerId, characterId),
+        inArray(syncJobs.jobKey, ["wallet.character-transactions", "wallet.character-fees"]),
+      ),
+    );
+  await tx
+    .delete(miningPnlFeeOverrides)
+    .where(and(eq(miningPnlFeeOverrides.characterId, characterId), eq(miningPnlFeeOverrides.userId, previousUserId)));
   await tx.delete(mailMessages).where(and(eq(mailMessages.characterId, characterId), eq(mailMessages.userId, previousUserId)));
   await tx.delete(mailLabels).where(and(eq(mailLabels.characterId, characterId), eq(mailLabels.userId, previousUserId)));
   await tx.delete(mailLists).where(and(eq(mailLists.characterId, characterId), eq(mailLists.userId, previousUserId)));
@@ -82,8 +104,12 @@ export interface ProvisionResult {
   characterId: number;
   createdUser: boolean;
   role: Role;
+  /** The character wasn't on this account before (a new link or a first sign-in). */
+  newCharacter: boolean;
   /** Opt-in scopes the character held before this login but EVE didn't grant again. */
   lostOptionalScopes: string[];
+  /** Opt-in scopes this login granted that the character didn't use before. */
+  addedOptionalScopes: string[];
 }
 
 /**
@@ -99,7 +125,7 @@ export async function provisionFromSso(params: {
 }): Promise<ProvisionResult> {
   const { verified, tokens, intent, currentUserId } = params;
   const linking = intent === "link" || intent === "link-corp";
-  if (linking && !currentUserId) throw new ProvisionError("Sign in before linking another character.");
+  if (linking && !currentUserId) throw new ProvisionError("signInFirst", "Sign in before linking another character.");
 
   const pub = await getEsi().get<{ corporation_id: number; alliance_id?: number }>(`/characters/${verified.characterId}`);
   const corporationId = pub.data.corporation_id;
@@ -111,11 +137,37 @@ export async function provisionFromSso(params: {
   await ensureNames([verified.characterId, corporationId, ...(allianceId ? [allianceId] : [])]);
 
   const db = getDb();
-  const result = await db.transaction(async (tx) => {
+  const transaction = db.transaction(async (tx) => {
     // Serialise sign-ins so two simultaneous first logins can't both become admin;
-    // the admin count below is read after the lock, so it sees the other commit.
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(${PROVISION_LOCK})`);
+    // the user count below is read after the lock, so it sees the other commit.
+    await lockUsers(tx);
     const [existing] = await tx.select().from(characters).where(eq(characters.characterId, verified.characterId));
+    const owned = existing && existing.ownerHash === verified.ownerHash ? existing : undefined;
+
+    // Only the very first account is bootstrapped as admin. Counting admins instead would hand admin to the
+    // next sign-in, whoever that is, if the last admin were ever demoted.
+    const [anyUser] = await tx.select({ id: users.id }).from(users).limit(1);
+    const homeCorp = homeCorporationId
+      ? (await tx.select().from(eveCorporations).where(eq(eveCorporations.corporationId, homeCorporationId)))[0]
+      : undefined;
+    const policyInput = {
+      characterId: verified.characterId,
+      corporationId,
+      allianceId,
+      adminCharacterIds: env().ADMIN_CHARACTER_IDS,
+      hasUsers: Boolean(anyUser),
+      homeCorporationId,
+      homeAllianceId: homeCorp?.allianceId ?? null,
+      autoApproveCorpMembers: settings["access.autoApproveCorpMembers"],
+      autoApproveAllianceMembers: settings["access.autoApproveAllianceMembers"],
+    };
+    const policy = policyRole(policyInput);
+
+    // Checked before the account, character or token is touched, so a refused sign-in creates none of them. The
+    // corporation and name lookups above only fill shared caches (and give us the home alliance to check against).
+    if (!linking && !owned && !mayRegister(policyInput, settings["access.restrictToMembers"])) {
+      throw new ProvisionError("notMember", `${verified.name} is not a member of this corporation.`);
+    }
 
     if (existing && existing.ownerHash !== verified.ownerHash) {
       // The character was sold/transferred: the old account loses it entirely.
@@ -123,33 +175,13 @@ export async function provisionFromSso(params: {
       const { retired } = await detachTransferredCharacter(tx, verified.characterId, existing.userId, {
         keepAccount: linking && existing.userId === currentUserId,
       });
-      await audit({
+      await auditInTx(tx, {
         action: "character.transferred",
         targetType: "character",
         targetId: verified.characterId,
         details: { previousUserId: existing.userId, name: verified.name, previousAccountRetired: retired },
       });
     }
-    const owned = existing && existing.ownerHash === verified.ownerHash ? existing : undefined;
-
-    const [{ count: adminCount }] = await tx
-      .select({ count: sql<number>`count(*)::int` })
-      .from(users)
-      .where(eq(users.role, "admin"));
-    const homeCorp = homeCorporationId
-      ? (await tx.select().from(eveCorporations).where(eq(eveCorporations.corporationId, homeCorporationId)))[0]
-      : undefined;
-    const policy = policyRole({
-      characterId: verified.characterId,
-      corporationId,
-      allianceId,
-      adminCharacterIds: env().ADMIN_CHARACTER_IDS,
-      hasAdmin: adminCount > 0,
-      homeCorporationId,
-      homeAllianceId: homeCorp?.allianceId ?? null,
-      autoApproveCorpMembers: settings["access.autoApproveCorpMembers"],
-      autoApproveAllianceMembers: settings["access.autoApproveAllianceMembers"],
-    });
 
     let userId: string;
     let createdUser = false;
@@ -157,7 +189,7 @@ export async function provisionFromSso(params: {
 
     if (linking) {
       if (owned && owned.userId !== currentUserId) {
-        throw new ProvisionError(`${verified.name} is already linked to another Keystar account.`);
+        throw new ProvisionError("linkedElsewhere", `${verified.name} is already linked to another Keystar account.`);
       }
       userId = currentUserId!;
       const [u] = await tx.select().from(users).where(eq(users.id, userId));
@@ -165,10 +197,10 @@ export async function provisionFromSso(params: {
     } else if (owned) {
       userId = owned.userId;
       const [u] = await tx.select().from(users).where(eq(users.id, userId));
-      if (u.isDisabled) throw new ProvisionError("This account has been disabled by an administrator.");
+      if (u.isDisabled) throw new ProvisionError("disabled", "This account has been disabled by an administrator.");
       role = reconcileRole(u.role, policy);
       if (role !== u.role) {
-        await audit({
+        await auditInTx(tx, {
           action: "user.role.auto",
           targetType: "user",
           targetId: userId,
@@ -207,17 +239,21 @@ export async function provisionFromSso(params: {
       });
 
     let lostOptionalScopes: string[] = [];
+    let addedOptionalScopes: string[] = [];
     if (verified.scopes.length > 0) {
       // EVE replaces a token's scopes on every login: note opt-in scopes this login dropped.
       const [previous] = owned
         ? await tx.select({ scopes: esiTokens.scopes }).from(esiTokens).where(eq(esiTokens.characterId, verified.characterId))
         : [];
       lostOptionalScopes = optionalScopes().filter((s) => previous?.scopes.includes(s) && !verified.scopes.includes(s));
+      addedOptionalScopes = optionalScopes().filter((s) => verified.scopes.includes(s) && !previous?.scopes.includes(s));
       const tokenValues = {
         refreshTokenEnc: encryptToken(tokens.refresh_token),
         accessTokenEnc: encryptToken(tokens.access_token),
         accessTokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000),
         scopes: verified.scopes,
+        // A fresh EVE consent replaces in-app switches: the token now holds exactly what was asked for.
+        disabledScopes: [],
         status: "active" as const,
         lastError: null,
         lastRefreshedAt: new Date(),
@@ -239,7 +275,28 @@ export async function provisionFromSso(params: {
       })
       .where(eq(users.id, userId));
 
-    return { userId, characterId: verified.characterId, createdUser, role, lostOptionalScopes };
+    return {
+      userId,
+      characterId: verified.characterId,
+      createdUser,
+      role,
+      newCharacter: owned?.userId !== userId,
+      lostOptionalScopes,
+      addedOptionalScopes,
+    };
+  });
+  const result = await transaction.catch(async (err: unknown) => {
+    // The refusal rolled the transaction back; record who tried so admins can see it.
+    if (err instanceof ProvisionError && err.code === "notMember") {
+      await audit({
+        actorName: verified.name,
+        action: "user.registration.blocked",
+        targetType: "character",
+        targetId: verified.characterId,
+        details: { intent, corporationId, allianceId },
+      });
+    }
+    throw err;
   });
 
   // The first admin's corporation becomes the home corporation if none is configured.

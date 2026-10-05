@@ -4,19 +4,37 @@ import { classifyOre, oreClassSqlCase } from "@/core/eve/ore";
 import { compact } from "@/lib/format";
 import { chartClassOf, toChartClasses } from "@/modules/mining/class-colors";
 import { DATE_PRESETS, daysBetween, isValidIsoDate, miningQueryString, parseMiningFilters } from "@/modules/mining/filters";
+import { groupLedgerByDay } from "@/modules/mining/ledger-groups";
+import { miningScope, type LedgerRow } from "@/modules/mining/queries";
 
 describe("mining filters", () => {
   const today = "2026-10-02";
 
   it("defaults to the last 30 days, combined source, ISK", () => {
     const f = parseMiningFilters({}, today);
-    expect(f).toMatchObject({ from: "2026-09-03", to: today, source: "all", metric: "value", groupBy: "user", page: 1 });
+    expect(f).toMatchObject({
+      from: "2026-09-03",
+      to: today,
+      source: "all",
+      metric: "value",
+      groupBy: "user",
+      view: "corp",
+      page: 1,
+    });
     expect(daysBetween(f.from, f.to)).toBe(30);
   });
 
   it("parses lists, swaps reversed ranges and drops junk", () => {
     const f = parseMiningFilters(
-      { from: "2026-09-30", to: "2026-09-01", chars: "1,2,x,2", classes: "moon_r4,bogus", source: "observer", page: "-3" },
+      {
+        from: "2026-09-30",
+        to: "2026-09-01",
+        chars: "1,2,x,2",
+        classes: "moon_r4,bogus",
+        source: "observer",
+        view: "everyone",
+        page: "-3",
+      },
       today,
     );
     expect(f.from).toBe("2026-09-01");
@@ -24,6 +42,7 @@ describe("mining filters", () => {
     expect(f.characters).toEqual([1, 2]);
     expect(f.classes).toEqual(["moon_r4"]);
     expect(f.source).toBe("observer");
+    expect(f.view).toBe("corp");
     expect(f.page).toBe(1);
   });
 
@@ -37,15 +56,35 @@ describe("mining filters", () => {
   });
 
   it("round-trips through the query string", () => {
-    const f = parseMiningFilters({ chars: "5", types: "1230", systems: "30000180", metric: "volume", by: "character" }, today);
+    const f = parseMiningFilters(
+      { chars: "5", types: "1230", systems: "30000180", metric: "volume", by: "character", view: "own" },
+      today,
+    );
     const again = parseMiningFilters(Object.fromEntries(new URLSearchParams(miningQueryString(f))), today);
     expect(again).toEqual(f);
+  });
+
+  it("narrows corporation access to the viewer's characters in the own view", () => {
+    const viewer = { can: (perm: string) => perm === "mining.view.corp", characterIds: [1, 4] };
+    expect(miningScope(viewer, 100)).toEqual({ corp: true, ownCharacterIds: [1, 4], homeCorporationId: 100 });
+    expect(miningScope(viewer, 100, "own").corp).toBe(false);
+    expect(miningScope(viewer, null, "corp").corp).toBe(false);
+    const member = { can: () => false, characterIds: [2] };
+    expect(miningScope(member, 100, "corp").corp).toBe(false);
   });
 
   it("computes presets in EVE (UTC) days", () => {
     const lm = DATE_PRESETS.find((p) => p.id === "lm")!.range(today);
     expect(lm).toEqual({ from: "2026-09-01", to: "2026-09-30" });
     expect(DATE_PRESETS.find((p) => p.id === "ytd")!.range(today).from).toBe("2026-01-01");
+  });
+
+  it("computes single-day presets across month and year boundaries", () => {
+    const range = (id: string, t: string) => DATE_PRESETS.find((p) => p.id === id)!.range(t);
+    expect(range("today", "2026-03-01")).toEqual({ from: "2026-03-01", to: "2026-03-01" });
+    expect(range("yesterday", "2026-03-01")).toEqual({ from: "2026-02-28", to: "2026-02-28" });
+    expect(range("today", "2026-01-01")).toEqual({ from: "2026-01-01", to: "2026-01-01" });
+    expect(range("yesterday", "2026-01-01")).toEqual({ from: "2025-12-31", to: "2025-12-31" });
   });
 });
 
@@ -115,5 +154,46 @@ describe("formatting", () => {
     expect(compact(32_400_000)).toBe("32.4M");
     expect(compact(149_000_000)).toBe("149M");
     expect(compact(999)).toBe("999");
+  });
+});
+
+describe("ledger day groups", () => {
+  const row = (date: string, characterId: number, value: number): LedgerRow => ({
+    date,
+    source: "personal",
+    characterId,
+    characterName: `C${characterId}`,
+    ownerName: null,
+    typeId: 1230,
+    typeName: "Veldspar",
+    oreClass: "ore",
+    systemId: 30000142,
+    systemName: "Jita",
+    security: 0.9,
+    observerName: null,
+    quantity: value,
+    volume: value / 10,
+    unitPrice: 1,
+    value,
+  });
+
+  it("groups contiguous days in order and keeps whole-day totals for a day split across pages", () => {
+    const rows = [row("2026-10-02", 1, 30), row("2026-10-02", 2, 20), row("2026-10-01", 1, 10)];
+    const dayTotals = [
+      { date: "2026-10-02", entries: 2, characters: 2, quantity: 50, volume: 5, value: 50 },
+      { date: "2026-10-01", entries: 5, characters: 3, quantity: 90, volume: 9, value: 90 },
+    ];
+    const groups = groupLedgerByDay(rows, dayTotals);
+    expect(groups.map((g) => [g.date, g.rows.length])).toEqual([
+      ["2026-10-02", 2],
+      ["2026-10-01", 1],
+    ]);
+    expect(groups[1].totals.entries).toBe(5);
+    expect(groups[1].totals.value).toBe(90);
+  });
+
+  it("falls back to the page's rows when a day's totals are missing or stale", () => {
+    const groups = groupLedgerByDay([row("2026-10-02", 1, 30), row("2026-10-02", 1, 20)], []);
+    expect(groups[0].totals).toEqual({ date: "2026-10-02", entries: 2, characters: 1, quantity: 50, volume: 5, value: 50 });
   });
 });

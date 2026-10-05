@@ -35,7 +35,7 @@ export const DEEP_TARGET_DAYS = 30;
 export const DEEP_MAX_PAGES = 3;
 
 /** Bump when the profile shape or its derivation changes. */
-export const PROFILE_VERSION = 2;
+export const PROFILE_VERSION = 3;
 
 /** Worker: seconds of zKillboard work per run, and retries per pilot. */
 export const WORKER_BUDGET_MS = 40_000;

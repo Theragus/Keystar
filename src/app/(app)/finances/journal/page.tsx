@@ -125,7 +125,7 @@ export default async function WalletJournalPage({ searchParams }: PageProps<"/fi
               </table>
             </div>
             {pages > 1 && (
-              <nav className="flex items-center justify-end gap-2 border-t border-white/6 px-5 py-3" aria-label={j.pagination}>
+              <nav className="flex items-center justify-end gap-2 border-t border-surface-contrast/6 px-5 py-3" aria-label={j.pagination}>
                 <Link
                   href={pageLink(Math.max(1, filters.page - 1))}
                   aria-disabled={filters.page <= 1}

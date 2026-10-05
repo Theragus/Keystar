@@ -1,5 +1,6 @@
 import type { Role } from "@/core/rbac/roles";
 import type { DatePresetId } from "@/lib/dates";
+import type { WormholeClass } from "@/core/eve/systems";
 import { FORMATTERS } from "@/lib/format";
 
 const n = FORMATTERS.en.integer;
@@ -27,6 +28,8 @@ export const common = {
     admin: { label: "Admin", description: "Full control, including application settings and admin assignments." },
   } satisfies Record<Role, { label: string; description: string }>,
   datePresets: {
+    today: "Today",
+    yesterday: "Yesterday",
     "7d": "7 days",
     "30d": "30 days",
     "90d": "90 days",
@@ -40,6 +43,25 @@ export const common = {
     to: "To",
     apply: "Apply range",
   },
+  systemPicker: {
+    loading: "Loading systems…",
+    noMatches: "No system by that name yet — it is looked up when you scan",
+    empty: "The system list is still loading in the background; type the name",
+    failed: "Could not load the system list; type the name",
+    wormhole: "W-space",
+    /** Short tag for a wormhole system's class, read from its region. */
+    wormholeClass: {
+      c1: "C1",
+      c2: "C2",
+      c3: "C3",
+      c4: "C4",
+      c5: "C5",
+      c6: "C6",
+      thera: "Thera",
+      c13: "C13",
+      drifter: "Drifter",
+    } satisfies Record<WormholeClass, string>,
+  },
   multiSelect: {
     all: "All",
     search: (label: string) => `Search ${label.toLowerCase()}…`,
@@ -49,6 +71,12 @@ export const common = {
     noMatches: "No matches",
     selected: (count: number) => `${n(count)} selected`,
     apply: (count: number) => (count ? `Apply (${n(count)})` : "Apply"),
+  },
+  /** Toast notifications in the top-right corner. */
+  toast: {
+    region: "Notifications",
+    close: "Dismiss notification",
+    undo: "Undo",
   },
   delta: {
     vs: (period: string) => `vs ${period}`,

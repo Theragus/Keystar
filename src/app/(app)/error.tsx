@@ -13,7 +13,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
         icon={TriangleAlert}
         title={t.common.error.title}
         action={
-          <button type="button" onClick={reset} className="glass-chip rounded-full px-4 py-2 text-sm hover:bg-white/10">
+          <button type="button" onClick={reset} className="glass-chip rounded-full px-4 py-2 text-sm hover:bg-surface-contrast/10">
             {t.common.error.retry}
           </button>
         }

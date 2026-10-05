@@ -10,7 +10,7 @@ export function LabelDot({ color, title, className }: { color: string | null; ti
     <span
       title={title}
       aria-hidden={title ? undefined : true}
-      className={cn("inline-block size-2.5 shrink-0 rounded-full ring-1 ring-white/25", !color && "bg-white/15", className)}
+      className={cn("inline-block size-2.5 shrink-0 rounded-full ring-1 ring-surface-contrast/25", !color && "bg-surface-contrast/15", className)}
       style={color ? { backgroundColor: color } : undefined}
     />
   );

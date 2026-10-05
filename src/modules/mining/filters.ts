@@ -10,6 +10,8 @@ export { addDays, DATE_PRESETS, daysBetween, isoDate, isValidIsoDate, type DateP
 export type MiningSource = "all" | "personal" | "observer";
 export type MiningMetric = "value" | "volume" | "quantity";
 export type MiningGroupBy = "user" | "character";
+/** Whose mining a viewer with corporation access looks at; everyone else always sees their own. */
+export type MiningView = "corp" | "own";
 
 export interface MiningFilters {
   from: string;
@@ -21,6 +23,7 @@ export interface MiningFilters {
   source: MiningSource;
   metric: MiningMetric;
   groupBy: MiningGroupBy;
+  view: MiningView;
   page: number;
 }
 
@@ -59,6 +62,7 @@ export function parseMiningFilters(params: RawParams, today: string = isoDate(ne
   const source = first(params.source);
   const metric = first(params.metric);
   const groupBy = first(params.by);
+  const view = first(params.view);
   const classes = (first(params.classes) ?? "").split(",").filter(isOreClass);
   const page = Math.max(1, Math.min(10_000, Math.floor(Number(first(params.page))) || 1));
 
@@ -72,6 +76,7 @@ export function parseMiningFilters(params: RawParams, today: string = isoDate(ne
     source: source === "personal" || source === "observer" ? source : "all",
     metric: metric === "volume" || metric === "quantity" ? metric : "value",
     groupBy: groupBy === "character" ? "character" : "user",
+    view: view === "own" ? "own" : "corp",
     page,
   };
 }
@@ -89,6 +94,7 @@ export function miningQueryString(f: MiningFilters, overrides: Partial<MiningFil
   if (v.source !== "all") p.set("source", v.source);
   if (v.metric !== "value") p.set("metric", v.metric);
   if (v.groupBy !== "user") p.set("by", v.groupBy);
+  if (v.view !== "corp") p.set("view", v.view);
   if (v.page > 1) p.set("page", String(v.page));
   return p.toString();
 }

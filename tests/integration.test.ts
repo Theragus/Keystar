@@ -4,7 +4,7 @@
  *   TEST_DATABASE_URL=postgres://keystar:keystar@localhost:5432/keystar_test pnpm test
  */
 import { sql } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const enabled = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -14,11 +14,13 @@ describe.skipIf(!enabled)("integration", async () => {
   const q = await import("@/modules/mining/queries");
   const { parseMiningFilters } = await import("@/modules/mining/filters");
   const scheduler = await import("@/core/sync/scheduler");
-  const { EsiClient } = await import("@/core/esi/client");
+  const { EsiClient, EsiError } = await import("@/core/esi/client");
 
   const db = () => getDb();
   const filters = (extra: Record<string, string> = {}) =>
     parseMiningFilters({ from: "2026-09-01", to: "2026-09-30", ...extra }, "2026-10-02");
+  const { parseIndustryFilters } = await import("@/modules/industry/filters");
+  const industry_filters = () => parseIndustryFilters({ state: "all" });
   const corp = { corp: true, ownCharacterIds: [] as number[], homeCorporationId: 100 };
   const own = (ids: number[]) => ({ corp: false, ownCharacterIds: ids, homeCorporationId: 100 });
   const val = { source: "jita_buy" as const, mode: "current" as const };
@@ -35,14 +37,16 @@ describe.skipIf(!enabled)("integration", async () => {
 
   beforeEach(async () => {
     await db().execute(sql`TRUNCATE users, characters, esi_tokens, sessions, eve_types, eve_groups, eve_systems,
-      eve_entities, type_values, type_value_history, mining_character_ledger, mining_observer_ledger, mining_observers,
-      sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, esi_cache,
+      eve_entities, type_values, type_value_history, market_prices, price_interest, mining_character_ledger,
+      mining_observer_ledger, mining_observers, sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, esi_cache,
       fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
-      intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, mining_activity,
+      intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, wallet_fees, mining_activity,
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
-      mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
+      mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
       corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists,
-      corporation_members RESTART IDENTITY CASCADE`);
+      corporation_members, skills_queue, skills_character_skills, skills_character, skills_type_attributes,
+      industry_jobs, industry_locations
+      RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
     userA = a.id;
@@ -129,6 +133,25 @@ describe.skipIf(!enabled)("integration", async () => {
       // The owner still sees their own character, whatever its corporation.
       const mine = await q.getMiningSummary(filters({ source: "personal" }), own([1, 4]), val);
       expect(mine.current.value).toBe(1000 * 10 + 7000 * 10);
+
+      // A viewer with corporation access finds that alt in the "My characters" view only.
+      const viewer = { can: (perm: string) => perm === "mining.view.corp", characterIds: [1, 4] };
+      const corpScope = q.miningScope(viewer, 100);
+      expect(corpScope.corp).toBe(true);
+      const ownScope = q.miningScope(viewer, 100, "own");
+      expect(ownScope.corp).toBe(false);
+      const ownView = await q.getMiningSummary(filters({ source: "personal", view: "own" }), ownScope, val);
+      expect(ownView.current.value).toBe(1000 * 10 + 7000 * 10);
+      const ownOptions = await q.getFilterOptions(ownScope);
+      expect(ownOptions.characters.map((c) => c.id)).toContain(4);
+
+      // Refinery systems are offered in the own view only where the viewer's characters mined.
+      await db().insert(schema.eveSystems).values({ systemId: 30000181, name: "Tama", securityStatus: 0.28 });
+      await db().update(schema.miningObservers).set({ solarSystemId: 30000181 }).where(sql`observer_id = 88`);
+      await db().insert(schema.miningObserverLedger).values({ observerId: 88, corporationId: 200, characterId: 4, recordedCorporationId: 200, date: "2026-09-13", typeId: 45490, quantity: 1 });
+      expect(ownOptions.systems.map((s) => s.id)).not.toContain(30000181);
+      expect((await q.getFilterOptions(ownScope)).systems.map((s) => s.id)).toContain(30000181);
+      expect((await q.getFilterOptions(own([2]))).systems.map((s) => s.id)).not.toContain(30000181);
     });
 
     it("shows no corporation-wide data until a home corporation is set", async () => {
@@ -183,6 +206,12 @@ describe.skipIf(!enabled)("integration", async () => {
       }
       expect(keys).toHaveLength(4);
       expect(new Set(keys).size).toBe(4);
+      // The ledger's day groups: entry counts add up to the row count, values to the summary.
+      const days = await q.getLedgerDayTotals(filters(), corp, val);
+      expect(days.reduce((s, d) => s + d.entries, 0)).toBe(4);
+      expect(days.map((d) => d.date)).toEqual([...days.map((d) => d.date)].sort().reverse());
+      const summary = await q.getMiningSummary(filters(), corp, val);
+      expect(days.reduce((s, d) => s + d.value, 0)).toBeCloseTo(summary.current.value);
       const observers = await q.getObserverSummaries(filters(), val, 100);
       expect(observers[0].name).toBe("Osmon Athanor");
       expect(observers[0].foreignMiners).toBe(1);
@@ -204,6 +233,26 @@ describe.skipIf(!enabled)("integration", async () => {
       const { detachTransferredCharacter } = await import("@/core/auth/provision");
       await createSession(userA);
       await createSession(userB);
+      // Industry jobs are the installer's own data: they go with the character, like wallet history and mail.
+      const job = (jobId: number, characterId: number) => ({
+        jobId,
+        characterId,
+        installerId: characterId,
+        locationId: 60003760,
+        facilityId: 60003760,
+        activityId: 1,
+        activity: "manufacturing" as const,
+        blueprintId: 1,
+        blueprintTypeId: 787,
+        blueprintLocationId: 60003760,
+        outputLocationId: 60003760,
+        runs: 1,
+        duration: 3600,
+        status: "active" as const,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 3600_000),
+      });
+      await db().insert(schema.industryJobs).values([job(1, 1), job(2, 3)]);
 
       // Bravo keeps an alt: the account stays active and the alt becomes main.
       const bravo = await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB, { keepAccount: false }));
@@ -220,6 +269,7 @@ describe.skipIf(!enabled)("integration", async () => {
       const remaining = await db().select().from(schema.sessions);
       expect(remaining.map((r) => r.userId)).toEqual([userB]);
       expect((await db().select().from(schema.characters)).map((c) => c.characterId)).toEqual([3]);
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([2]);
     });
 
     it("keeps the account when it links a transferred character back to itself", async () => {
@@ -250,6 +300,197 @@ describe.skipIf(!enabled)("integration", async () => {
       revoked.mockRestore();
       [row] = await db().select().from(schema.esiTokens);
       expect(row.status).toBe("invalid");
+    });
+  });
+
+  describe("user management", () => {
+    const roles = async () =>
+      Object.fromEntries((await db().select().from(schema.users)).map((u) => [u.id, u.role]));
+    const makeAdmins = () => db().update(schema.users).set({ role: "admin" });
+
+    it("never lets two admins demote each other at the same time", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await makeAdmins();
+      const results = await Promise.allSettled([
+        changeUserAccess(userA, userB, { role: "director" }),
+        changeUserAccess(userB, userA, { role: "director" }),
+      ]);
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(Object.values(await roles()).sort()).toEqual(["admin", "director"]);
+    });
+
+    it("judges the actor by their role and status at the time of the change", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await makeAdmins();
+      await changeUserAccess(userA, userB, { role: "director" });
+      // Bravo's request was authorised while still an admin; by now Bravo is a director.
+      await expect(changeUserAccess(userB, userA, { role: "member" })).rejects.toThrow(/below your own role/);
+      expect(await roles()).toEqual({ [userA]: "admin", [userB]: "director" });
+
+      await db().update(schema.users).set({ role: "admin" });
+      await changeUserAccess(userA, userB, { isDisabled: true });
+      await expect(changeUserAccess(userB, userA, { isDisabled: true })).rejects.toThrow(/permission/);
+      const [a] = await db().select().from(schema.users).where(sql`id = ${userA}`);
+      expect(a.isDisabled).toBe(false);
+    });
+
+    it("re-checks users.manage, so a manager demoted mid-request can't approve a guest", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await db().update(schema.users).set({ role: "member" }).where(sql`id = ${userA}`);
+      await db().update(schema.users).set({ role: "guest" }).where(sql`id = ${userB}`);
+      // Alpha was a director when the request was authorised; a member still outranks a guest.
+      await expect(changeUserAccess(userA, userB, { role: "member" }, { onlyFromRole: "guest" })).rejects.toThrow(/permission/);
+      expect((await roles())[userB]).toBe("guest");
+
+      // An override that hands users.manage to members is honoured: a member may disable a guest.
+      const { setSetting } = await import("@/core/settings");
+      await setSetting("permissions.overrides", { "users.manage": "member" });
+      await changeUserAccess(userA, userB, { isDisabled: true });
+      const [b] = await db().select().from(schema.users).where(sql`id = ${userB}`);
+      expect(b.isDisabled).toBe(true);
+    });
+
+    it("signs a user out everywhere when disabling them", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      const { createSession } = await import("@/core/auth/session");
+      await db().update(schema.users).set({ role: "admin" }).where(sql`id = ${userA}`);
+      await createSession(userA);
+      await createSession(userB);
+      await changeUserAccess(userA, userB, { isDisabled: true });
+      expect((await db().select().from(schema.sessions)).map((r) => r.userId)).toEqual([userA]);
+    });
+
+    it("writes the audit entry with the change, and keeps neither when the entry can't be written", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await db().update(schema.users).set({ role: "admin" }).where(sql`id = ${userA}`);
+      await db().update(schema.users).set({ role: "member" }).where(sql`id = ${userB}`);
+      const entry = (from: string) => ({ action: "user.role.changed", targetType: "user", targetId: userB, details: { from } });
+      await changeUserAccess(userA, userB, { role: "director" }, { audit: entry });
+      const logged = await db().select().from(schema.auditLog).where(sql`target_id = ${userB}`);
+      expect(logged.map((r) => [r.action, r.details])).toEqual([["user.role.changed", { from: "member" }]]);
+
+      // An actor id that isn't a user fails the audit insert's foreign key, so the role change rolls back.
+      await expect(
+        changeUserAccess(userA, userB, { role: "member" }, { audit: () => ({ actorUserId: crypto.randomUUID(), action: "user.role.changed" }) }),
+      ).rejects.toThrow();
+      expect((await roles())[userB]).toBe("director");
+    });
+
+    it("only approves users who are still guests", async () => {
+      const { changeUserAccess } = await import("@/core/auth/manage-users");
+      await db().update(schema.users).set({ role: "admin" }).where(sql`id = ${userA}`);
+      await db().update(schema.users).set({ role: "director" }).where(sql`id = ${userB}`);
+      const result = await changeUserAccess(userA, userB, { role: "member" }, { onlyFromRole: "guest" });
+      expect(result).toEqual({ from: "director", changed: false });
+      expect((await roles())[userB]).toBe("director");
+    });
+
+    it("makes only the very first account admin, not the next sign-in after the last admin is gone", async () => {
+      const { provisionFromSso } = await import("@/core/auth/provision");
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) =>
+          reply(path.startsWith("/corporations/") ? { name: "Elsewhere", ticker: "ELSE", member_count: 3 } : { corporation_id: 200 }),
+        ) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      const signIn = (characterId: number) =>
+        provisionFromSso({
+          verified: { characterId, name: `Pilot ${characterId}`, ownerHash: `h${characterId}`, scopes: [], expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent: "login",
+          currentUserId: null,
+        });
+      try {
+        // Alpha and Bravo exist, but neither is an admin.
+        expect((await signIn(50)).role).toBe("guest");
+        await db().execute(sql`TRUNCATE users, characters RESTART IDENTITY CASCADE`);
+        expect((await signIn(51)).role).toBe("admin");
+        // The first admin's corporation became the home corporation, so a corp mate is auto-approved.
+        expect((await signIn(52)).role).toBe("member");
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
+    });
+
+    it("gives outsiders no account while sign-ups are restricted to members", async () => {
+      const { provisionFromSso, ProvisionError } = await import("@/core/auth/provision");
+      const { setSetting } = await import("@/core/settings");
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const corpOf: Record<number, number> = { 1: 100, 60: 200, 61: 200 };
+      const getSpy = vi.spyOn(getEsi(), "get").mockImplementation(async (path: string) => {
+        if (path.startsWith("/corporations/")) return reply({ name: "Corp", ticker: "CORP", member_count: 3 });
+        return reply({ corporation_id: corpOf[Number(path.split("/")[2])] });
+      }) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      const signIn = (characterId: number, intent: "login" | "link" = "login", currentUserId: string | null = null) =>
+        provisionFromSso({
+          verified: { characterId, name: `Pilot ${characterId}`, ownerHash: `h${characterId}`, scopes: [], expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent,
+          currentUserId,
+        });
+      try {
+        await setSetting("corp.homeCorporationId", 100);
+        // An outsider who registered before the switch keeps signing in as a guest.
+        expect((await signIn(60)).role).toBe("guest");
+        await setSetting("access.restrictToMembers", true);
+        expect((await signIn(60)).role).toBe("guest");
+
+        const refused = await signIn(61).catch((err: unknown) => err);
+        expect(refused).toBeInstanceOf(ProvisionError);
+        expect((refused as InstanceType<typeof ProvisionError>).code).toBe("notMember");
+        expect(await db().select().from(schema.characters).where(sql`character_id = 61`)).toEqual([]);
+        // audit_log isn't truncated between tests, so look for this attempt specifically.
+        const blocked = await db()
+          .select()
+          .from(schema.auditLog)
+          .where(sql`action = 'user.registration.blocked' AND target_id = '61'`);
+        expect(blocked.length).toBeGreaterThan(0);
+
+        // Members still sign in, and alts outside the corporation can still be linked to an account.
+        expect((await signIn(1)).userId).toBe(userA);
+        expect((await signIn(61, "link", userA)).userId).toBe(userA);
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
+    });
+
+    it("finds enabled guests with no character in the home corporation or its alliance", async () => {
+      const { outsideGuestIds } = await import("@/core/auth/manage-users");
+      const { setSetting } = await import("@/core/settings");
+      const guest = async (characterId: number, corporationId: number, allianceId: number | null = null) => {
+        const [u] = await db().insert(schema.users).values({ role: "guest", mainCharacterId: characterId }).returning();
+        await db()
+          .insert(schema.characters)
+          .values({ characterId, userId: u.id, name: `Pilot ${characterId}`, corporationId, allianceId, ownerHash: `h${characterId}` });
+        return u.id;
+      };
+      const outsider = await guest(70, 200);
+      const allied = await guest(71, 300, 500);
+      const withCorpAlt = await guest(72, 200);
+      await db()
+        .insert(schema.characters)
+        .values({ characterId: 73, userId: withCorpAlt, name: "Corp Alt", corporationId: 100, ownerHash: "h73" });
+      const disabled = await guest(74, 200);
+      await db().update(schema.users).set({ isDisabled: true }).where(sql`id = ${disabled}`);
+      // Bravo is an approved member, now outside: approved accounts are left alone.
+      await db().update(schema.characters).set({ corporationId: 200 }).where(sql`user_id = ${userB}`);
+      // eve_corporations isn't truncated between tests.
+      await db()
+        .insert(schema.eveCorporations)
+        .values({ corporationId: 100, name: "Home", ticker: "HOME", allianceId: 500 })
+        .onConflictDoUpdate({ target: schema.eveCorporations.corporationId, set: { allianceId: 500 } });
+
+      expect(await outsideGuestIds()).toEqual([]);
+      await setSetting("corp.homeCorporationId", 100);
+      expect((await outsideGuestIds()).sort()).toEqual([outsider, allied].sort());
+      await setSetting("access.autoApproveAllianceMembers", true);
+      expect(await outsideGuestIds()).toEqual([outsider]);
     });
   });
 
@@ -379,6 +620,82 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(notable).toMatchObject({ killmailId: 1, finalBlowName: "Alpha", value: 100e6 });
     });
 
+    it("hands out live kills and losses stored after the cursor, with what the notification shows", async () => {
+      const q2 = await kb();
+      const { storeKillmails } = await import("@/modules/killboard/sync");
+      // eve_corporations isn't truncated here (other suites leave rows behind): set the two this test reads.
+      await db().execute(sql`DELETE FROM eve_corporations WHERE corporation_id IN (${HOME}, 555)`);
+      await db().insert(schema.eveCorporations).values({ corporationId: 555, name: "Enemy Corp", ticker: "ENMY" });
+      const cursor = q2.parseLiveCursor(await q2.liveCursorNow())!;
+      expect(cursor.id).toBe(0);
+      // The fixture above is older than the live window and was stored before the cursor anyway.
+      expect((await q2.getLiveEvents(HOME, cursor)).events).toEqual([]);
+
+      const recent = new Date(Date.now() - 10 * 60_000).toISOString();
+      await storeKillmails(db(), [
+        // Kill: an outsider landed the final blow, Bravo did the most corp damage.
+        { killmail_id: 11, killmail_time: recent, solar_system_id: 30000180,
+          victim: { character_id: 9, corporation_id: 555, ship_type_id: 622, damage_taken: 900 },
+          attackers: [
+            { character_id: 1, corporation_id: HOME, ship_type_id: 11186, damage_done: 100, final_blow: false },
+            { character_id: 2, corporation_id: HOME, ship_type_id: 17843, damage_done: 500, final_blow: false },
+            { character_id: 8, corporation_id: 888, ship_type_id: 622, damage_done: 300, final_blow: true },
+          ],
+          zkb: { hash: "l11", totalValue: 75e6 } },
+        // Loss: Bravo's ship, killed by the outsider.
+        { killmail_id: 12, killmail_time: recent, solar_system_id: 30000181,
+          victim: { character_id: 2, corporation_id: HOME, ship_type_id: 17843, damage_taken: 5000 },
+          attackers: [{ character_id: 9, corporation_id: 555, ship_type_id: 622, damage_done: 5000, final_blow: true }],
+          zkb: { hash: "l12", totalValue: 40e6, solo: true } },
+        // Someone else's fight, and a corp kill too old to announce.
+        { killmail_id: 13, killmail_time: recent, solar_system_id: 30000180,
+          victim: { character_id: 7, corporation_id: 777, ship_type_id: 622, damage_taken: 1 },
+          attackers: [{ character_id: 8, corporation_id: 888, ship_type_id: 622, damage_done: 1, final_blow: true }],
+          zkb: { hash: "l13", totalValue: 1e9 } },
+        { killmail_id: 14, killmail_time: at("2026-09-01T12:00:00"), solar_system_id: 30000180,
+          victim: { character_id: 9, corporation_id: 555, ship_type_id: 622, damage_taken: 1 },
+          attackers: [{ character_id: 1, corporation_id: HOME, ship_type_id: 622, damage_done: 1, final_blow: true }],
+          zkb: { hash: "l14", totalValue: 1e9 } },
+      ] as never);
+
+      const live = await q2.getLiveEvents(HOME, cursor);
+      expect(live.events).toEqual([
+        expect.objectContaining({
+          killmailId: 11, kind: "kill", shipTypeId: 622, victimId: 9, victimName: "Outsider", victimTicker: "ENMY",
+          attacker: { characterId: 2, name: "Bravo", ticker: null, shipTypeId: 17843, shipName: null, finalBlow: false },
+          attackerCount: 3, systemName: "Osmon", security: 0.68, value: 75e6,
+        }),
+        expect.objectContaining({
+          killmailId: 12, kind: "loss", shipTypeId: 17843, victimId: 2, victimName: "Bravo",
+          attacker: { characterId: 9, name: "Outsider", ticker: "ENMY", shipTypeId: 622, shipName: null, finalBlow: true },
+          systemName: "Tama", value: 40e6, solo: true,
+        }),
+      ]);
+      const next = q2.parseLiveCursor(live.cursor)!;
+      expect(next.id).toBe(12);
+      expect((await q2.getLiveEvents(HOME, next)).events).toEqual([]);
+
+      // A batch sharing one timestamp, larger than a page: the id in the cursor keeps the rest.
+      await storeKillmails(db(), Array.from({ length: 12 }, (_, i) => ({
+        killmail_id: 100 + i, killmail_time: recent, solar_system_id: 30000180,
+        victim: { character_id: 9, corporation_id: 555, ship_type_id: 622, damage_taken: 1 },
+        attackers: [{ character_id: 1, corporation_id: HOME, ship_type_id: 622, damage_done: 1, final_blow: true }],
+        zkb: { hash: `b${i}`, totalValue: 1 },
+      })) as never);
+      const first = await q2.getLiveEvents(HOME, next);
+      const second = await q2.getLiveEvents(HOME, q2.parseLiveCursor(first.cursor)!);
+      expect([...first.events, ...second.events].map((e) => e.killmailId)).toEqual(Array.from({ length: 12 }, (_, i) => 100 + i));
+    });
+
+    it("accepts only well-formed live cursors that name a real instant", async () => {
+      const { parseLiveCursor } = await kb();
+      expect(parseLiveCursor("2026-10-03T16:01:34.110089Z_42")).toEqual({ at: "2026-10-03T16:01:34.110089Z", id: 42 });
+      expect(parseLiveCursor("2026-10-03T16:01:34Z_0")).toEqual({ at: "2026-10-03T16:01:34Z", id: 0 });
+      for (const bad of ["2026-99-99T00:00:00Z_1", "2026-02-30T00:00:00Z_1", "2026-10-03T16:01:34Z", "now(); DROP", "", null]) {
+        expect(parseLiveCursor(bad)).toBeNull();
+      }
+    });
+
     it("syncs only killmails inside the plan's window", async () => {
       const { syncCorporationKillmails } = await import("@/modules/killboard/sync");
       await db().execute(sql`TRUNCATE killmails, killmail_attackers`);
@@ -446,6 +763,9 @@ describe.skipIf(!enabled)("integration", async () => {
         const orderCalls = fetchSpy.mock.calls.map(([u]) => String(u instanceof Request ? u.url : u)).filter((u) => u.includes("/orders"));
         expect(orderCalls.some((u) => u.includes("type_id=587"))).toBe(true);
         expect(orderCalls.some((u) => u.includes("type_id=34"))).toBe(false);
+        // Both stay in the hourly price job for a while.
+        const interest = await db().select().from(schema.priceInterest);
+        expect(interest.map((r) => r.typeId).sort()).toEqual([34, 587]);
 
         const id = await saveAppraisal(result, { input: "x", pricePercent: 90, userId: userA, userName: "Alpha" });
         const [row] = await db().select().from(schema.appraisals);
@@ -457,12 +777,222 @@ describe.skipIf(!enabled)("integration", async () => {
     });
   });
 
+  describe("ESI failures in appraisal and field estimator", () => {
+    const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+    const outage = () => new EsiError("ESI POST /universe/ids failed: 503", 503, "/universe/ids");
+
+    it("refuses an appraisal when names can't be resolved, and never sends names ESI would reject", async () => {
+      const { appraise, AppraisalUnavailableError } = await import("@/modules/trade/appraisal/appraise");
+      const { getEsi } = await import("@/core/esi");
+      const postSpy = vi.spyOn(getEsi(), "post").mockRejectedValue(outage());
+      try {
+        await expect(appraise("Veldspar x 10\nScordite x 5")).rejects.toBeInstanceOf(AppraisalUnavailableError);
+        // A line too long to be any item name is skipped rather than failing the whole batch.
+        postSpy.mockResolvedValue(reply({}));
+        await appraise(`Scordite x 5\n${"x".repeat(101)}`);
+        const sent = postSpy.mock.lastCall?.[1] as string[];
+        expect(sent).toContain("Scordite");
+        expect(sent.every((n) => n.length <= 100)).toBe(true);
+      } finally {
+        postSpy.mockRestore();
+      }
+    });
+
+    it("refuses an appraisal when a resolved type can't be loaded", async () => {
+      const { appraise, AppraisalUnavailableError } = await import("@/modules/trade/appraisal/appraise");
+      const { getEsi } = await import("@/core/esi");
+      const postSpy = vi.spyOn(getEsi(), "post").mockResolvedValue(reply({ inventory_types: [{ id: 1228, name: "Scordite" }] }));
+      // Only the type lookup fails; pricing would succeed.
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) => {
+          if (path.startsWith("/universe/types/")) throw outage();
+          return reply([]);
+        }) as unknown as { mockRestore: () => void };
+      try {
+        await expect(appraise("Scordite x 5")).rejects.toBeInstanceOf(AppraisalUnavailableError);
+      } finally {
+        postSpy.mockRestore();
+        getSpy.mockRestore();
+      }
+    });
+
+    it("flags ores whose resolved type can't be loaded in the field estimator", async () => {
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userA }) }));
+      const { priceSurveyTypes } = await import("@/modules/mining/estimator/actions");
+      const { getEsi } = await import("@/core/esi");
+      const postSpy = vi.spyOn(getEsi(), "post").mockResolvedValue(reply({ inventory_types: [{ id: 1228, name: "Scordite" }] }));
+      const getSpy = vi.spyOn(getEsi(), "get").mockRejectedValue(outage()) as unknown as { mockRestore: () => void };
+      try {
+        const result = await priceSurveyTypes(["Veldspar", "Scordite"]);
+        expect(result.esiUnavailable).toBe(true);
+        expect(Object.keys(result.prices)).toEqual(["veldspar"]);
+      } finally {
+        postSpy.mockRestore();
+        getSpy.mockRestore();
+        vi.doUnmock("@/core/auth/dal");
+      }
+    });
+
+    it("refuses an appraisal when stale items can't be priced", async () => {
+      const { appraise, AppraisalUnavailableError } = await import("@/modules/trade/appraisal/appraise");
+      const { getEsi } = await import("@/core/esi");
+      // Veldspar has no recent jita_sell value, so it must be priced live.
+      const getSpy = vi.spyOn(getEsi(), "get").mockRejectedValue(outage()) as unknown as { mockRestore: () => void };
+      try {
+        await expect(appraise("Veldspar x 10")).rejects.toBeInstanceOf(AppraisalUnavailableError);
+      } finally {
+        getSpy.mockRestore();
+      }
+    });
+
+    it("prices what it can in the field estimator and flags the rest", async () => {
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userA }) }));
+      const { priceSurveyTypes } = await import("@/modules/mining/estimator/actions");
+      const { getEsi } = await import("@/core/esi");
+      await db().insert(schema.eveTypes).values({ typeId: 1228, name: "Scordite", groupId: 462, volume: 0.15, portionSize: 100 });
+      const postSpy = vi.spyOn(getEsi(), "post").mockRejectedValue(outage());
+      const getSpy = vi.spyOn(getEsi(), "get").mockRejectedValue(outage()) as unknown as { mockRestore: () => void };
+      try {
+        const result = await priceSurveyTypes(["Veldspar", "Scordite", "Pyroxeres"]);
+        expect(result.esiUnavailable).toBe(true);
+        // Veldspar had a value; Scordite couldn't be priced and Pyroxeres couldn't be resolved, so
+        // both are left out for the next request to try again rather than cached as unpriced.
+        expect(Object.keys(result.prices)).toEqual(["veldspar"]);
+        expect(result.prices.veldspar.unitPrice).toBe(10);
+      } finally {
+        postSpy.mockRestore();
+        getSpy.mockRestore();
+        vi.doUnmock("@/core/auth/dal");
+      }
+    });
+  });
+
+  describe("field estimator pricing", () => {
+    it("prices a stale value again before using it", async () => {
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userA }) }));
+      const { priceSurveyTypes } = await import("@/modules/mining/estimator/actions");
+      const { getEsi } = await import("@/core/esi");
+      await db().execute(sql`UPDATE type_values SET updated_at = now() - interval '3 hours' WHERE type_id = 1230`);
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi.spyOn(getEsi(), "get").mockImplementation(async (path: string) =>
+        reply(path.includes("/orders") ? [{ is_buy_order: true, location_id: 60003760, price: 12 }] : []),
+      ) as unknown as { mockRestore: () => void };
+      try {
+        const result = await priceSurveyTypes(["Veldspar"]);
+        expect(result).toMatchObject({ esiUnavailable: false, prices: { veldspar: { unitPrice: 12 } } });
+        expect((await db().select().from(schema.priceInterest)).map((r) => r.typeId)).toEqual([1230]);
+      } finally {
+        getSpy.mockRestore();
+        vi.doUnmock("@/core/auth/dal");
+      }
+    });
+
+    it("keeps the ores it priced when ESI rate-limits the rest", async () => {
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userA }) }));
+      const { priceSurveyTypes } = await import("@/modules/mining/estimator/actions");
+      const { getEsi } = await import("@/core/esi");
+      const { EsiRateLimitedError } = await import("@/core/esi/client");
+      await db().insert(schema.eveTypes).values({ typeId: 1228, name: "Scordite", groupId: 462, volume: 0.15, portionSize: 100 });
+      await db().execute(sql`UPDATE type_values SET updated_at = now() - interval '3 hours' WHERE type_id = 1230`);
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi.spyOn(getEsi(), "get").mockImplementation(async (path: string, opts?: { query?: Record<string, unknown> }) => {
+        if (!path.includes("/orders")) return reply([]);
+        if (opts?.query?.type_id === 1228) throw new EsiRateLimitedError(path, 420, new Date(Date.now() + 60_000));
+        return reply([{ is_buy_order: true, location_id: 60003760, price: 12 }]);
+      }) as unknown as { mockRestore: () => void };
+      try {
+        const result = await priceSurveyTypes(["Veldspar", "Scordite"]);
+        expect(result.esiUnavailable).toBe(true);
+        expect(Object.keys(result.prices)).toEqual(["veldspar"]);
+        expect(result.prices.veldspar.unitPrice).toBe(12);
+      } finally {
+        getSpy.mockRestore();
+        vi.doUnmock("@/core/auth/dal");
+      }
+    });
+  });
+
+  describe("market price job", async () => {
+    const { marketPricesJob } = await import("@/core/sync/core-jobs");
+    const { miningPriceInterest } = await import("@/modules/mining/jobs");
+    const { EsiRateLimitedError } = await import("@/core/esi/client");
+    const job = marketPricesJob([miningPriceInterest]);
+
+    /** ESI that answers order requests per type id: a Jita buy price, or an HTTP status to fail with. */
+    const fakeEsi = (orders: Record<number, number | { status: number }>, requested: number[] = []) =>
+      new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        maxRetries: 0,
+        sleep: async () => {},
+        fetchImpl: (async (url: string) => {
+          const u = new URL(String(url));
+          if (u.pathname.endsWith("/markets/prices")) return Response.json([]);
+          const typeId = Number(u.searchParams.get("type_id"));
+          requested.push(typeId);
+          const answer = orders[typeId];
+          if (typeof answer === "object") {
+            return Response.json({ error: "nope" }, { status: answer.status, headers: { "retry-after": "60" } });
+          }
+          const body = answer ? [{ is_buy_order: true, location_id: 60003760, price: answer }] : [];
+          return Response.json(body, { headers: { "x-pages": "1" } });
+        }) as typeof fetch,
+      });
+    const run = (esi: InstanceType<typeof EsiClient>) =>
+      job.run({ jobId: 1, ownerType: "global", ownerId: 0, characterId: null, esi, db: db(), log: undefined as never, meta: {} });
+    const jitaBuy = async () =>
+      Object.fromEntries(
+        (await db().select().from(schema.typeValues))
+          .filter((r) => r.source === "jita_buy")
+          .map((r) => [r.typeId, r.unitPrice]),
+      );
+
+    it("keeps what it priced when one type fails, and reports the failure", async () => {
+      // Zeolites prices fine; Veldspar's orders fail with a server error.
+      const result = await run(fakeEsi({ 45490: 700, 1230: { status: 503 } }));
+      expect(result?.summary).toBe("Priced 1 types (1 incl. compressed), 1 failed");
+      // Veldspar keeps its old value rather than falling back to "no Jita orders".
+      expect(await jitaBuy()).toEqual({ 1230: 10, 45490: 700 });
+    });
+
+    it("prices ledger ores and recently requested types only", async () => {
+      await db().insert(schema.eveTypes).values([
+        { typeId: 34, name: "Tritanium", groupId: 18, volume: 0.01, portionSize: 1 },
+        { typeId: 35, name: "Pyerite", groupId: 18, volume: 0.01, portionSize: 1 },
+        { typeId: 587, name: "Rifter", groupId: 25, volume: 27289, portionSize: 1 },
+      ]);
+      // Rifter was valued once but nobody asks for it any more.
+      await db().insert(schema.typeValues).values({ typeId: 587, source: "jita_buy", unitPrice: 400_000, basis: "direct" });
+      await db().insert(schema.priceInterest).values([
+        { typeId: 34, lastRequestedAt: new Date() },
+        { typeId: 35, lastRequestedAt: new Date(Date.now() - 20 * 24 * 3600 * 1000) },
+      ]);
+      const requested: number[] = [];
+      await run(fakeEsi({ 34: 4, 35: 8, 1230: 11, 45490: 700 }, requested));
+      expect(requested.sort((a, b) => a - b)).toEqual([34, 1230, 45490]);
+      expect((await db().select().from(schema.priceInterest)).map((r) => r.typeId)).toEqual([34]);
+      expect(await jitaBuy()).toMatchObject({ 34: 4, 587: 400_000, 1230: 11, 45490: 700 });
+    });
+
+    it("writes what it has and fails the run when ESI rate-limits it", async () => {
+      await expect(run(fakeEsi({ 45490: 700, 1230: { status: 420 } }))).rejects.toBeInstanceOf(EsiRateLimitedError);
+      expect(await jitaBuy()).toEqual({ 1230: 10, 45490: 700 });
+    });
+
+    it("fails the run when no type could be priced", async () => {
+      await expect(run(fakeEsi({ 45490: { status: 503 }, 1230: { status: 503 } }))).rejects.toBeInstanceOf(EsiError);
+      expect(await jitaBuy()).toEqual({ 1230: 10, 45490: 600 });
+    });
+  });
+
   describe("mining P&L", async () => {
     const pnl = await import("@/modules/mining/pnl/queries");
     const { pnlScope } = await import("@/modules/mining/pnl/scope");
     const { buildPnlReport } = await import("@/modules/mining/pnl/report");
     const { characterLedgerJob } = await import("@/modules/mining/jobs");
-    const { walletTransactionsJob } = await import("@/modules/wallet/jobs");
+    const { walletFeesJob, walletTransactionsJob } = await import("@/modules/wallet/jobs");
     const { WALLET_SCOPE } = await import("@/modules/wallet/module");
 
     const range = { from: "2026-09-01", to: "2026-09-30" };
@@ -578,6 +1108,77 @@ describe.skipIf(!enabled)("integration", async () => {
         { category: "fuel", amount: 10_000 },
         { category: "other", amount: 10_000 },
       ]);
+    });
+
+    it("classifies sales like purchases and counts them as income when switched to sales", async () => {
+      const sell = { isBuy: false };
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 11, 62516, sell), // compressed Veldspar, Bravo: auto-count off -> suggested
+        tx(3, 12, 34, sell), // Tritanium, Bravo Alt: auto-count on -> counted
+        tx(3, 13, 45490, { ...sell, quantity: 2 }), // Zeolites, counted
+        tx(2, 14, 18066, sell), // a mining crystal resold: untagged
+        tx(2, 15, 1230, { ...sell, clientId: 3 }), // to your own alt: not income
+        tx(2, 16, 1230), // a purchase is never income
+        { ...tx(2, 17, 1230, sell), userId: userA }, // imported by another account
+      ]);
+      await db().insert(schema.miningPnlCharacters).values({ userId: userB, characterId: 3, autoIncludeSales: true });
+      await db().insert(schema.miningPnlTxOverrides).values({ userId: userB, characterId: 3, transactionId: 13, category: "other" });
+      const status = async (s: "counted" | "suggested" | "excluded" | "untagged") =>
+        (await pnl.getSales(scopeB(), { status: s, limit: 50, offset: 0 })).rows.map((r) => [r.transactionId, r.category]);
+      expect(await status("suggested")).toEqual([[11, "ore"]]);
+      expect((await status("counted")).sort()).toEqual([
+        [12, "ore"],
+        [13, "other"],
+      ]);
+      expect(await status("untagged")).toEqual([[14, null]]);
+      expect((await pnl.getPurchases(scopeB(), { status: "untagged", limit: 50, offset: 0 })).rows.map((r) => r.transactionId)).toEqual([16]);
+
+      const report = buildPnlReport({
+        ...range,
+        bucket: "month",
+        incomeSource: "sales",
+        income: await pnl.getIncomeRows(scopeB()),
+        sales: await pnl.getSaleRows(scopeB()),
+        expenses: [],
+        manual: [],
+        activity: await pnl.getActivityStats(scopeB()),
+        characters: [
+          { characterId: 2, name: "Bravo" },
+          { characterId: 3, name: "Bravo Alt" },
+        ],
+      });
+      expect(report.totals.income).toBe(12_000);
+      expect(report.totals.minedIncome).toBe(await income(scopeB()));
+      expect(report.sales.suggested).toEqual({ amount: 10_000, count: 1 });
+      expect(report.characters.find((c) => c.characterId === 3)?.income).toBe(12_000);
+
+      expect(await pnl.getPnlSettings(userB)).toEqual({ ratePct: 100, incomeSource: "mined" });
+      await db().insert(schema.miningPnlSettings).values({ userId: userB, incomeSource: "sales" });
+      expect((await pnl.getPnlSettings(userB)).incomeSource).toBe("sales");
+    });
+
+    it("matches mined ore with sales of it and its compressed variant, in raw units", async () => {
+      // Real portion sizes: compression is 1:1 in units (Veldspar 100 → Compressed Veldspar 100).
+      await db().update(schema.eveTypes).set({ portionSize: 100 }).where(sql`type_id = 62516`);
+      await db().insert(schema.walletTransactions).values([
+        tx(2, 21, 1230, { isBuy: false, quantity: 100, unitPrice: 12 }), // raw Veldspar
+        tx(3, 22, 62516, { isBuy: false, quantity: 300, unitPrice: 11 }), // compressed Veldspar
+        tx(3, 23, 62516, { isBuy: false, quantity: 999, unitPrice: 11 }), // excluded by hand
+        tx(2, 24, 62516, { isBuy: false, quantity: 999, unitPrice: 11, clientId: 3 }), // to your own alt
+        tx(2, 25, 62516, { quantity: 999 }), // a purchase
+        tx(2, 26, 34, { isBuy: false, quantity: 5000, unitPrice: 4 }), // minerals aren't ore
+      ]);
+      await db().insert(schema.miningPnlTxOverrides).values({ userId: userB, characterId: 3, transactionId: 23, included: false });
+      // Veldspar is the only asteroid ore in the fixture ledgers.
+      const minedVeldspar = (await pnl.getIncomeRows(scopeB())).filter((r) => r.oreClass === "ore").reduce((sum, r) => sum + r.quantity, 0);
+
+      const flows = await pnl.getOreFlows(scopeB());
+      const veldspar = flows.find((f) => f.typeId === 1230)!;
+      expect(veldspar).toMatchObject({ mined: minedVeldspar, sold: 400, soldCompressed: 300, soldIsk: 1200 + 3300, sales: 2 });
+      expect(flows.some((f) => f.typeId === 62516 || f.typeId === 34)).toBe(false);
+      // Narrowed to Bravo: only Bravo's own sale.
+      const bravo = (await pnl.getOreFlows(scopeB({ characters: [2] }))).find((f) => f.typeId === 1230);
+      expect(bravo).toMatchObject({ sold: 100, soldCompressed: 0, soldIsk: 1200 });
     });
 
     it("spreads manual entries over their days; account-wide ones only without a character filter", async () => {
@@ -718,7 +1319,7 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await db().select().from(schema.walletTransactions)).toEqual([]);
     });
 
-    it("resumes the wallet import per owner, past unstored corporation trades", async () => {
+    it("resumes the wallet import per owner, but reimports all pages after deleting wallet data", async () => {
       // A previous owner's rows must not hide the new owner's history.
       await db().insert(schema.walletTransactions).values({ ...tx(3, 900, 34), userId: userA });
       const seen: (string | null)[] = [];
@@ -733,9 +1334,10 @@ describe.skipIf(!enabled)("integration", async () => {
           const all = [
             { transaction_id: 950, is_personal: false },
             { transaction_id: 800, is_personal: true },
+            { transaction_id: 700, is_personal: true },
           ].map((t) => ({ ...t, date: "2026-09-10T12:00:00Z", type_id: 34, quantity: 1, unit_price: 5, is_buy: true,
             client_id: 5, location_id: 60003760, journal_ref_id: t.transaction_id }));
-          return new Response(JSON.stringify(all.filter((t) => !fromId || t.transaction_id < Number(fromId))), {
+          return new Response(JSON.stringify(all.filter((t) => !fromId || t.transaction_id < Number(fromId)).slice(0, 2)), {
             status: 200,
             headers: { "content-type": "application/json" },
           });
@@ -743,19 +1345,264 @@ describe.skipIf(!enabled)("integration", async () => {
       });
       const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
       const first = await walletTransactionsJob.run(ctx);
-      expect(first?.summary).toBe("1 new transaction");
+      expect(first?.summary).toBe("2 new transactions");
       expect(first?.meta).toEqual({ userId: userB, newestSeenId: 950 });
       // Next run: the corporation trade (950) is the high-water mark, so one request is enough.
       seen.length = 0;
       await walletTransactionsJob.run({ ...ctx, meta: first!.meta! });
       expect(seen).toEqual([null]);
+
+      await db().delete(schema.esiTokens).where(sql`character_id = 3`);
+      await db().insert(schema.syncJobs).values([
+        {
+          jobKey: "wallet.character-transactions",
+          ownerType: "character",
+          ownerId: 3,
+          meta: first!.meta!,
+        },
+        {
+          jobKey: "wallet.character-fees",
+          ownerType: "character",
+          ownerId: 3,
+          meta: first!.meta!,
+        },
+      ]);
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userB, characterIds: [3] }) }));
+      vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+      vi.doMock("server-only", () => ({}));
+      try {
+        const { deleteWalletData } = await import("@/app/(app)/mining/pnl/actions");
+        expect(await deleteWalletData(3)).toEqual({ ok: true });
+      } finally {
+        vi.doUnmock("@/core/auth/dal");
+        vi.doUnmock("next/cache");
+        vi.doUnmock("server-only");
+      }
+      expect((await db().select({ meta: schema.syncJobs.meta }).from(schema.syncJobs)).map((j) => j.meta)).toEqual([null, null]);
+      seen.length = 0;
+      const restored = await walletTransactionsJob.run(ctx);
+      expect(restored?.summary).toBe("2 new transactions");
+      expect(restored?.meta).toEqual(first?.meta);
+      expect(seen).toEqual([null, "800", "700"]);
+      const rows = await db().select().from(schema.walletTransactions).where(sql`user_id = ${userB}`).orderBy(schema.walletTransactions.transactionId);
+      expect(rows.map((r) => r.transactionId)).toEqual([700, 800]);
+    });
+
+    it("uses the high-water mark when no personal transactions have been stored", async () => {
+      let requests = 0;
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async () => {
+          requests++;
+          return Response.json([{
+            transaction_id: 950,
+            date: "2026-09-10T12:00:00Z",
+            type_id: 34,
+            quantity: 1,
+            unit_price: 5,
+            is_buy: true,
+            is_personal: false,
+            client_id: 5,
+            location_id: 60003760,
+            journal_ref_id: 950,
+          }]);
+        }) as unknown as typeof fetch,
+      });
+      const ctx = {
+        jobId: 1,
+        ownerType: "character" as const,
+        ownerId: 3,
+        characterId: 3,
+        esi,
+        db: db(),
+        log: undefined as never,
+        meta: { userId: userB, newestSeenId: 950 },
+      };
+      const first = await walletTransactionsJob.run(ctx);
+      expect(requests).toBe(1);
+      expect(first?.meta).toEqual(ctx.meta);
+      expect(await db().select().from(schema.walletTransactions)).toEqual([]);
+
+      requests = 0;
+      await walletTransactionsJob.run({ ...ctx, meta: first!.meta! });
+      expect(requests).toBe(1);
+    });
+
+    it("imports only wallet fees, resumes incrementally, and reimports all pages after deleting wallet data", async () => {
+      const pages: string[] = [];
+      const journal = [
+        { id: 105, ref_type: "bounty_prizes", amount: 1_000_000 },
+        { id: 104, ref_type: "transaction_tax", amount: -360, context_id: 11, context_id_type: "market_transaction_id" },
+        { id: 103, ref_type: "market_transaction", amount: 10_000, context_id: 11, context_id_type: "market_transaction_id" },
+        { id: 102, ref_type: "brokers_fee", amount: -150, description: "Market order commission to Jita IV - Moon 4" },
+        { id: 101, ref_type: "player_donation", amount: -5 },
+      ].map((e) => ({ description: "", ...e, date: "2026-09-10T12:00:00Z" }));
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        fetchImpl: (async (url: string) => {
+          const page = Number(new URL(String(url)).searchParams.get("page") ?? 1);
+          pages.push(String(page));
+          return new Response(JSON.stringify(page === 1 ? journal.slice(0, 3) : journal.slice(3)), {
+            status: 200, headers: { "content-type": "application/json", "x-pages": "2" },
+          });
+        }) as unknown as typeof fetch,
+      });
+      expect(walletFeesJob.requiredScopes).toEqual([WALLET_SCOPE]);
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 3, characterId: 3, esi, db: db(), log: undefined as never, meta: {} };
+
+      // With a prior high-water mark, corporation-only journal rows don't force a full history read.
+      const emptyArchive = await walletFeesJob.run({ ...ctx, meta: { userId: userB, newestSeenId: 105, descriptions: true } });
+      expect(pages).toEqual(["1"]);
+      expect(emptyArchive?.meta).toEqual({ userId: userB, newestSeenId: 105, descriptions: true });
+      pages.length = 0;
+
+      const first = await walletFeesJob.run(ctx);
+      expect(pages).toEqual(["1", "2"]);
+      expect(first?.summary).toBe("2 new fees");
+      expect(first?.meta).toEqual({ userId: userB, newestSeenId: 105, descriptions: true });
+      const rows = await db().select().from(schema.walletFees).orderBy(schema.walletFees.journalId);
+      expect(rows.map((r) => [r.journalId, r.refType, r.amount, r.contextId, r.userId, r.description])).toEqual([
+        [102, "brokers_fee", 150, null, userB, "Market order commission to Jita IV - Moon 4"],
+        [104, "transaction_tax", 360, 11, userB, null],
+      ]);
+      // Nothing newer than the cursor: nothing new stored.
+      pages.length = 0;
+      expect((await walletFeesJob.run({ ...ctx, meta: first!.meta! }))?.summary).toBe("0 new fees");
+      expect(pages).toEqual(["1"]);
+
+      // Deleting history clears the cursor and descriptions flag before import is re-enabled.
+      await db().delete(schema.walletFees).where(sql`character_id = 3 AND user_id = ${userB}`);
+      pages.length = 0;
+      const restored = await walletFeesJob.run(ctx);
+      expect(restored?.summary).toBe("2 new fees");
+      expect(restored?.meta).toEqual(first?.meta);
+      expect(pages).toEqual(["1", "2"]);
+      expect(await db().select().from(schema.walletFees).orderBy(schema.walletFees.journalId)).toEqual(
+        rows.map((r) => ({ ...r, firstSeenAt: expect.any(Date) })),
+      );
+
+      // Fees imported before descriptions were kept get theirs from one full read, without counting as new.
+      await db().update(schema.walletFees).set({ description: null });
+      const backfill = await walletFeesJob.run({ ...ctx, meta: { userId: userB, newestSeenId: 105 } });
+      expect(backfill?.summary).toBe("0 new fees");
+      expect(backfill?.meta).toMatchObject({ descriptions: true });
+      expect((await db().select().from(schema.walletFees).where(sql`journal_id = 102`))[0].description).toBe(
+        "Market order commission to Jita IV - Moon 4",
+      );
+      // Fees alone count as wallet history in Settings (so they can be deleted), even without transactions.
+      expect((await pnl.getWalletStatus(userB)).find((w) => w.characterId === 3)).toMatchObject({ transactions: 0, fees: 2 });
+
+      // Settings shows the fee import's error too, not only the transaction import's state.
+      const job = { ownerType: "character" as const, ownerId: 3, lastSuccessAt: new Date("2026-09-10T12:00:00Z") };
+      await db().insert(schema.syncJobs).values([
+        { ...job, jobKey: "wallet.character-transactions", lastStatus: "ok" as const },
+        { ...job, jobKey: "wallet.character-fees", lastStatus: "error" as const, lastError: "ESI 503" },
+      ]);
+      expect((await pnl.getWalletStatus(userB)).find((w) => w.characterId === 3)).toMatchObject({ lastStatus: "error", lastError: "ESI 503" });
+    });
+
+    it("counts sales tax with the sale it was paid on, even in a multi-sell, and leaves broker fees to you", async () => {
+      // Sales tax has no review of its own: it always takes its sale's status.
+      const sell = { isBuy: false };
+      await db().insert(schema.walletTransactions).values([
+        tx(3, 71, 62516, { ...sell, date: new Date("2026-09-10T12:00:00Z") }), // compressed Veldspar: mining sale
+        tx(3, 72, 18066, { ...sell, date: new Date("2026-09-11T08:30:00Z") }), // a crystal resold: not mining income
+        tx(3, 73, 1230, { ...sell, date: new Date("2026-09-12T09:00:00Z") }), // Veldspar, excluded by hand
+        // A multi-sell: journal order sale 90, tax 91, sale 92, tax 93, all in the same second.
+        tx(3, 74, 1230, { ...sell, date: new Date("2026-09-13T10:00:00Z"), journalRefId: 90 }), // Veldspar
+        tx(3, 75, 18066, { ...sell, date: new Date("2026-09-13T10:00:00Z"), journalRefId: 92 }), // a crystal
+      ]);
+      await db().insert(schema.miningPnlTxOverrides).values([
+        { userId: userB, characterId: 3, transactionId: 71, included: true },
+        { userId: userB, characterId: 3, transactionId: 73, included: false },
+        { userId: userB, characterId: 3, transactionId: 74, included: true },
+      ]);
+      const fee = (journalId: number, refType: "transaction_tax" | "brokers_fee", date: string, extra = {}) => ({
+        characterId: 3,
+        journalId,
+        userId: userB,
+        date: new Date(date),
+        refType,
+        amount: 100,
+        ...extra,
+      });
+      await db().insert(schema.walletFees).values([
+        fee(81, "transaction_tax", "2026-09-10T12:00:00Z", { contextId: 71, contextIdType: "market_transaction_id" }),
+        fee(82, "transaction_tax", "2026-09-11T08:30:00Z"), // no context: the sale booked right before it
+        fee(83, "transaction_tax", "2026-09-12T09:00:00Z", { contextId: 73, contextIdType: "market_transaction_id" }),
+        fee(84, "brokers_fee", "2026-09-09T10:00:00Z"),
+        fee(91, "transaction_tax", "2026-09-13T10:00:00Z"),
+        fee(93, "transaction_tax", "2026-09-13T10:00:00Z"),
+        // Names a sale that wasn't imported: falls back to the journal order (the crystal, untagged).
+        fee(95, "transaction_tax", "2026-09-13T10:00:00Z", { contextId: 999, contextIdType: "market_transaction_id" }),
+        { ...fee(85, "brokers_fee", "2026-09-09T10:00:00Z"), userId: userA }, // another account's
+      ]);
+      const status = async () =>
+        Object.fromEntries(
+          (await pnl.getFees(scopeB(), { status: "mining", limit: 50, offset: 0 })).rows.map((r) => [r.journalId, [r.status, r.sale?.typeId ?? null]]),
+        );
+      expect(await status()).toEqual({
+        81: ["counted", 62516],
+        83: ["excluded", 1230],
+        84: ["suggested", null],
+        91: ["counted", 1230],
+      });
+      expect((await pnl.getFees(scopeB(), { status: "untagged", limit: 50, offset: 0 })).rows.map((r) => [r.journalId, r.sale?.typeId])).toEqual([
+        [95, 18066],
+        [93, 18066],
+        [82, 18066],
+      ]);
+
+      // Counting sales automatically never counts broker fees (they may be for other orders); your choice wins.
+      // A decision stored on a sales tax (from before taxes followed their sale) has no effect.
+      await db().insert(schema.miningPnlCharacters).values({ userId: userB, characterId: 3, autoIncludeSales: true });
+      await db().insert(schema.miningPnlFeeOverrides).values([
+        { userId: userB, characterId: 3, journalId: 81, included: false },
+        { userId: userB, characterId: 3, journalId: 84, included: true },
+      ]);
+      expect(await status()).toEqual({
+        81: ["counted", 62516],
+        83: ["excluded", 1230],
+        84: ["counted", null],
+        91: ["counted", 1230],
+      });
+      // The Expenses tab reviews broker fees only.
+      expect((await pnl.getFees(scopeB(), { status: "mining", kind: "brokers_fee", limit: 50, offset: 0 })).rows.map((r) => r.journalId)).toEqual([84]);
+
+      // Broker fees are the only fee expenses; sales tax is deducted from its sale's income instead.
+      expect((await pnl.getFeeRows(scopeB())).filter((r) => r.status === "counted")).toEqual([
+        { date: "2026-09-09", characterId: 3, category: "fees", status: "counted", amount: 100, count: 1 },
+      ]);
+      const countedSales = (await pnl.getSaleRows(scopeB())).filter((r) => r.status === "counted");
+      expect(countedSales.map((r) => [r.date, r.gross, r.tax, r.amount])).toEqual([
+        ["2026-09-10", 10_000, 100, 9_900],
+        ["2026-09-13", 10_000, 100, 9_900],
+      ]);
+
+      // Each sale on the Income tab shows the tax paid on it.
+      const sales = (await pnl.getSales(scopeB(), { status: "counted", limit: 50, offset: 0 })).rows;
+      expect(Object.fromEntries(sales.map((r) => [r.transactionId, r.tax]))).toEqual({ 71: 100, 74: 100 });
     });
 
     it("drops the previous owner's wallet history when a character is transferred", async () => {
       const { detachTransferredCharacter } = await import("@/core/auth/provision");
       await db().insert(schema.walletTransactions).values([tx(3, 51, 18066), tx(2, 52, 18066)]);
+      const fee = { userId: userB, date: new Date("2026-09-10T12:00:00Z"), refType: "brokers_fee" as const, amount: 5 };
+      await db().insert(schema.walletFees).values([{ ...fee, characterId: 3, journalId: 61 }, { ...fee, characterId: 2, journalId: 62 }]);
+      await db().insert(schema.miningPnlFeeOverrides).values([
+        { userId: userB, characterId: 3, journalId: 61, included: true },
+        { userId: userB, characterId: 2, journalId: 62, included: true },
+      ]);
       await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: false }));
       expect((await db().select().from(schema.walletTransactions)).map((r) => r.transactionId)).toEqual([52]);
+      expect((await db().select().from(schema.walletFees)).map((r) => r.journalId)).toEqual([62]);
+      expect((await db().select().from(schema.miningPnlFeeOverrides)).map((r) => r.journalId)).toEqual([62]);
     });
 
     it("reports opt-in scopes that a generic re-link dropped", async () => {
@@ -784,6 +1631,44 @@ describe.skipIf(!enabled)("integration", async () => {
         // Granted again: nothing lost.
         await db().update(schema.esiTokens).set({ scopes: [MINING, WALLET_SCOPE] });
         expect((await link([MINING, WALLET_SCOPE])).lostOptionalScopes).toEqual([]);
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
+    });
+
+    it("clears in-app switches on a new EVE consent and reports what it changed", async () => {
+      const { encryptToken } = await import("@/core/crypto");
+      const { provisionFromSso } = await import("@/core/auth/provision");
+      const { FLEET_SCOPE } = await import("@/modules/fleet/logic");
+      const MINING = "esi-industry.read_character_mining.v1";
+      // Wallet import switched off in Keystar; the token still holds it.
+      await db()
+        .insert(schema.esiTokens)
+        .values({ characterId: 2, refreshTokenEnc: encryptToken("r"), scopes: [MINING], disabledScopes: [WALLET_SCOPE] });
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) =>
+          reply(path.startsWith("/corporations/") ? { name: "Home", ticker: "HOME", member_count: 3 } : { corporation_id: 100 }),
+        ) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      const link = (characterId: number, name: string, scopes: string[]) =>
+        provisionFromSso({
+          verified: { characterId, name, ownerHash: `h${characterId}`, scopes, expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent: "link",
+          currentUserId: userB,
+        });
+      try {
+        // Re-authorise links leave switched-off scopes out, so the new token drops them for good.
+        const result = await link(2, "Bravo", [MINING, FLEET_SCOPE]);
+        expect(result).toMatchObject({ newCharacter: false, lostOptionalScopes: [], addedOptionalScopes: [FLEET_SCOPE] });
+        const [token] = await db().select().from(schema.esiTokens).where(sql`character_id = 2`);
+        expect(token).toMatchObject({ scopes: [MINING, FLEET_SCOPE], disabledScopes: [] });
+        // A character the account didn't have before.
+        expect((await link(4, "Charlie", [MINING])).newCharacter).toBe(true);
       } finally {
         getSpy.mockRestore();
         postSpy.mockRestore();
@@ -936,6 +1821,39 @@ describe.skipIf(!enabled)("integration", async () => {
       });
       expect((await run(2))?.summary).toBe("Character changed owner during the import");
       expect(await db().select().from(schema.mailMessages)).toEqual([]);
+    });
+
+    it("announces new unread mail once per account, without sent or old mail", async () => {
+      const { liveCursorNow, parseLiveCursor } = await import("@/core/live-cursor");
+      const cursor = parseLiveCursor(await liveCursorNow())!;
+      await db().insert(schema.mailLists).values({ characterId: 2, mailingListId: 145, userId: userB, name: "Keystar Ops" });
+      const recent = new Date(Date.now() - 10 * 60_000);
+      const corp = { labels: [4], recipients: [{ id: 100, type: "corporation" as const }] };
+      const row = (characterId: number, mailId: number, extra: Partial<typeof schema.mailMessages.$inferInsert> = {}) => ({
+        characterId, mailId, userId: userB, fromId: 9, subject: `Mail ${mailId}`, sentAt: recent, labels: [1],
+        recipients: [{ id: characterId, type: "character" as const }], ...extra,
+      });
+      await db().insert(schema.mailMessages).values([row(2, 600), row(2, 601, corp)]);
+      await db().insert(schema.mailMessages).values([
+        row(3, 601, corp), // The same corp mail, imported later for Bravo Alt.
+        row(2, 602, { labels: [], recipients: [{ id: 145, type: "mailing_list" }] }),
+        row(2, 603, { isRead: true }),
+        row(2, 604, { sentAt: new Date(Date.now() - 5 * 3600_000) }),
+        row(3, 605, { fromId: 3, labels: [2] }), // Bravo Alt writes to Bravo: the account's own mail.
+        row(2, 605, { fromId: 3 }),
+        row(3, 607, { fromId: 2 }), // From Bravo, whose own mailbox doesn't have it: still the account's own mail.
+        { ...row(1, 606), userId: userA },
+      ]);
+
+      const live = await mail.getLiveMail(userB, cursor);
+      expect(live.mails).toEqual([
+        expect.objectContaining({ mailId: 600, characterId: 2, characterName: "Bravo", fromName: "Outsider", fromCategory: "character", kind: "direct", listName: null }),
+        expect.objectContaining({ mailId: 601, characterId: 2, kind: "corp" }),
+        expect.objectContaining({ mailId: 602, kind: "list", listName: "Keystar Ops" }),
+      ]);
+      expect(parseLiveCursor(live.cursor)!.id).toBe(602);
+      expect((await mail.getLiveMail(userB, parseLiveCursor(live.cursor)!)).mails).toEqual([]);
+      expect((await mail.getLiveMail(userA, cursor)).mails.map((m) => m.mailId)).toEqual([606]);
     });
 
     it("drops the previous owner's mail when a character is transferred", async () => {
@@ -1168,6 +2086,338 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(tracker).toMatchObject({ status: "not_boss", fleetId: 77 });
       expect(await db().select().from(schema.fleets)).toEqual([]);
     });
+
+    it("switches fleet access off and on in Keystar without an EVE login", async () => {
+      const { disableOptionalScope, enableOptionalScope } = await import("@/core/auth/scope-switch");
+      const { fleetJobs } = await import("@/modules/fleet/jobs");
+      const { FLEET_SCOPE } = await import("@/modules/fleet/logic");
+      const MINING = "esi-industry.read_character_mining.v1";
+      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: "x", scopes: [MINING, FLEET_SCOPE] });
+      const token = async () => (await db().select().from(schema.esiTokens))[0];
+      const fleetJobEnabled = async () => {
+        await scheduler.planJobs(fleetJobs);
+        return (await db().select().from(schema.syncJobs)).some((r) => r.ownerId === 1 && r.enabled);
+      };
+      expect(await fleetJobEnabled()).toBe(true);
+
+      expect(await disableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
+      expect(await token()).toMatchObject({ scopes: [MINING], disabledScopes: [FLEET_SCOPE] });
+      expect(await fleetJobEnabled()).toBe(false);
+      // Idempotent, and only for opt-in scopes the token holds.
+      expect(await disableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
+      expect(await disableOptionalScope(1, MINING)).toBe("unknownScope");
+      expect(await disableOptionalScope(2, FLEET_SCOPE)).toBe("notHeld");
+
+      expect(await enableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
+      expect(await token()).toMatchObject({ scopes: [MINING, FLEET_SCOPE], disabledScopes: [] });
+      expect(await fleetJobEnabled()).toBe(true);
+      expect(await enableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
+      expect(await enableOptionalScope(2, FLEET_SCOPE)).toBe("notHeld");
+
+      // A revoked token can't be switched back on in Keystar: that needs the EVE login.
+      expect(await disableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
+      await db().execute(sql`UPDATE esi_tokens SET status = 'invalid' WHERE character_id = 1`);
+      expect(await enableOptionalScope(1, FLEET_SCOPE)).toBe("notHeld");
+      expect(await token()).toMatchObject({ scopes: [MINING], disabledScopes: [FLEET_SCOPE] });
+    });
+  });
+
+  describe("skills", async () => {
+    const { skillQueueJob, characterSkillsJob } = await import("@/modules/skills/jobs");
+    const { SKILLQUEUE_SCOPE, SKILLS_SCOPE } = await import("@/modules/skills/module");
+    const skills = await import("@/modules/skills/queries");
+
+    type QueueItem = { queue_position: number; skill_id: number; finished_level: number; start_date?: string; finish_date?: string;
+      training_start_sp?: number; level_start_sp?: number; level_end_sp?: number };
+    let queues: Record<number, QueueItem[]> = {};
+    let trained: Record<number, { skill_id: number; trained_skill_level: number; active_skill_level: number; skillpoints_in_skill: number }[]> = {};
+    let typeRequests: number[] = [];
+    const esi = new EsiClient({
+      baseUrl: "https://esi.test",
+      userAgent: "t",
+      compatibilityDate: "2026-08-18",
+      tokenProvider: async () => "token",
+      maxRetries: 0,
+      fetchImpl: (async (url: string) => {
+        const path = new URL(String(url)).pathname;
+        const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+        const type = /^\/universe\/types\/(\d+)$/.exec(path);
+        if (type) {
+          typeRequests.push(Number(type[1]));
+          return reply({ type_id: Number(type[1]), name: "Skill", group_id: 255, published: true,
+            dogma_attributes: [{ attribute_id: 180, value: 165 }, { attribute_id: 181, value: 168 }, { attribute_id: 275, value: 2 }] });
+        }
+        const m = /^\/characters\/(\d+)\/(skillqueue|skills|attributes)$/.exec(path)!;
+        const id = Number(m[1]);
+        if (m[2] === "skillqueue") return reply(queues[id] ?? []);
+        if (m[2] === "skills") return reply({ skills: trained[id] ?? [], total_sp: 5_000_000, unallocated_sp: 1000 });
+        return reply({ charisma: 19, intelligence: 27, memory: 21, perception: 20, willpower: 20, bonus_remaps: 1,
+          accrued_remap_cooldown_date: "2027-01-01T00:00:00Z" });
+      }) as unknown as typeof fetch,
+    });
+    const ctx = (characterId: number) => ({ jobId: 1, ownerType: "character" as const, ownerId: characterId, characterId, esi, db: db(),
+      log: undefined as never, meta: {} });
+    const future = (h: number) => new Date(Date.now() + h * 3600_000).toISOString();
+
+    beforeEach(async () => {
+      typeRequests = [];
+      queues = {
+        2: [
+          { queue_position: 0, skill_id: 3300, finished_level: 4, start_date: future(-1), finish_date: future(10),
+            training_start_sp: 50_000, level_start_sp: 45_255, level_end_sp: 256_000 },
+          { queue_position: 1, skill_id: 3301, finished_level: 5, start_date: future(10), finish_date: future(100),
+            training_start_sp: 256_000, level_start_sp: 256_000, level_end_sp: 1_280_000 },
+        ],
+      };
+      trained = { 2: [{ skill_id: 3300, trained_skill_level: 3, active_skill_level: 3, skillpoints_in_skill: 50_000 },
+        { skill_id: 3302, trained_skill_level: 5, active_skill_level: 5, skillpoints_in_skill: 256_000 }] };
+      // Names are already known, so ensureTypes stays off the network.
+      await db().insert(schema.eveGroups).values({ groupId: 255, name: "Gunnery", categoryId: 16 });
+      await db().insert(schema.eveTypes).values([3300, 3301, 3302].map((typeId) => ({ typeId, name: `Skill ${typeId}`, groupId: 255 })));
+      await db().insert(schema.characters).values({ characterId: 4, userId: userA, name: "Alpha Abroad", corporationId: 200, ownerHash: "h4" });
+      await db().insert(schema.esiTokens).values([
+        { characterId: 1, refreshTokenEnc: "x", scopes: [] },
+        { characterId: 2, refreshTokenEnc: "x", scopes: [SKILLQUEUE_SCOPE, SKILLS_SCOPE] },
+        { characterId: 3, refreshTokenEnc: "x", scopes: [] },
+        { characterId: 4, refreshTokenEnc: "x", scopes: [SKILLQUEUE_SCOPE, SKILLS_SCOPE] },
+      ]);
+    });
+
+    it("replaces the queue snapshot and learns each skill's attributes once", async () => {
+      expect((await skillQueueJob.run(ctx(2)))?.summary).toBe("2 queued skills");
+      expect(await db().select().from(schema.skillsTypeAttributes)).toEqual(
+        expect.arrayContaining([expect.objectContaining({ typeId: 3300, primaryAttribute: 165, secondaryAttribute: 168, rank: 2 })]),
+      );
+      expect(typeRequests.sort()).toEqual([3300, 3301]);
+
+      queues[2] = queues[2].slice(1).map((e) => ({ ...e, queue_position: 0 }));
+      await db().execute(sql`DELETE FROM esi_cache`);
+      expect((await skillQueueJob.run(ctx(2)))?.summary).toBe("1 queued skill");
+      const rows = await db().select().from(schema.skillsQueue);
+      expect(rows.map((r) => [r.queuePosition, r.skillId])).toEqual([[0, 3301]]);
+      expect(typeRequests).toHaveLength(2);
+    });
+
+    it("stores trained skills and attributes, dropping skills ESI no longer lists", async () => {
+      await characterSkillsJob.run(ctx(2));
+      trained[2] = trained[2].slice(0, 1).map((s) => ({ ...s, trained_skill_level: 4 }));
+      await db().execute(sql`DELETE FROM esi_cache`);
+      expect((await characterSkillsJob.run(ctx(2)))?.summary).toBe("1 trained skill");
+      const rows = await db().select().from(schema.skillsCharacterSkills);
+      expect(rows.map((r) => [r.skillId, r.trainedLevel])).toEqual([[3300, 4]]);
+      const [c] = await db().select().from(schema.skillsCharacter);
+      expect(c).toMatchObject({ characterId: 2, totalSp: 5_000_000, unallocatedSp: 1000, intelligence: 27, bonusRemaps: 1 });
+    });
+
+    it("shows own characters, and in the corporation view only home members who share their queue", async () => {
+      await skillQueueJob.run(ctx(2));
+      await characterSkillsJob.run(ctx(2));
+      const user = (id: string, perms: string[]) => ({ id, can: (p: string) => perms.includes(p) });
+
+      const ownA = await skills.getSkillsOverview(skills.skillsScope(user(userA, ["skills.view.own"]), 100, "corp"));
+      expect(ownA.characters.map((c) => c.characterId)).toEqual([1, 4]);
+      expect(ownA.characters.find((c) => c.characterId === 1)?.queueEnabled).toBe(false);
+
+      const director = user(userA, ["skills.view.own", "skills.view.corp"]);
+      const corp = await skills.getSkillsOverview(skills.skillsScope(director, 100, "corp"));
+      // Bravo shares; Bravo Alt doesn't; Alpha Abroad shares but is in another corporation.
+      expect(corp.characters.map((c) => [c.characterId, c.ownerName, c.isOwn])).toEqual([[2, "Bravo", false]]);
+      const queue = corp.queues.get(2)!;
+      expect(queue.map((e) => [e.skillName, e.groupName, e.finishedLevel])).toEqual([["Skill 3300", "Gunnery", 4], ["Skill 3301", "Gunnery", 5]]);
+      expect(corp.characters[0]).toMatchObject({ totalSp: 5_000_000, attributes: { intelligence: 27 } });
+
+      // Without a home corporation the corporation view falls back to the viewer's own characters.
+      expect(skills.skillsScope(director, null, "corp").corp).toBe(false);
+
+      // Keeping only the queue scope leaves the corporation view; own views drop what the skills scope read.
+      await db().update(schema.esiTokens).set({ scopes: [SKILLQUEUE_SCOPE] }).where(sql`character_id = 2`);
+      expect((await skills.getSkillsOverview(skills.skillsScope(director, 100, "corp"))).characters).toEqual([]);
+      const queueOnly = await skills.getSkillsOverview(skills.skillsScope(user(userB, ["skills.view.own"]), 100, "own"));
+      expect(queueOnly.characters[0]).toMatchObject({ characterId: 2, queueEnabled: true, skillsEnabled: false, totalSp: null, attributes: null });
+
+      // Turning sharing off hides the stored queue at once.
+      await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+      const ownB = await skills.getSkillsOverview(skills.skillsScope(user(userB, ["skills.view.own"]), 100, "own"));
+      expect(ownB.characters.map((c) => [c.characterId, c.queueEnabled])).toEqual([[2, false], [3, false]]);
+      expect(ownB.queues.size).toBe(0);
+      expect((await skills.getSkillsAccess(userB)).map((a) => [a.characterId, a.granted, a.hasData])).toEqual([[2, false, true], [3, false, false]]);
+    });
+
+    it("switches sharing off and back on in Keystar while the token holds both scopes", async () => {
+      const { disableOptionalScope, enableOptionalScope } = await import("@/core/auth/scope-switch");
+      for (const scope of [SKILLQUEUE_SCOPE, SKILLS_SCOPE]) await disableOptionalScope(2, scope);
+      const [off] = await skills.getSkillsAccess(userB);
+      expect(off).toMatchObject({ characterId: 2, granted: false, switchedOff: true });
+      const director = { id: userA, can: (p: string) => p.startsWith("skills.") };
+      expect((await skills.getSkillsOverview(skills.skillsScope(director, 100, "corp"))).characters).toEqual([]);
+
+      for (const scope of [SKILLQUEUE_SCOPE, SKILLS_SCOPE]) await enableOptionalScope(2, scope);
+      expect((await skills.getSkillsAccess(userB))[0]).toMatchObject({ granted: true, switchedOff: false });
+      // A revoked token needs the EVE login, so it isn't offered the in-app switch.
+      await disableOptionalScope(2, SKILLS_SCOPE);
+      await db().update(schema.esiTokens).set({ status: "invalid" }).where(sql`character_id = 2`);
+      expect((await skills.getSkillsAccess(userB))[0]).toMatchObject({ granted: false, switchedOff: false });
+    });
+  });
+
+  describe("industry access", async () => {
+    const { INDUSTRY_JOBS_SCOPE, INDUSTRY_SCOPES, STRUCTURES_SCOPE } = await import("@/modules/industry/module");
+    const industry = await import("@/modules/industry/queries");
+    const job = (jobId: number, characterId: number) => ({
+      jobId,
+      characterId,
+      installerId: characterId,
+      locationId: 60003760,
+      facilityId: 60003760,
+      activityId: 1,
+      activity: "manufacturing" as const,
+      blueprintId: 1,
+      blueprintTypeId: 787,
+      blueprintLocationId: 60003760,
+      outputLocationId: 60003760,
+      runs: 1,
+      duration: 3600,
+      status: "active" as const,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 3600_000),
+    });
+    // Who the server actions run as; null makes the permission check fail.
+    let actor: { id: string; characterIds: number[] } | null = null;
+
+    beforeEach(async () => {
+      await db().insert(schema.esiTokens).values([
+        { characterId: 1, refreshTokenEnc: "x", scopes: [...INDUSTRY_SCOPES] },
+        { characterId: 2, refreshTokenEnc: "x", scopes: [...INDUSTRY_SCOPES] },
+        { characterId: 3, refreshTokenEnc: "x", scopes: [] },
+      ]);
+      await db().insert(schema.industryJobs).values([job(1, 1), job(2, 2)]);
+      vi.doMock("@/core/auth/dal", () => ({
+        assertPermission: async () => {
+          if (!actor) throw new Error("forbidden");
+          return actor;
+        },
+      }));
+      vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+      vi.doMock("server-only", () => ({}));
+    });
+    afterEach(() => {
+      vi.doUnmock("@/core/auth/dal");
+      vi.doUnmock("next/cache");
+      vi.doUnmock("server-only");
+    });
+    const scopesOf = async (characterId: number) =>
+      (await db().select({ scopes: schema.esiTokens.scopes }).from(schema.esiTokens).where(sql`character_id = ${characterId}`))[0].scopes.sort();
+
+    it("switches both scopes off and on together, in Keystar only", async () => {
+      const { setIndustryAccess } = await import("@/app/(app)/industry/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      expect(await industry.enabledCharacterIds([2, 3])).toEqual([2]);
+
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([]);
+      expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ characterId: 2, granted: false, switchedOff: true, hasData: true });
+      // The stored jobs stay, but the page no longer reads the character.
+      expect(await industry.enabledCharacterIds([2, 3])).toEqual([]);
+      expect(await industry.getIndustryCoverage([2, 3])).toMatchObject({ tracked: 0, notEnabled: 2 });
+      expect((await industry.getIndustryJobs(industry_filters(), { ownCharacterIds: [] }, { limit: 10, offset: 0 })).total).toBe(0);
+
+      expect(await setIndustryAccess(2, true)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([...INDUSTRY_SCOPES].sort());
+      expect(await industry.enabledCharacterIds([2, 3])).toEqual([2]);
+      expect(await industry.getIndustryCoverage([2, 3])).toMatchObject({ tracked: 1, notEnabled: 1 });
+
+      // A token that never held the scopes needs the EVE login.
+      expect(await setIndustryAccess(3, true)).toEqual({ ok: false, error: "notHeld" });
+    });
+
+    it("refuses a token holding only one scope rather than enabling half", async () => {
+      const { setIndustryAccess } = await import("@/app/(app)/industry/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      await db().update(schema.esiTokens).set({ scopes: [INDUSTRY_JOBS_SCOPE] }).where(sql`character_id = 2`);
+      expect(await setIndustryAccess(2, true)).toEqual({ ok: false, error: "notHeld" });
+      expect(await scopesOf(2)).toEqual([INDUSTRY_JOBS_SCOPE]);
+      // Partly enabled counts as not enabled everywhere, so the pages agree.
+      expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ granted: false, switchedOff: false });
+      expect(await industry.enabledCharacterIds([2])).toEqual([]);
+      expect(await industry.getIndustryCoverage([2])).toMatchObject({ tracked: 0, notEnabled: 1 });
+      // Switching off a partly enabled character works and clears what it still holds.
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([]);
+      expect(STRUCTURES_SCOPE).toBeTruthy();
+    });
+
+    it("checks the permission and the owner, also against the database", async () => {
+      const { deleteIndustryData, setIndustryAccess } = await import("@/app/(app)/industry/actions");
+      actor = null;
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: false, error: "forbidden" });
+      expect(await deleteIndustryData(2)).toEqual({ ok: false, error: "forbidden" });
+      actor = { id: userB, characterIds: [3] };
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: false, error: "notOwned" });
+      expect(await deleteIndustryData(2)).toEqual({ ok: false, error: "notOwned" });
+      // The session's character list is stale: character 1 belongs to Alpha, not Bravo.
+      actor = { id: userB, characterIds: [1] };
+      expect(await setIndustryAccess(1, false)).toEqual({ ok: false, error: "notOwned" });
+      expect(await deleteIndustryData(1)).toEqual({ ok: false, error: "notOwned" });
+      expect(await scopesOf(1)).toEqual([...INDUSTRY_SCOPES].sort());
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId).sort()).toEqual([1, 2]);
+    });
+
+    it("skips a sync's write once access is off, so deleted jobs stay deleted", async () => {
+      const { characterIndustryJobsJob } = await import("@/modules/industry/jobs");
+      let requests = 0;
+      let offAfterFetch = false;
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        maxRetries: 0,
+        fetchImpl: (async (url: string) => {
+          const path = new URL(String(url)).pathname;
+          const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+          if (/\/industry\/jobs$/.test(path)) {
+            requests++;
+            // Simulates access being switched off while the ESI request is in flight.
+            if (offAfterFetch) await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+            return reply([{ job_id: 900, installer_id: 2, facility_id: 60003760, station_id: 60003760, activity_id: 1, blueprint_id: 5,
+              blueprint_type_id: 787, blueprint_location_id: 60003760, output_location_id: 60003760, runs: 2, cost: 10, duration: 3600,
+              status: "active", start_date: new Date().toISOString(), end_date: new Date(Date.now() + 3600_000).toISOString() }]);
+          }
+          if (/\/universe\/stations\//.test(path)) return reply({ name: "Station", system_id: 30000180, type_id: 1529 });
+          if (/\/universe\/types\//.test(path)) return reply({ type_id: 787, name: "Blueprint", group_id: 462, published: true });
+          return reply([]);
+        }) as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 2, characterId: 2, esi, db: db(), log: undefined as never, meta: {} };
+      // With access on, the run stores the job.
+      expect((await characterIndustryJobsJob.run(ctx))?.summary).toContain("1 running job");
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId).sort()).toEqual([1, 2, 900]);
+
+      // Access off and data deleted: a run claimed before the planner disables the schedule reads nothing from ESI.
+      await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+      await db().delete(schema.industryJobs).where(sql`character_id = 2`);
+      await db().delete(schema.esiCache);
+      const before = requests;
+      expect((await characterIndustryJobsJob.run(ctx))?.summary).toBe("Industry access is switched off");
+      expect(requests).toBe(before);
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+
+      // A run whose ESI request already happened when access went off must not bring the jobs back either.
+      await db().update(schema.esiTokens).set({ scopes: [...INDUSTRY_SCOPES] }).where(sql`character_id = 2`);
+      offAfterFetch = true;
+      expect((await characterIndustryJobsJob.run(ctx))?.summary).toContain("switched industry access off");
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+    });
+
+    it("deletes stored jobs only once access is off", async () => {
+      const { deleteIndustryData, setIndustryAccess } = await import("@/app/(app)/industry/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      expect(await deleteIndustryData(2)).toEqual({ ok: false, error: "stillEnabled" });
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: true });
+      expect(await deleteIndustryData(2)).toEqual({ ok: true });
+      expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+      expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ characterId: 2, hasData: false });
+    });
   });
 
   describe("sync scheduler", () => {
@@ -1298,14 +2548,25 @@ describe.skipIf(!enabled)("integration", async () => {
       });
     });
 
-    it("lists unregistered members first, then by name", async () => {
-      expect(await ids()).toEqual(["9", "10", "1", "2", "3"]);
+    it("lists registered characters first, then by name", async () => {
+      expect(await ids()).toEqual(["1", "2", "3", "9", "10"]);
       const [bravo] = await audit.getMemberAuditPage(100, required, params({ q: "Bravo", filter: "registered" }));
       expect(bravo).toMatchObject({ name: "Bravo", inRoster: true, registered: true, mainName: "Bravo", scopes: ["scope.a"] });
     });
 
+    it("sorts names without regard to case", async () => {
+      await db().insert(schema.corporationMembers).values([11, 12, 13].map((characterId) => ({ corporationId: 100, characterId })));
+      await db().insert(schema.eveEntities).values([
+        { id: 11, name: "bravo", category: "character" },
+        { id: 12, name: "alpha", category: "character" },
+        { id: 13, name: "ALPHA", category: "character" },
+      ]);
+      // Byte order would put "ALPHA" and "Outsider" before every lowercase name.
+      expect(await ids({ filter: "unregistered" })).toEqual(["13", "12", "11", "9", "10"]);
+    });
+
     it("filters like the stat tiles count", async () => {
-      expect(await ids({ filter: "roster" })).toEqual(["9", "10", "1", "2"]);
+      expect(await ids({ filter: "roster" })).toEqual(["1", "2", "9", "10"]);
       expect(await ids({ filter: "registered" })).toEqual(["1", "2"]);
       expect(await ids({ filter: "unregistered" })).toEqual(["9", "10"]);
       expect(await ids({ filter: "esi" })).toEqual(["2", "3"]);
@@ -1334,6 +2595,45 @@ describe.skipIf(!enabled)("integration", async () => {
       await db().execute(sql`TRUNCATE corporation_members`);
       const stats = await audit.getMemberAuditStats(100, required, params({ filter: "registered" }));
       expect(stats).toMatchObject({ rosterKnown: false, roster: 0, registered: 3, unregistered: 0, matched: 3 });
+    });
+  });
+
+  describe("name resolver", async () => {
+    const { ensureNames } = await import("@/core/eve/resolver");
+    const { EsiError, getEsi } = await import("@/core/esi");
+    const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+    const names = async () =>
+      (await db().select().from(schema.eveEntities)).map((e) => e.id).sort((a, b) => a - b);
+
+    it("bisects a batch that ESI rejects for one invalid id", async () => {
+      const BAD = 666;
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async (path: string, ids: unknown) => {
+        const chunk = ids as number[];
+        if (chunk.includes(BAD)) throw new EsiError(`ESI POST ${path} failed`, 404, path);
+        return reply(chunk.map((id) => ({ id, name: `Pilot ${id}`, category: "character" })));
+      });
+      try {
+        await ensureNames([11, 12, BAD, 13]);
+        expect(await names()).toEqual([9, 11, 12, 13]);
+        // [11,12,666,13] → [11,12] ok, [666,13] → [666] invalid, [13] ok.
+        expect(postSpy).toHaveBeenCalledTimes(5);
+      } finally {
+        postSpy.mockRestore();
+      }
+    });
+
+    it.each([
+      ["a server error", new EsiError("ESI POST /universe/names failed: HTTP 503", 503, "/universe/names")],
+      ["a network error", new EsiError("ESI request failed: timeout", 0, "/universe/names")],
+    ])("fails on %s instead of bisecting", async (_, error) => {
+      const postSpy = vi.spyOn(getEsi(), "post").mockRejectedValue(error);
+      try {
+        await expect(ensureNames([11, 12, 13, 14])).rejects.toBe(error);
+        expect(postSpy).toHaveBeenCalledTimes(1);
+        expect(await names()).toEqual([9]);
+      } finally {
+        postSpy.mockRestore();
+      }
     });
   });
 });

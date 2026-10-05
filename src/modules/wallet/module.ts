@@ -1,5 +1,6 @@
 import { BookOpenText, Landmark } from "lucide-react";
 import type { KeystarModule } from "@/core/modules/types";
+import { MINING_PERMISSIONS } from "@/modules/mining/module";
 
 export const WALLET_SCOPE = "esi-wallet.read_character_wallet.v1";
 export const CORP_WALLET_SCOPE = "esi-wallet.read_corporation_wallets.v1";
@@ -23,7 +24,10 @@ export const walletModule: KeystarModule = {
       scope: WALLET_SCOPE,
       level: "character",
       optional: true,
+      manageHref: "/mining/pnl/settings",
+      managePermission: MINING_PERMISSIONS.pnl,
       reason: (t) => t.wallet.module.scopes.characterWallet,
+      label: (t) => t.wallet.module.scopes.characterWalletLabel,
     },
     {
       scope: CORP_WALLET_SCOPE,
@@ -52,6 +56,7 @@ export const walletModule: KeystarModule = {
       id: "finances",
       label: (t) => t.wallet.module.navSection,
       order: 25,
+      tone: "trade",
       items: [
         {
           href: "/finances",

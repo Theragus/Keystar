@@ -1,7 +1,7 @@
 /**
  * Seeds a self-contained demo corporation (users of every role, ~120 days of
  * mining, two moon refineries, prices, a killboard, past fleets, threat-intel
- * scans and a mining P&L) so Keystar can be explored without EVE SSO
+ * scans, a mining P&L, skill queues and industry jobs) so Keystar can be explored without EVE SSO
  * credentials. Requires KEYSTAR_DEMO_MODE=true to log in as demo users.
  *
  *   pnpm demo:seed            # refuses if real (non-demo) users exist
@@ -37,15 +37,19 @@ import { classifyOre, type OreClass } from "@/core/eve/ore";
 import { characterScopes, corporationScopes } from "@/core/modules/registry";
 import type { Role } from "@/core/rbac/roles";
 import { setSetting } from "@/core/settings";
+import { KEYSTAR_VERSION } from "@/core/version";
 import { mulberry32 } from "@/lib/random";
+import { FLEET_SCOPE } from "@/modules/fleet/logic";
 import { generateSituationReport } from "@/modules/killboard/report/generate";
 import { runMigrations } from "@/scripts/migrate";
 import staticData from "./demo-data/eve-static.json";
 import { seedCorpWallet } from "./demo-data/corp-wallet";
 import { seedFleets } from "./demo-data/fleet";
+import { seedIndustry } from "./demo-data/industry";
 import { seedIntel } from "./demo-data/intel";
 import { seedKillboard } from "./demo-data/killboard";
 import { seedMiningPnl } from "./demo-data/pnl";
+import { seedSkills } from "./demo-data/skills";
 import { seedMail } from "./demo-data/social";
 import { seedWormholes } from "./demo-data/wormholes";
 
@@ -189,13 +193,15 @@ async function main() {
   console.log("Clearing existing data…");
   await db.execute(sql`TRUNCATE users, characters, esi_tokens, sessions, audit_log, app_settings, character_corp_roles,
     corporation_members, eve_entities, eve_corporations, eve_groups, eve_types, eve_systems, market_prices, type_values,
-    type_value_history, esi_cache, sync_jobs, worker_heartbeats, mining_character_ledger, mining_observers,
+    type_value_history, price_interest, esi_cache, sync_jobs, worker_heartbeats, mining_character_ledger, mining_observers,
     mining_observer_ledger, killmails, killmail_attackers, killboard_reports, fleets, fleet_members, fleet_trackers,
     eve_constellations, intel_scans, intel_scan_pilots, intel_pilots, intel_pilot_killmails, intel_queue, intel_contacts,
-    intel_ai_notes, wallet_transactions, mining_activity, mining_activity_coverage, mining_pnl_settings,
-    mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_entries, corp_wallet_divisions,
-    corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages,
-    mail_labels, mail_lists, wh_maps, wh_map_systems, wh_connections RESTART IDENTITY CASCADE`);
+    intel_ai_notes, wallet_transactions, wallet_fees, mining_activity, mining_activity_coverage, mining_pnl_settings,
+    mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries,
+    corp_wallet_divisions, corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions,
+    corp_wallet_sync_state, mail_messages, mail_labels, mail_lists, skills_queue, skills_character_skills, skills_character, skills_type_attributes,
+    industry_jobs, industry_locations, wh_maps, wh_map_systems, wh_connections
+    RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
   await db.insert(eveGroups).values(staticData.groups);
@@ -250,7 +256,8 @@ async function main() {
       if (ci === 0) await db.update(users).set({ mainCharacterId: characterId }).where(sql`${users.id} = ${user.id}`);
 
       const isLeadership = u.role === "admin" || u.role === "director";
-      let scopes = isLeadership && ci === 0 ? corpScopes : memberScopes;
+      // Leadership mains also run fleets, so they have the opt-in fleet scope.
+      let scopes = isLeadership && ci === 0 ? [...corpScopes, FLEET_SCOPE] : memberScopes;
       let status: "active" | "invalid" = "active";
       let lastError: string | null = null;
       if (index === 5) scopes = scopes.filter((s) => !s.includes("mining")); // a member missing the mining scope
@@ -472,7 +479,8 @@ async function main() {
       nextRunAt: new Date(now + rand() * 3600_000),
     })),
   );
-  await db.insert(workerHeartbeats).values({ workerId: "demo-worker", version: "demo", info: { demo: true } });
+  // The running version, so System Info doesn't report a worker/web version mismatch in demo mode.
+  await db.insert(workerHeartbeats).values({ workerId: "demo-worker", version: KEYSTAR_VERSION, info: { demo: true } });
 
   // --- Killboard ----------------------------------------------------------
   const combatWeights: Record<string, number> = {
@@ -514,6 +522,12 @@ async function main() {
     now: new Date(),
   });
 
+  // --- Skill queues (opt-in on some characters) ------------------------------
+  const queued = await seedSkills(db, { characters: allChars, now: new Date() });
+
+  // --- Industry jobs (a few characters build, research and invent) -----------
+  const industryCount = await seedIndustry(db, { characters: allChars, now: new Date() });
+
   await setSetting("corp.homeCorporationId", HOME_CORP.corporationId);
   await setSetting("demo.users", demoUserIds);
   await setSetting("setup.completedAt", new Date().toISOString());
@@ -537,7 +551,7 @@ async function main() {
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
       `${killboard.killmails} killmails, ${fleetCount} fleets, ${pnl.transactions} wallet transactions, ${pnl.windows} ` +
-      `activity windows, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, a ${report.source} situation report, a threat intel scan of ${intel.pilots} pilots and a ` +
+      `activity windows, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, ${queued} queued skills, ${industryCount} industry jobs, a ${report.source} situation report, a threat intel scan of ${intel.pilots} pilots and a ` +
       `wormhole chain of ${chain.systems} systems.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");

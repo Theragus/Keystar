@@ -99,8 +99,21 @@ export function windowPath(window: ZkillWindow): string {
   return `year/${window.year}/month/${window.month}/`;
 }
 
+/** Request counters since the client was created, for System Info and the support package. */
+export interface ZkillClientStats {
+  since: string;
+  requests: number;
+  ok: number;
+  /** 429 and 5xx answers (retried). */
+  throttled: number;
+  failed: number;
+  unreachable: number;
+  minIntervalMs: number;
+}
+
 export class ZkillClient {
   private nextSlot = 0;
+  private readonly counters = { since: new Date().toISOString(), requests: 0, ok: 0, throttled: 0, failed: 0, unreachable: 0 };
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
@@ -131,7 +144,7 @@ export class ZkillClient {
    * never seen with `{"error": "Invalid type or id"}`, which means no history.
    */
   async characterStats(characterId: number): Promise<{ kind: "ok"; stats: Record<string, unknown> } | { kind: "none" }> {
-    const body = await this.getJson(`/api/stats/characterID/${characterId}/`);
+    const body = await this.getJson(`/api/stats/characterID/${characterId}/kills/`);
     if (!body || typeof body !== "object" || Array.isArray(body)) return { kind: "none" };
     if (typeof (body as { error?: unknown }).error === "string") return { kind: "none" };
     return { kind: "ok", stats: body as Record<string, unknown> };
@@ -145,6 +158,37 @@ export class ZkillClient {
       if (!rows.length) return;
       yield rows;
     }
+  }
+
+  /**
+   * One request without retries, for reachability checks (System Info): an unknown
+   * character's statistics, which zKillboard answers with a tiny error object. Any
+   * HTTP answer resolves with its status (403 = User-Agent or IP blocked); network errors throw.
+   */
+  async ping(signal: AbortSignal = AbortSignal.timeout(10_000)): Promise<{ status: number }> {
+    await this.throttle();
+    // The caller may have given up while this waited for its slot.
+    signal.throwIfAborted();
+    this.counters.requests++;
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.baseUrl}/api/stats/characterID/1/kills/`, {
+        headers: { "User-Agent": this.opts.userAgent, "Accept-Encoding": "gzip", Accept: "application/json" },
+        signal,
+      });
+    } catch (err) {
+      this.counters.unreachable++;
+      throw err;
+    }
+    if (res.ok) this.counters.ok++;
+    else if (res.status === 429 || res.status >= 500) this.counters.throttled++;
+    else this.counters.failed++;
+    await res.body?.cancel().catch(() => undefined);
+    return { status: res.status };
+  }
+
+  stats(): ZkillClientStats {
+    return { ...this.counters, minIntervalMs: this.opts.minIntervalMs ?? 1100 };
   }
 
   private async throttle(): Promise<void> {
@@ -175,6 +219,7 @@ export class ZkillClient {
     let lastError: ZkillError | null = null;
     for (let attempt = 1; attempt <= attempts; attempt++) {
       await this.throttle();
+      this.counters.requests++;
       let res: Response;
       try {
         // Statistics URLs redirect (302) to their default sort; fetch follows that.
@@ -182,20 +227,24 @@ export class ZkillClient {
           headers: { "User-Agent": this.opts.userAgent, "Accept-Encoding": "gzip", Accept: "application/json" },
         });
       } catch (err) {
+        this.counters.unreachable++;
         lastError = new ZkillError(`zKillboard unreachable: ${(err as Error).message}`, null);
         await this.sleep(2000 * attempt);
         continue;
       }
       if (res.status === 429 || res.status >= 500) {
+        this.counters.throttled++;
         const retryAfter = Number(res.headers.get("retry-after"));
         lastError = new ZkillError(`zKillboard responded ${res.status}`, res.status);
         await this.sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 5000 * attempt);
         continue;
       }
       if (!res.ok) {
+        this.counters.failed++;
         // 403 usually means a missing/blocked User-Agent or too many requests from this IP.
         throw new ZkillError(`zKillboard responded ${res.status} for ${path}`, res.status);
       }
+      this.counters.ok++;
       return { body: await res.json(), status: res.status };
     }
     throw lastError ?? new ZkillError("zKillboard request failed", null);
@@ -307,4 +356,96 @@ export function toRows(km: ZkillKillmail): { killmail: KillmailRow; attackers: A
       finalBlow: a.final_blow === true,
     })),
   };
+}
+
+/**
+ * zKillboard's live feed (R2Z2, https://github.com/zKillboard/zKillboard/wiki/API-(R2Z2)):
+ * every killmail zKillboard parses gets the next number of a global sequence
+ * and is published as `{sequence}.json` (kept for at least 24 hours). Readers
+ * start at `sequence.json` and count upwards until a 404, then wait at least 6
+ * seconds. The feed is unfiltered (all of New Eden), so callers pick their own.
+ * Limits: 15 requests a second per IP, or the IP is refused for up to an hour.
+ */
+export type R2z2Result = { kind: "pending" } | { kind: "entry"; killmail: ZkillKillmail | null };
+
+export interface R2z2ClientOptions {
+  userAgent: string;
+  baseUrl?: string;
+  /** Minimum gap between two requests from this process (zKillboard suggests 100 ms). */
+  minIntervalMs?: number;
+  fetch?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+export class R2z2Client {
+  private nextSlot = 0;
+  private readonly baseUrl: string;
+  private readonly fetchImpl: typeof fetch;
+  private readonly sleep: (ms: number) => Promise<void>;
+
+  constructor(private readonly opts: R2z2ClientOptions) {
+    this.baseUrl = (opts.baseUrl ?? "https://r2z2.zkillboard.com/ephemeral").replace(/\/+$/, "");
+    this.fetchImpl = opts.fetch ?? fetch;
+    this.sleep = opts.sleep ?? realSleep;
+  }
+
+  /** A recent sequence number to start reading from (updated in batches, so it may trail a little). */
+  async sequence(): Promise<number> {
+    const body = await this.request("/sequence.json");
+    const seq = (body as { sequence?: unknown } | null)?.sequence;
+    if (!Number.isSafeInteger(seq)) throw new ZkillError("R2Z2: unexpected sequence response", 200);
+    return seq as number;
+  }
+
+  /**
+   * The killmail published under a sequence number: `pending` while it doesn't
+   * exist yet (404); `killmail` is null when the file isn't a usable killmail.
+   */
+  async entry(sequence: number): Promise<R2z2Result> {
+    const body = await this.request(`/${sequence}.json`);
+    if (body === undefined) return { kind: "pending" };
+    return { kind: "entry", killmail: fromR2z2(body) };
+  }
+
+  private async throttle(): Promise<void> {
+    const interval = this.opts.minIntervalMs ?? 100;
+    const now = Date.now();
+    const wait = this.nextSlot - now;
+    this.nextSlot = Math.max(now, this.nextSlot) + interval;
+    if (wait > 0) await this.sleep(wait);
+  }
+
+  /** JSON body, or undefined on 404. Errors are not retried here: the live job simply tries again on its next run. */
+  private async request(path: string): Promise<unknown> {
+    await this.throttle();
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        headers: { "User-Agent": this.opts.userAgent, "Accept-Encoding": "gzip", Accept: "application/json" },
+      });
+    } catch (err) {
+      throw new ZkillError(`R2Z2 unreachable: ${(err as Error).message}`, null);
+    }
+    if (res.status === 404) return undefined;
+    if (!res.ok) throw new ZkillError(`R2Z2 responded ${res.status} for ${path}`, res.status);
+    return res.json();
+  }
+}
+
+/** An R2Z2 file is `{killmail_id, hash, esi: <ESI killmail>, zkb, …}`; flatten it to the API listing shape. */
+export function fromR2z2(body: unknown): ZkillKillmail | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as { killmail_id?: unknown; hash?: unknown; esi?: Record<string, unknown>; zkb?: Record<string, unknown> };
+  if (!b.esi || typeof b.esi !== "object") return null;
+  const km = {
+    ...b.esi,
+    killmail_id: b.esi.killmail_id ?? b.killmail_id,
+    zkb: { ...(b.zkb ?? {}), hash: b.zkb?.hash ?? b.hash },
+  };
+  return isKillmail(km) ? km : null;
+}
+
+/** Whether a corporation is on the killmail, as victim or attacker. */
+export function involvesCorporation(km: ZkillKillmail, corporationId: number): boolean {
+  return km.victim.corporation_id === corporationId || km.attackers.some((a) => a.corporation_id === corporationId);
 }

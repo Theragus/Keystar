@@ -90,7 +90,7 @@ export function MultiSelect({
           onClick={() => (open ? close() : openPopover())}
           aria-expanded={open}
           className={cn(
-            "glass-chip flex h-8 items-center gap-2 rounded-lg pr-3 pl-3.5 text-xs transition hover:bg-white/10",
+            "glass-chip flex h-8 items-center gap-2 rounded-lg pr-3 pl-3.5 text-xs transition hover:bg-surface-contrast/10",
             selected.length > 0 && "ring-1 ring-accent/40",
           )}
         >
@@ -102,7 +102,7 @@ export function MultiSelect({
       }
     >
       <div className="p-3">
-        <div className="glass-inset flex items-center gap-2 rounded-lg px-3">
+        <div className="glass-inset field-focus flex items-center gap-2 rounded-lg px-3">
           <Search className="size-3.5 text-ink-3" aria-hidden />
           <input
             autoFocus
@@ -120,7 +120,7 @@ export function MultiSelect({
             <X className="size-3" aria-hidden /> {t.common.multiSelect.clear}
           </button>
         </div>
-        <div className="mt-1 max-h-[320px] overflow-y-auto pr-1">
+        <div className="mt-1 max-h-[320px] overflow-y-auto overscroll-contain pr-1">
           {groups.length === 0 && <div className="px-2 py-6 text-center text-xs text-ink-3">{t.common.multiSelect.noMatches}</div>}
           {groups.map(([group, items]) => (
             <div key={group} className="py-1">
@@ -134,12 +134,12 @@ export function MultiSelect({
                     role="checkbox"
                     aria-checked={checked}
                     onClick={() => toggle(o.value)}
-                    className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-white/6"
+                    className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-contrast/6"
                   >
                     <span
                       className={cn(
                         "grid size-4 shrink-0 place-items-center rounded-[5px] ring-1",
-                        checked ? "bg-accent ring-accent" : "ring-white/25",
+                        checked ? "bg-accent ring-accent" : "ring-surface-contrast/25",
                       )}
                     >
                       {checked && <Check className="size-3 text-space-950" strokeWidth={3} aria-hidden />}
@@ -153,7 +153,7 @@ export function MultiSelect({
             </div>
           ))}
         </div>
-        <div className="mt-2 flex justify-end border-t border-white/8 pt-2.5">
+        <div className="mt-2 flex justify-end border-t border-surface-contrast/8 pt-2.5">
           <button type="button" onClick={close} className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-space-950">
             {t.common.multiSelect.apply(draft.size)}
           </button>

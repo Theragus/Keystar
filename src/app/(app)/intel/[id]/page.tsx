@@ -4,27 +4,27 @@ import { PageHeader } from "@/components/shell/page-header";
 import { ButtonLink } from "@/components/ui/button";
 import { CopyField } from "@/components/ui/copy-button";
 import { Panel } from "@/components/ui/glass";
-import { StatTile } from "@/components/ui/stat-tile";
+import { SituationPanel } from "@/modules/intel/components/situation";
 import { requirePermission } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { getI18n } from "@/i18n/server";
 import { SHARE_ID_PATTERN } from "@/lib/share-id";
 import { claudeConfigured, latestNote } from "@/modules/intel/ai/generate";
-import { DscanForm, ReadDscanButton } from "@/modules/intel/components/dscan-form";
+import { DscanDropdown, DscanForm, ReadDscanButton } from "@/modules/intel/components/dscan-form";
 import { DscanPanel } from "@/modules/intel/components/dscan-panel";
 import { matchDscan } from "@/modules/intel/dscan";
-import { RewriteBriefingButton } from "@/modules/intel/components/ai-buttons";
+import { BriefingControl } from "@/modules/intel/components/briefing-control";
 import { BriefingPanel } from "@/modules/intel/components/briefing-panel";
 import { EngagementList } from "@/modules/intel/components/engagements";
 import { GroupSummaryPanel } from "@/modules/intel/components/group-summary";
 import { PilotRow } from "@/modules/intel/components/pilot-row";
 import { ScanProgressPoller } from "@/modules/intel/components/scan-progress";
-import { DeleteScanButton, ProfileRemainingButton, RescanButton } from "@/modules/intel/components/scan-buttons";
+import { DeleteScanButton, ProfileRemainingButton } from "@/modules/intel/components/scan-buttons";
 import { INTEL_PERMISSIONS } from "@/modules/intel/module";
 import { getScan, scanProgress } from "@/modules/intel/scans";
-import { isFriendly, isHostile } from "@/modules/intel/standings";
+import { isFriendly } from "@/modules/intel/standings";
 import { loadScanView } from "@/modules/intel/view";
-import { deleteScan, profileScanPilots, readDscan, rescan, rewriteBriefing, setDscan } from "../actions";
+import { deleteScan, profileScanPilots, readDscan, rewriteBriefing, setDscan } from "../actions";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -49,8 +49,6 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
   const { home, pilots, rows, engagements, names, summary, totals, pilotNames, system } = view;
   const friendly = rows.filter((r) => isFriendly(r.standing));
   const others = rows.filter((r) => !isFriendly(r.standing));
-  const hostiles = rows.filter((r) => isHostile(r.standing)).length;
-  const highThreat = summary.tiers.high + summary.tiers.extreme;
   const unprofiled = pilots.filter((p) => !p.profiled).length;
   const dscanRows = scan.dscan
     ? matchDscan(
@@ -68,14 +66,7 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
       rows={dscanRows}
       read={dscanRead}
       pilotNames={pilotNames}
-      form={
-        <details open={!dscanRows}>
-          <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">{dscanRows ? text.replaceDscan : text.pasteDscan}</summary>
-          <div className="mt-2">
-            <DscanForm scanId={scan.id} action={setDscan} replace={!!scan.dscan} />
-          </div>
-        </details>
-      }
+      form={<DscanForm scanId={scan.id} action={setDscan} replace={!!scan.dscan} />}
       actions={canAi && dscanRows?.length ? <ReadDscanButton scanId={scan.id} action={readDscan} claude={claudeConfigured()} /> : undefined}
     />
   );
@@ -91,35 +82,17 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
             <ButtonLink href="/intel" size="sm">
               <ArrowLeft className="size-4" aria-hidden /> {text.newScan}
             </ButtonLink>
-            <RescanButton scanId={scan.id} action={rescan} />
+            {canAi && scan.status === "ready" && <BriefingControl scanId={scan.id} action={rewriteBriefing}>
+              <BriefingPanel note={briefing} pending={scan.briefingStatus === "pending"} scanId={scan.id} pilotNames={pilotNames} claudeHint={claudeHint} />
+            </BriefingControl>}
+            <DscanDropdown supplied={!!scan.dscan}>{dscanPanel}</DscanDropdown>
             {canDelete && <DeleteScanButton scanId={scan.id} action={deleteScan} />}
           </>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatTile label={text.pilots} value={f.integer(scan.pilotCount)} hint={scan.unresolved.length ? text.unknownNames(scan.unresolved.length) : undefined} />
-        <StatTile label={text.highThreat} value={f.integer(highThreat)} hint={text.hostileStandings(hostiles)} />
-        <StatTile label={text.friendly} value={f.integer(friendly.length)} hint={text.friendlyHint} />
-        <StatTile
-          label={text.foughtUs}
-          value={f.integer(totals.pilots)}
-          hint={totals.engagements ? text.engagements(totals.engagements) : text.noFights}
-        />
-      </div>
-
-      <ScanProgressPoller scanId={scan.id} initial={progress} />
-
-      {summary.hostiles > 0 && (
-        <BriefingPanel
-          note={briefing}
-          pending={scan.briefingStatus === "pending"}
-          scanId={scan.id}
-          pilotNames={pilotNames}
-          claudeHint={claudeHint}
-          actions={canAi && scan.status === "ready" ? <RewriteBriefingButton scanId={scan.id} action={rewriteBriefing} /> : undefined}
-        />
-      )}
+      <ScanProgressPoller scanId={scan.id} initial={progress}>
+        <SituationPanel view={view} scannedAt={scan.createdAt} dscanAt={scan.dscanAt} />
 
       {summary.hostiles > 0 && (
         <Panel title={text.groupTitle} subtitle={text.nonFriendly(summary.hostiles)}>
@@ -134,33 +107,41 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
         </p>
       )}
 
-      {dscanRows && dscanPanel}
-
       <Panel
         title={text.pilotsTitle}
         subtitle={others.length ? undefined : text.allFriendly}
         actions={unprofiled > 0 ? <ProfileRemainingButton scanId={scan.id} count={unprofiled} action={profileScanPilots} /> : undefined}
       >
-        <div className="space-y-1.5">
+        <div className="grid auto-rows-fr items-stretch gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {others.map((r) => (
-            <PilotRow key={r.pilot.characterId} pilot={r.pilot} standing={r.standing} names={names} pilotNames={pilotNames} scanId={scan.id} />
+            <PilotRow
+              key={r.pilot.characterId}
+              pilot={r.pilot}
+              standing={r.standing}
+              names={names}
+              pilotNames={pilotNames}
+              scanId={scan.id}
+            />
           ))}
         </div>
         {friendly.length > 0 && (
           <details className="mt-4">
-            <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">
-              {text.friendlyPilots(friendly.length)}
-            </summary>
-            <div className="mt-2 space-y-1.5">
+            <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">{text.friendlyPilots(friendly.length)}</summary>
+            <div className="mt-2 grid auto-rows-fr items-stretch gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {friendly.map((r) => (
-                <PilotRow key={r.pilot.characterId} pilot={r.pilot} standing={r.standing} names={names} pilotNames={pilotNames} scanId={scan.id} />
+                <PilotRow
+                  key={r.pilot.characterId}
+                  pilot={r.pilot}
+                  standing={r.standing}
+                  names={names}
+                  pilotNames={pilotNames}
+                  scanId={scan.id}
+                />
               ))}
             </div>
           </details>
         )}
       </Panel>
-
-      {!dscanRows && summary.hostiles > 0 && dscanPanel}
 
       {home && engagements.length > 0 && (
         <Panel
@@ -177,7 +158,9 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
           <EngagementList engagements={engagements.slice(0, 5)} names={names} pilotNames={pilotNames} />
           {engagements.length > 5 && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">{text.olderEngagements(engagements.length - 5)}</summary>
+              <summary className="cursor-pointer text-xs text-ink-3 hover:text-ink-2">
+                {text.olderEngagements(engagements.length - 5)}
+              </summary>
               <div className="mt-2">
                 <EngagementList engagements={engagements.slice(5)} names={names} pilotNames={pilotNames} />
               </div>
@@ -195,6 +178,7 @@ export default async function ScanPage({ params }: PageProps<"/intel/[id]">) {
         <CopyField value={`${env().APP_URL}/intel/${scan.id}`} />
         <p className="mt-2 text-xs text-ink-3">{text.shareHint}</p>
       </Panel>
+      </ScanProgressPoller>
     </div>
   );
 }
