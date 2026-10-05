@@ -10,6 +10,7 @@ import { ensureNames, ensureSystems, ensureTypes } from "@/core/eve/resolver";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
 import { addDays, isoDate } from "@/lib/dates";
 import { observationTime, planActivity } from "./activity";
+import { dedupeCharacterLedger, dedupeObserverLedger } from "./dedupe";
 
 interface CharacterMiningEntry {
   date: string;
@@ -45,14 +46,16 @@ export const characterLedgerJob: JobDefinition = {
     const res = await esi.getAllPages<CharacterMiningEntry>(`/characters/${characterId}/mining`, {
       characterId: characterId!,
     });
-    const rows = res.data.map((e) => ({
-      characterId: characterId!,
-      date: e.date,
-      solarSystemId: e.solar_system_id,
-      typeId: e.type_id,
-      quantity: e.quantity,
-      updatedAt: new Date(),
-    }));
+    const rows = dedupeCharacterLedger(
+      res.data.map((e) => ({
+        characterId: characterId!,
+        date: e.date,
+        solarSystemId: e.solar_system_id,
+        typeId: e.type_id,
+        quantity: e.quantity,
+        updatedAt: new Date(),
+      })),
+    );
     // A snapshot served from Keystar's own cache was already applied by the run that fetched it (or will be by the
     // next one, if that run failed): writing it again could only hide growth from the activity measurement.
     if (res.fromCache) return { summary: `${rows.length} ledger entries (cached)`, nextRunAt: res.expiresAt };
@@ -182,21 +185,23 @@ export const corporationObserversJob: JobDefinition = {
         `/corporation/${corporationId}/mining/observers/${o.observer_id}`,
         { characterId: characterId! },
       );
-      const rows = ledger.data.map((e) => {
-        characterIds.add(e.character_id);
-        characterIds.add(e.recorded_corporation_id);
-        typeIds.add(e.type_id);
-        return {
-          observerId: o.observer_id,
-          corporationId,
-          characterId: e.character_id,
-          recordedCorporationId: e.recorded_corporation_id,
-          date: e.last_updated,
-          typeId: e.type_id,
-          quantity: e.quantity,
-          updatedAt: new Date(),
-        };
-      });
+      const rows = dedupeObserverLedger(
+        ledger.data.map((e) => {
+          characterIds.add(e.character_id);
+          characterIds.add(e.recorded_corporation_id);
+          typeIds.add(e.type_id);
+          return {
+            observerId: o.observer_id,
+            corporationId,
+            characterId: e.character_id,
+            recordedCorporationId: e.recorded_corporation_id,
+            date: e.last_updated,
+            typeId: e.type_id,
+            quantity: e.quantity,
+            updatedAt: new Date(),
+          };
+        }),
+      );
       entries += rows.length;
       for (let i = 0; i < rows.length; i += CHUNK) {
         await db

@@ -21,6 +21,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   unlinked and linked again, instead of waiting until ESI's data changes. Unlinking or transferring a character, and
   deleting its industry data, also removes the ESI responses Keystar had cached for it, and cached responses
   without an expiry are cleaned up after a week. ([#139](https://github.com/Theragus/Keystar/issues/139))
+- A mining ledger from ESI that lists the same pilot, ore and day twice (for example after the pilot changed
+  corporation that day) no longer makes the moon-mining import fail on every run until that day drops out of ESI's
+  30-day ledger. Repeats are merged before saving, and ore mined under two corporations on one day is added up.
+  ([#149](https://github.com/Theragus/Keystar/issues/149))
 - In English, the killboard's permissions in Users & Roles, its background jobs and its browser tab title now
   say "Combat Report" like the sidebar, instead of "Killboard".
 - Wallet imports read ESI's available history again after deleting wallet data or relinking a character, instead
