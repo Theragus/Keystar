@@ -162,8 +162,12 @@ them; its scores, tags and template notes are stored as data and shown in the re
   (`Retry-After`, `X-Ratelimit-Group`)
 - one automatic token refresh on `401`; `403` raises `EsiForbiddenError` (missing scope or in-game role)
 
-Tokens are refreshed in `src/core/esi/tokens.ts` under a row lock; `invalid_grant` marks the token invalid so the
-pilot sees "Re-authorise".
+Tokens are refreshed in `src/core/esi/tokens.ts`, serialised per character by an advisory lock rather than the
+`esi_tokens` row lock, so scope switches and logins don't wait on CCP. The refresh token SSO returns (it may rotate)
+is committed right after the SSO call, before the new access token is verified; the access token and its scopes are
+stored in a second short transaction. Both writes only apply if the row still holds the refresh token they started
+from, so a login that replaced the token meanwhile wins. `invalid_grant` marks the token invalid so the pilot sees
+"Re-authorise".
 
 ## Sync engine
 
