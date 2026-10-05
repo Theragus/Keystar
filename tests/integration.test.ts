@@ -2824,6 +2824,26 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await scheduler.corporationCandidates(db(), 100, base)).toEqual([2, 3]);
       expect(await scheduler.corporationCandidates(db(), 100, { ...base, anyCorpMember: true })).toEqual([2, 1, 3]);
     });
+
+    it("keeps disabled accounts' characters out of corporation jobs", async () => {
+      const { setSetting } = await import("@/core/settings");
+      await setSetting("corp.homeCorporationId", 100);
+      await db().insert(schema.characterCorpRoles).values({ characterId: 2, roles: ["Director"] });
+      await db().execute(sql`UPDATE esi_tokens SET scopes = ARRAY['scope.a'], status = 'active'`);
+      const def = { ...job(async () => {}), owner: "corporation" as const, anyCorpMember: true };
+      const corpJobEnabled = async () => {
+        await scheduler.planJobs([def]);
+        return (await db().select().from(schema.syncJobs)).some((r) => r.ownerId === 100 && r.enabled);
+      };
+
+      await db().execute(sql`UPDATE users SET is_disabled = true WHERE id = ${userB}`);
+      expect(await scheduler.corporationCandidates(db(), 100, def)).toEqual([1]);
+      expect(await corpJobEnabled()).toBe(true);
+
+      await db().execute(sql`UPDATE users SET is_disabled = true WHERE id = ${userA}`);
+      expect(await scheduler.corporationCandidates(db(), 100, def)).toEqual([]);
+      expect(await corpJobEnabled()).toBe(false);
+    });
   });
 
   describe("member audit", async () => {
