@@ -133,6 +133,18 @@ character, so it lives in one module.
 
 ## Planned modules
 
+### 🚧 Wormhole mapping
+
+Proposal: [docs/proposals/wormhole-mapping.md](docs/proposals/wormhole-mapping.md).
+
+- ✅ System lookup with bundled data (CCP SDE + anoik.is): class, effect at strength, statics, possible wormholes
+- ✅ Shared corporation chain map: systems, connections with type, lifetime band and time left, mass, ship size;
+  tree layout from home, drag to pin or connect, list view, keyboard shortcuts, live updates, housekeeping of
+  collapsed holes
+- 📝 Opt-in location tracking (`esi-location.*`): map jumps automatically, pilots on the map
+- 💡 Signatures (probe scanner paste), mass log and rolling calculator, routes through the chain (`POST /route` with
+  custom connections), kills in chain, Thera/Turnur connections from EVE-Scout, private maps
+
 ### 🚧 Skills & corporation skill plans
 
 - ✅ **Skill queues** (opt-in per character, `esi-skills.read_skillqueue.v1`, `esi-skills.read_skills.v1`): skill in

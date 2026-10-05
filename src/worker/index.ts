@@ -29,6 +29,7 @@ const DEMO_SAFE_JOBS = new Set([
   "intel.scan-worker",
   "intel.briefings",
   "intel.housekeeping",
+  "wormholes.housekeeping",
 ]);
 const ACTIVE_JOBS = env().KEYSTAR_DEMO_MODE ? JOBS.filter((j) => DEMO_SAFE_JOBS.has(j.key)) : JOBS;
 const jobsByKey = new Map(ACTIVE_JOBS.map((j) => [j.key, j]));

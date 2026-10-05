@@ -17,6 +17,7 @@ import { miningJobs, miningPriceInterest } from "./mining/jobs";
 import { skillsJobs } from "./skills/jobs";
 import { socialJobs } from "./social/jobs";
 import { walletJobs } from "./wallet/jobs";
+import { wormholesJobs } from "./wormholes/jobs";
 
 /**
  * Background jobs run by the worker. Add a module's jobs and price interest
@@ -40,6 +41,7 @@ export const JOBS: JobDefinition[] = [
   ...walletJobs,
   ...socialJobs,
   ...skillsJobs,
+  ...wormholesJobs,
 ];
 
 const JOBS_BY_KEY = new Map(JOBS.map((j) => [j.key, j]));

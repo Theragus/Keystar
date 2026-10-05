@@ -20,6 +20,7 @@
     "db:studio": "drizzle-kit studio",
     "demo:seed": "tsx src/scripts/demo-seed.ts",
     "release:prepare": "tsx src/scripts/release-prepare.ts",
+    "wh:data": "tsx src/scripts/wh-data.ts",
     "support:package": "tsx src/scripts/support-package.ts"
   },
   "packageManager": "pnpm@10.28.0",
@@ -28,7 +29,9 @@
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource/rajdhani": "^5.3.0",
+    "@xyflow/react": "^12.12.0",
     "clsx": "^2.1.1",
+    "d3-hierarchy": "^3.1.2",
     "drizzle-orm": "^0.45.3",
     "jose": "^6.2.12",
     "lucide-react": "^1.50.0",
@@ -43,6 +46,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/d3-hierarchy": "^3.1.7",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -50,6 +54,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.8",
+    "fflate": "^0.8.3",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",

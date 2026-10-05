@@ -18,6 +18,7 @@ import { skills } from "./skills";
 import { social } from "./social";
 import { trade } from "./trade";
 import { wallet } from "./wallet";
+import { wormholes } from "./wormholes";
 
 /** German dictionary. Informal "du", EVE terms as German players use them (Corporation, Killboard, ISK, ESI). */
 export const de: Messages = {
@@ -40,4 +41,5 @@ export const de: Messages = {
   wallet,
   social,
   skills,
+  wormholes,
 };

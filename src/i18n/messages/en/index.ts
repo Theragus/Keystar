@@ -17,6 +17,7 @@ import { skills } from "./skills";
 import { social } from "./social";
 import { trade } from "./trade";
 import { wallet } from "./wallet";
+import { wormholes } from "./wormholes";
 
 /**
  * English source dictionary, one namespace per area. Its shape is the
@@ -42,6 +43,7 @@ export const en = {
   wallet,
   social,
   skills,
+  wormholes,
 };
 
 export type Messages = typeof en;

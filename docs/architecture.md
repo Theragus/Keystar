@@ -56,9 +56,11 @@ src/
     wallet/            opt-in character wallet transactions (raw data used by the mining P&L); corp/: corporation
                        wallet archive (balances, journal, transactions), classification, finances pages' queries
     social/            opt-in EVE mail (read-only): mail sync, EVE HTML parser, link resolution, mail UI
+    wormholes/         chain map and system lookup: bundled static data (data/static.json), layout, lifetime
+                       maths, map edits, housekeeping, React Flow canvas
     jobs.ts            registry of background jobs (worker only)
   worker/index.ts      worker entry point
-  scripts/             migrate, demo-seed
+  scripts/             migrate, demo-seed, wh-data (regenerates the bundled wormhole data)
 drizzle/               generated SQL migrations
 docker/                entrypoint, Caddyfile
 ```
@@ -215,6 +217,7 @@ Current jobs:
 | `social.character-mail`          | 5 min    | EVE mail, labels and mailing lists of characters that opted in to mail |
 | `skills.queue`                   | 15 min   | Skill queue of characters that share their skills; static skill attributes and ranks |
 | `skills.character`               | 1 h      | Trained skills, skill points and attributes of characters that share their skills |
+| `wormholes.housekeeping`         | 5 min    | Collapses expired wormholes, drops systems they stranded   |
 
 ## System info and support package
 
@@ -527,3 +530,29 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
   the last appraisal that asked for them. An appraisal is refused if any of them can't be priced.
 - An appraisal is a snapshot (items, unit prices, totals, unrecognised lines, input) in `appraisals`, opened by an
   unguessable id. "Appraise again" creates a new snapshot at current prices.
+
+## Wormhole mapping
+
+A shared map of the corporation's wormhole chain (Exploration → Chain map) and a lookup for any system
+(Exploration → System lookup). It needs no ESI scopes and makes no ESI calls.
+
+- **Static data** is bundled in `src/modules/wormholes/data/static.json` (~400 KB, committed): system names,
+  security, regions and wormhole classes from CCP's static data export, and wormhole types (destination, lifetime,
+  mass), system effects and statics from [anoik.is](https://anoik.is/) — community data, credited in the UI.
+  Regenerate it after an expansion with `pnpm wh:data` (downloads into `.cache/wh-data/`; behind a proxy run it with
+  `NODE_USE_ENV_PROXY=1`). Only server code imports it (`static-data.ts`; an ESLint rule keeps it out of
+  `components/`): the browser gets per-system data in the map state and searches through `/api/wormholes/systems`.
+- **One corporation map** (`wh_maps` row `corp`) with systems and positions (`wh_map_systems`) and connections
+  (`wh_connections`, stored with a < b; `type_side` is the end that shows the wormhole type, the other end shows K162).
+  Every edit runs in a transaction that first bumps `wh_maps.revision`, which also serialises edits to the map.
+- **Lifetime.** EVE only shows bands (more than a day, less than a day, less than 4 hours, less than an hour,
+  closing). A connection stores `expires_by = min(first seen + type lifetime (48 h if unknown), band set + band upper
+  end)`, recomputed on every edit, so the map shows "at most … left" and the worker's housekeeping is plain SQL
+  without the static data. Collapsed holes are drawn faded for an hour, then removed; systems left without
+  connections by a collapse go an hour later (home and pinned systems stay); removed rows are kept for 30 days.
+- **Sync.** Edits are server actions that answer with the new map state; the browser applies them optimistically
+  first. Other pilots' edits arrive by polling `/api/wormholes/maps/[id]/state?since=<revision>` every 3 s while the
+  tab is visible (one `select revision` while nothing changed).
+- **Layout** (`layout.ts`): a breadth-first tree from home, laid out left to right with d3-hierarchy — one column per
+  jump, siblings by class then name, columns wide enough for the connection labels. New systems take the nearest free
+  slot next to the system they connect to; dragging pins a system; Auto-arrange re-lays everything else.

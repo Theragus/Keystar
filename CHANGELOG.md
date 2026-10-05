@@ -40,6 +40,28 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- **Wormhole chain map** (Exploration → Chain map, German "Chain-Karte"): a shared map of the corporation's wormhole
+  chain. No new scopes; the migration runs on start. A director chooses the home system on first use.
+  - Systems show class (C1–C3 green, C4–C5 yellow, C6 red, known space in its security colour), effect and
+    statics; the details panel adds the effect's modifiers at the system's strength and links to anoik.is, DOTLAN
+    and zKillboard.
+  - Connections carry the wormhole type (picked from those that spawn in the system's class, statics first), which
+    side shows it, lifetime band (more than a day … closing), mass (stable, reduced, critical) and largest ship.
+    Lifetime is drawn as the line style and mass as its width, and the label spells both out with an upper bound of
+    the time left. Collapsed holes fade out and are removed, together with systems they left stranded.
+  - The chain is laid out as a tree from home, one column per jump, with room for the labels; new systems slot in
+    next to the system they connect to without moving anything else. Drag a system to pin it, drag between systems to
+    connect them, Auto-arrange to tidy up. A list view sorts connections by time left. Keyboard shortcuts: 1–5
+    lifetime, E end of life, 7/8/9 mass, Del, / to add a system, F to fit.
+  - Everyone with the map open sees edits within a few seconds.
+  - Permissions: view and edit (member), manage — home system, clear map (director).
+
+  ([PR #32](https://github.com/Theragus/Keystar/pull/32))
+- **System lookup** (Exploration → System lookup): any J-code or known-space system with class, effect, statics,
+  the wormholes that can appear there (lifetime, mass, largest ship) and links.
+  ([PR #32](https://github.com/Theragus/Keystar/pull/32))
+- Wormhole data is bundled (CCP's static data export and anoik.is, credited in the app); `pnpm wh:data` regenerates
+  it. ([PR #32](https://github.com/Theragus/Keystar/pull/32))
 - **Industry jobs.** A new Industry Jobs page under Industry lists the industry jobs of your own characters:
   manufacturing, material and time efficiency research, copying, invention and reactions, each with a progress bar,
   the time left (counting down live) and the end time, and the station or structure it runs in with its system.

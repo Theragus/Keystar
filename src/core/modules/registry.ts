@@ -7,6 +7,7 @@ import { skillsModule } from "@/modules/skills/module";
 import { socialModule } from "@/modules/social/module";
 import { tradeModule } from "@/modules/trade/module";
 import { walletModule } from "@/modules/wallet/module";
+import { wormholesModule } from "@/modules/wormholes/module";
 import type { PermissionDef } from "@/core/rbac/permissions";
 import type { Settings } from "@/core/settings";
 import type { Messages } from "@/i18n/messages";
@@ -29,6 +30,7 @@ export const MODULES: KeystarModule[] = [
   tradeModule,
   walletModule,
   socialModule,
+  wormholesModule,
 ];
 
 export function allPermissions(): PermissionDef[] {

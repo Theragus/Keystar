@@ -567,6 +567,32 @@ select option:disabled {
   fill: var(--color-ink-3);
 }
 
+/* Wormhole chain map (React Flow): its controls and minimap in the glass theme. */
+.wh-map {
+  --xy-background-color: transparent;
+  --xy-connectionline-stroke: var(--color-accent);
+  --xy-connectionline-stroke-width: 2;
+  --xy-minimap-background-color: var(--color-space-900);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--color-space-950) 70%, transparent);
+  --xy-background-pattern-color: color-mix(in srgb, var(--color-surface-contrast) 14%, transparent);
+  --xy-controls-button-background-color: var(--color-space-800);
+  --xy-controls-button-background-color-hover: var(--color-space-700);
+  --xy-controls-button-color: var(--color-ink-2);
+  --xy-controls-button-color-hover: var(--color-ink);
+  --xy-controls-button-border-color: var(--hairline);
+  --xy-controls-box-shadow: none;
+  --xy-attribution-background-color: transparent;
+}
+.wh-map .react-flow__controls,
+.wh-map .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+.wh-map .react-flow__attribution a {
+  color: var(--color-ink-3);
+}
+
 /* Light mode uses the same semantic tokens as the dark interface. Literal
    white (e.g. text on an image) remains white; surface overlays have their own token. */
 :root[data-theme="light"] {
