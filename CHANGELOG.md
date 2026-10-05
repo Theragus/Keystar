@@ -8,6 +8,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- **Map and Intel review fixes.** Cache map route lookups; let scan viewers read saved briefings without regenerating them, keep rewriting permission-gated, restore a pilot profile shortcut and align briefing severity with the three-tier danger model. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
+
 - A token refresh keeps the new refresh token EVE SSO hands out even if checking the new access token then fails
   (for example when CCP's key endpoint is unreachable), so pilots are no longer asked to re-authorise for nothing.
   Refreshes no longer hold the token row locked while waiting on CCP, so switching scopes or logging in doesn't stall
