@@ -15,6 +15,7 @@ export const trade: typeof en = {
         description: "Gegenstände zu Jita-Preisen bewerten und von anderen geteilte Bewertungen öffnen.",
       },
     },
+    jobs: { housekeeping: "Bewertungen: Aufräumen" },
   },
   appraisal: {
     metaTitle: "Bewertung",
@@ -97,6 +98,7 @@ Nanite Repair Paste x 50
       `Der eingefügte Text enthält ${n(types)} verschiedene Gegenstände; bewerte höchstens ${n(max)} auf einmal.`,
     esiUnavailable:
       "EVEs ESI ist gerade nicht erreichbar, daher konnten die Gegenstände nicht erkannt oder bewertet werden. Nichts wurde gespeichert; versuche es in ein paar Minuten erneut.",
+    rateLimited: "Das sind viele Bewertungen in kurzer Zeit. Versuche es in ein paar Minuten erneut.",
     noItems:
       "Keine bekannten Gegenstände gefunden. Füge Gegenstandsnamen aus EVE ein (Inventar, Vertrag, Fitting, D-Scan oder Liste).",
   },

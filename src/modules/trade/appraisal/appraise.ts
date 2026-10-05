@@ -1,4 +1,4 @@
-import { and, inArray, sql } from "drizzle-orm";
+import { and, count, eq, gt, inArray, sql } from "drizzle-orm";
 import { appraisals, eveTypes, getDb, typeValues } from "@/core/db";
 import { EsiError, getEsi } from "@/core/esi";
 import { notePriceInterest, PRICE_MAX_AGE_MS, syncPrices } from "@/core/eve/prices";
@@ -40,6 +40,11 @@ export class AppraisalUnavailableError extends Error {
 const log = createLogger("appraisal");
 
 export const MAX_INPUT_CHARS = 200_000;
+/** Appraisals one user may create per RATE_WINDOW_MS (each stores its paste and may cost ESI requests). */
+export const APPRAISAL_RATE_LIMIT = 30;
+export const APPRAISAL_RATE_WINDOW_MS = 10 * 60_000;
+/** Saved appraisals (and their share links) are deleted after this many days. */
+export const APPRAISAL_RETENTION_DAYS = 365;
 /** ESI /universe/ids rejects the whole batch if any name is longer; no item name is. */
 const MAX_NAME_LENGTH = 100;
 
@@ -183,6 +188,15 @@ export async function appraise(input: string): Promise<AppraisalResult> {
 /** Short, unguessable id for share links. */
 export function appraisalId(length = 10): string {
   return shareId(length);
+}
+
+/** Whether the user has created APPRAISAL_RATE_LIMIT appraisals within the last window. */
+export async function appraisalRateLimited(userId: string, now = new Date()): Promise<boolean> {
+  const [recent] = await getDb()
+    .select({ n: count() })
+    .from(appraisals)
+    .where(and(eq(appraisals.createdBy, userId), gt(appraisals.createdAt, new Date(now.getTime() - APPRAISAL_RATE_WINDOW_MS))));
+  return (recent?.n ?? 0) >= APPRAISAL_RATE_LIMIT;
 }
 
 export async function saveAppraisal(
