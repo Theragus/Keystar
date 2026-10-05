@@ -1,0 +1,2 @@
+ALTER TABLE "mining_pnl_characters" ADD COLUMN "auto_include_sales" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "mining_pnl_settings" ADD COLUMN "income_source" text DEFAULT 'mined' NOT NULL;

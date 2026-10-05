@@ -32,7 +32,7 @@ Keystar is one TypeScript codebase that runs as two processes against one Postgr
 ```
 src/
   app/                 Next.js routes
-    (app)/             signed-in area (sidebar shell): dashboard, mining, characters, admin
+    (app)/             signed-in area (sidebar shell): dashboard, mining, industry, characters, admin
     auth/              SSO login / callback / logout / demo routes
     setup/             first-start walkthrough for the first admin
     login/, join/      public pages
@@ -48,6 +48,7 @@ src/
     settings.ts        typed app settings (stored as JSON rows)
   modules/
     mining/            the mining module: schema, jobs, queries, filters, UI components, estimator
+    industry/          opt-in industry jobs of the viewer's own characters: schema, sync job, station/structure names, UI
     killboard/         zKillboard client and sync, combat aggregates, situation report (Claude or template), UI
     intel/             threat intel: paste parser, scans, zKillboard worker, scoring, standings, history with us,
                        d-scan matching, briefings and dossiers (Claude or template), UI
@@ -72,8 +73,10 @@ docker/                entrypoint, Caddyfile
 2. `/auth/callback` exchanges the code, validates the JWT (signature via CCP's JWKS, issuer, audience contains the
    client id **and** `"EVE Online"`, expiry) and calls `provisionFromSso()`.
 3. Provisioning creates or finds the user, links the character, stores the encrypted refresh token, applies the role
-   policy and detects **character transfers** (the SSO `owner` hash changes → the old account loses the character;
-   an account left without characters is disabled and signed out).
+   policy and detects **character transfers** (the SSO `owner` hash changes → the old account loses the character
+   with its wallet history, mail and industry jobs; an account left without characters is disabled and signed out).
+   A character moved between the player's own EVE accounts and linked back to the same Keystar account hasn't
+   changed hands: it keeps its data; only the owner hash and token are updated and cached ESI responses refetched.
 4. Sessions are random 32-byte tokens; only their SHA-256 hash is stored. 30-day sliding expiry: the database row
    is extended on activity (authoritative) and `src/proxy.ts` renews the cookie on each navigation.
 
@@ -90,6 +93,22 @@ can't keep them: provisioning reports opt-in scopes the character lost, and unle
 (`drop=` in the sealed OAuth state) the callback sends them to My Characters with a "turn it back on" warning.
 Imported history is kept either way.
 
+Switching an optional scope off happens in Keystar, because EVE can't remove a single scope without a new login.
+`src/core/auth/scope-switch.ts` moves it from `esi_tokens.scopes` (what Keystar uses, and what every query and the
+job planner read) to `esi_tokens.disabled_scopes` (still in the token, unused). Token refreshes keep it off, and
+switching it back on needs no login while the token holds it. My Characters notes such scopes. Re-authorising
+requests only the scopes in use, so the new token drops them, and every SSO consent clears `disabled_scopes`.
+
+After an SSO round trip the callback confirms the outcome (character linked, re-authorised, access changed) or
+explains a failed link with a one-shot `ks_flash` cookie (`src/core/flash.ts`), which `FlashToasts` in the app
+layout shows as a toast. A signed-in user whose link fails goes back to the page they came from instead of `/login`.
+
+Re-authorise links name their character (`reauthorizeHref(granted, { characterId })` → `&character=`, kept in the
+sealed OAuth state). EVE lets the user pick any character of their account, and storing that token would give the
+picked character the scope set meant for the other one (dropping, for example, its corporation scopes and with
+them the corporation jobs). So the callback refuses a login with any other character: it stores nothing and says
+which character to pick. "Link a character" and the corporation-access link still accept any character.
+
 ## Roles and permissions
 
 Roles are hierarchical: `guest < member < viewer < contributor < director < admin`. Every permission has a default
@@ -99,6 +118,12 @@ minimum role; admins can override the minimum per permission (Settings → Permi
 New users get a role from configuration: `ADMIN_CHARACTER_IDS` → admin; otherwise the first user ever → admin; home
 corporation (optionally alliance) members → member; everyone else → guest awaiting approval. Logging in never
 demotes anyone.
+
+With **Only members can sign up** (Settings → Access, `access.restrictToMembers`) outsiders get no account at all:
+`mayRegister` in `src/core/auth/policy.ts` refuses a new account unless the character is in the home corporation (or
+its alliance, when alliance members are auto-approved) or would be admin, and the attempt is audited as
+`user.registration.blocked`. Existing accounts and alt links are unaffected. Guests who registered from outside before
+the switch can be disabled in one go on the Users page.
 
 ## Languages
 
@@ -129,13 +154,20 @@ them; its scores, tags and template notes are stored as data and shown in the re
   before bumping it)
 - `ETag` / `If-None-Match` revalidation and `Expires`-based caching in the `esi_cache` table, so jobs can run on a
   timer without spending rate-limit tokens
+  (the entry is written before the job stores the body, so `notModified` and `fromCache` say the body is unchanged,
+  not that it was stored: a job that skips its write on them never repeats a failed write; write idempotently
+  instead)
 - `X-Pages` pagination
 - back-off when the legacy error budget runs low (`X-ESI-Error-Limit-*`) and per rate-limit group on `429`
   (`Retry-After`, `X-Ratelimit-Group`)
 - one automatic token refresh on `401`; `403` raises `EsiForbiddenError` (missing scope or in-game role)
 
-Tokens are refreshed in `src/core/esi/tokens.ts` under a row lock; `invalid_grant` marks the token invalid so the
-pilot sees "Re-authorise".
+Tokens are refreshed in `src/core/esi/tokens.ts`, serialised per character by an advisory lock rather than the
+`esi_tokens` row lock, so scope switches and logins don't wait on CCP. The refresh token SSO returns (it may rotate)
+is committed right after the SSO call, before the new access token is verified; the access token and its scopes are
+stored in a second short transaction. Both writes only apply if the row still holds the refresh token they started
+from, so a login that replaced the token meanwhile wins. `invalid_grant` marks the token invalid so the pilot sees
+"Re-authorise".
 
 ## Sync engine
 
@@ -168,6 +200,7 @@ Current jobs:
 | `mining.character-ledger`        | 15 min   | Personal mining ledgers; records mining activity windows   |
 | `mining.corporation-observers`   | 1 h      | Moon-refinery observer ledgers (Accountant)                |
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
+| `industry.character-jobs`        | 5 min    | Industry jobs of each character (incl. finished ones), names their stations and structures |
 | `killboard.zkill-sync`           | 1 h      | Home corporation kills/losses from zKillboard (no token)   |
 | `killboard.live-feed`            | 10 s     | zKillboard's live feed (R2Z2): home-corporation killmails within seconds, for the live notifications |
 | `killboard.situation-report`     | 1 h      | Writes the weekly situation report once a week has closed  |
@@ -180,6 +213,55 @@ Current jobs:
 | `wallet.corporation-wallets`     | 1 h      | Corporation balances, journal and transactions, all divisions (Accountant / Junior Accountant) |
 | `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
 | `social.character-mail`          | 5 min    | EVE mail, labels and mailing lists of characters that opted in to mail |
+| `skills.queue`                   | 15 min   | Skill queue of characters that share their skills; static skill attributes and ranks |
+| `skills.character`               | 1 h      | Trained skills, skill points and attributes of characters that share their skills |
+
+## System info and support package
+
+Administration → System Info (`/admin/system`, permission `system.view`: admins only, locked) is built from one
+snapshot, `collectSystemSnapshot()` in `src/core/system/collect.ts`. Each collector (database, worker and jobs,
+tokens, settings, clock, audit counts) is wrapped so that one failing collector never takes the page down. The web
+process can't see the worker's process, so the worker reports its runtime and ESI/zKillboard request counters in
+its heartbeat (`worker_heartbeats.info`); the clients count requests in `EsiClient.stats()` and
+`ZkillClient.stats()`. The runtime (`runtime.ts`) includes load figures: the process's CPU share since its previous
+sample (so the worker's covers one heartbeat interval and the web app's the time since System Info was last
+loaded), its memory, the container's cgroup memory and the host's load average.
+
+- `network.ts` probes ESI, EVE SSO (`/oauth/jwks`) and zKillboard with one request each (5 s limit), through
+  `EsiClient.ping()` and `ZkillClient.ping()` so the User-Agent, counters and request spacing apply. ESI or SSO
+  unreachable fails the network check; zKillboard unreachable or answering 403 (blocked User-Agent or IP), or any
+  service answering 5xx, only warns. Each probe is aborted when its time is up.
+- `checks.ts` turns a snapshot into health checks. They are pure, so the page, the support package and the tests
+  agree; their texts live under `admin.system.checks`.
+- `support-package.ts` builds the downloadable package from an **allowlist** of fields. Never add a field that holds
+  a pilot, corporation or alliance name or ID, a secret, the instance's address or an audit actor; free text (job
+  errors) goes through the scrubber in `redact.ts`, and worker ids are hashed with a per-package salt. Bump
+  `SUPPORT_PACKAGE_FORMAT` when the layout changes in a way readers must know about.
+- `summary.ts` writes the Markdown summary for GitHub issues, always in English, and the prefilled bug report URL
+  (the `version` and `system` fields of `.github/ISSUE_TEMPLATE/bug_report.yml`).
+- `src/scripts/support-package.ts` (`dist/support.mjs` in the image) writes the same package to stdout for when the
+  web app doesn't start.
+
+Keystar keeps no logs of its own; the page points admins to `docker compose logs`.
+
+## Live alerts
+
+Modules declare live alerts in their manifest (`alerts`; today `killboard.kills` and `social.mail`) and register a
+feed component for each in `src/modules/alerts.ts`. The **Alerts** menu in the top bar
+(`src/components/shell/live-alerts.tsx`) shows a per-browser switch (localStorage) for every alert the user may get
+(`availableAlerts`: permissions and settings), plus one for desktop notifications. Each feed polls its endpoint
+through `useLiveFeed` (`src/components/shell/live-feed.ts`), with a cursor from `src/core/live-cursor.ts`. How to
+add one is described in docs/modules.md.
+
+- A tab the user is looking at (visible and focused) shows new events as toasts. A hidden tab stops polling, and
+  after 2 minutes hidden it starts over from "now" instead of replaying what it missed.
+- With **desktop notifications** on (the browser's Notification API; needs permission and HTTPS), a tab the user
+  isn't looking at keeps polling and shows each event as a native notification (Windows notification center, macOS
+  Notification Center) instead. Focused tabs record a heartbeat in localStorage, and unfocused tabs leave events
+  to a focused one so they show as toasts there. Browsers slow timers in background tabs (Chrome to about once a
+  minute), so a notification can arrive later. There is no service worker or Web Push: with no Keystar tab open,
+  nothing is announced.
+- Tabs claim each event in a shared localStorage record under a Web Lock, so one browser announces it once.
 
 ## EVE mail
 
@@ -200,11 +282,15 @@ character (enabled from the mail page). The page only ever shows the signed-in a
 - **Storage**: `mail_messages` has one row per mailbox (`character_id`, `mail_id`) with the owning account
   (`user_id`). `mail_labels` and `mail_lists` store labels and mailing lists the same way. Mailing-list names come
   only from `mail_lists`, because `/universe/names` can't resolve them. As with the wallet, mail never follows a
-  sold character: it is deleted with the account, when the character is removed, when it is transferred, and on
-  request once mail access is turned off. Mail bypasses the ESI response cache.
+  sold character: it is deleted with the account, when the character is removed, when it is transferred to another
+  account, and on request once mail access is turned off. Mail bypasses the ESI response cache.
 - **Folders**: Inbox, Sent, Corporation and Alliance are the built-in labels 1, 2, 4 and 8. Sent means sent by the
   mailbox's character. Mailing lists come from the recipients, and custom labels are merged by name across
   characters. A mail in several of the account's mailboxes is listed once, with the characters that received it.
+- **Live alerts**: the top bar polls `/api/mail/live` every 30 s and shows a toast for each unread mail stored after
+  its cursor (same cursor format as the killboard). Mail sent more than 3 h ago (a first import), mail sent from one
+  of the account's own characters, and a mail already announced for another of its mailboxes are left out. The toast
+  opens the mail in Keystar.
 - **Rendering**: bodies are EVE HTML, not HTML (`<font size= color=>`, `<color=0xAARRGGBB>`, `<url=…>`, unquoted
   attributes, tags that are never closed). `src/modules/social/eve-html.ts` follows
   [CCP's reference](https://developers.eveonline.com/docs/guides/eve-html/): it tokenises, re-nests (an unclosed
@@ -259,6 +345,27 @@ whatever corporation-wide permissions the user has (`mining.pnl`, default member
   switched that on (`mining_pnl_characters`, off by default); the user's category/include decisions
   (`mining_pnl_tx_overrides`) always win. Everything else stays out unless tagged. Manual entries
   (`mining_pnl_entries`) cover PLEX/Omega, contracts etc. and can be spread evenly over up to a year.
+- **Income from wallet sales**: the account picks the income basis (`mining_pnl_settings.income_source`): `mined`
+  (default) values the mined ore as above; `sales` counts market sells instead, on the day of the sale. Sells are
+  auto-tagged by the activity they come from (`classifySale`, with an SQL twin): ore, moon ore, ice and gas, raw or
+  compressed, plus minerals, moon materials and ice products. They go through the same suggested/counted/excluded
+  review as purchases, with their own per-character switch (`mining_pnl_characters.auto_include_sales`) and the same
+  override table. Volume, active hours and ISK/h always come from the mined ore. Only market sales count; anything
+  the wallet doesn't show stays out.
+- **Mined vs sold** (`getOreFlows`, `ore-flows.ts`): per raw ore, the mined units of the period against market sells
+  of the ore or its compressed variant, converted to raw units by portion size like the valuation (1:1 for current
+  ores; compression only shrinks the volume). Excluded sales and internal trades are left out; the ore left over is
+  valued at the current valuation. Compressed gas has its own names and group, so it isn't linked to raw gas.
+- **Taxes & fees**: `wallet.character-fees` reads the personal wallet journal with the same opt-in scope and keeps only
+  `transaction_tax` and `brokers_fee` entries (`wallet_fees`, owned and deleted like `wallet_transactions`; the
+  cursor is the newest journal id seen). Sales tax is matched to its sale by the journal's market transaction id,
+  else the character's sale whose journal entry (`journal_ref_id`) comes right before the tax at the same time (a
+  multi-sell books sale, tax, sale, tax …). Sales tax has no review of its own: it is deducted from its sale, so sale
+  rows, the report's income and the mined-vs-sold table are net of tax. Broker fees belong to orders (ESI gives no
+  context, so the stored journal `description` is shown), stay suggested until included, and are wallet expenses in
+  the "fees" category, only when income comes from wallet sales. `mining_pnl_fee_overrides` holds the user's
+  include/exclude decisions on broker fees. The job reads ESI's 30 days once more to fill in descriptions of fees
+  imported before they were kept (`descriptions` in the job meta).
 - **Sale hints**: wallet sells of a mined ore or its compressed variant, converted to raw units with the valuation's
   compression ratio, offered as one-click price rules.
 - **Active hours / ISK per hour**: the ledger job compares each fresh ESI snapshot with the stored ledger in one
@@ -298,6 +405,28 @@ The archive is meant to grow into spending and income breakdowns (by category, c
 transactions), trends from the balance history and office rent tracking (`office_rental_fee` by `context_id`)
 without schema changes.
 
+## Skills
+
+Pilots → Skill queues shows, per character, the skill in training, when it and the whole queue finish, every queued
+skill with its finish time, and the character's attributes and remap availability. Both skills scopes
+(`esi-skills.read_skillqueue.v1`, `esi-skills.read_skills.v1`) are opt-in per character and are turned on and off
+together on the Skills access page (`/skills/settings`). `skills.view.own` (default member) shows the viewer's own
+characters; `skills.view.corp` (default director) adds a corporation view of home-corporation characters that share
+their queue. Turning sharing off hides the queue at once, also from the corporation view; the stored rows stay until
+the owner deletes them.
+
+- **Sync**: `skills.queue` replaces `skills_queue` with what ESI returns. ESI only refreshes the queue when the
+  character logs in, so the pages hide entries whose finish time has passed; a queue without dates is paused.
+  `skills.character` upserts `skills_character_skills` (dropping skills ESI no longer lists) and `skills_character`
+  (total and unallocated SP, the five attributes, bonus remaps and the yearly remap date).
+- **Static data**: `skills_type_attributes` holds each queued skill's primary and secondary attribute (dogma
+  attribute ids 164–168) and rank, read from the `dogma_attributes` of `/universe/types/{id}`.
+- **Planned on top of it**: a remap optimiser (a skill trains at primary + secondary / 2 SP per minute and a level
+  needs rank × that level's base SP, so queue, attributes and `skills_type_attributes` are all it needs; implants
+  would add `esi-clones.read_implants.v1`), and corporation skill plans checked against `skills_character_skills`.
+  ESI has no skill-plan endpoint, so plans would be pasted from the in-game "copy to clipboard" text and resolved
+  with `/universe/ids`.
+
 ## Killboard
 
 - `src/modules/killboard/zkill.ts` is the only code that talks to zKillboard: a descriptive User-Agent (with
@@ -311,14 +440,14 @@ without schema changes.
   pilot, corporation tickers and regions) are resolved right away. A missing number below the published pointer is
   skipped as a gap; a position older than 20 h (files are kept for at least 24 h) or for another corporation starts
   over at the pointer, and the hourly sweep fills anything in between. A 403/429 keeps it away for 10 minutes.
-- **Live notifications**: for users with `killboard.view`, the top bar polls `/api/killboard/live` every 15 s while
-  the tab is visible and shows a toast for each kill or loss stored after its cursor (`first_seen_at` to the
-  microsecond plus the killmail id, since one insert stores many rows with the same timestamp; killmails older than
-  3 h are never announced, so backfills stay quiet). A toast shows
+- **Live notifications**: for users with `killboard.view`, the top bar polls `/api/killboard/live` every 15 s and
+  shows a toast for each kill or loss stored after its cursor (`first_seen_at` to the microsecond plus the killmail
+  id, since one insert stores many rows with the same timestamp; killmails older than 3 h are never announced, so
+  backfills stay quiet). A toast shows
   the destroyed hull, the corporation's pilot (loss: the victim; kill: the final blow, or top damage when an outsider
   landed it), the other side, system and ISK value, stays 30 s (the countdown bar pauses on hover) and opens the
-  killmail on zKillboard. The bell beside it mutes them per browser (localStorage). Tabs claim each killmail in a
-  shared localStorage record under a Web Lock, so one browser announces it once. Demo mode doesn't run the live job.
+  killmail on zKillboard. Demo mode doesn't run the live job. The polling, the per-browser switches and the desktop
+  notifications are shared with the mail alerts; see "Live alerts" below.
 - The first sync imports 90 days month by month (`/corporationID/{id}/year/{y}/month/{m}/`); afterwards an hourly
   7-day sweep (`/pastSeconds/604800/`) also catches killmails zKillboard receives late. A gap longer than six days,
   or a new home corporation, triggers another backfill.
@@ -382,7 +511,10 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
 - Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` when `APP_URL` is https.
 - Every server action re-checks permissions; members' queries are scoped to their own character IDs in SQL.
 - CSV export neutralises spreadsheet formulas; security headers are set in `next.config.ts` and Caddy.
-- Administrative actions are written to the audit log.
+- Administrative actions are written to the audit log (`src/core/audit.ts`). Role and access changes, settings and
+  scope switches use `auditInTx` inside the change's own transaction, so the change and its entry commit or roll
+  back together. Everything else uses `audit`, which never throws: a failed write is logged and counted, and System
+  Info's "Audit log written" check warns about it.
 
 ## Appraisal
 
