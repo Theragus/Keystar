@@ -219,7 +219,12 @@ export async function removeSystem(db: Db, mapId: number, systemId: number, now 
           or(eq(whConnections.aSystemId, systemId), eq(whConnections.bSystemId, systemId)),
         ),
       );
-    await tx.delete(whMapSystems).where(and(eq(whMapSystems.mapId, mapId), eq(whMapSystems.systemId, systemId)));
+    const gone = await tx
+      .delete(whMapSystems)
+      .where(and(eq(whMapSystems.mapId, mapId), eq(whMapSystems.systemId, systemId)))
+      .returning({ id: whMapSystems.systemId });
+    // Someone else removed it first: roll back rather than bump the revision for nothing.
+    if (!gone.length) throw new MapError("notOnMap");
   });
 }
 
@@ -307,10 +312,12 @@ export async function updateConnection(
 
 export async function removeConnection(db: Db, mapId: number, id: string, now = new Date()) {
   await mutate(db, mapId, async (tx) => {
-    await tx
+    const gone = await tx
       .update(whConnections)
       .set({ removedAt: now, removedReason: "deleted" })
-      .where(and(eq(whConnections.id, id), eq(whConnections.mapId, mapId), isNull(whConnections.removedAt)));
+      .where(and(eq(whConnections.id, id), eq(whConnections.mapId, mapId), isNull(whConnections.removedAt)))
+      .returning({ id: whConnections.id });
+    if (!gone.length) throw new MapError("notFound");
   });
 }
 

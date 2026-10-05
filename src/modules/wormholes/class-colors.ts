@@ -31,11 +31,28 @@ export interface ClassBadgeStyle {
   text: string | null;
 }
 
-/** Dark or light ink, whichever clears contrast on the fill. */
-export function inkOn(hex: string): string {
+const DARK_INK = "#06101c";
+const LIGHT_INK = "#ffffff";
+
+/** WCAG relative luminance of a `#rrggbb` colour. */
+function luminance(hex: string): number {
   const h = hex.replace("#", "");
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45 ? "#06101c" : "#ffffff";
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG contrast ratio of two `#rrggbb` colours. */
+export function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** Dark or light ink, whichever contrasts more with the fill. */
+export function inkOn(hex: string): string {
+  return contrast(hex, DARK_INK) >= contrast(hex, LIGHT_INK) ? DARK_INK : LIGHT_INK;
 }
 
 /** `text` is null when the caller should print the translated class name (specials). */

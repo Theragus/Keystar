@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COL, NODE_W, ROW, arrange, placeNew, spanningTree, type LayoutSystem } from "@/modules/wormholes/layout";
+import { contrast, inkOn, WSPACE_COLORS } from "@/modules/wormholes/class-colors";
 import { displayBand, expiresBy, isCollapsed, timeLeft } from "@/modules/wormholes/lifetime";
 import { applyOp, connectionSize, normalise, patchConnection, type MapState } from "@/modules/wormholes/state";
 import type { StaticFile, SystemSummary } from "@/modules/wormholes/static";
@@ -40,6 +41,12 @@ describe("wormhole lifetime", () => {
     expect(displayBand("lt1d", e, at(23.5))).toBe("lt1h");
     expect(displayBand("lt1d", e, at(25))).toBe("closing");
     expect(displayBand("lt4h", at(40), t0)).toBe("lt4h");
+  });
+
+  it("never draws a type that lives less than a day as more than a day", () => {
+    const e = expiresBy({ firstSeenAt: t0, lifeState: "fresh", lifeSetAt: t0 }, 16);
+    expect(displayBand("fresh", e, t0)).toBe("lt1d");
+    expect(displayBand("fresh", expiresBy({ firstSeenAt: t0, lifeState: "fresh", lifeSetAt: t0 }, 48), t0)).toBe("fresh");
   });
 });
 
@@ -192,5 +199,16 @@ describe("map state", () => {
     s = applyOp(s, { kind: "clear" }, types, t0);
     expect(s.systems.map((x) => [x.id, x.x, x.y])).toEqual([[1, 0, 0]]);
     expect(s.connections).toEqual([]);
+  });
+});
+
+describe("class badge ink", () => {
+  it("picks the ink with more WCAG contrast, at least 4.5:1 on every class fill", () => {
+    for (const fill of Object.values(WSPACE_COLORS)) {
+      const ink = inkOn(fill);
+      expect(contrast(fill, ink)).toBeGreaterThanOrEqual(4.5);
+    }
+    // C6 red: dark ink (about 5.1:1), not white (about 3.7:1).
+    expect(inkOn(WSPACE_COLORS.c6)).toBe("#06101c");
   });
 });

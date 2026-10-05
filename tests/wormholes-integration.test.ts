@@ -110,6 +110,18 @@ describe.skipIf(!enabled)("wormholes integration", async () => {
     expect(state.connections.map((c) => c.id)).toEqual([uuid(2)]);
   });
 
+  it("refuses to remove what another editor already removed, without bumping the revision", async () => {
+    await maps.addSystem(db(), mapId, actor, { systemId: HEK, connectTo: HOME, connId: uuid(1) });
+    await maps.removeConnection(db(), mapId, uuid(1));
+    const rev = await revision();
+    await expect(maps.removeConnection(db(), mapId, uuid(1))).rejects.toMatchObject({ code: "notFound" });
+    await maps.removeSystem(db(), mapId, HEK);
+    const rev2 = await revision();
+    expect(rev2).toBe(rev + 1);
+    await expect(maps.removeSystem(db(), mapId, HEK)).rejects.toMatchObject({ code: "notOnMap" });
+    expect(await revision()).toBe(rev2);
+  });
+
   it("moves, pins, labels, arranges and clears", async () => {
     await maps.addSystem(db(), mapId, actor, { systemId: HEK, connectTo: HOME, connId: uuid(1) });
     await maps.moveSystems(db(), mapId, [{ id: HEK, x: 1001, y: 499 }]);

@@ -56,7 +56,9 @@ export function isCollapsed(expires: Date | string, now: Date): boolean {
 
 /**
  * The band the hole is in by now, judging by its upper bound: a hole marked
- * "less than a day" twenty hours ago is drawn as end of life.
+ * "less than a day" twenty hours ago is drawn as end of life. The bound
+ * includes the type's lifetime on purpose: a 16-hour type can't have more
+ * than a day left, so the game never shows it as "more than a day" either.
  */
 export function displayBand(state: LifeState, expires: Date | string, now: Date): LifeState {
   const leftH = timeLeft(expires, now) / HOUR;
