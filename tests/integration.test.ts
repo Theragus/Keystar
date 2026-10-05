@@ -358,6 +358,46 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await getAccessToken(1)).toBe(fresh);
     });
 
+    it("hands out the current token when the row changes while a refreshed token is verified", async () => {
+      const { decryptToken, encryptToken } = await import("@/core/crypto");
+      const { getAccessToken, TokenInvalidError } = await import("@/core/esi/tokens");
+      const sso = await import("@/core/auth/sso");
+      const refresh = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async () =>
+          Response.json({ access_token: "refreshed", refresh_token: "rotated", expires_in: 1200, token_type: "Bearer" }),
+        );
+      // While the refreshed access token is being verified, `meanwhile` changes the row.
+      const verifying = (meanwhile: () => Promise<unknown>) =>
+        vi.spyOn(sso, "verifyAccessToken").mockImplementation(async () => {
+          await meanwhile();
+          return { characterId: 1, name: "Alpha", ownerHash: "h1", scopes: ["a"], expiresAt: new Date(Date.now() + 1_200_000) };
+        });
+      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: encryptToken("old"), scopes: ["a"] });
+
+      // A new login: its token is handed out and kept, not the one refreshed from the grant it replaced.
+      let verify = verifying(() =>
+        getDb()
+          .update(schema.esiTokens)
+          .set({
+            refreshTokenEnc: encryptToken("from-login"),
+            accessTokenEnc: encryptToken("login-access"),
+            accessTokenExpiresAt: new Date(Date.now() + 1_200_000),
+          }),
+      );
+      expect(await getAccessToken(1, { forceRefresh: true })).toBe("login-access");
+      verify.mockRestore();
+      const [row] = await db().select().from(schema.esiTokens);
+      expect(decryptToken(row.refreshTokenEnc)).toBe("from-login");
+      expect(decryptToken(row.accessTokenEnc!)).toBe("login-access");
+
+      // The character is removed: no token at all.
+      verify = verifying(() => getDb().delete(schema.esiTokens));
+      await expect(getAccessToken(1, { forceRefresh: true })).rejects.toBeInstanceOf(TokenInvalidError);
+      verify.mockRestore();
+      refresh.mockRestore();
+    });
+
     it("does not overwrite a token a login stored during the refresh", async () => {
       const { decryptToken, encryptToken } = await import("@/core/crypto");
       const { getAccessToken } = await import("@/core/esi/tokens");

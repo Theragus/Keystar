@@ -43,6 +43,12 @@ export function getAccessToken(characterId: number, opts: { forceRefresh?: boole
   return promise;
 }
 
+/** The stored access token, unless it is missing or expires within a minute. */
+function usableAccessToken(row: typeof esiTokens.$inferSelect): string | null {
+  const valid = row.accessTokenEnc && row.accessTokenExpiresAt && row.accessTokenExpiresAt.getTime() - Date.now() > 60_000;
+  return valid ? decryptToken(row.accessTokenEnc!) : null;
+}
+
 type RefreshStep =
   | { token: string }
   | { revoked: string }
@@ -66,9 +72,8 @@ async function loadOrRefresh(characterId: number, forceRefresh: boolean, attempt
     if (!row) throw new TokenInvalidError(characterId, "No ESI token stored for character");
     if (row.status !== "active") throw new TokenInvalidError(characterId, row.lastError ?? "Token is invalid");
 
-    const stillValid =
-      row.accessTokenEnc && row.accessTokenExpiresAt && row.accessTokenExpiresAt.getTime() - Date.now() > 60_000;
-    if (stillValid && !forceRefresh) return { token: decryptToken(row.accessTokenEnc!) };
+    const current = usableAccessToken(row);
+    if (current && !forceRefresh) return { token: current };
 
     const unchanged = and(eq(esiTokens.characterId, characterId), eq(esiTokens.refreshTokenEnc, row.refreshTokenEnc));
     let res: TokenResponse;
@@ -112,20 +117,15 @@ async function loadOrRefresh(characterId: number, forceRefresh: boolean, attempt
   const verified = await verifyAccessToken(accessToken);
   if (verified.characterId !== characterId) throw new SsoError("Refreshed token belongs to another character");
 
-  await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({ disabledScopes: esiTokens.disabledScopes })
-      .from(esiTokens)
-      .where(
-        and(
-          eq(esiTokens.characterId, characterId),
-          eq(esiTokens.refreshTokenEnc, refreshTokenEnc),
-          eq(esiTokens.status, "active"),
-        ),
-      )
-      .for("update");
-    // Replaced since step 1 (by a login or a later refresh): that writer stored its own access token.
-    if (!row) return;
+  return db.transaction(async (tx) => {
+    const [row] = await tx.select().from(esiTokens).where(eq(esiTokens.characterId, characterId)).for("update");
+    if (!row) throw new TokenInvalidError(characterId, "No ESI token stored for character");
+    if (row.status !== "active") throw new TokenInvalidError(characterId, row.lastError ?? "Token is invalid");
+    if (row.refreshTokenEnc !== refreshTokenEnc) {
+      // Replaced since step 1. A login stores its own access token: use that one, not one from the grant it replaced.
+      // Otherwise another refresh of the same grant is still verifying, and this token is as good as its.
+      return usableAccessToken(row) ?? accessToken;
+    }
     await tx
       .update(esiTokens)
       .set({
@@ -137,8 +137,8 @@ async function loadOrRefresh(characterId: number, forceRefresh: boolean, attempt
         updatedAt: new Date(),
       })
       .where(eq(esiTokens.characterId, characterId));
+    return accessToken;
   });
-  return accessToken;
 }
 
 export function hasScopes(granted: readonly string[], required: readonly string[]): boolean {
