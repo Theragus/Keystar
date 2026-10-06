@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ORE_SERIES_COLORS } from "@/modules/mining/class-colors";
 import { dailyOreDrill, oreTotals } from "@/modules/mining/daily-ores";
 import type { DailyTypeRow } from "@/modules/mining/queries";
 
@@ -29,8 +30,8 @@ describe("dailyOreDrill", () => {
       days,
     );
     expect(drill.ore!.series).toEqual([
-      { key: "s0", name: "Scordite", typeId: 1228 },
-      { key: "s1", name: "Veldspar", typeId: 1230 },
+      { key: "s0", name: "Scordite" },
+      { key: "s1", name: "Veldspar" },
     ]);
     expect(drill.ore!.otherCount).toBe(0);
     expect(drill.ore!.rows).toEqual([
@@ -51,17 +52,30 @@ describe("dailyOreDrill", () => {
     expect(oreTotals(drill)).toEqual({ s0: 50, s1: 40, s2: 30, other: 30 });
   });
 
-  it("shows a lone family past the limit instead of an other of one, and breaks ties by name", () => {
+  it("never folds a single family into other, nor shows more series than the limit", () => {
     const rows = ["Kite", "Bite", "Cite", "Dite"].map((n, i) => row("2026-10-01", i + 1, n, 10));
     const drill = dailyOreDrill(rows, days, 3).ore!;
-    expect(drill.series.map((s) => s.name)).toEqual(["Bite", "Cite", "Dite", "Kite"]);
-    expect(drill.otherCount).toBe(0);
+    // Ties break by name; one family past the limit makes the last slot an "other" of two.
+    expect(drill.series.map((s) => s.name)).toEqual(["Bite", "Cite"]);
+    expect(drill.otherCount).toBe(2);
+    expect(dailyOreDrill(rows.slice(0, 3), days, 3).ore!.series).toHaveLength(3);
+  });
+
+  it("caps the default limit at the colour slots", () => {
+    const rows = Array.from({ length: 7 }, (_, i) => row("2026-10-01", i + 1, `Ore${i}`, 70 - i));
+    const drill = dailyOreDrill(rows, days).ore!;
+    expect(drill.series.length + (drill.otherCount ? 1 : 0)).toBeLessThanOrEqual(ORE_SERIES_COLORS.length + 1);
+    expect(drill.series).toHaveLength(ORE_SERIES_COLORS.length - 1);
+    expect(drill.otherCount).toBe(2);
   });
 
   it("ignores empty amounts and days outside the range", () => {
-    const drill = dailyOreDrill([row("2026-10-01", 1, "Veldspar", 0), row("2026-09-01", 2, "Scordite", 10)], days);
-    expect(drill.ore!.series.map((s) => s.name)).toEqual(["Scordite"]);
-    expect(drill.ore!.rows.every((r) => r.total === 0)).toBe(true);
+    const drill = dailyOreDrill(
+      [row("2026-10-01", 1, "Veldspar", 0), row("2026-09-01", 2, "Scordite", 10), row("2026-10-02", 3, "Omber", 5)],
+      days,
+    );
+    expect(drill.ore!.series.map((s) => s.name)).toEqual(["Omber"]);
+    expect(drill.ore!.rows.map((r) => r.total)).toEqual([0, 5, 0]);
     expect(dailyOreDrill([], days)).toEqual({});
   });
 });
