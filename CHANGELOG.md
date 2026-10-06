@@ -46,9 +46,9 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
-- **Ore mix on the mining overview.** A new panel ranks the ores being mined (grades and variants combined) by ISK,
-  m³ or units, coloured by resource class, with the smaller ones combined into one bar. It follows the page's filters,
-  and clicking an ore filters the page to it.
+- **Ore types in the daily mining chart.** Click a resource in the "Daily ISK by resource" chart (or its legend) to
+  stack the days by its ore types instead, such as Spodumain, Kernite and Scordite, with the smaller ones combined
+  into "Other". When only one resource was mined, the chart and the resource mix show its ore types straight away.
 - **3D universe map.** Add a searchable star map under Combat with system names, security status and real positions; Threat Intel system links focus the map and show jump range and light-year distances. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
 - **Travel and jump planning.** Calculate shortest stargate routes with two-hour gate-kill evidence and linked killmails, plus carrier, jump freighter and Black Ops range highlighting with Jump Drive Calibration selection. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
 

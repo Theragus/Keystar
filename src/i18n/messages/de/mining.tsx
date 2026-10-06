@@ -129,9 +129,13 @@ export const mining: typeof en = {
     table: "Tabelle",
     noMining: "Kein Mining",
     total: "Gesamt",
+    allResources: "Alle Ressourcen",
+    showOres: (resource: string) => `Erze in ${resource} anzeigen`,
+    otherOres: (count: number) => `Übrige (${plural(count, "Erz", "Erze")})`,
   },
 
   breakdowns: {
+    oresOf: (resource: string) => `${resource} · nach Sorte`,
     characters: (count: number) => plural(count, "Char", "Chars"),
     notRegistered: "nicht registriert",
     moonByRarity: "Monderz nach Seltenheit",
@@ -140,8 +144,6 @@ export const mining: typeof en = {
     groupOresHint: "Stufen und Varianten jedes Erzes (Scordite II-Grade, Thick Blue Ice …) in einer Zeile zusammenfassen",
     variants: (count: number) => plural(count, "Variante", "Varianten"),
     averagePrice: "Durchschnitt über die Stufen, gewichtet nach Einheiten",
-    otherOres: (count: number) => `Alle übrigen · ${plural(count, "Erz", "Erze")}`,
-    filterByOre: (name: string) => `Nur ${name} anzeigen`,
   },
 
   overview: {
@@ -175,7 +177,6 @@ export const mining: typeof en = {
     },
     eveDays: "Tage in EVE-Zeit (UTC)",
     resourceMix: "Ressourcen-Mix",
-    oreMix: "Erzmix",
     shareOf: {
       value: "Anteil an ISK",
       volume: "Anteil am Volumen",

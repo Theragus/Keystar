@@ -33,6 +33,22 @@ export function chartClassOf(oreClass: OreClass): ChartClass {
 }
 
 /**
+ * Categorical slots for the ores inside one class (the daily chart's per-ore
+ * view): the class hues in their validated order, then two more slots
+ * validated with them, and grey for the folded rest.
+ */
+export const ORE_SERIES_COLORS = [
+  "var(--series-moon)",
+  "var(--series-ore)",
+  "var(--series-ice)",
+  "var(--series-gas)",
+  "var(--series-5)",
+  "var(--series-6)",
+] as const;
+
+export const ORE_SERIES_OTHER_COLOR = "var(--series-other)";
+
+/**
  * Ordinal ramp for moon rarity: rarer = more salient (lighter on the dark
  * surface, darker on the light one). Labels live in the dictionaries
  * (`t.mining.moonRarity`).

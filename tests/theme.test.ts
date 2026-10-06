@@ -80,9 +80,9 @@ const ratio = (x: string, y: string) => {
 };
 describe("chart palette per theme", () => {
   it("defines every series and ramp step for both themes", () => {
-    // Five categorical slots plus the income/expense pair; the neutral slate is shared.
-    expect(tokens(dark, "series")).toHaveLength(7);
-    expect(tokens(light, "series")).toHaveLength(6);
+    // Seven categorical slots plus the income/expense pair; the neutral slate is shared.
+    expect(tokens(dark, "series")).toHaveLength(9);
+    expect(tokens(light, "series")).toHaveLength(8);
     expect(tokens(dark, "ramp")).toHaveLength(5);
     expect(tokens(light, "ramp")).toHaveLength(5);
   });

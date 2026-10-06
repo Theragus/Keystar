@@ -114,6 +114,11 @@
   --series-ice: #199e70;
   --series-gas: #c98500;
   --series-other: #5d6878;
+  /* Two more categorical slots after gas, for the per-ore view of the daily mining chart
+     (moon, ore, ice, gas, these two, then other): adjacent CVD ΔE ≥ 8.4, normal ΔE ≥ 19.3,
+     all ≥ 3.5:1 on #14161a. */
+  --series-5: #d55181;
+  --series-6: #9085e9;
   /* Ordinal ramp (moon rarity, threat tiers, heatmap), low → high: one hue, the
      high end most salient against the surface. Validated with --ordinal. */
   --ramp-1: #184f95;
@@ -609,6 +614,9 @@ select option:disabled {
   --series-ore: #d4541f;
   --series-ice: #16916a;
   --series-gas: #ad7300;
+  /* With the slots above: adjacent CVD ΔE ≥ 9.0, normal ΔE ≥ 17.6, ≥ 4.6:1. */
+  --series-5: #c03c74;
+  --series-6: #4a3aa7;
   /* Darkest = highest on a light surface, so the ramp runs the other way round. */
   --ramp-1: #7fb0ea;
   --ramp-2: #5797e4;

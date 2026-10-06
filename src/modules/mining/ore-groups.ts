@@ -9,12 +9,17 @@ export interface OreRow extends TypeRow {
 
 export const singleOreRow = (r: TypeRow): OreRow => ({ ...r, key: String(r.typeId), typeIds: [r.typeId] });
 
+/** The ore family a type belongs to: Scordite II-Grade → Scordite, keyed by class so families never span classes. */
+export function oreFamily(name: string, oreClass: TypeRow["oreClass"]): { key: string; name: string; rank: number } {
+  const { base, rank } = oreGrade(name);
+  return { key: `${oreClass}:${base}`, name: base, rank };
+}
+
 /** Combines the grades and variants of each ore (Scordite, Scordite II-Grade, …) into one row named after the family. */
 export function groupOreTypes(rows: TypeRow[]): OreRow[] {
   const families = new Map<string, { rank: number; first: TypeRow; row: OreRow }>();
   for (const r of rows) {
-    const { base, rank } = oreGrade(r.name);
-    const key = `${r.oreClass}:${base}`;
+    const { key, name: base, rank } = oreFamily(r.name, r.oreClass);
     const family = families.get(key);
     if (!family) {
       families.set(key, { rank, first: r, row: { ...r, name: base, key, typeIds: [r.typeId] } });
@@ -37,32 +42,4 @@ export function groupOreTypes(rows: TypeRow[]): OreRow[] {
       ? { ...row, unitPrice: row.quantity && row.value ? row.value / row.quantity : 0 }
       : { ...singleOreRow(first), key: row.key },
   );
-}
-
-export interface OreMix {
-  /** The largest ore families by the metric, largest first. */
-  top: OreRow[];
-  /** Everything below the cut-off, combined. */
-  rest: { amount: number; count: number; typeIds: number[] };
-  total: number;
-}
-
-/** Ore families ranked by `metric` for the ore mix chart: the top `limit`, then the rest as one bucket. */
-export function oreMix(rows: TypeRow[], metric: "value" | "volume" | "quantity", limit = 12): OreMix {
-  const ranked = groupOreTypes(rows)
-    .filter((r) => r[metric] > 0)
-    .sort((a, b) => b[metric] - a[metric] || a.name.localeCompare(b.name));
-  // A rest bucket of one family is no shorter than showing it.
-  const cut = ranked.length === limit + 1 ? ranked.length : limit;
-  const top = ranked.slice(0, cut);
-  const others = ranked.slice(cut);
-  return {
-    top,
-    rest: {
-      amount: others.reduce((s, r) => s + r[metric], 0),
-      count: others.length,
-      typeIds: others.flatMap((r) => r.typeIds),
-    },
-    total: ranked.reduce((s, r) => s + r[metric], 0),
-  };
 }
