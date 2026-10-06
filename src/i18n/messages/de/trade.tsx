@@ -8,6 +8,13 @@ export const trade: typeof en = {
   module: {
     navSection: "Handel",
     nav: { appraisal: "Bewertung" },
+    help: {
+      appraisal:
+        "Füge Fracht, einen Vertrag, ein Fitting, einen D-Scan oder eine Gegenstandsliste ein, um den Wert zu Kauf- und " +
+        "Verkaufspreisen in Jita 4-4 aus dem ESI zu sehen, auf Wunsch zu einem Prozentsatz von Jita. Jede Bewertung bleibt ein Jahr lang erhalten, " +
+        "mit einem Link, den alle mit Zugriff auf Bewertungen öffnen können; du kannst sie zu heutigen Preisen neu bewerten oder " +
+        "deine eigenen löschen.",
+    },
     permissionGroup: "Handel",
     permissions: {
       appraisal: {

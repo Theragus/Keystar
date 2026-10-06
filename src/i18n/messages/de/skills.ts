@@ -36,6 +36,12 @@ export const skills: typeof en = {
       queues: "Skill-Queues",
       remap: "Remap-Optimierer",
     },
+    help: {
+      queues:
+        "Was deine Charaktere trainieren, wann jeder Skill fertig ist und wie lange die Queues noch laufen, dazu Skillpunkte und Attribute. Auf der Zugriffsseite wählst du, welche Charaktere ihre Skills teilen; wer Corporation-Skills sehen darf, meist Direktoren, sieht diese Queues dann in der Corporation-Ansicht.",
+      remap:
+        "Der Neural Remap, mit dem jeder Charakter seine aktuelle Skill-Queue am schnellsten abschließt: die Zielattribute, die Queue-Dauer vorher und nachher und die gesparte Zeit, mit einer Warnung, wenn die Queue für einen Remap zu kurz ist. Er gilt für Charaktere, die ihre Skills auf der Zugriffsseite teilen, Implantate eingeschlossen; wer Corporation-Skills sehen darf, meist Direktoren, bekommt auch die Corporation-Ansicht.",
+    },
   },
 
   metaTitle: {

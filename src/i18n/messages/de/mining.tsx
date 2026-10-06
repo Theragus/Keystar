@@ -38,6 +38,17 @@ export const mining: typeof en = {
       observers: "Mondbohrer-Ledger",
       structures: "Raffinerie-Namen",
     },
+    help: {
+      overview:
+        "Mining-Summen für den gewählten Zeitraum: ISK-Wert, Volumen, Tagesdiagramm, Top-Miner, Erze und Systeme. Mit Corporation-Zugriff kannst du zwischen der ganzen Corporation und deinen eigenen Charakteren wechseln, sonst siehst du nur deine. Persönliche Ledger werden alle 15 Minuten synchronisiert, Mondbohrer stündlich; ESI hält 30 Tage vor, Keystar behält ab dann alles.",
+      ledger:
+        "Jeder Eintrag hinter der Mining-Übersicht, nach Tagen gruppiert: eine Zeile pro Charakter, Erz und System (oder Raffinerie) mit Einheiten, Volumen und ISK-Wert. Die Filter funktionieren wie in der Übersicht; mit der Export-Berechtigung kannst du die gefilterten Zeilen als CSV herunterladen.",
+      observers:
+        "Mond-Mining, erfasst von den Mondbohrern der Corporation, pro Raffinerie: Wert, Volumen, Piloten und Erze – auch von Piloten, die nie bei Keystar registriert waren oder nicht zur Corporation gehören. Dafür muss ein Charakter mit der Ingame-Rolle Accountant oder Direktor mit Corporation-Zugriff verknüpft sein; Sync stündlich.",
+      estimator:
+        "Füge ein Ergebnis des Survey-Scanners ein, um einen Asteroidengürtel oder Mond-Chunk nach Erz und Stufe zu bewerten – mit Keystars Preisquelle neben der Schätzung des Scanners. Gib den Flottenertrag in m³/s ein, um die Abbaudauer zu sehen. Der Scan wird nicht gespeichert.",
+      pnl: "Deine eigene Mining-GuV: Einnahmen aus dem abgebauten Erz (oder aus deinen Wallet-Verkäufen) minus die Wallet-Käufe, die du übernimmst, und selbst erfasste Kosten. Nur du siehst sie, unabhängig von deiner Rolle. Der Wallet-Import ist optional pro Charakter: Im Tab „Einstellungen“ schaltest du ihn ein, legst fest, wie Einnahmen gezählt werden, und hinterlegst Erzpreise.",
+    },
   },
 
   valuation: {

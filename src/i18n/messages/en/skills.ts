@@ -35,6 +35,13 @@ export const skills = {
       queues: "Skill queues",
       remap: "Remap optimiser",
     },
+    /** "This page" help for the nav items (NavItem.help), one to three sentences each. */
+    help: {
+      queues:
+        "What your characters are training, when each skill finishes and how long the queues last, plus skill points and attributes. Choose on the Access page which characters share their skills; anyone allowed to view corporation skills, usually directors, then sees those queues in the corporation view.",
+      remap:
+        "The neural remap that trains each character's current skill queue the fastest: the attributes to remap to, the queue time before and after, and the time saved, with a warning when the queue is too short to be worth a remap. It covers characters that share their skills on the Access page, implants included; anyone allowed to view corporation skills, usually directors, also gets the corporation view.",
+    },
   },
 
   metaTitle: {

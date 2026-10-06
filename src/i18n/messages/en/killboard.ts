@@ -12,6 +12,13 @@ export const killboard = {
   module: {
     navSection: "Combat",
     nav: { killboard: "Combat Report" },
+    /** "This page" help for the nav items (NavItem.help), one to three sentences each. */
+    help: {
+      killboard:
+        "The home corporation's kills and losses from zKillboard for the period you pick: totals, top pilots, systems, ships and " +
+        "recent killmails. New killmails usually appear within minutes, and a weekly situation report sums up the last seven days, " +
+        "written by Claude if the server has an API key.",
+    },
     alerts: { kills: { label: "Kills and losses", hint: "When a corporation member gets a kill or loses a ship" } },
     permissionGroup: "Combat Report",
     permissions: {

@@ -37,6 +37,18 @@ export const mining = {
       observers: "Moon-drill ledgers",
       structures: "Refinery names",
     },
+    /** "This page" help for the nav items (NavItem.help), one to three sentences each. */
+    help: {
+      overview:
+        "Mining totals for the chosen period: ISK value, volume, a daily chart, top miners, ores and systems. With corporation access you can switch between the whole corporation and your own characters; otherwise you see only yours. Personal ledgers sync every 15 minutes and moon drills hourly; ESI keeps 30 days, Keystar everything after that.",
+      ledger:
+        "Every entry behind the Mining Overview, grouped by day: one row per character, ore and system (or refinery) with units, volume and ISK value. The filters work as on the overview; with the export permission you can download the filtered rows as CSV.",
+      observers:
+        "Moon mining recorded by the corporation's moon drills, per refinery: value, volume, pilots and ores, including pilots who never registered with Keystar or are outside the corporation. It needs a character with the in-game Accountant or Director role linked with corporation access; synced hourly.",
+      estimator:
+        "Paste a survey scanner result to value an asteroid belt or moon chunk by ore and grade, priced with Keystar's price source next to the scanner's own estimate. Enter your fleet's yield in m³/s to see how long clearing it takes. The scan isn't saved.",
+      pnl: "Your own mining profit and loss: income from the ore you mine (or from your wallet sales) minus the wallet purchases you count and costs you add by hand. Only you see it, whatever your role. Wallet import is optional per character; turn it on, choose how income is counted and set ore prices on the Settings tab.",
+    },
   },
 
   /** How ISK values are computed (admin setting), shown next to every value; sources are in `t.eve.valuationSources`. */
