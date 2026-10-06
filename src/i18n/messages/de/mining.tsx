@@ -129,9 +129,13 @@ export const mining: typeof en = {
     table: "Tabelle",
     noMining: "Kein Mining",
     total: "Gesamt",
+    allResources: "Alle Ressourcen",
+    showOres: (resource: string) => `Erze in ${resource} anzeigen`,
+    otherOres: (count: number) => `Übrige (${plural(count, "Erz", "Erze")})`,
   },
 
   breakdowns: {
+    oresOf: (resource: string) => `${resource} · nach Sorte`,
     characters: (count: number) => plural(count, "Char", "Chars"),
     notRegistered: "nicht registriert",
     moonByRarity: "Monderz nach Seltenheit",

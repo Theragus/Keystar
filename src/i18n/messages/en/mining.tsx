@@ -134,9 +134,13 @@ export const mining = {
     table: "Table",
     noMining: "No mining",
     total: "Total",
+    allResources: "All resources",
+    showOres: (resource: string) => `Show the ores in ${resource}`,
+    otherOres: (count: number) => `Other (${plural(count, "ore", "ores")})`,
   },
 
   breakdowns: {
+    oresOf: (resource: string) => `${resource} · by type`,
     characters: (count: number) => plural(count, "char", "chars"),
     notRegistered: "not registered",
     moonByRarity: "Moon ore by rarity",
