@@ -18,6 +18,10 @@ Sharing skills now includes the implants of the active clone, so the remap optim
 
 ### Fixed
 
+- Saving the settings page or the setup walkthrough's access step with a price source or price date Keystar doesn't
+  know (a page left open across an update, or an edited form) now explains which field to fix in a toast and changes
+  nothing, instead of failing with "Something went wrong".
+  ([#145](https://github.com/Theragus/Keystar/issues/145))
 - A pasted d-scan with made-up type ids can no longer pause ESI for the whole web app. Unknown types are looked up on
   ESI at most 50 per paste and for at most 20 pastes per user in 10 minutes, lookups stop while the shared ESI error
   budget is low, and ids ESI doesn't know are not asked again for 6 hours. Ships that couldn't be looked up yet are

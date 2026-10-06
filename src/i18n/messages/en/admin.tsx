@@ -282,6 +282,7 @@ export const admin = {
     errors: {
       forbidden: "You no longer have permission to change settings.",
       invalidCorporation: "The home corporation must be a numeric corporation ID, e.g. 98765432.",
+      invalidValuation: "Choose a price source and price date from the lists. Reload the page if they look out of date.",
       unknown: "Something went wrong. Reload the page and check which changes were kept.",
     },
     home: {

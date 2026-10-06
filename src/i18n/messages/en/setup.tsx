@@ -21,6 +21,7 @@ export const setup = {
     errors: {
       forbidden: "You no longer have permission to change the settings.",
       invalidCorporation: "Choose a corporation or enter a numeric corporation ID.",
+      invalidValuation: "Choose how to price ore from the list. Reload the page if it looks out of date.",
       unknown: "Something went wrong. Reload the page and try again.",
     },
   },
