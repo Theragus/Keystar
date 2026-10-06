@@ -475,7 +475,12 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
   corporation and alliance (own corp/alliance always friendly; otherwise the most specific contact wins, the
   corporation's list before the alliance's); and **history with us** from the killboard tables: kills on us,
   losses to us and the hulls flown against us, plus fights (our killmails with any pasted pilot, clustered by system
-  and a 30-minute gap) with what they brought and who else was there.
+  and a 30-minute gap) with what they brought and who else was there. D-scan types we don't know yet are fetched from
+  ESI (`GET /universe/types/{id}`) within limits, because a pasted made-up id costs a 404 from the per-IP error budget
+  that pauses all ESI calls once drained: at most 50 lookups per paste (most common types first), at most 20 pastes
+  with lookups per user in 10 minutes (`intel_dscan_lookups`, reserved in a locked transaction), none once the shared
+  client reports fewer than 50 errors left, and ids ESI answered 404 for are not asked again for 6 hours. Ships still
+  unknown are left out; known ones always show.
 - **The worker** (`intel.scan-worker`) works through `intel_queue`, one row per pilot shared by every scan, in
   stages: zKillboard statistics for every pilot first (`/api/stats/characterID/`), then each pilot's newest 200
   killmails, highest quick score first, then older pages only until 30 days are covered (at most 3 pages; a stored
