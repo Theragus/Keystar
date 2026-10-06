@@ -20,7 +20,7 @@ Sharing skills now includes the implants of the active clone, so the remap optim
 
 - The login page and the Privacy panel on My Characters now link to Authorized Apps on the EVE developers site for
   revoking Keystar's access. The Third-Party Applications page on community.eveonline.com they pointed to now only
-  redirects to the developers homepage.
+  redirects to the developers homepage. ([PR #183](https://github.com/Theragus/Keystar/pull/183))
 - Saving the settings page or the setup walkthrough's access step with a price source or price date Keystar doesn't
   know (a page left open across an update, or an edited form) now explains which field to fix in a toast and changes
   nothing, instead of failing with "Something went wrong".
