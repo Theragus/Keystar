@@ -15,10 +15,10 @@ Keystar signs pilots in with **EVE SSO**, collects their **ESI tokens** with exa
 syncs data in the background and turns it into dashboards. Modules so far: **mining** (personal and moon-refinery
 ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export, an ore field estimator
 for survey scans and a personal **mining P&L** with opt-in wallet import), **industry jobs** of your own characters
-with progress and completion times, a **killboard** with the corporation's PvP
-performance from zKillboard and a weekly situation report, **live fleet** tracking, **threat intel** for pasted
-local, fleets and d-scans, an **appraisal** tool for Jita prices and **corporation wallets** with income, expenses and a
-long-term journal archive.
+with progress and completion times, **skill queues** with a remap optimiser, a **killboard** with the corporation's
+PvP performance from zKillboard and a weekly situation report, **live fleet** tracking, **threat intel** for pasted
+local, fleets and d-scans, a **3D universe map**, an **appraisal** tool for Jita prices, **EVE Mail** and
+**corporation wallets** with income, expenses and a long-term journal archive.
 
 ![Mining overview](docs/screenshots/mining.png)
 
@@ -67,6 +67,8 @@ long-term journal archive.
     prices), mining costs from opt-in wallet imports (crystals, Heavy Water, burst charges, drones, hulls — suggested
     until you include them) plus manual costs, net profit per day / week / month, ISK per hour from measured ledger
     activity, cost per m³, per-character and per-activity splits. Only you see your sheet.
+- **Skills** (Pilots): opt-in skill queues with finish times and a timeline, plus a **remap optimiser** that finds the
+  attribute remap finishing the queue fastest.
 - **Killboard** for the home corporation from zKillboard (no extra scopes): kills, losses, ISK efficiency with
   week-over-week changes, a weekly **situation report** written by Claude (optional API key) or from a template, top
   systems, recent activity, most effective / used / lost ships and pilot efficiency.
@@ -80,18 +82,21 @@ long-term journal archive.
   "recently seen hostiles" list.
 - **Appraisal** (Trade): paste cargo, inventory, contracts, EFT fittings, d-scans, killmails or item lists and get
   Jita 4-4 buy / sell / split values, volume and a percentage price (e.g. for buyback), saved as a shareable link.
+- **Universe map** (Combat): interactive 3D map with stargate routes and capital jump ranges.
+- **EVE Mail** (Social): read-only mail per character, opt-in and private to you.
+- **Live alerts**: kills, losses and new mail as in-app or desktop notifications.
 - **Corporation wallets** (Finances): balances, income, expenses and net for every wallet division per day / week /
   month, transfers between divisions kept apart, and a filterable wallet journal. The worker archives journal entries,
   market transactions and daily balances for good, beyond the ~30 days ESI keeps, and flags any gaps.
 - **Administration**: users & roles, member audit (in-game roster vs registered), sync status with manual triggers,
-  settings, audit log, and a short first-start setup walkthrough.
+  settings, audit log, System Info with a support package, and a short first-start setup walkthrough.
 - **Background worker** respecting ESI's 2025+ rules: `X-Compatibility-Date`, ETag/Expires caching, pagination,
   error-limit and per-group rate-limit back-off.
 - **English and German**: the language follows the browser (English for everything else) and can be switched in the
   sidebar footer; numbers and dates use the language's conventions (e.g. "9,87 Mio. ISK").
-- **Design**: dark, EVE-flavoured UI.
+- **Design**: dark, EVE-flavoured UI with a light mode.
 
-See [ROADMAP.md](ROADMAP.md) for what's next (skills, assets, wallet breakdowns).
+See [ROADMAP.md](ROADMAP.md) for what's next (corporation skill plans, assets, wallet breakdowns).
 
 ## Deploy
 
