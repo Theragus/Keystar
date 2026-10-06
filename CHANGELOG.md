@@ -6,10 +6,61 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-06
+
+### Upgrade notes
+
+Industry jobs need two optional character scopes.
+
+1. Add `esi-industry.read_character_jobs.v1` and `esi-universe.read_structures.v1` to the scopes of your EVE
+   application at <https://developers.eveonline.com/applications>. Nobody is asked for them unless they enable
+   industry access on the Industry access page, but without them on the application that EVE login fails with
+   `invalid_scope`.
+2. Update as usual; the database migrations run on start.
+
+### Added
+
+- **Ore types in the daily mining chart.** Click a resource in the "Daily ISK by resource" chart (or its legend) to
+  stack the days by its ore types instead, such as Spodumain, Kernite and Scordite, with the smaller ones combined
+  into "Other". When only one resource was mined, the chart and the resource mix show its ore types straight away.
+  ([PR #173](https://github.com/Theragus/Keystar/pull/173))
+- **3D universe map.** Add a searchable star map under Combat with system names, security status and real positions;
+  Threat Intel system links focus the map and show jump range and light-year distances.
+  ([PR #87](https://github.com/Theragus/Keystar/pull/87))
+- **Travel and jump planning.** Calculate shortest stargate routes with two-hour gate-kill evidence and linked
+  killmails, plus carrier, jump freighter and Black Ops range highlighting with Jump Drive Calibration selection.
+  ([PR #87](https://github.com/Theragus/Keystar/pull/87))
+- **Industry jobs.** A new Industry Jobs page under Industry lists the industry jobs of your own characters:
+  manufacturing, material and time efficiency research, copying, invention and reactions, each with a progress bar,
+  the time left (counting down live) and the end time, and the station or structure it runs in with its system.
+  Filter by running or finished jobs, character, activity, system and station; tiles count running jobs, jobs ready
+  to deliver and jobs ending within a day. Access is opt-in per character on the new Industry access page, like
+  skills and mail, so nobody is asked for the two new scopes (`esi-industry.read_character_jobs.v1`,
+  `esi-universe.read_structures.v1`) at sign-up; add them to the EVE application (see `docs/deployment.md`). Only you
+  see your characters' jobs. ([#105](https://github.com/Theragus/Keystar/issues/105))
+- **Skill queue timeline.** Each character's card shows the queue as one strip, like the training-time bar in
+  game: every skill takes a slice proportional to the time it still needs, with day, week or month marks below.
+  Pointing at a slice highlights its row in the queue table and the other way round.
+- **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
+  container's memory against its limit, free host memory and the host's load average.
+
+### Changed
+
+- **Map interaction.** Use compact glass panels, batched rendering and cached geometry; support mouse rotation and
+  panning, looping route illumination, system focus with fading rotation, reduced motion and wheel zoom without page
+  scrolling. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
+- **Mining P&L**: when income comes from wallet sales, it is now net of sales tax instead of counting the tax as an
+  expense: each sale on the Income tab shows the tax paid on it and its net, and the tax counts whenever the sale
+  does, without a review of its own. Broker fees stay expenses and are easier to review: each shows the journal's
+  description and time, and "Include all" counts every suggested broker fee at once.
+- Null-sec security status (0.0 and below) is shown in red instead of purple in every security pill, so the
+  security colours run from blue at 1.0 to red.
+
 ### Fixed
 
-- **Map and Intel review fixes.** Cache map route lookups; let scan viewers read saved briefings without regenerating them, keep rewriting permission-gated, restore a pilot profile shortcut and align briefing severity with the three-tier danger model. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
-
+- **Map and Intel review fixes.** Cache map route lookups; let scan viewers read saved briefings without regenerating
+  them, keep rewriting permission-gated, restore a pilot profile shortcut and align briefing severity with the
+  three-tier danger model. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
 - An appraisal with an absurdly long quantity (hundreds of digits) no longer stores and shows an infinite total; such
   a quantity is no longer read as one. A member can start at most 30 appraisals per ten minutes (failed and deleted
   ones included), and appraisals are deleted after a year, so the appraisal table no longer grows without bound.
@@ -47,40 +98,6 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   transaction as the change, so a database error can no longer leave a change without an audit trail. Other audit
   entries that can't be written are counted, and System Info warns about them in a new "Audit log written" check.
   ([#156](https://github.com/Theragus/Keystar/issues/156))
-
-### Added
-
-- **Ore types in the daily mining chart.** Click a resource in the "Daily ISK by resource" chart (or its legend) to
-  stack the days by its ore types instead, such as Spodumain, Kernite and Scordite, with the smaller ones combined
-  into "Other". When only one resource was mined, the chart and the resource mix show its ore types straight away.
-  ([PR #173](https://github.com/Theragus/Keystar/pull/173))
-- **3D universe map.** Add a searchable star map under Combat with system names, security status and real positions; Threat Intel system links focus the map and show jump range and light-year distances. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
-- **Travel and jump planning.** Calculate shortest stargate routes with two-hour gate-kill evidence and linked killmails, plus carrier, jump freighter and Black Ops range highlighting with Jump Drive Calibration selection. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
-
-- **Industry jobs.** A new Industry Jobs page under Industry lists the industry jobs of your own characters:
-  manufacturing, material and time efficiency research, copying, invention and reactions, each with a progress bar,
-  the time left (counting down live) and the end time, and the station or structure it runs in with its system.
-  Filter by running or finished jobs, character, activity, system and station; tiles count running jobs, jobs ready
-  to deliver and jobs ending within a day. Access is opt-in per character on the new Industry access page, like
-  skills and mail, so nobody is asked for the two new scopes (`esi-industry.read_character_jobs.v1`,
-  `esi-universe.read_structures.v1`) at sign-up; add them to the EVE application (see `docs/deployment.md`). Only you
-  see your characters' jobs. ([#105](https://github.com/Theragus/Keystar/issues/105))
-- **Skill queue timeline.** Each character's card shows the queue as one strip, like the training-time bar in
-  game: every skill takes a slice proportional to the time it still needs, with day, week or month marks below.
-  Pointing at a slice highlights its row in the queue table and the other way round.
-- **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
-  container's memory against its limit, free host memory and the host's load average.
-
-### Changed
-
-- **Map interaction.** Use compact glass panels, batched rendering and cached geometry; support mouse rotation and panning, looping route illumination, system focus with fading rotation, reduced motion and wheel zoom without page scrolling. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
-
-- **Mining P&L**: when income comes from wallet sales, it is now net of sales tax instead of counting the tax as an
-  expense: each sale on the Income tab shows the tax paid on it and its net, and the tax counts whenever the sale
-  does, without a review of its own. Broker fees stay expenses and are easier to review: each shows the journal's
-  description and time, and "Include all" counts every suggested broker fee at once.
-- Null-sec security status (0.0 and below) is shown in red instead of purple in every security pill, so the
-  security colours run from blue at 1.0 to red.
 
 ## [0.13.0] - 2026-10-04
 
