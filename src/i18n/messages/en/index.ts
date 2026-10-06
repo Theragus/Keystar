@@ -18,6 +18,8 @@ import { skills } from "./skills";
 import { social } from "./social";
 import { trade } from "./trade";
 import { wallet } from "./wallet";
+import { help } from "./help";
+import { whatsNew } from "./whats-new";
 
 /**
  * English source dictionary, one namespace per area. Its shape is the
@@ -44,6 +46,8 @@ export const en = {
   wallet,
   social,
   skills,
+  help,
+  whatsNew,
 };
 
 export type Messages = typeof en;

@@ -42,6 +42,7 @@ src/
     db/                Drizzle client and core schemas (core, eve, sync)
     esi/               ESI client, token refresh, DB-backed response cache
     eve/               EVE data: resolver (names/types/systems), prices, ore classes, image URLs
+    help/              help dialog data, welcome tour / What's new selection, release highlights registry
     rbac/              roles and permissions
     sync/              job types, scheduler, core jobs
     modules/           module contract and registry
@@ -263,6 +264,41 @@ add one is described in docs/modules.md.
   minute), so a notification can arrive later. There is no service worker or Web Push: with no Keystar tab open,
   nothing is announced.
 - Tabs claim each event in a shared localStorage record under a Web Lock, so one browser announces it once.
+
+## Help, welcome tour and What's new
+
+The **?** button in the top bar (or the `?` key outside a text field) opens the help dialog
+(`src/components/help/`): "This page", "How Keystar works", "Scopes and EVE access", "Your data and security" and
+"Who sees what". The app layout builds its data on the server (`buildHelpData` in `src/core/help/data.ts`) from the
+module manifests and the settings, so it can't drift from what Keystar enforces:
+
+- "This page" is the `help` text of the sidebar page the path belongs to (the longest matching `href`, so
+  `/industry/settings` explains Industry Jobs), with the role it needs (`minRoleFor`: the lowest role whose
+  permissions, overrides included, reach one of the item's `anyPermission`) and `ownDataOnly`.
+- "Scopes" lists `allScopeRequirements()` grouped as asked from everyone, optional per character (by `manageHref`)
+  and corporation access (with their in-game roles), with the scopes' `reason` texts.
+- "Who sees what" is every sidebar page with its minimum role and whether the viewer may open it, and "Your data"
+  says who else sees a member's data by the effective role of the permission that shows it (`DATA_VISIBILITY`).
+  Retention periods come from the modules' constants.
+
+**Opening by itself.** `users.seen_version` is the newest version an account was shown something for; it is only
+ever raised (`shouldRecordSeen`). `onboarding()` (`src/core/help/onboarding.ts`, pure) decides what the layout opens
+once: null (a new account, or one from before this column) gets the **welcome tour** (the help topics in order,
+between a welcome and a "get started" step); an older version gets **What's new** for every release in between;
+the same or a newer version (a downgrade) gets nothing. When it opens, or when there was nothing to show for the
+viewer, the client calls `markVersionSeen()`, which stores the running version, never one the client names.
+
+**What's new** shows a release's highlights (at most four cards, newest release first, "and N more") and a link to
+its GitHub release (`SOURCE_URL/releases/tag/vX`, or the release list when it covers several releases). Highlights
+are curated in the release PR (docs/releasing.md): icons, links and permissions in `RELEASES`
+(`src/core/help/releases.ts`), titles and texts in the `whatsNew.releases` dictionaries, keyed the same way so the
+typecheck catches a missing translation. A highlight is only shown to viewers with one of its `anyPermission`. A
+release's `upgrade` text (the short form of its CHANGELOG "Upgrade notes") is shown to whoever may manage the settings,
+as "Action needed". The sidebar's version link opens the newest release's What's new as well.
+
+**"New" dots.** The sidebar marks the pages of the newest release's highlights (`navNews`) with a dot until the
+page is opened in that browser (`ks_nav_seen` in localStorage, `src/components/shell/nav-news.ts`). The dot only
+appears after hydration, so server and client render the same.
 
 ## EVE mail
 

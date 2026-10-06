@@ -68,6 +68,7 @@ export const skillsModule: KeystarModule = {
           href: "/skills",
           label: (t) => t.skills.module.nav.queues,
           icon: GraduationCap,
+          help: (t) => t.skills.module.help.queues,
           anyPermission: [SKILLS_PERMISSIONS.viewOwn, SKILLS_PERMISSIONS.viewCorp],
         },
       ],

@@ -31,6 +31,10 @@ export const skills: typeof en = {
     nav: {
       queues: "Skill-Queues",
     },
+    help: {
+      queues:
+        "Was deine Charaktere trainieren, wann jeder Skill fertig ist und wie lange die Queues noch laufen, dazu Skillpunkte und Attribute. Auf der Zugriffsseite wählst du, welche Charaktere ihre Skills teilen; wer Corporation-Skills sehen darf, meist Direktoren, sieht diese Queues dann in der Corporation-Ansicht.",
+    },
   },
 
   metaTitle: {

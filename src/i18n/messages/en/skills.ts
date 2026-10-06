@@ -31,6 +31,11 @@ export const skills = {
     nav: {
       queues: "Skill queues",
     },
+    /** "This page" help for the nav items (NavItem.help), one to three sentences each. */
+    help: {
+      queues:
+        "What your characters are training, when each skill finishes and how long the queues last, plus skill points and attributes. Choose on the Access page which characters share their skills; anyone allowed to view corporation skills, usually directors, then sees those queues in the corporation view.",
+    },
   },
 
   metaTitle: {

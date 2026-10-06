@@ -1,10 +1,12 @@
 import { LogOut, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 
+import { WhatsNewLink } from "@/components/help/whats-new-link";
 import type { CurrentUser } from "@/core/auth/dal";
 import { env } from "@/core/env";
+import { navNews } from "@/core/help/onboarding";
 import { navSections } from "@/core/modules/registry";
-import { buildInfo, versionLabel } from "@/core/version";
+import { buildInfo, KEYSTAR_VERSION, versionLabel } from "@/core/version";
 import { getI18n } from "@/i18n/server";
 import { cn } from "@/lib/utils";
 import { Portrait } from "@/components/ui/eve-image";
@@ -35,6 +37,9 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
   const { t } = await getI18n();
   const build = buildInfo();
   const version = versionLabel(build, env().SOURCE_URL);
+  // Pages new in this release get a dot until opened.
+  const news = navNews({ current: KEYSTAR_VERSION, can: user.can });
+  const newKey = (href: string) => (news?.hrefs.includes(href) ? `${news.version}:${href}` : undefined);
   const pilotLinkHover = "transition-colors hover:bg-surface-contrast/[0.06] focus-visible:bg-surface-contrast/[0.06]";
   const pilotInfo = (
     <>
@@ -73,7 +78,7 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
                   <ul className="space-y-0.5" data-flyout-anchor>
                     {section.items.map((item) => (
                       <li key={item.href}>
-                        <NavLink href={item.href} exact={hasNested(item.href)} inFlyout>
+                        <NavLink href={item.href} exact={hasNested(item.href)} newKey={newKey(item.href)} inFlyout>
                           <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
                           <span className="truncate">{item.label(t)}</span>
                         </NavLink>
@@ -89,7 +94,7 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
               <ul className="space-y-0.5" data-flyout-anchor>
                 {section.items.map((item) => (
                   <li key={item.href}>
-                    <NavLink href={item.href} exact={hasNested(item.href)}>
+                    <NavLink href={item.href} exact={hasNested(item.href)} newKey={newKey(item.href)}>
                       <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
                       <span className="truncate group-data-[sidebar=collapsed]/shell:sr-only">{item.label(t)}</span>
                     </NavLink>
@@ -104,10 +109,9 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
             <LanguageSwitcher />
             <ThemeSwitcher />
           </div>
-          <a
+          <WhatsNewLink
             href={version.href}
-            target="_blank"
-            rel="noopener noreferrer"
+            prerelease={version.prerelease}
             className={cn(
               "flex items-center gap-1.5 px-2 font-mono text-3xs whitespace-nowrap group-data-[sidebar=collapsed]/shell:hidden",
               version.prerelease
@@ -118,7 +122,7 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
           >
             {version.prerelease && <TriangleAlert className="size-3 shrink-0" aria-hidden />}
             <span className="truncate">{version.text}</span>
-          </a>
+          </WhatsNewLink>
         </div>
         <div className="shrink-0 border-t border-surface-contrast/[0.07] p-3 group-data-[sidebar=collapsed]/shell:px-0">
           <div className="flex items-center gap-2.5 group-data-[sidebar=collapsed]/shell:flex-col group-data-[sidebar=collapsed]/shell:gap-2">

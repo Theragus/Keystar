@@ -40,6 +40,13 @@ export interface NavItem {
   href: string;
   label: Msg;
   icon: LucideIcon;
+  /**
+   * What the page is for, in one to three sentences: the help dialog's "This page" topic
+   * (and its pages nested below `href`, such as a settings page).
+   */
+  help: Msg;
+  /** The page only ever shows the viewer's own data (mail, P&L): no role can see anyone else's. */
+  ownDataOnly?: true;
   /** Visible if the user has any of these permissions (omit = always visible). */
   anyPermission?: string[];
 }
