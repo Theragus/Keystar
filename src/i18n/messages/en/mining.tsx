@@ -145,6 +145,8 @@ export const mining = {
     groupOresHint: "Combine the grades and variants of each ore (Scordite II-Grade, Thick Blue Ice …) into one row",
     variants: (count: number) => plural(count, "variant", "variants"),
     averagePrice: "Average across the grades, weighted by units",
+    otherOres: (count: number) => `Everything else · ${plural(count, "ore", "ores")}`,
+    filterByOre: (name: string) => `Show only ${name}`,
   },
 
   overview: {
@@ -178,6 +180,7 @@ export const mining = {
     } satisfies Record<MiningMetric, string>,
     eveDays: "EVE time (UTC) days",
     resourceMix: "Resource mix",
+    oreMix: "Ore mix",
     shareOf: {
       value: "Share of ISK",
       volume: "Share of m³",

@@ -38,3 +38,31 @@ export function groupOreTypes(rows: TypeRow[]): OreRow[] {
       : { ...singleOreRow(first), key: row.key },
   );
 }
+
+export interface OreMix {
+  /** The largest ore families by the metric, largest first. */
+  top: OreRow[];
+  /** Everything below the cut-off, combined. */
+  rest: { amount: number; count: number; typeIds: number[] };
+  total: number;
+}
+
+/** Ore families ranked by `metric` for the ore mix chart: the top `limit`, then the rest as one bucket. */
+export function oreMix(rows: TypeRow[], metric: "value" | "volume" | "quantity", limit = 12): OreMix {
+  const ranked = groupOreTypes(rows)
+    .filter((r) => r[metric] > 0)
+    .sort((a, b) => b[metric] - a[metric] || a.name.localeCompare(b.name));
+  // A rest bucket of one family is no shorter than showing it.
+  const cut = ranked.length === limit + 1 ? ranked.length : limit;
+  const top = ranked.slice(0, cut);
+  const others = ranked.slice(cut);
+  return {
+    top,
+    rest: {
+      amount: others.reduce((s, r) => s + r[metric], 0),
+      count: others.length,
+      typeIds: others.flatMap((r) => r.typeIds),
+    },
+    total: ranked.reduce((s, r) => s + r[metric], 0),
+  };
+}

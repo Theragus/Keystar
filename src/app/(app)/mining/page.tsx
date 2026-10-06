@@ -12,6 +12,7 @@ import { getI18n } from "@/i18n/server";
 import { delta } from "@/lib/format";
 import { toChartClasses } from "@/modules/mining/class-colors";
 import { ClassComposition, MemberLeaderboard, SystemTable } from "@/modules/mining/components/breakdowns";
+import { OreMix } from "@/modules/mining/components/ore-mix";
 import { OreBreakdown } from "@/modules/mining/components/ore-table";
 import { DailyChart } from "@/modules/mining/components/daily-chart";
 import { MiningFilterBar } from "@/modules/mining/components/filter-bar";
@@ -177,6 +178,10 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
                 <ClassComposition byClass={byClass} metric={filters.metric} />
               </Panel>
             </div>
+
+            <Panel title={m.oreMix} subtitle={m.shareOf[filters.metric]}>
+              <OreMix rows={types} filters={filters} emptyText={m.noOre} />
+            </Panel>
 
             <div className="grid gap-4 xl:grid-cols-12">
               <Panel

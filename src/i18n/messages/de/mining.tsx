@@ -140,6 +140,8 @@ export const mining: typeof en = {
     groupOresHint: "Stufen und Varianten jedes Erzes (Scordite II-Grade, Thick Blue Ice …) in einer Zeile zusammenfassen",
     variants: (count: number) => plural(count, "Variante", "Varianten"),
     averagePrice: "Durchschnitt über die Stufen, gewichtet nach Einheiten",
+    otherOres: (count: number) => `Alle übrigen · ${plural(count, "Erz", "Erze")}`,
+    filterByOre: (name: string) => `Nur ${name} anzeigen`,
   },
 
   overview: {
@@ -173,6 +175,7 @@ export const mining: typeof en = {
     },
     eveDays: "Tage in EVE-Zeit (UTC)",
     resourceMix: "Ressourcen-Mix",
+    oreMix: "Erzmix",
     shareOf: {
       value: "Anteil an ISK",
       volume: "Anteil am Volumen",
