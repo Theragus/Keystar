@@ -8,21 +8,19 @@ import { KEYSTAR_VERSION } from "@/core/version";
 import type { Messages } from "@/i18n/messages";
 import { DIGEST_RETENTION_DAYS, PILOT_RETENTION_DAYS, SCAN_RETENTION_DAYS } from "@/modules/intel/constants";
 import { APPRAISAL_RETENTION_DAYS } from "@/modules/trade/appraisal/appraise";
-import { accessRows, dataVisibility, scopeGroups } from "./access";
-import { latestDigest, onboarding, releasesUrl, type Onboarding } from "./onboarding";
+import { accessRows, dataVisibility, roleGrants, scopeGroups } from "./access";
+import { latestDigest, onboarding, type Onboarding } from "./onboarding";
 import type { HelpData } from "./types";
 
 /** The help dialog's data for the signed-in viewer (rendered by the app layout). */
 export function buildHelpData(user: CurrentUser, settings: Settings, t: Messages, homeCorp: string | null): HelpData {
-  const defs = allPermissions();
-  const overrides = settings["permissions.overrides"];
+  const grants = roleGrants(allPermissions(), settings["permissions.overrides"]);
   const sourceUrl = env().SOURCE_URL;
   return {
     version: KEYSTAR_VERSION,
-    releasesUrl: releasesUrl(sourceUrl),
     user: { name: user.main?.name ?? null, role: user.role, canManageSettings: user.can("app.settings.manage") },
-    access: accessRows(navSections(), t, { defs, overrides, canAny: user.canAny }),
-    visibility: dataVisibility(defs, overrides),
+    access: accessRows(navSections(), t, { grants, canAny: user.canAny }),
+    visibility: dataVisibility(grants),
     scopes: scopeGroups(allScopeRequirements(), t, user.can),
     instance: {
       homeCorp,

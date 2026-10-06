@@ -2,11 +2,13 @@
 
 import type { MouseEvent, ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
+import { isPlainClick } from "./clicks";
 import { useHelp } from "./help-provider";
 
 /**
- * The sidebar's version: opens What's new for a release build with highlights; otherwise, and on a
- * modified click (new tab), it is a plain link to the release notes or, for a test build, the commit.
+ * The sidebar's version: opens What's new when the running release has highlights; otherwise (a patch
+ * release, a test build) and on a modified click (new tab), it is a plain link to the release notes or,
+ * for a test build, the commit.
  */
 export function WhatsNewLink({
   href,
@@ -23,10 +25,11 @@ export function WhatsNewLink({
   children: ReactNode;
 }) {
   const { t } = useI18n();
-  const { latest, openWhatsNew } = useHelp();
-  const opens = !prerelease && latest !== null;
+  const { latest, current, openWhatsNew } = useHelp();
+  // Older highlights would hide the running version's notes behind a dialog about another release.
+  const opens = !prerelease && latest?.version === current;
   const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
-    if (!opens || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (!opens || !isPlainClick(e)) return;
     e.preventDefault();
     openWhatsNew();
   };
@@ -37,7 +40,7 @@ export function WhatsNewLink({
       rel="noopener noreferrer"
       onClick={onClick}
       aria-haspopup={opens ? "dialog" : undefined}
-      title={opens ? t.help.whatsNew(latest.version) : title}
+      title={opens ? t.help.whatsNew(current) : title}
       className={className}
     >
       {children}

@@ -10,6 +10,7 @@ export const whatsNew: typeof en = {
   since: (from: string) => `Die wichtigsten Änderungen seit v${from}, der Version, die du zuletzt gesehen hast.`,
   kind: { new: "Neu", improved: "Verbessert" },
   open: "Öffnen",
+  version: (version: string) => `v${version}`,
   more: (count: number) => `und ${n(count)} weitere${count === 1 ? "s Highlight" : " Highlights"}`,
   read: "Versionshinweise lesen",
   close: "Schließen",

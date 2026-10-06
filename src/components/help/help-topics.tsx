@@ -12,6 +12,7 @@ import type { HelpData } from "@/core/help/types";
 import { ROLES, type Role } from "@/core/rbac/roles";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
+import { UpgradeNotes } from "./upgrade-notes";
 
 /** EVE's page for a player's authorised third-party applications (where Keystar can be revoked). */
 export const EVE_AUTHORIZED_APPS_URL = "https://developers.eveonline.com/authorized-apps";
@@ -73,11 +74,6 @@ function MinRole({ role }: { role: Role | null }) {
   return <>{t.help.page.fromRole(<RoleBadge role={role} />)}</>;
 }
 
-/** The page help of the sidebar page `pathname` belongs to (longest href prefix, nested pages included). */
-export function pageHelp(access: readonly AccessRow[], pathname: string): AccessRow | undefined {
-  return matchNavItem(pathname, access);
-}
-
 export function PageTopic({
   data,
   row,
@@ -99,7 +95,9 @@ export function PageTopic({
       </div>
     );
   }
-  const optional = data.scopes.optional.find((g) => g.href === row.href || g.href.startsWith(`${row.href}/`));
+  // Optional access whose switch belongs to this page (/mining/pnl/settings → Mining P&L, not Mining Overview).
+  const optional = data.scopes.optional.find((g) => matchNavItem(g.href, data.access)?.href === row.href);
+  const fact = "flex flex-wrap items-center gap-x-2.5 gap-y-1 px-4 py-2.5";
   return (
     <div className="space-y-4">
       <div>
@@ -107,33 +105,31 @@ export function PageTopic({
         <Heading id={headingId}>{row.label}</Heading>
       </div>
       <p className="text-sm leading-relaxed text-ink-2">{row.help}</p>
-      <dl className="glass-inset divide-y divide-surface-contrast/[0.06] rounded-lg text-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
-          <dt className="text-ink-3">{tp.whoCanOpen}</dt>
-          <dd className="flex items-center gap-1.5">
+      <ul className="glass-inset divide-y divide-surface-contrast/[0.06] rounded-lg text-sm">
+        <li className={cn(fact, "justify-between")}>
+          <span className="text-ink-3">{tp.whoCanOpen}</span>
+          <span className="flex items-center gap-1.5">
             <MinRole role={row.minRole} />
-          </dd>
-        </div>
+          </span>
+        </li>
         {row.ownDataOnly && (
-          <div className="flex items-start gap-2.5 px-4 py-2.5">
-            <Lock className="mt-0.5 size-3.5 shrink-0 text-good-text" aria-hidden />
-            <dd>{tp.ownData}</dd>
-          </div>
+          <li className={fact}>
+            <Lock className="size-3.5 shrink-0 text-good-text" aria-hidden />
+            <span className="min-w-0 flex-1">{tp.ownData}</span>
+          </li>
         )}
         {optional && (
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
-            <dd className="flex items-start gap-2.5">
-              <KeyRound className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden />
-              {tp.optional(optional.label)}
-            </dd>
+          <li className={fact}>
+            <KeyRound className="size-3.5 shrink-0 text-accent" aria-hidden />
+            <span className="min-w-0 flex-1">{tp.optional(optional.label)}</span>
             {optional.canManage && optional.href !== pathname && (
               <Link href={optional.href} className="text-xs text-accent hover:underline" data-close-dialog>
                 {tp.manage}
               </Link>
             )}
-          </div>
+          </li>
         )}
-      </dl>
+      </ul>
     </div>
   );
 }
@@ -402,6 +398,10 @@ export function WelcomeStep({ data, headingId }: { data: HelpData; headingId: st
         <p className="mt-0.5 text-ink-3">{t.common.roles[data.user.role].description}</p>
       </div>
       <p className="text-sm text-ink-2">{w.reopen(<Kbd>?</Kbd>)}</p>
+      {/* An existing account sees the tour once after the update that brought it, so admins also get its upgrade notes. */}
+      {data.latest && data.latest.upgrades.length > 0 && (
+        <UpgradeNotes upgrades={data.latest.upgrades} intro={w.upgrade(data.latest.version)} level={4} />
+      )}
     </div>
   );
 }

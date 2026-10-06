@@ -15,6 +15,8 @@ interface HelpContextValue {
   /** Opens What's new for the newest release with highlights (`latest`). */
   openWhatsNew: () => void;
   latest: WhatsNewDigest | null;
+  /** The running version. */
+  current: string;
 }
 
 const HelpContext = createContext<HelpContextValue | null>(null);
@@ -32,6 +34,8 @@ function isTyping(target: EventTarget | null) {
 
 /** Wait this long after the page appears before a dialog opens by itself, so it doesn't flash in with the page. */
 const AUTO_OPEN_DELAY_MS = 500;
+/** While another dialog is open (the user pressed ? first), try again this often. */
+const AUTO_RETRY_MS = 1000;
 
 /**
  * Hosts the help dialog (with the welcome tour) and the What's new dialog for the app shell:
@@ -83,25 +87,33 @@ export function HelpProvider({ data, auto, children }: { data: HelpData; auto: O
   }, [data.latest, show]);
 
   // Open the welcome tour or What's new once, and record the version either way.
-  const autoKind = auto.kind;
-  const markSeen = auto.kind === "none" && auto.markSeen;
   useEffect(() => {
     if (opened.current) return;
-    if (autoKind === "none") {
-      if (markSeen) {
+    if (auto.kind === "none") {
+      if (auto.markSeen) {
         opened.current = true;
         void markVersionSeen().catch(() => undefined);
       }
       return;
     }
-    const timer = setTimeout(() => {
-      if (opened.current || document.querySelector("dialog[open]")) return;
+    const attempt = () => {
+      if (opened.current) return;
+      // Another dialog is open: wait until it is closed rather than dropping the tour or What's new.
+      if (document.querySelector("dialog[open]")) {
+        timer = setTimeout(attempt, AUTO_RETRY_MS);
+        return;
+      }
       opened.current = true;
-      show((autoKind === "welcome" ? helpRef : newsRef).current);
+      if (auto.kind === "welcome") openTour();
+      else {
+        flushSync(() => setDigest(auto.digest));
+        show(newsRef.current);
+      }
       void markVersionSeen().catch(() => undefined);
-    }, AUTO_OPEN_DELAY_MS);
+    };
+    let timer = setTimeout(attempt, AUTO_OPEN_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [autoKind, markSeen, show]);
+  }, [auto, openTour, show]);
 
   // "?" anywhere outside a field opens the help.
   useEffect(() => {
@@ -115,7 +127,10 @@ export function HelpProvider({ data, auto, children }: { data: HelpData; auto: O
     return () => window.removeEventListener("keydown", onKey);
   }, [openHelp]);
 
-  const value = useMemo(() => ({ openHelp, openTour, openWhatsNew, latest: data.latest }), [openHelp, openTour, openWhatsNew, data.latest]);
+  const value = useMemo(
+    () => ({ openHelp, openTour, openWhatsNew, latest: data.latest, current: data.version }),
+    [openHelp, openTour, openWhatsNew, data.latest, data.version],
+  );
 
   return (
     <HelpContext.Provider value={value}>

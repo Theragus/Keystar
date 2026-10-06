@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { matchNavItem } from "@/components/shell/nav-match";
-import { accessRows, DATA_VISIBILITY, dataVisibility, minRoleFor, scopeGroups } from "@/core/help/access";
+import { accessRows, DATA_VISIBILITY, dataVisibility, minRoleFor, roleGrants, scopeGroups } from "@/core/help/access";
 import { allPermissions, allScopeRequirements, characterScopes, navSections, optionalScopes } from "@/core/modules/registry";
 import { CORE_PERMISSIONS, permissionsForRole, type PermissionDef } from "@/core/rbac/permissions";
 import { ROLES, roleAtLeast } from "@/core/rbac/roles";
@@ -14,22 +14,24 @@ const defs: PermissionDef[] = [
 ];
 
 describe("the role a page needs", () => {
+  const plain = roleGrants(defs, {});
+
   it("is the lowest role with any of its permissions", () => {
-    expect(minRoleFor(["mining.view.corp"], defs, {})).toBe("viewer");
-    expect(minRoleFor(["mining.view.own", "mining.view.corp"], defs, {})).toBe("member");
-    expect(minRoleFor(["users.view"], defs, {})).toBe("director");
+    expect(minRoleFor(["mining.view.corp"], plain)).toBe("viewer");
+    expect(minRoleFor(["mining.view.own", "mining.view.corp"], plain)).toBe("member");
+    expect(minRoleFor(["users.view"], plain)).toBe("director");
   });
 
   it("is every signed-in account without a permission, and nobody for an unknown one", () => {
-    expect(minRoleFor(undefined, defs, {})).toBe("guest");
-    expect(minRoleFor([], defs, {})).toBe("guest");
-    expect(minRoleFor(["no.such.permission"], defs, {})).toBeNull();
+    expect(minRoleFor(undefined, plain)).toBe("guest");
+    expect(minRoleFor([], plain)).toBe("guest");
+    expect(minRoleFor(["no.such.permission"], plain)).toBeNull();
   });
 
   it("follows the overrides in Settings, except for locked permissions", () => {
-    expect(minRoleFor(["mining.view.corp"], defs, { "mining.view.corp": "director" })).toBe("director");
-    expect(minRoleFor(["mining.view.corp"], defs, { "mining.view.corp": "guest" })).toBe("guest");
-    expect(minRoleFor(["app.settings.manage"], defs, { "app.settings.manage": "member" })).toBe("admin");
+    expect(minRoleFor(["mining.view.corp"], roleGrants(defs, { "mining.view.corp": "director" }))).toBe("director");
+    expect(minRoleFor(["mining.view.corp"], roleGrants(defs, { "mining.view.corp": "guest" }))).toBe("guest");
+    expect(minRoleFor(["app.settings.manage"], roleGrants(defs, { "app.settings.manage": "member" }))).toBe("admin");
   });
 });
 
@@ -37,7 +39,7 @@ describe("the access table", () => {
   const all = allPermissions();
   const rows = (role: (typeof ROLES)[number], overrides = {}) => {
     const granted = permissionsForRole(role, all, overrides);
-    return accessRows(navSections(), t, { defs: all, overrides, canAny: (...ps) => ps.some((p) => granted.has(p)) });
+    return accessRows(navSections(), t, { grants: roleGrants(all, overrides), canAny: (...ps) => ps.some((p) => granted.has(p)) });
   };
 
   it("lists every sidebar page with its section and help", () => {
@@ -69,14 +71,20 @@ describe("the access table", () => {
 describe("who else sees your data", () => {
   it("names a known permission for every row", () => {
     const keys = new Set(allPermissions().map((p) => p.key));
-    for (const permission of Object.values(DATA_VISIBILITY)) expect(keys).toContain(permission);
+    for (const permission of Object.values(DATA_VISIBILITY).flat()) expect(keys).toContain(permission);
   });
 
+  const visibility = (overrides = {}) =>
+    Object.fromEntries(dataVisibility(roleGrants(allPermissions(), overrides)).map((v) => [v.key, v.minRole]));
+
   it("reads the role from the effective permission", () => {
-    const visibility = Object.fromEntries(dataVisibility(allPermissions(), {}).map((v) => [v.key, v.minRole]));
-    expect(visibility).toMatchObject({ account: "director", mining: "viewer", audit: "director", scans: "member" });
-    const overridden = Object.fromEntries(dataVisibility(allPermissions(), { "mining.view.corp": "director" }).map((v) => [v.key, v.minRole]));
-    expect(overridden.mining).toBe("director");
+    expect(visibility()).toMatchObject({ account: "director", mining: "viewer", audit: "director", scans: "member" });
+    expect(visibility({ "mining.view.corp": "director" }).mining).toBe("director");
+  });
+
+  it("counts every page that shows the data: Member Audit shows token health too", () => {
+    expect(visibility({ "members.audit": "viewer" }).account).toBe("viewer");
+    expect(visibility({ "users.view": "contributor" }).account).toBe("contributor");
   });
 });
 

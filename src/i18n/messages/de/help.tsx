@@ -21,6 +21,7 @@ export const help: typeof en = {
   shortcut: (key: ReactNode) => <>Drück {key} auf jeder Seite, um diese Hilfe zu öffnen.</>,
   whatsNew: (version: string) => `Neu in v${version}`,
   takeTour: "Rundgang starten",
+  version: (version: string) => `Keystar v${version}`,
   newBadge: "Neu in dieser Version",
 
   page: {
@@ -166,6 +167,8 @@ export const help: typeof en = {
     skip: "Rundgang überspringen",
     hello: (name: string | null) => (name ? `Willkommen, ${name}` : "Willkommen"),
     body: "Keystar bringt die EVE-Daten deiner Corporation zusammen: Mining, Kämpfe, Flotten, Wallets und mehr. Der Rundgang dauert etwa zwei Minuten.",
+    upgrade: (version: string) =>
+      `Falls du Keystar gerade aktualisiert hast: Damit alles in v${version} funktioniert, muss, wer diesen Server betreibt:`,
     reopen: (key: ReactNode) => <>Du kannst ihn jederzeit über den ?-Knopf oben rechts oder mit {key} wieder öffnen.</>,
     nextSteps: {
       intro: "Ein paar gute erste Schritte:",

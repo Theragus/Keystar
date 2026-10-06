@@ -76,7 +76,7 @@ open, so add the link in a follow-up commit on the same branch.
    with an error and publishes nothing. A failed release (e.g. a registry outage) is retried the same way.
 
 The version shows in the sidebar footer, in System Info and in `GET /api/health`. In the sidebar footer it opens the
-newest release's What's new.
+release's What's new when the release has highlights, and links to the release notes otherwise.
 
 ## What's new highlights
 

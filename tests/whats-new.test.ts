@@ -6,6 +6,7 @@ import { highlightText, releaseEntries, upgradeText, type ReleaseEntry } from "@
 import { allPermissions, navSections } from "@/core/modules/registry";
 import { MESSAGES } from "@/i18n/messages";
 import { compareVersions, parseVersion } from "@/lib/semver";
+import { hasUpgradeNotes } from "@/scripts/release-prepare";
 import pkg from "../package.json";
 
 const SOURCE = "https://github.com/theragus/keystar";
@@ -165,7 +166,7 @@ describe("release highlights", () => {
     const notes = section(version);
     expect(notes, `CHANGELOG.md has no "## [${version}]" section`).not.toBeNull();
     // Upgrade text for admins exactly when the release notes have upgrade steps.
-    expect(release.upgrade).toBe(/^### Upgrade notes\b/m.test(notes!));
+    expect(release.upgrade).toBe(hasUpgradeNotes(notes!));
     expect(release.highlights.length).toBeLessThanOrEqual(4);
     expect(release.highlights.length > 0 || release.upgrade).toBe(true);
     for (const highlight of release.highlights) {

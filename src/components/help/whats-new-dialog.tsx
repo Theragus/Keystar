@@ -1,14 +1,16 @@
 "use client";
 
-import { ArrowRight, ExternalLink, ServerCog, Sparkles } from "lucide-react";
+import { ArrowRight, ExternalLink, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { Ref } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Dialog, DialogFooter } from "@/components/ui/dialog";
 import type { WhatsNewDigest } from "@/core/help/onboarding";
-import { highlightDef, highlightText, upgradeText } from "@/core/help/releases";
+import { highlightDef, highlightText } from "@/core/help/releases";
 import { useI18n } from "@/i18n/client";
+import { isPlainClick } from "./clicks";
+import { UpgradeNotes } from "./upgrade-notes";
 
 /**
  * "Keystar updated to vX": the release's highlights as cards, upgrade notes for admins, and a
@@ -42,30 +44,7 @@ export function WhatsNewDialog({ ref, digest, onClose }: { ref: Ref<HTMLDialogEl
       }
     >
       <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain px-6 py-5">
-        {digest.upgrades.length > 0 && (
-          <section className="rounded-lg bg-warning/10 px-4 py-3 text-sm ring-1 ring-warning/30 ring-inset">
-            <h3 className="flex items-center gap-2 font-medium text-warning">
-              <ServerCog className="size-4" aria-hidden /> {w.actionNeeded.title}
-            </h3>
-            <p className="mt-1 text-xs text-ink-2">{w.actionNeeded.intro}</p>
-            <ul className="mt-2 space-y-2">
-              {digest.upgrades.map(({ version, href }) => (
-                <li key={version} className="text-xs">
-                  <p className="text-ink">{upgradeText(t, version)}</p>
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-0.5 inline-flex items-center gap-1 text-accent hover:underline"
-                  >
-                    {w.actionNeeded.link(version)} <ExternalLink className="size-3" aria-hidden />
-                    <span className="sr-only">{t.common.opensInNewTab}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        {digest.upgrades.length > 0 && <UpgradeNotes upgrades={digest.upgrades} intro={w.actionNeeded.intro} />}
         {digest.highlights.length > 0 && (
           <ul className="divide-y divide-surface-contrast/[0.07]">
             {digest.highlights.map((ref) => {
@@ -81,9 +60,9 @@ export function WhatsNewDialog({ ref, digest, onClose }: { ref: Ref<HTMLDialogEl
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <h3 className="font-semibold">{text.title}</h3>
                       {def && <Badge tone={def.kind === "new" ? "good" : "accent"}>{w.kind[def.kind]}</Badge>}
-                      {several && <span className="font-mono text-3xs text-ink-3">v{ref.version}</span>}
+                      {several && <span className="font-mono text-3xs text-ink-3">{w.version(ref.version)}</span>}
                       {def?.href && (
-                        <Link href={def.href} onClick={onClose} className="ml-auto inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                        <Link href={def.href} onClick={(e) => isPlainClick(e) && onClose()} className="ml-auto inline-flex items-center gap-1 text-xs text-accent hover:underline">
                           {w.open} <ArrowRight className="size-3" aria-hidden />
                         </Link>
                       )}

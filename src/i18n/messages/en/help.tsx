@@ -22,6 +22,8 @@ export const help = {
   shortcut: (key: ReactNode) => <>Press {key} on any page to open this help.</>,
   whatsNew: (version: string) => `What's new in v${version}`,
   takeTour: "Take the tour",
+  /** The running version in the footer. */
+  version: (version: string) => `Keystar v${version}`,
   /** The sidebar's dot on a page that is new in this release (screen readers). */
   newBadge: "New in this release",
 
@@ -172,6 +174,9 @@ export const help = {
     hello: (name: string | null) => (name ? `Welcome, ${name}` : "Welcome"),
     body: "Keystar brings your corporation's EVE data together: mining, combat, fleets, wallets and more. This tour takes about two minutes.",
     /** `key` renders the keyboard key. */
+    /** For admins on the welcome step: an account without a seen version may have just updated (`whatsNew.actionNeeded`). */
+    upgrade: (version: string) =>
+      `If you just updated Keystar: before everything in v${version} works, whoever runs this server has to:`,
     reopen: (key: ReactNode) => <>You can open it again any time with the ? button in the top bar, or by pressing {key}.</>,
     nextSteps: {
       intro: "A few good first steps:",

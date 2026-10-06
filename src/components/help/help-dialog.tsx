@@ -4,12 +4,14 @@ import { ArrowLeft, ArrowRight, Check, CircleHelp, Sparkles } from "lucide-react
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, type KeyboardEvent, type MouseEvent, type Ref } from "react";
 import { KeystarMark } from "@/components/shell/logo";
+import { matchNavItem } from "@/components/shell/nav-match";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter } from "@/components/ui/dialog";
 import type { HelpData, HelpTopic } from "@/core/help/types";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
-import { AccessTopic, BasicsTopic, DataTopic, Kbd, PageTopic, pageHelp, ScopesTopic, StartStep, WelcomeStep } from "./help-topics";
+import { isPlainClick } from "./clicks";
+import { AccessTopic, BasicsTopic, DataTopic, Kbd, PageTopic, ScopesTopic, StartStep, WelcomeStep } from "./help-topics";
 
 export type HelpMode = "browse" | "tour";
 
@@ -54,7 +56,8 @@ export function HelpDialog({
   const id = useId();
   const contentRef = useRef<HTMLDivElement>(null);
   const tour = mode === "tour";
-  const row = pageHelp(data.access, pathname);
+  // "This page": the sidebar page the path belongs to (the longest matching href, nested pages included).
+  const row = matchNavItem(pathname, data.access);
   const current: HelpTopic = topic ?? (row ? "page" : "basics");
   const stepIndex = Math.min(step, TOUR_STEPS.length - 1);
   const shown: Shown = tour ? TOUR_STEPS[stepIndex]! : current;
@@ -88,8 +91,7 @@ export function HelpDialog({
 
   // Links inside close the dialog: the layout stays mounted while the page changes below it.
   const closeOnLink = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    if ((e.target as HTMLElement).closest("[data-close-dialog]")) onClose();
+    if (isPlainClick(e) && (e.target as HTMLElement).closest("[data-close-dialog]")) onClose();
   };
 
   const navClass =
@@ -140,7 +142,7 @@ export function HelpDialog({
           </DialogFooter>
         ) : (
           <DialogFooter>
-            <span className="font-mono text-3xs text-ink-3">Keystar v{data.version}</span>
+            <span className="font-mono text-3xs text-ink-3">{h.version(data.version)}</span>
             <span className="hidden text-xs text-ink-3 sm:inline">{h.shortcut(<Kbd>?</Kbd>)}</span>
             <div className="ml-auto flex flex-wrap gap-2">
               {data.latest && (

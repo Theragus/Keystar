@@ -8,17 +8,20 @@ import type { Messages } from "@/i18n/messages";
  * permission overrides in Settings, so the help can't drift from what Keystar enforces. Pure.
  */
 
+/** Each role's permissions with the overrides in Settings applied; built once, read by minRoleFor. */
+export type RoleGrants = ReadonlyMap<Role, ReadonlySet<string>>;
+
+export function roleGrants(defs: readonly PermissionDef[], overrides: PermissionOverrides): RoleGrants {
+  return new Map(ROLES.map((role) => [role, permissionsForRole(role, defs, overrides)]));
+}
+
 /**
- * The lowest role that sees a nav item: "guest" when it needs no permission (every signed-in
- * account, like the sidebar), null when no role has any of its permissions.
+ * The lowest role with any of `anyPermission`: "guest" when there are none (a page every signed-in
+ * account sees, like the sidebar), null when no role has any of them.
  */
-export function minRoleFor(
-  anyPermission: readonly string[] | undefined,
-  defs: readonly PermissionDef[],
-  overrides: PermissionOverrides,
-): Role | null {
+export function minRoleFor(anyPermission: readonly string[] | undefined, grants: RoleGrants): Role | null {
   if (!anyPermission?.length) return "guest";
-  return ROLES.find((role) => anyPermission.some((p) => permissionsForRole(role, defs, overrides).has(p))) ?? null;
+  return ROLES.find((role) => anyPermission.some((p) => grants.get(role)?.has(p))) ?? null;
 }
 
 export interface AccessRow {
@@ -37,7 +40,7 @@ export interface AccessRow {
 export function accessRows(
   sections: readonly NavSection[],
   t: Messages,
-  opts: { defs: readonly PermissionDef[]; overrides: PermissionOverrides; canAny: (...permissions: string[]) => boolean },
+  opts: { grants: RoleGrants; canAny: (...permissions: string[]) => boolean },
 ): AccessRow[] {
   return sections.flatMap((section) =>
     section.items.map((item) => ({
@@ -45,30 +48,30 @@ export function accessRows(
       label: item.label(t),
       section: section.label(t),
       help: item.help(t),
-      minRole: minRoleFor(item.anyPermission, opts.defs, opts.overrides),
+      minRole: minRoleFor(item.anyPermission, opts.grants),
       allowed: !item.anyPermission || opts.canAny(...item.anyPermission),
       ownDataOnly: Boolean(item.ownDataOnly),
     })),
   );
 }
 
-/** Who else can see a member's data, each by the permission that shows it (the texts are `help.access.visibility`). */
+/**
+ * Who else can see a member's data, each by the permissions of the pages that show it (any of them;
+ * the texts are `help.data.visibility.rows`).
+ */
 export const DATA_VISIBILITY = {
-  account: "users.view",
-  mining: "mining.view.corp",
-  skills: "skills.view.corp",
-  audit: "audit.view",
-  scans: "intel.use",
-  appraisals: "trade.appraisal",
-} as const satisfies Record<string, string>;
+  account: ["users.view", "members.audit"],
+  mining: ["mining.view.corp"],
+  skills: ["skills.view.corp"],
+  audit: ["audit.view"],
+  scans: ["intel.use"],
+  appraisals: ["trade.appraisal"],
+} as const satisfies Record<string, readonly string[]>;
 
 export type DataVisibilityKey = keyof typeof DATA_VISIBILITY;
 
-export function dataVisibility(defs: readonly PermissionDef[], overrides: PermissionOverrides): { key: DataVisibilityKey; minRole: Role | null }[] {
-  return (Object.keys(DATA_VISIBILITY) as DataVisibilityKey[]).map((key) => ({
-    key,
-    minRole: minRoleFor([DATA_VISIBILITY[key]], defs, overrides),
-  }));
+export function dataVisibility(grants: RoleGrants): { key: DataVisibilityKey; minRole: Role | null }[] {
+  return (Object.keys(DATA_VISIBILITY) as DataVisibilityKey[]).map((key) => ({ key, minRole: minRoleFor(DATA_VISIBILITY[key], grants) }));
 }
 
 export interface ScopeRow {
@@ -90,10 +93,12 @@ export function scopeGroups(reqs: readonly ScopeRequirement[], t: Messages, can:
   const once = <T extends { scope: string }>(rows: T[]) => rows.filter((r, i) => rows.findIndex((o) => o.scope === r.scope) === i);
   const row = (s: ScopeRequirement): ScopeRow => ({ scope: s.scope, reason: s.reason(t) });
 
+  // The same sets as the registry's (memberScopeRequirements, optionalScopes, corporationScopes), each scope once.
   const optional = new Map<string, ScopeGroups["optional"][number]>();
   for (const s of reqs.filter((r) => r.optional)) {
     const href = s.manageHref ?? "/characters";
     const group = optional.get(href) ?? { href, label: "", scopes: [], canManage: true };
+    if (group.scopes.some((r) => r.scope === s.scope)) continue;
     group.scopes.push(row(s));
     // Named after its first scope ("Skill queue access"); the rows explain each scope.
     group.label ||= s.label?.(t) ?? s.scope;
@@ -104,6 +109,6 @@ export function scopeGroups(reqs: readonly ScopeRequirement[], t: Messages, can:
   return {
     member: once(reqs.filter((r) => r.level === "character" && !r.optional).map(row)),
     optional: [...optional.values()],
-    corporation: once(reqs.filter((r) => r.level === "corporation").map((s) => ({ ...row(s), corpRoles: s.corpRoles ?? [] }))),
+    corporation: once(reqs.filter((r) => r.level === "corporation" && !r.optional).map((s) => ({ ...row(s), corpRoles: s.corpRoles ?? [] }))),
   };
 }

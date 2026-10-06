@@ -17,6 +17,8 @@ export const whatsNew = {
   since: (from: string) => `The most important changes since v${from}, the version you saw last.`,
   kind: { new: "New", improved: "Improved" },
   open: "Open",
+  /** A card's release when the dialog covers several. */
+  version: (version: string) => `v${version}`,
   more: (count: number) => `and ${n(count)} more highlight${count === 1 ? "" : "s"}`,
   /** Primary button: the GitHub release page. */
   read: "Read the release notes",

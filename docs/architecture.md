@@ -295,7 +295,9 @@ are curated in the release PR (docs/releasing.md): icons, links and permissions 
 (`src/core/help/releases.ts`), titles and texts in the `whatsNew.releases` dictionaries, keyed the same way so the
 typecheck catches a missing translation. A highlight is only shown to viewers with one of its `anyPermission`. A
 release's `upgrade` text (the short form of its CHANGELOG "Upgrade notes") is shown to whoever may manage the settings,
-as "Action needed". The sidebar's version link opens the newest release's What's new as well.
+as "Action needed", and on the welcome tour's first step too, since an existing account gets the tour (not What's new)
+after the update that adds `seen_version`. The sidebar's version link opens What's new when the running release has
+highlights, and links to the release notes otherwise.
 
 **"New" dots.** The sidebar marks the pages of the newest release's highlights (`navNews`) with a dot until the
 page is opened in that browser (`ks_nav_seen` in localStorage, `src/components/shell/nav-news.ts`). The dot only

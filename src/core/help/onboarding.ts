@@ -1,3 +1,4 @@
+import { releasesUrl, releaseUrl } from "@/core/version";
 import { compareVersions, parseVersion } from "@/lib/semver";
 import { releaseEntries, type HighlightRef, type ReleaseEntry } from "./releases";
 
@@ -37,18 +38,6 @@ export type Onboarding =
   | { kind: "none"; markSeen: boolean };
 
 type Can = (permission: string) => boolean;
-
-function base(sourceUrl: string) {
-  return sourceUrl.replace(/\/+$/, "");
-}
-
-export function releaseUrl(sourceUrl: string, version: string) {
-  return `${base(sourceUrl)}/releases/tag/v${version}`;
-}
-
-export function releasesUrl(sourceUrl: string) {
-  return `${base(sourceUrl)}/releases`;
-}
 
 /** What of a release this viewer sees: highlights they have a permission for, upgrade notes if they run the server. */
 function visible(entry: ReleaseEntry, can: Can) {

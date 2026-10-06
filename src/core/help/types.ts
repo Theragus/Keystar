@@ -5,7 +5,6 @@ import type { WhatsNewDigest } from "./onboarding";
 /** Everything the help dialog needs from the server, resolved to text (serialisable props). */
 export interface HelpData {
   version: string;
-  releasesUrl: string;
   user: { name: string | null; role: Role; canManageSettings: boolean };
   /** Every sidebar page, including ones the viewer can't open. */
   access: AccessRow[];
