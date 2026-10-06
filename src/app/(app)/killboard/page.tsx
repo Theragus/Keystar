@@ -289,9 +289,7 @@ export default async function KillboardPage({ searchParams }: PageProps<"/killbo
             claudeConfigured={Boolean(env().ANTHROPIC_API_KEY)}
             actions={
               canManage ? (
-                <form action={rewriteSituationReport}>
-                  <RewriteReportButton />
-                </form>
+                <RewriteReportButton action={rewriteSituationReport} />
               ) : undefined
             }
           />

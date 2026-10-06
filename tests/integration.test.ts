@@ -1876,6 +1876,41 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(hints[0]).toMatchObject({ typeId: 1230, rawUnits: 1500, isk: 17_000, sales: 2, baseUnitPrice: 10 });
       expect(hints[0].rawUnitPrice).toBeCloseTo(17_000 / 1500);
     });
+
+    it("saves settings through actions that refuse with codes instead of throwing", async () => {
+      const form = (fields: Record<string, string>) => {
+        const data = new FormData();
+        for (const [key, value] of Object.entries(fields)) data.set(key, value);
+        return data;
+      };
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userB, characterIds: [3] }) }));
+      vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+      vi.doMock("server-only", () => ({}));
+      try {
+        const a = await import("@/app/(app)/mining/pnl/actions");
+        expect(await a.setIncomeSource(form({ source: "sales" }))).toEqual({ ok: true });
+        expect(await a.setIncomeSource(form({ source: "guesswork" }))).toEqual({ ok: false, error: "invalidSource" });
+        expect(await a.setIncomeRate(form({ rate: "0" }))).toEqual({ ok: false, error: "invalidRate" });
+        expect(await a.addPriceRule(form({ typeId: "1230", unitPrice: "12", validFrom: "2026-09-10", validTo: "2026-09-01" }))).toEqual({
+          ok: false,
+          error: "invalidRange",
+        });
+        expect(await a.addPriceRule(form({ typeId: "999999", unitPrice: "12" }))).toEqual({ ok: false, error: "unknownType" });
+        expect(await a.setAutoInclude(1, true)).toEqual({ ok: false, error: "notOwned" });
+        expect(await a.deleteManualEntry(424242)).toEqual({ ok: false, error: "notFound" });
+        expect(await a.addManualEntry(form({ date: "2026-09-10", amount: "2.1b", category: "subscription", spreadDays: "1" }))).toEqual({
+          ok: true,
+        });
+      } finally {
+        vi.doUnmock("@/core/auth/dal");
+        vi.doUnmock("next/cache");
+        vi.doUnmock("server-only");
+      }
+      const [settings] = await db().select().from(schema.miningPnlSettings).where(sql`user_id = ${userB}`);
+      expect(settings.incomeSource).toBe("sales");
+      const entries = await db().select().from(schema.miningPnlEntries).where(sql`user_id = ${userB}`);
+      expect(entries.map((e) => e.amount)).toEqual([2.1e9]);
+    });
   });
 
   describe("EVE mail", async () => {

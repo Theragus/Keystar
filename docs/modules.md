@@ -138,9 +138,12 @@ dims the previous render while new data loads).
 
 To confirm an action or report a refusal from a client component, call `useToast().toast({ tone, title,
 description, action, durationMs })` (`src/components/ui/toast.tsx`). The app layout already mounts the
-`ToastProvider`. For a single button, a server page can wrap it in `ActionForm` (`src/components/ui/action-form.tsx`)
-instead: pass the bound action and the translated `success`, `failed` and `errors` texts, and the action returns an
-`ActionResult` (`src/lib/action-result.ts`). A route handler that redirects (like the SSO callback) can't show a
+`ToastProvider`. A server page can wrap a button or a whole form in `ActionForm` (`src/components/ui/action-form.tsx`)
+instead: pass the bound action (it also receives the form's fields) and the translated `success`, `failed` and
+`errors` texts, and the action returns an `ActionResult` (`src/lib/action-result.ts`). Leave out `success` for inline
+edits whose result shows on the page (only failures toast); `reset`, `redirectTo` and `successByField` cover forms
+that add entries, steps that move on and success texts that depend on the submitted value. Submit buttons inside
+read the pending state with `useFormPending()`. A route handler that redirects (like the SSO callback) can't show a
 toast; it sets a one-shot cookie with `encodeFlash()` (`src/core/flash.ts`) that `FlashToasts` in the app layout
 turns into one. A feature that keeps its own list of richer cards, like the live kills, renders `<Toast>`s
 inside a `<ToastViewport>`; they join the same stack. To announce new events as they

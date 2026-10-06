@@ -1,6 +1,7 @@
 import { CheckCheck, ChevronLeft, ChevronRight, Info, Plus, RotateCcw, Trash2, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
+import { ActionForm } from "@/components/ui/action-form";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Portrait, TypeIcon } from "@/components/ui/eve-image";
@@ -80,6 +81,8 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
   const walletOn = wallet.some((w) => w.granted || w.transactions + w.fees > 0);
   const query = pnlQueryString(filters, { page: 1 });
   const today = ctx.today;
+  const tt = t.pnl.toast;
+  const failure = { failed: tt.failed, errors: tt.errors };
 
   return (
     <PendingProvider>
@@ -99,14 +102,14 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
             subtitle={m.purchases.subtitle}
             actions={
               suggestedPurchases > 0 && (
-                <form action={includeAllSuggested}>
+                <ActionForm action={includeAllSuggested} success={tt.purchasesIncluded(suggestedPurchases)} {...failure}>
                   <input type="hidden" name="from" value={filters.from} />
                   <input type="hidden" name="to" value={filters.to} />
                   <input type="hidden" name="chars" value={filters.characters.join(",")} />
                   <SubmitButton variant="primary" title={m.purchases.includeAllHint}>
                     <CheckCheck className="size-3.5" aria-hidden /> {m.purchases.includeAll(suggestedPurchases)}
                   </SubmitButton>
-                </form>
+                </ActionForm>
               )
             }
           >
@@ -184,7 +187,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                               </span>
                             </td>
                             <td>
-                              <form action={setPurchaseCategory.bind(null, p.characterId, p.transactionId)}>
+                              <ActionForm action={setPurchaseCategory.bind(null, p.characterId, p.transactionId)} {...failure} reset="failure">
                                 <AutoSubmitSelect
                                   name="category"
                                   label={m.purchases.categoryLabel}
@@ -202,7 +205,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                                     </option>
                                   ))}
                                 </AutoSubmitSelect>
-                              </form>
+                              </ActionForm>
                             </td>
                             <td>
                               <Badge tone={statusTone[p.status]}>{t.pnl.statuses[p.status].label}</Badge>
@@ -210,27 +213,27 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                             <td className="num">
                               <span className="inline-flex items-center gap-1">
                                 {p.status !== "counted" && (
-                                  <form action={setPurchaseIncluded.bind(null, p.characterId, p.transactionId, true)}>
+                                  <ActionForm action={setPurchaseIncluded.bind(null, p.characterId, p.transactionId, true)} {...failure}>
                                     <SubmitButton title={m.purchases.includeHint}>
                                       <Plus className="size-3.5" aria-hidden /> {m.purchases.include}
                                     </SubmitButton>
-                                  </form>
+                                  </ActionForm>
                                 )}
                                 {(p.status === "counted" || p.status === "suggested") && (
-                                  <form action={setPurchaseIncluded.bind(null, p.characterId, p.transactionId, false)}>
+                                  <ActionForm action={setPurchaseIncluded.bind(null, p.characterId, p.transactionId, false)} {...failure}>
                                     <SubmitButton variant="ghost" title={m.purchases.excludeHint} className="px-2">
                                       <X className="size-3.5" aria-hidden />
                                       <span className="sr-only">{m.purchases.exclude}</span>
                                     </SubmitButton>
-                                  </form>
+                                  </ActionForm>
                                 )}
                                 {p.overrideIncluded !== null && (
-                                  <form action={setPurchaseIncluded.bind(null, p.characterId, p.transactionId, null)}>
+                                  <ActionForm action={setPurchaseIncluded.bind(null, p.characterId, p.transactionId, null)} {...failure}>
                                     <SubmitButton variant="ghost" title={m.purchases.reset} className="px-2">
                                       <RotateCcw className="size-3.5" aria-hidden />
                                       <span className="sr-only">{m.purchases.reset}</span>
                                     </SubmitButton>
-                                  </form>
+                                  </ActionForm>
                                 )}
                               </span>
                             </td>
@@ -267,14 +270,14 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
               subtitle={m.fees.subtitle}
               actions={
                 suggestedBrokerFees > 0 && (
-                  <form action={includeAllSuggestedFees}>
+                  <ActionForm action={includeAllSuggestedFees} success={tt.feesIncluded(suggestedBrokerFees)} {...failure}>
                     <input type="hidden" name="from" value={filters.from} />
                     <input type="hidden" name="to" value={filters.to} />
                     <input type="hidden" name="chars" value={filters.characters.join(",")} />
                     <SubmitButton variant="primary" title={m.fees.includeAllHint}>
                       <CheckCheck className="size-3.5" aria-hidden /> {m.fees.includeAll(suggestedBrokerFees)}
                     </SubmitButton>
-                  </form>
+                  </ActionForm>
                 )
               }
             >
@@ -318,27 +321,27 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                           <td className="num">
                             <span className="inline-flex items-center gap-1">
                               {fee.status !== "counted" && (
-                                <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, true)}>
+                                <ActionForm action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, true)} {...failure}>
                                   <SubmitButton title={m.fees.includeHint}>
                                     <Plus className="size-3.5" aria-hidden /> {m.purchases.include}
                                   </SubmitButton>
-                                </form>
+                                </ActionForm>
                               )}
                               {fee.status !== "excluded" && (
-                                <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, false)}>
+                                <ActionForm action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, false)} {...failure}>
                                   <SubmitButton variant="ghost" title={m.fees.excludeHint} className="px-2">
                                     <X className="size-3.5" aria-hidden />
                                     <span className="sr-only">{m.purchases.exclude}</span>
                                   </SubmitButton>
-                                </form>
+                                </ActionForm>
                               )}
                               {fee.overrideIncluded !== null && (
-                                <form action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, null)}>
+                                <ActionForm action={setFeeIncluded.bind(null, fee.characterId, fee.journalId, null)} {...failure}>
                                   <SubmitButton variant="ghost" title={m.purchases.reset} className="px-2">
                                     <RotateCcw className="size-3.5" aria-hidden />
                                     <span className="sr-only">{m.purchases.reset}</span>
                                   </SubmitButton>
-                                </form>
+                                </ActionForm>
                               )}
                             </span>
                           </td>
@@ -371,7 +374,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
 
           <div className="grid gap-4 xl:grid-cols-12">
             <Panel className="xl:col-span-5" title={m.add.title} subtitle={m.add.subtitle}>
-              <form action={addManualEntry} className="grid gap-3 sm:grid-cols-2">
+              <ActionForm action={addManualEntry} success={tt.costAdded} {...failure} reset="success" className="grid gap-3 sm:grid-cols-2">
                 <label className="space-y-1 text-xs text-ink-3">
                   {m.add.date}
                   <input type="date" name="date" required defaultValue={today} max="2100-01-01" className={inputClass} />
@@ -420,7 +423,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                     <Plus className="size-4" aria-hidden /> {m.add.submit}
                   </SubmitButton>
                 </div>
-              </form>
+              </ActionForm>
             </Panel>
 
             <Panel className="xl:col-span-7" title={m.manual.title} subtitle={m.manual.subtitle}>
@@ -460,11 +463,11 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                           <td className="max-w-[16rem] truncate text-ink-2">{e.description || "—"}</td>
                           <td className="num font-semibold">{f.compact(e.amount)}</td>
                           <td className="num">
-                            <form action={deleteManualEntry.bind(null, e.id)}>
+                            <ActionForm action={deleteManualEntry.bind(null, e.id)} success={tt.costDeleted} {...failure}>
                               <SubmitButton variant="ghost" title={m.manual.deleteHint}>
                                 <Trash2 className="size-3.5" aria-hidden />
                               </SubmitButton>
-                            </form>
+                            </ActionForm>
                           </td>
                         </tr>
                       ))}
