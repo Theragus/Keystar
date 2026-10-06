@@ -8,6 +8,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Fixed
 
+- A pasted d-scan with made-up type ids can no longer pause ESI for the whole web app. Unknown types are looked up on
+  ESI at most 50 per paste and for at most 20 pastes per user in 10 minutes, lookups stop while the shared ESI error
+  budget is low, and ids ESI doesn't know are not asked again for 6 hours. Ships that couldn't be looked up yet are
+  left out of the d-scan, as before. ([#143](https://github.com/Theragus/Keystar/issues/143))
 - Changes on the Mining P&L pages now confirm in a toast: the income basis (mined ore or wallet sales), the share of
   the valuation, the per-character "count automatically" switches, ore prices, manual costs and "include all".
   Rejected input (a rate of 0 %, a price rule that ends before it starts, an amount Keystar can't read) is explained in

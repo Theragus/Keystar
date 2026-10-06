@@ -44,13 +44,13 @@ async function start(input: Omit<StartScanInput, "userId" | "userName" | "aiAllo
 
 /** Scans a pasted pilot list (and optional d-scan) and opens the result. */
 export async function createScan(_prev: ScanFormState, formData: FormData): Promise<ScanFormState> {
-  await assertPermission(INTEL_PERMISSIONS.use);
+  const user = await assertPermission(INTEL_PERMISSIONS.use);
   const { t } = await getI18n();
   const dscanText = String(formData.get("dscan") ?? "");
   let dscan = null;
   if (dscanText.trim()) {
     if (dscanText.length > MAX_DSCAN_CHARS) return { error: t.intel.errors.dscanTooLong };
-    const parsed = await dscanShips(dscanText);
+    const parsed = await dscanShips(dscanText, { userId: user.id });
     if (!parsed.lines) return { error: t.intel.errors.notDscan };
     dscan = parsed.ships;
   }
@@ -63,12 +63,12 @@ export async function createScan(_prev: ScanFormState, formData: FormData): Prom
 
 /** Adds or replaces the scan's d-scan. */
 export async function setDscan(_prev: ScanFormState, formData: FormData): Promise<ScanFormState> {
-  await assertPermission(INTEL_PERMISSIONS.use);
+  const user = await assertPermission(INTEL_PERMISSIONS.use);
   const { t } = await getI18n();
   const id = scanIdFrom(formData);
   const text = String(formData.get("dscan") ?? "");
   if (text.length > MAX_DSCAN_CHARS) return { error: t.intel.errors.dscanTooLong };
-  const parsed = await dscanShips(text);
+  const parsed = await dscanShips(text, { userId: user.id });
   if (!parsed.lines) return { error: t.intel.errors.pasteDscan };
   // dscanAt hides d-scan reads of the previous d-scan.
   const now = new Date();
