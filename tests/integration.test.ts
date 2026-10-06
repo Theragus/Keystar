@@ -38,7 +38,7 @@ describe.skipIf(!enabled)("integration", async () => {
   beforeEach(async () => {
     await db().execute(sql`TRUNCATE users, characters, esi_tokens, sessions, eve_types, eve_groups, eve_systems,
       eve_entities, type_values, type_value_history, market_prices, price_interest, mining_character_ledger,
-      mining_observer_ledger, mining_observers, sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, esi_cache,
+      mining_observer_ledger, mining_observers, sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, appraisal_attempts, esi_cache,
       fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
       intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, wallet_fees, mining_activity,
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
@@ -891,6 +891,25 @@ describe.skipIf(!enabled)("integration", async () => {
       } finally {
         fetchSpy.mockRestore();
       }
+    });
+  });
+
+  describe("appraisal rate limit", () => {
+    it("counts every attempt, deleted or parallel, and only within the window", async () => {
+      const { APPRAISAL_RATE_LIMIT, APPRAISAL_RATE_WINDOW_MS, reserveAppraisalAttempt } = await import(
+        "@/modules/trade/appraisal/appraise"
+      );
+      const now = new Date();
+      // Parallel submits are serialised: exactly the limit gets through.
+      const results = await Promise.all(
+        Array.from({ length: APPRAISAL_RATE_LIMIT + 5 }, () => reserveAppraisalAttempt(userA, now)),
+      );
+      expect(results.filter(Boolean)).toHaveLength(APPRAISAL_RATE_LIMIT);
+      // Deleting saved appraisals doesn't free a slot; another user is unaffected.
+      await db().delete(schema.appraisals);
+      expect(await reserveAppraisalAttempt(userA, now)).toBe(false);
+      expect(await reserveAppraisalAttempt(userB, now)).toBe(true);
+      expect(await reserveAppraisalAttempt(userA, new Date(now.getTime() + APPRAISAL_RATE_WINDOW_MS + 1))).toBe(true);
     });
   });
 

@@ -16,6 +16,7 @@ import { killboardJobs } from "./killboard/jobs";
 import { miningJobs, miningPriceInterest } from "./mining/jobs";
 import { skillsJobs } from "./skills/jobs";
 import { socialJobs } from "./social/jobs";
+import { tradeJobs } from "./trade/jobs";
 import { walletJobs } from "./wallet/jobs";
 
 /**
@@ -40,6 +41,7 @@ export const JOBS: JobDefinition[] = [
   ...walletJobs,
   ...socialJobs,
   ...skillsJobs,
+  ...tradeJobs,
 ];
 
 const JOBS_BY_KEY = new Map(JOBS.map((j) => [j.key, j]));

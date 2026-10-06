@@ -10,6 +10,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - **Map and Intel review fixes.** Cache map route lookups; let scan viewers read saved briefings without regenerating them, keep rewriting permission-gated, restore a pilot profile shortcut and align briefing severity with the three-tier danger model. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
 
+- An appraisal with an absurdly long quantity (hundreds of digits) no longer stores and shows an infinite total; such
+  a quantity is no longer read as one. A member can start at most 30 appraisals per ten minutes (failed and deleted
+  ones included), and appraisals are deleted after a year, so the appraisal table no longer grows without bound.
+  ([#155](https://github.com/Theragus/Keystar/issues/155))
 - A token refresh keeps the new refresh token EVE SSO hands out even if checking the new access token then fails
   (for example when CCP's key endpoint is unreachable), so pilots are no longer asked to re-authorise for nothing.
   Refreshes no longer hold the token row locked while waiting on CCP, so switching scopes or logging in doesn't stall
