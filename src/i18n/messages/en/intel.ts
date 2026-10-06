@@ -92,6 +92,11 @@ const ROLES: Record<Role, (value: number) => string> = {
 export const intel = {
   module: {
     navItem: "Threat Intel",
+    /** "This page" help for the nav item (NavItem.help), one to three sentences. */
+    help:
+      "Paste local, a fleet or a few names (optionally with a d-scan) to see who the pilots are, their standings, fights with us " +
+      "and a threat score from zKillboard. Each scan gets a link anyone with Threat Intel access can open; briefings are written " +
+      "by Claude if the server has an API key, otherwise from a template.",
     permissionGroup: "Threat intel",
     permissions: {
       use: {

@@ -8,6 +8,13 @@ export const trade = {
   module: {
     navSection: "Trade",
     nav: { appraisal: "Appraisal" },
+    /** "This page" help for the nav items (NavItem.help), one to three sentences each. */
+    help: {
+      appraisal:
+        "Paste cargo, a contract, a fitting, a d-scan or an item list to value it at Jita 4-4 buy and sell prices from ESI, " +
+        "optionally at a percentage of Jita. Each appraisal is kept for a year with a link anyone with appraisal access can open; " +
+        "you can appraise it again at today's prices or delete your own.",
+    },
     permissionGroup: "Trade",
     permissions: {
       appraisal: {

@@ -39,6 +39,7 @@ export const skillsModule: KeystarModule = {
           href: "/skills",
           label: (t) => t.skills.module.nav.queues,
           icon: GraduationCap,
+          help: (t) => t.skills.module.help.queues,
           anyPermission: ["skills.view.own", "skills.view.corp"],
         },
       ],
@@ -49,6 +50,11 @@ export const skillsModule: KeystarModule = {
 
 User-facing text is never written into the manifest directly: `label`, `description`, `group` and `reason` are
 selectors into the dictionaries (see step 5), so the sidebar and settings render in the viewer's language.
+
+Every nav item needs `help`: one to three sentences on what the page shows, where its data comes from and what the
+viewer can do there. The help dialog ("?" in the top bar) shows it as "This page", for the page and the pages below
+its `href` (a settings page, a detail page), next to the role the page needs. Set `ownDataOnly: true` on a page that
+only ever shows the viewer's own data, whatever their role (mail, the Mining P&L); the help says so.
 
 A nav section may set `tone` (`"industry"`, `"combat"`, `"trade"`, `"pilots"` or `"social"`) to colour its page
 headings, the sidebar marker and the header glow; without one it uses the accent. Sections merged by id share the
@@ -61,7 +67,8 @@ Register it in `src/core/modules/registry.ts` (`MODULES`). That alone:
 - adds its scopes to the SSO requests (`character` scopes for every member, `corporation` scopes for the "link with
   corporation access" flow) and to the scope checklists in the UI,
 - adds its permissions to the role system and the Settings → Permissions matrix,
-- adds its navigation (filtered by permission).
+- adds its navigation (filtered by permission), its page help, and its pages and scopes to the help dialog's
+  "Who sees what" and "Scopes" topics.
 
 Remember to enable new scopes on the EVE developer application, and tell members to re-authorise (My Characters
 shows "missing scopes" automatically).
@@ -201,6 +208,7 @@ de-duplication and desktop notifications. A module supplies four pieces:
 - [ ] Pages check permissions; member views scoped to own characters
 - [ ] New scopes added to the EVE application and listed in `docs/deployment.md`
 - [ ] Texts in both dictionaries (`src/i18n/messages/en` and `de`), no hard-coded UI strings
+- [ ] Page help (`help`) on every nav item, and `ownDataOnly` where the page only shows the viewer's own data
 - [ ] Live alerts (if any) declared in the manifest and their feeds registered in `src/modules/alerts.ts`
 - [ ] Tests for parsing/aggregation logic (`tests/`)
 - [ ] ROADMAP.md updated

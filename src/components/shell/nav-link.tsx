@@ -2,29 +2,39 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { isActivePath, matchNavItem } from "./nav-match";
+import { markNavSeen, useNavNew } from "./nav-news";
 
 /**
  * Sidebar link. `exact` is set when another nav item is nested below this one
  * (e.g. /mining vs /mining/ledger) so only the most specific item lights up.
  * `inFlyout` renders it in the collapsed rail's hover card (RailFlyout): full
- * width, no side marker, out of the tab order.
+ * width, no side marker, out of the tab order. `newKey` ("version:href") marks a page that is
+ * new in this release with a dot until it is opened (nav-news.ts).
  */
 export function NavLink({
   href,
   exact,
   inFlyout,
+  newKey,
   children,
 }: {
   href: string;
   exact?: boolean;
   inFlyout?: boolean;
+  newKey?: string;
   children: ReactNode;
 }) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const isActive = isActivePath(pathname, href, exact);
+  const isNew = useNavNew(newKey);
+  useEffect(() => {
+    if (isActive && newKey) markNavSeen(newKey);
+  }, [isActive, newKey]);
   return (
     <Link
       href={href}
@@ -41,6 +51,20 @@ export function NavLink({
         <span className="absolute top-1.5 bottom-1.5 -left-3 w-[2px] rounded-full bg-(--section)" aria-hidden />
       )}
       {children}
+      {isNew && !isActive && (
+        <>
+          <span
+            aria-hidden
+            className={cn(
+              "ml-auto size-1.5 shrink-0 rounded-full bg-accent",
+              // In the collapsed rail, on the icon's corner.
+              !inFlyout &&
+                "group-data-[sidebar=collapsed]/shell:absolute group-data-[sidebar=collapsed]/shell:top-1.5 group-data-[sidebar=collapsed]/shell:left-[1.45rem] group-data-[sidebar=collapsed]/shell:ring-2 group-data-[sidebar=collapsed]/shell:ring-space-900",
+            )}
+          />
+          <span className="sr-only">{t.help.newBadge}</span>
+        </>
+      )}
     </Link>
   );
 }

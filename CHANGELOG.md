@@ -16,6 +16,27 @@ Sharing skills now includes the implants of the active clone, so the remap optim
 2. Update as usual; the database migrations run on start. Characters that already share their skills keep sharing;
    they are asked to re-authorise once to include their implants.
 
+### Added
+
+- **Help, welcome tour and What's new.** A new **Help** button next to Alerts in the top bar (or the `?` key on any
+  page) explains Keystar in five topics:
+  - **This page:** what the page you are on shows, where its data comes from, which role can open it, and whether
+    only you can see it. Every page in the sidebar has its own text.
+  - **How Keystar works:** EVE login, read-only access, background sync and what pages show.
+  - **Scopes and EVE access:** every ESI scope Keystar can ask for, grouped into the ones everyone grants, the
+    optional ones per character (with a link to switch them) and corporation access with its in-game roles.
+  - **Your data and security:** what is stored and how it is protected, what only you can see, who else sees what
+    with which role, how to remove data and how long Keystar keeps it.
+  - **Who sees what:** your Keystar role, the role ladder, and every page with the role it needs, including the
+    permission changes made in Settings.
+
+  Every account sees the help once as a short welcome tour, new accounts on their first sign-in. After each update
+  with highlights, a **What's new** dialog shows the release's most important additions once, with a link to the
+  release notes on GitHub; admins also see what the update needs on the server. Pages that are new in the release
+  get a dot in the sidebar until you open them, and the version in the sidebar footer opens What's new again.
+  Release PRs add the highlights in English and German (`docs/releasing.md`).
+  ([PR #182](https://github.com/Theragus/Keystar/pull/182))
+
 ### Fixed
 
 - Saving the settings page or the setup walkthrough's access step with a price source or price date Keystar doesn't

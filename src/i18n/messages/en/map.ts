@@ -1,6 +1,8 @@
 export const map = {
  universe: "Universe",
  title: "Map", description: "Explore the EVE universe in 3D. Select a system to see its name and security status.",
+ /** "This page" help for the nav item (NavItem.help), one to three sentences. */
+ help: "A 3D map of the EVE universe from CCP's static data: search for a system, switch between known and wormhole space and click a system to focus it. Travel check finds the shortest stargate route and looks on zKillboard for kills near its gates in the last two hours; jump range shows where a carrier, jump freighter or Black Ops ship can jump.",
  search: "Find a system", all: "All space", known: "Known space", wormholes: "Wormhole space", reset: "Reset view",
  controls: "Drag to rotate · Right-drag or Shift-drag to pan · Scroll to zoom · Click a system to focus", security: "Security status", systems: "Systems",
  high: "High security", low: "Low security", null: "Null security", loading: "Loading universe…", error: "Universe data could not be loaded.", retry: "Retry", source: "Source: CCP Static Data Export", labels: "System labels", empty: "No matching systems", canvas: "Interactive 3D universe map", zoomIn: "Zoom in", zoomOut: "Zoom out",

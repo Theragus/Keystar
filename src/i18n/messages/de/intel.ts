@@ -93,6 +93,11 @@ const VIA = { character: "Charakter", corporation: "Corporation", alliance: "All
 export const intel: typeof en = {
   module: {
     navItem: "Bedrohungsanalyse",
+    help:
+      "Füge Local, eine Flotte oder ein paar Namen ein (optional mit D-Scan) und sieh, wer die Piloten sind, ihre Standings, " +
+      "Kämpfe mit uns und einen Bedrohungswert laut zKillboard. Jeder Scan hat einen Link, den alle mit Zugriff auf die " +
+      "Bedrohungsanalyse öffnen können; Lagebilder schreibt Claude, wenn der Server einen API-Schlüssel hat, sonst kommen sie " +
+      "aus einer Vorlage.",
     permissionGroup: "Bedrohungsanalyse",
     permissions: {
       use: {
