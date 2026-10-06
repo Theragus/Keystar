@@ -268,6 +268,7 @@ export const admin: typeof en = {
     errors: {
       forbidden: "Du darfst die Einstellungen nicht mehr ändern.",
       invalidCorporation: "Die Heimat-Corporation muss eine numerische Corporation-ID sein, z. B. 98765432.",
+      invalidValuation: "Wähle Preisquelle und Preisdatum aus den Listen. Lade die Seite neu, falls sie veraltet wirken.",
       unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und prüfe, welche Änderungen übernommen wurden.",
     },
     home: {
