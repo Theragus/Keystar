@@ -274,6 +274,23 @@ export const intel = {
     summarize: "Summarize",
     reading: "Reading…",
   },
+  /** Toasts for the scan page's buttons (error codes: `IntelActionError`). */
+  toast: {
+    deleted: "Scan deleted",
+    deleteFailed: "Couldn't delete the scan",
+    profiling: (pilots: number) => `Profiling ${count(pilots, "more pilot", "more pilots")}`,
+    profileFailed: "Couldn't queue the pilots",
+    briefingWritten: "Briefing rewritten",
+    dossierWritten: "Dossier written",
+    dscanRead: "D-scan read",
+    writeFailed: "Couldn't write it",
+    errors: {
+      forbidden: "You don't have permission to do that any more.",
+      notFound: "This scan or pilot no longer exists.",
+      notAllowed: "Only the scan's creator or an intel manager can delete it.",
+      unknown: "Something went wrong. Reload the page and try again.",
+    },
+  },
   progress: {
     stats: (pilots: number) => `Reading zKillboard statistics: ${count(pilots, "pilot", "pilots")} to go`,
     newest: (pilots: number) => `Reading recent kills: ${count(pilots, "pilot", "pilots")} to go`,

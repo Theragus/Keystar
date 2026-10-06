@@ -1,6 +1,7 @@
 import { inArray } from "drizzle-orm";
 import { ArrowLeft, Building2, Check, KeyRound, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { ActionForm } from "@/components/ui/action-form";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { CopyField } from "@/components/ui/copy-button";
 import { CorpLogo, Portrait } from "@/components/ui/eve-image";
@@ -47,6 +48,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
     ? await db.select().from(esiTokens).where(inArray(esiTokens.characterId, user.characterIds))
     : [];
   const corpScopes = corporationScopes();
+  const failure = { failed: m.toast.failed, errors: m.toast.errors };
   const corpReady = user.characters.filter((c) => {
     const token = tokens.find((x) => x.characterId === c.characterId);
     return token?.status === "active" && corpScopes.every((s) => token.scopes.includes(s));
@@ -70,7 +72,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
 
         <Glass className="rounded-2xl px-9 pt-9 pb-8">
           {step === 1 && (
-            <form action={saveSetupCorporation}>
+            <ActionForm action={saveSetupCorporation} {...failure} redirectTo="/setup?step=2">
               <StepHeader icon={Building2} title={m.corporation.title}>
                 {m.corporation.intro}
               </StepHeader>
@@ -108,11 +110,11 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
                 </details>
               </div>
               <Footer />
-            </form>
+            </ActionForm>
           )}
 
           {step === 2 && (
-            <form action={saveSetupAccess}>
+            <ActionForm action={saveSetupAccess} {...failure} redirectTo="/setup?step=3">
               <StepHeader icon={ShieldCheck} title={m.access.title}>
                 {m.access.intro}
               </StepHeader>
@@ -145,7 +147,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
                 </label>
               </div>
               <Footer back={1} />
-            </form>
+            </ActionForm>
           )}
 
           {step === 3 && (
@@ -180,7 +182,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
           )}
 
           {step === 4 && (
-            <form action={finishSetup}>
+            <ActionForm action={finishSetup} {...failure} redirectTo="/">
               <StepHeader icon={Sparkles} title={m.invite.title}>
                 {m.invite.intro}
               </StepHeader>
@@ -198,7 +200,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
                   {m.invite.finish}
                 </Button>
               </div>
-            </form>
+            </ActionForm>
           )}
         </Glass>
 

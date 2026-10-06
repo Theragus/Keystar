@@ -271,6 +271,22 @@ export const intel: typeof en = {
     summarize: "Zusammenfassen",
     reading: "Wird ausgewertet …",
   },
+  toast: {
+    deleted: "Scan gelöscht",
+    deleteFailed: "Der Scan konnte nicht gelöscht werden",
+    profiling: (pilots) => `${count(pilots, "weiterer Pilot wird", "weitere Piloten werden")} analysiert`,
+    profileFailed: "Die Piloten konnten nicht eingereiht werden",
+    briefingWritten: "Lagebild neu geschrieben",
+    dossierWritten: "Dossier geschrieben",
+    dscanRead: "D-Scan ausgewertet",
+    writeFailed: "Das konnte nicht geschrieben werden",
+    errors: {
+      forbidden: "Dafür hast du keine Berechtigung mehr.",
+      notFound: "Diesen Scan oder Piloten gibt es nicht mehr.",
+      notAllowed: "Nur wer den Scan erstellt hat oder Intel verwaltet, kann ihn löschen.",
+      unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+    },
+  },
   progress: {
     stats: (pilots) => `Lese zKillboard-Statistiken: noch ${count(pilots, "Pilot", "Piloten")}`,
     newest: (pilots) => `Lese letzte Kills: noch ${count(pilots, "Pilot", "Piloten")}`,

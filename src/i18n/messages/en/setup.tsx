@@ -15,6 +15,15 @@ export const setup = {
   progress: (step: number, total: number) => `Step ${n(step)} of ${n(total)}`,
   back: "Back",
   continue: "Continue",
+  /** Toasts when a step can't be saved. */
+  toast: {
+    failed: "Couldn't save this step",
+    errors: {
+      forbidden: "You no longer have permission to change the settings.",
+      invalidCorporation: "Choose a corporation or enter a numeric corporation ID.",
+      unknown: "Something went wrong. Reload the page and try again.",
+    },
+  },
   corporation: {
     title: "Your home corporation",
     intro: "Keystar tracks the members, roster and refineries of one corporation. We picked the one your character is in.",

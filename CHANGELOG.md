@@ -6,6 +6,17 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Fixed
+
+- Changes on the Mining P&L pages now confirm in a toast: the income basis (mined ore or wallet sales), the share of
+  the valuation, the per-character "count automatically" switches, ore prices, manual costs and "include all".
+  Rejected input (a rate of 0 %, a price rule that ends before it starts, an amount Keystar can't read) is explained in
+  a toast and keeps what you typed, instead of replacing the page with an error. Single include/exclude and category
+  changes only show a toast when they fail. Deleting a Threat Intel scan, writing a briefing, dossier or d-scan read,
+  profiling more pilots and rewriting the killboard situation report also confirm or explain in a toast, and the
+  setup walkthrough explains an invalid corporation ID instead of failing.
+  ([PR #175](https://github.com/Theragus/Keystar/pull/175))
+
 ## [0.14.0] - 2026-10-06
 
 ### Upgrade notes

@@ -166,5 +166,14 @@ export const killboard: typeof en = {
     claudeHint: "Setze ANTHROPIC_API_KEY auf dem Server, damit Claude diese Berichte schreibt.",
     rewrite: "Bericht neu schreiben",
     rewriting: "Wird geschrieben …",
+    toast: {
+      rewritten: "Lagebericht neu geschrieben",
+      failed: "Der Lagebericht konnte nicht neu geschrieben werden",
+      errors: {
+        forbidden: "Du darfst das Killboard nicht mehr verwalten.",
+        noCorporation: "Lege zuerst die Heimatcorporation fest (Admin → Einstellungen).",
+        unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+      },
+    },
   },
 };
