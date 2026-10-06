@@ -4,7 +4,7 @@ import { auditInTx } from "@/core/audit";
 import { getDb } from "@/core/db";
 import { assertPermission } from "@/core/auth/dal";
 import { refreshCorporations } from "@/core/eve/resolver";
-import { setSetting, type Settings } from "@/core/settings";
+import { isSettingValue, setSetting } from "@/core/settings";
 import { triggerJobs } from "@/core/sync/scheduler";
 import { ok, refused, type ActionResult } from "@/lib/action-result";
 
@@ -12,7 +12,7 @@ import { ok, refused, type ActionResult } from "@/lib/action-result";
  * The setup steps. Each returns a result instead of throwing or redirecting,
  * so the page can explain a refusal in a toast and move on to the next step itself.
  */
-export type SetupError = "forbidden" | "invalidCorporation";
+export type SetupError = "forbidden" | "invalidCorporation" | "invalidValuation";
 
 async function setupAdmin() {
   return assertPermission("app.settings.manage").catch(() => null);
@@ -48,7 +48,8 @@ export async function saveSetupAccess(formData: FormData): Promise<ActionResult<
   if (!actor) return refused("forbidden");
   const autoApproveCorpMembers = formData.get("autoApproveCorpMembers") === "on";
   const autoApproveAllianceMembers = formData.get("autoApproveAllianceMembers") === "on";
-  const valuationSource = String(formData.get("valuationSource")) as Settings["mining.valuationSource"];
+  const valuationSource = formData.get("valuationSource");
+  if (!isSettingValue("mining.valuationSource", valuationSource)) return refused("invalidValuation");
   await getDb().transaction(async (tx) => {
     await setSetting("access.autoApproveCorpMembers", autoApproveCorpMembers, actor.id, tx);
     await setSetting("access.autoApproveAllianceMembers", autoApproveAllianceMembers, actor.id, tx);
