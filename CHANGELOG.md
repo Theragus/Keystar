@@ -15,6 +15,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   changes only show a toast when they fail. Deleting a Threat Intel scan, writing a briefing, dossier or d-scan read,
   profiling more pilots and rewriting the killboard situation report also confirm or explain in a toast, and the
   setup walkthrough explains an invalid corporation ID instead of failing.
+  ([PR #175](https://github.com/Theragus/Keystar/pull/175))
 - **Map and Intel review fixes.** Cache map route lookups; let scan viewers read saved briefings without regenerating them, keep rewriting permission-gated, restore a pilot profile shortcut and align briefing severity with the three-tier danger model. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
 
 - An appraisal with an absurdly long quantity (hundreds of digits) no longer stores and shows an infinite total; such
