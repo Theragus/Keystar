@@ -16,12 +16,14 @@ import { OreBreakdown } from "@/modules/mining/components/ore-table";
 import { DailyChart } from "@/modules/mining/components/daily-chart";
 import { MiningFilterBar } from "@/modules/mining/components/filter-bar";
 import { GroupByToggle } from "@/modules/mining/components/group-toggle";
+import { dailyOreDrill } from "@/modules/mining/daily-ores";
 import { daysBetween, miningQueryString } from "@/modules/mining/filters";
 import { MINING_PERMISSIONS } from "@/modules/mining/module";
 import { miningPageContext } from "@/modules/mining/page-context";
 import {
   getCoverage,
   getDailySeries,
+  getDailyTypeSeries,
   getFilterOptions,
   getMemberBreakdown,
   getMiningSummary,
@@ -42,9 +44,10 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
   const m = t.mining.overview;
   const { filters, scope, valuation, user } = ctx;
 
-  const [summary, daily, members, types, systems, options, coverage, observersOnRecord] = await Promise.all([
+  const [summary, daily, dailyTypes, members, types, systems, options, coverage, observersOnRecord] = await Promise.all([
     getMiningSummary(filters, scope, valuation),
     getDailySeries(filters, scope, valuation),
+    getDailyTypeSeries(filters, scope, valuation),
     getMemberBreakdown(filters, scope, valuation),
     getTypeBreakdown(filters, scope, valuation),
     getSystemBreakdown(filters, scope, valuation),
@@ -58,6 +61,7 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
   const period = m.priorPeriod(span);
   const byClass: Partial<Record<OreClass, number>> = {};
   for (const type of types) byClass[type.oreClass] = (byClass[type.oreClass] ?? 0) + type[filters.metric];
+  const drill = dailyOreDrill(dailyTypes, daily.map((d) => d.date));
   const hasAnyData = options.characters.length > 0;
   const canSwitchView = canViewCorpMining(user, ctx.homeCorporationId);
 
@@ -171,10 +175,11 @@ export default async function MiningPage({ searchParams }: PageProps<"/mining">)
                 <DailyChart
                   metric={filters.metric}
                   rows={daily.map((d) => ({ date: d.date, total: d.total, values: toChartClasses(d.byClass) }))}
+                  drill={drill}
                 />
               </Panel>
               <Panel className="xl:col-span-4" title={m.resourceMix} subtitle={m.shareOf[filters.metric]}>
-                <ClassComposition byClass={byClass} metric={filters.metric} />
+                <ClassComposition byClass={byClass} metric={filters.metric} drill={drill} />
               </Panel>
             </div>
 

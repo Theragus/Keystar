@@ -117,8 +117,22 @@
     {
       "idx": 16,
       "version": "7",
-      "when": 1791242431850,
-      "tag": "0016_skills_implants",
+      "when": 1791242956445,
+      "tag": "0016_appraisal_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791304530050,
+      "tag": "0017_intel_dscan_lookups",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791305645821,
+      "tag": "0018_skills_implants",
       "breakpoints": true
     }
   ]

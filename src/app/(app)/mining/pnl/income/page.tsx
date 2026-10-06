@@ -1,6 +1,7 @@
 import { CheckCheck, ChevronLeft, ChevronRight, Info, Plus, RotateCcw, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
+import { ActionForm } from "@/components/ui/action-form";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { TypeIcon } from "@/components/ui/eve-image";
@@ -38,6 +39,7 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
   const { t, f } = await getI18n();
   const m = t.pnl.income;
   const p = t.pnl.expenses.purchases;
+  const failure = { failed: t.pnl.toast.failed, errors: t.pnl.toast.errors };
   const { filters, scope, user } = ctx;
   const characters = user.characters.map((c) => ({ characterId: c.characterId, name: c.name }));
   const [summary, sales, wallet, oreFlows] = await Promise.all([
@@ -102,14 +104,14 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
             subtitle={m.sales.subtitle}
             actions={
               counts.suggested.count > 0 && (
-                <form action={includeAllSuggestedSales}>
+                <ActionForm action={includeAllSuggestedSales} success={t.pnl.toast.salesIncluded(counts.suggested.count)} {...failure}>
                   <input type="hidden" name="from" value={filters.from} />
                   <input type="hidden" name="to" value={filters.to} />
                   <input type="hidden" name="chars" value={filters.characters.join(",")} />
                   <SubmitButton variant="primary" title={m.sales.includeAllHint}>
                     <CheckCheck className="size-3.5" aria-hidden /> {m.sales.includeAll(counts.suggested.count)}
                   </SubmitButton>
-                </form>
+                </ActionForm>
               )
             }
           >
@@ -208,7 +210,7 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
                               )}
                             </td>
                             <td>
-                              <form action={setSaleCategory.bind(null, s.characterId, s.transactionId)}>
+                              <ActionForm action={setSaleCategory.bind(null, s.characterId, s.transactionId)} {...failure} reset="failure">
                                 <AutoSubmitSelect
                                   name="category"
                                   label={p.categoryLabel}
@@ -224,7 +226,7 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
                                     </option>
                                   ))}
                                 </AutoSubmitSelect>
-                              </form>
+                              </ActionForm>
                             </td>
                             <td>
                               <Badge tone={statusTone[s.status]}>{t.pnl.saleStatuses[s.status].label}</Badge>
@@ -232,27 +234,27 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
                             <td className="num">
                               <span className="inline-flex items-center gap-1">
                                 {s.status !== "counted" && (
-                                  <form action={setSaleIncluded.bind(null, s.characterId, s.transactionId, true)}>
+                                  <ActionForm action={setSaleIncluded.bind(null, s.characterId, s.transactionId, true)} {...failure}>
                                     <SubmitButton title={m.sales.includeHint}>
                                       <Plus className="size-3.5" aria-hidden /> {p.include}
                                     </SubmitButton>
-                                  </form>
+                                  </ActionForm>
                                 )}
                                 {(s.status === "counted" || s.status === "suggested") && (
-                                  <form action={setSaleIncluded.bind(null, s.characterId, s.transactionId, false)}>
+                                  <ActionForm action={setSaleIncluded.bind(null, s.characterId, s.transactionId, false)} {...failure}>
                                     <SubmitButton variant="ghost" title={m.sales.excludeHint} className="px-2">
                                       <X className="size-3.5" aria-hidden />
                                       <span className="sr-only">{p.exclude}</span>
                                     </SubmitButton>
-                                  </form>
+                                  </ActionForm>
                                 )}
                                 {s.overrideIncluded !== null && (
-                                  <form action={setSaleIncluded.bind(null, s.characterId, s.transactionId, null)}>
+                                  <ActionForm action={setSaleIncluded.bind(null, s.characterId, s.transactionId, null)} {...failure}>
                                     <SubmitButton variant="ghost" title={p.reset} className="px-2">
                                       <RotateCcw className="size-3.5" aria-hidden />
                                       <span className="sr-only">{p.reset}</span>
                                     </SubmitButton>
-                                  </form>
+                                  </ActionForm>
                                 )}
                               </span>
                             </td>

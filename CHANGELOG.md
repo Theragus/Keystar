@@ -17,21 +17,43 @@ The remap optimiser can read implants with a new optional character scope.
 
 ### Fixed
 
-- In English, the killboard's permissions in Users & Roles, its background jobs and its browser tab title now
-  say "Combat Report" like the sidebar, instead of "Killboard".
-- Wallet imports read ESI's available history again after deleting wallet data or relinking a character, instead
-  of skipping it because of a stale sync cursor. ([#138](https://github.com/Theragus/Keystar/issues/138))
-- Mail sync no longer removes older stored messages if ESI ignores a paging cursor or returns an empty page while
-  listing a mailbox. ([#137](https://github.com/Theragus/Keystar/issues/137))
-- Right-aligned column headers in tables (the Load and Database tables on System Info, the actions column on
-  Users) now line up with their values instead of sitting on the left.
-- Role and access changes, settings changes and scope switches now write their audit log entry in the same
-  transaction as the change, so a database error can no longer leave a change without an audit trail. Other audit
-  entries that can't be written are counted, and System Info warns about them in a new "Audit log written" check.
-  ([#156](https://github.com/Theragus/Keystar/issues/156))
+- A pasted d-scan with made-up type ids can no longer pause ESI for the whole web app. Unknown types are looked up on
+  ESI at most 50 per paste and for at most 20 pastes per user in 10 minutes, lookups stop while the shared ESI error
+  budget is low, and ids ESI doesn't know are not asked again for 6 hours. Ships that couldn't be looked up yet are
+  left out of the d-scan, as before. ([#143](https://github.com/Theragus/Keystar/issues/143))
+- Changes on the Mining P&L pages now confirm in a toast: the income basis (mined ore or wallet sales), the share of
+  the valuation, the per-character "count automatically" switches, ore prices, manual costs and "include all".
+  Rejected input (a rate of 0 %, a price rule that ends before it starts, an amount Keystar can't read) is explained in
+  a toast and keeps what you typed, instead of replacing the page with an error. Single include/exclude and category
+  changes only show a toast when they fail. Deleting a Threat Intel scan, writing a briefing, dossier or d-scan read,
+  profiling more pilots and rewriting the killboard situation report also confirm or explain in a toast, and the
+  setup walkthrough explains an invalid corporation ID instead of failing.
+  ([PR #175](https://github.com/Theragus/Keystar/pull/175))
+
+## [0.14.0] - 2026-10-06
+
+### Upgrade notes
+
+Industry jobs need two optional character scopes.
+
+1. Add `esi-industry.read_character_jobs.v1` and `esi-universe.read_structures.v1` to the scopes of your EVE
+   application at <https://developers.eveonline.com/applications>. Nobody is asked for them unless they enable
+   industry access on the Industry access page, but without them on the application that EVE login fails with
+   `invalid_scope`.
+2. Update as usual; the database migrations run on start.
 
 ### Added
 
+- **Ore types in the daily mining chart.** Click a resource in the "Daily ISK by resource" chart (or its legend) to
+  stack the days by its ore types instead, such as Spodumain, Kernite and Scordite, with the smaller ones combined
+  into "Other". When only one resource was mined, the chart and the resource mix show its ore types straight away.
+  ([PR #173](https://github.com/Theragus/Keystar/pull/173))
+- **3D universe map.** Add a searchable star map under Combat with system names, security status and real positions;
+  Threat Intel system links focus the map and show jump range and light-year distances.
+  ([PR #87](https://github.com/Theragus/Keystar/pull/87))
+- **Travel and jump planning.** Calculate shortest stargate routes with two-hour gate-kill evidence and linked
+  killmails, plus carrier, jump freighter and Black Ops range highlighting with Jump Drive Calibration selection.
+  ([PR #87](https://github.com/Theragus/Keystar/pull/87))
 - **Industry jobs.** A new Industry Jobs page under Industry lists the industry jobs of your own characters:
   manufacturing, material and time efficiency research, copying, invention and reactions, each with a progress bar,
   the time left (counting down live) and the end time, and the station or structure it runs in with its system.
@@ -59,12 +81,58 @@ The remap optimiser can read implants with a new optional character scope.
 
 ### Changed
 
+- **Map interaction.** Use compact glass panels, batched rendering and cached geometry; support mouse rotation and
+  panning, looping route illumination, system focus with fading rotation, reduced motion and wheel zoom without page
+  scrolling. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
 - **Mining P&L**: when income comes from wallet sales, it is now net of sales tax instead of counting the tax as an
   expense: each sale on the Income tab shows the tax paid on it and its net, and the tax counts whenever the sale
   does, without a review of its own. Broker fees stay expenses and are easier to review: each shows the journal's
   description and time, and "Include all" counts every suggested broker fee at once.
 - Null-sec security status (0.0 and below) is shown in red instead of purple in every security pill, so the
   security colours run from blue at 1.0 to red.
+
+### Fixed
+
+- **Map and Intel review fixes.** Cache map route lookups; let scan viewers read saved briefings without regenerating
+  them, keep rewriting permission-gated, restore a pilot profile shortcut and align briefing severity with the
+  three-tier danger model. ([PR #87](https://github.com/Theragus/Keystar/pull/87))
+- An appraisal with an absurdly long quantity (hundreds of digits) no longer stores and shows an infinite total; such
+  a quantity is no longer read as one. A member can start at most 30 appraisals per ten minutes (failed and deleted
+  ones included), and appraisals are deleted after a year, so the appraisal table no longer grows without bound.
+  ([#155](https://github.com/Theragus/Keystar/issues/155))
+- A token refresh keeps the new refresh token EVE SSO hands out even if checking the new access token then fails
+  (for example when CCP's key endpoint is unreachable), so pilots are no longer asked to re-authorise for nothing.
+  Refreshes no longer hold the token row locked while waiting on CCP, so switching scopes or logging in doesn't stall
+  behind them, and a malformed SSO response no longer leaves a token that can't be refreshed.
+  ([#141](https://github.com/Theragus/Keystar/issues/141))
+- Disabling an account now pauses its characters' background syncs (wallet, mail, industry, skills) and token
+  refreshes until it is enabled again, and corporation syncs no longer use its characters. Unlinking a character also deletes its imported wallet and mail data in the
+  same step as the link, so an interrupted unlink can't leave it behind to reappear when the character is linked
+  again. ([#151](https://github.com/Theragus/Keystar/issues/151))
+- The corporation roster and industry jobs are stored again after a failed sync, or after a character was
+  unlinked and linked again, instead of waiting until ESI's data changes. Unlinking or transferring a character, and
+  deleting its industry data, also removes the ESI responses Keystar had cached for it, and cached responses
+  without an expiry are cleaned up after a week. ([#139](https://github.com/Theragus/Keystar/issues/139))
+- A mining ledger from ESI that lists the same pilot, ore and day twice (for example after the pilot changed
+  corporation that day) no longer makes the moon-mining import fail on every run until that day drops out of ESI's
+  30-day ledger. Repeats are merged before saving, and ore mined under two corporations on one day is added up.
+  ([#149](https://github.com/Theragus/Keystar/issues/149))
+- In English, the killboard's permissions in Users & Roles, its background jobs and its browser tab title now
+  say "Combat Report" like the sidebar, instead of "Killboard".
+- Wallet imports read ESI's available history again after deleting wallet data or relinking a character, instead
+  of skipping it because of a stale sync cursor. ([#138](https://github.com/Theragus/Keystar/issues/138))
+- Linking a character back to your own account after moving it to another of your EVE accounts no longer deletes
+  its wallet history, mail and industry jobs; they are only removed when a character changes hands.
+  ([#140](https://github.com/Theragus/Keystar/issues/140))
+- Mail sync no longer removes older stored messages if ESI ignores a paging cursor or returns an empty page while
+  listing a mailbox. ([#137](https://github.com/Theragus/Keystar/issues/137))
+- Right-aligned column headers in tables (the Load and Database tables on System Info, the actions column on
+  Users) now line up with their values instead of sitting on the left.
+  ([PR #133](https://github.com/Theragus/Keystar/pull/133))
+- Role and access changes, settings changes and scope switches now write their audit log entry in the same
+  transaction as the change, so a database error can no longer leave a change without an audit trail. Other audit
+  entries that can't be written are counted, and System Info warns about them in a new "Audit log written" check.
+  ([#156](https://github.com/Theragus/Keystar/issues/156))
 
 ## [0.13.0] - 2026-10-04
 

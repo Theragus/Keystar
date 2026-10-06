@@ -235,6 +235,34 @@ export async function getDailySeries(f: MiningFilters, scope: MiningScope, val: 
   return [...byDate.values()];
 }
 
+export interface DailyTypeRow {
+  date: string;
+  typeId: number;
+  name: string;
+  oreClass: OreClass;
+  /** The filters' metric. */
+  amount: number;
+}
+
+/** Per-day totals of each type, for the daily chart's per-ore view. */
+export async function getDailyTypeSeries(f: MiningFilters, scope: MiningScope, val: Valuation): Promise<DailyTypeRow[]> {
+  const rows = await getDb().execute<Record<string, unknown>>(sql`
+    WITH ${ledgerCte(f, scope, val)}
+    SELECT to_char(l.date, 'YYYY-MM-DD') AS date, l.type_id::int AS type_id,
+           MAX(l.type_name) AS name, MAX(l.ore_class) AS ore_class,
+           SUM(l.quantity)::float8 AS quantity,
+           SUM(l.quantity * l.unit_volume)::float8 AS volume,
+           SUM(l.quantity * l.unit_price)::float8 AS value
+    FROM ledger l GROUP BY 1, 2 ORDER BY 1`);
+  return rows.map((r) => ({
+    date: String(r.date),
+    typeId: num(r.type_id),
+    name: (r.name as string | null) ?? `Type ${r.type_id}`,
+    oreClass: (r.ore_class as OreClass) ?? "other",
+    amount: num(r[f.metric]),
+  }));
+}
+
 export interface MemberRow {
   key: string;
   userId: string | null;

@@ -38,7 +38,7 @@ describe.skipIf(!enabled)("integration", async () => {
   beforeEach(async () => {
     await db().execute(sql`TRUNCATE users, characters, esi_tokens, sessions, eve_types, eve_groups, eve_systems,
       eve_entities, type_values, type_value_history, market_prices, price_interest, mining_character_ledger,
-      mining_observer_ledger, mining_observers, sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, esi_cache,
+      mining_observer_ledger, mining_observers, sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, appraisal_attempts, esi_cache,
       fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
       intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, wallet_fees, mining_activity,
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
@@ -255,10 +255,10 @@ describe.skipIf(!enabled)("integration", async () => {
       await db().insert(schema.industryJobs).values([job(1, 1), job(2, 3)]);
 
       // Bravo keeps an alt: the account stays active and the alt becomes main.
-      const bravo = await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB, { keepAccount: false }));
+      const bravo = await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB));
       expect(bravo.retired).toBe(false);
       // Alpha loses their only character: disabled and signed out.
-      const alpha = await db().transaction((tx) => detachTransferredCharacter(tx, 1, userA, { keepAccount: false }));
+      const alpha = await db().transaction((tx) => detachTransferredCharacter(tx, 1, userA));
       expect(alpha.retired).toBe(true);
 
       const users = await db().select().from(schema.users);
@@ -270,14 +270,6 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(remaining.map((r) => r.userId)).toEqual([userB]);
       expect((await db().select().from(schema.characters)).map((c) => c.characterId)).toEqual([3]);
       expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([2]);
-    });
-
-    it("keeps the account when it links a transferred character back to itself", async () => {
-      const { detachTransferredCharacter } = await import("@/core/auth/provision");
-      const result = await db().transaction((tx) => detachTransferredCharacter(tx, 1, userA, { keepAccount: true }));
-      expect(result.retired).toBe(false);
-      const [a] = await db().select().from(schema.users).where(sql`id = ${userA}`);
-      expect(a.isDisabled).toBe(false);
     });
 
     it("only invalidates a token on invalid_grant", async () => {
@@ -300,6 +292,131 @@ describe.skipIf(!enabled)("integration", async () => {
       revoked.mockRestore();
       [row] = await db().select().from(schema.esiTokens);
       expect(row.status).toBe("invalid");
+    });
+
+    it("stores a rotated refresh token even when verifying the new access token fails", async () => {
+      const { decryptToken, encryptToken } = await import("@/core/crypto");
+      const { getAccessToken } = await import("@/core/esi/tokens");
+      const { exportJWK, generateKeyPair, SignJWT } = await import("jose");
+      const { privateKey, publicKey } = await generateKeyPair("RS256");
+      const jwk = { ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256", use: "sig" };
+      const accessToken = (scopes: string[]) =>
+        new SignJWT({ name: "Alpha", owner: "h1", scp: scopes })
+          .setProtectedHeader({ alg: "RS256", kid: "k1" })
+          .setSubject("CHARACTER:EVE:1")
+          .setIssuer("https://login.eveonline.com")
+          .setAudience(["test-client-id", "EVE Online"])
+          .setExpirationTime("20m")
+          .sign(privateKey);
+      let jwksUp = false;
+      const sso = (token: Record<string, unknown>) =>
+        vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+          const url = String(input instanceof Request ? input.url : input);
+          if (url.endsWith("/oauth/jwks")) {
+            return jwksUp ? Response.json({ keys: [jwk] }) : new Response("unavailable", { status: 503 });
+          }
+          return Response.json(token);
+        });
+      const stored = async () => (await db().select().from(schema.esiTokens))[0];
+      await db().insert(schema.esiTokens).values({
+        characterId: 1,
+        refreshTokenEnc: encryptToken("refresh-1"),
+        scopes: ["a", "b"],
+        disabledScopes: ["b"],
+      });
+
+      // SSO rotates the refresh token, then CCP's JWKS is unreachable: the new refresh token is kept anyway.
+      let mock = sso({ access_token: await accessToken(["a", "b"]), refresh_token: "refresh-2", expires_in: 1200, token_type: "Bearer" });
+      await expect(getAccessToken(1)).rejects.toThrow();
+      mock.mockRestore();
+      let row = await stored();
+      expect(decryptToken(row.refreshTokenEnc)).toBe("refresh-2");
+      expect(row).toMatchObject({ status: "active", accessTokenEnc: null });
+
+      // No refresh token in the response: the stored one stays usable.
+      mock = sso({ access_token: await accessToken(["a", "b"]), expires_in: 1200, token_type: "Bearer" });
+      await expect(getAccessToken(1)).rejects.toThrow();
+      mock.mockRestore();
+      expect(decryptToken((await stored()).refreshTokenEnc)).toBe("refresh-2");
+
+      // A malformed response changes nothing.
+      mock = sso({ refresh_token: "refresh-x", expires_in: 1200 });
+      await expect(getAccessToken(1)).rejects.toThrow(/no access token/);
+      mock.mockRestore();
+      expect(decryptToken((await stored()).refreshTokenEnc)).toBe("refresh-2");
+
+      // Once verification works, the access token and its scopes are stored; switched-off scopes stay off.
+      jwksUp = true;
+      const fresh = await accessToken(["a", "b"]);
+      mock = sso({ access_token: fresh, refresh_token: "refresh-3", expires_in: 1200, token_type: "Bearer" });
+      expect(await getAccessToken(1)).toBe(fresh);
+      mock.mockRestore();
+      row = await stored();
+      expect(decryptToken(row.refreshTokenEnc)).toBe("refresh-3");
+      expect(decryptToken(row.accessTokenEnc!)).toBe(fresh);
+      expect(row).toMatchObject({ status: "active", scopes: ["a"], disabledScopes: ["b"], lastError: null });
+      expect(await getAccessToken(1)).toBe(fresh);
+    });
+
+    it("hands out the current token when the row changes while a refreshed token is verified", async () => {
+      const { decryptToken, encryptToken } = await import("@/core/crypto");
+      const { getAccessToken, TokenInvalidError } = await import("@/core/esi/tokens");
+      const sso = await import("@/core/auth/sso");
+      const refresh = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async () =>
+          Response.json({ access_token: "refreshed", refresh_token: "rotated", expires_in: 1200, token_type: "Bearer" }),
+        );
+      // While the refreshed access token is being verified, `meanwhile` changes the row.
+      const verifying = (meanwhile: () => Promise<unknown>) =>
+        vi.spyOn(sso, "verifyAccessToken").mockImplementation(async () => {
+          await meanwhile();
+          return { characterId: 1, name: "Alpha", ownerHash: "h1", scopes: ["a"], expiresAt: new Date(Date.now() + 1_200_000) };
+        });
+      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: encryptToken("old"), scopes: ["a"] });
+
+      // A new login: its token is handed out and kept, not the one refreshed from the grant it replaced.
+      let verify = verifying(() =>
+        getDb()
+          .update(schema.esiTokens)
+          .set({
+            refreshTokenEnc: encryptToken("from-login"),
+            accessTokenEnc: encryptToken("login-access"),
+            accessTokenExpiresAt: new Date(Date.now() + 1_200_000),
+          }),
+      );
+      expect(await getAccessToken(1, { forceRefresh: true })).toBe("login-access");
+      verify.mockRestore();
+      const [row] = await db().select().from(schema.esiTokens);
+      expect(decryptToken(row.refreshTokenEnc)).toBe("from-login");
+      expect(decryptToken(row.accessTokenEnc!)).toBe("login-access");
+
+      // The character is removed: no token at all.
+      verify = verifying(() => getDb().delete(schema.esiTokens));
+      await expect(getAccessToken(1, { forceRefresh: true })).rejects.toBeInstanceOf(TokenInvalidError);
+      verify.mockRestore();
+      refresh.mockRestore();
+    });
+
+    it("does not overwrite a token a login stored during the refresh", async () => {
+      const { decryptToken, encryptToken } = await import("@/core/crypto");
+      const { getAccessToken } = await import("@/core/esi/tokens");
+      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: encryptToken("old"), scopes: [] });
+      // While SSO answers the refresh, a new EVE login replaces the token with a fresh one.
+      const mock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        await getDb()
+          .update(schema.esiTokens)
+          .set({
+            refreshTokenEnc: encryptToken("from-login"),
+            accessTokenEnc: encryptToken("login-access"),
+            accessTokenExpiresAt: new Date(Date.now() + 1_200_000),
+          });
+        return Response.json({ access_token: "unused", refresh_token: "rotated-old", expires_in: 1200, token_type: "Bearer" });
+      });
+      expect(await getAccessToken(1)).toBe("login-access");
+      mock.mockRestore();
+      const [row] = await db().select().from(schema.esiTokens);
+      expect(decryptToken(row.refreshTokenEnc)).toBe("from-login");
     });
   });
 
@@ -774,6 +891,25 @@ describe.skipIf(!enabled)("integration", async () => {
       } finally {
         fetchSpy.mockRestore();
       }
+    });
+  });
+
+  describe("appraisal rate limit", () => {
+    it("counts every attempt, deleted or parallel, and only within the window", async () => {
+      const { APPRAISAL_RATE_LIMIT, APPRAISAL_RATE_WINDOW_MS, reserveAppraisalAttempt } = await import(
+        "@/modules/trade/appraisal/appraise"
+      );
+      const now = new Date();
+      // Parallel submits are serialised: exactly the limit gets through.
+      const results = await Promise.all(
+        Array.from({ length: APPRAISAL_RATE_LIMIT + 5 }, () => reserveAppraisalAttempt(userA, now)),
+      );
+      expect(results.filter(Boolean)).toHaveLength(APPRAISAL_RATE_LIMIT);
+      // Deleting saved appraisals doesn't free a slot; another user is unaffected.
+      await db().delete(schema.appraisals);
+      expect(await reserveAppraisalAttempt(userA, now)).toBe(false);
+      expect(await reserveAppraisalAttempt(userB, now)).toBe(true);
+      expect(await reserveAppraisalAttempt(userA, new Date(now.getTime() + APPRAISAL_RATE_WINDOW_MS + 1))).toBe(true);
     });
   });
 
@@ -1599,10 +1735,64 @@ describe.skipIf(!enabled)("integration", async () => {
         { userId: userB, characterId: 3, journalId: 61, included: true },
         { userId: userB, characterId: 2, journalId: 62, included: true },
       ]);
-      await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: false }));
+      await db().transaction((t) => detachTransferredCharacter(t, 3, userB));
       expect((await db().select().from(schema.walletTransactions)).map((r) => r.transactionId)).toEqual([52]);
       expect((await db().select().from(schema.walletFees)).map((r) => r.journalId)).toEqual([62]);
       expect((await db().select().from(schema.miningPnlFeeOverrides)).map((r) => r.journalId)).toEqual([62]);
+    });
+
+    it("keeps a character's history when its own account links it back from another EVE account", async () => {
+      const { encryptToken } = await import("@/core/crypto");
+      const { provisionFromSso } = await import("@/core/auth/provision");
+      await db().insert(schema.walletTransactions).values(tx(3, 51, 18066));
+      await db().insert(schema.walletFees).values({
+        userId: userB,
+        characterId: 3,
+        journalId: 61,
+        date: new Date("2026-09-10T12:00:00Z"),
+        refType: "brokers_fee",
+        amount: 5,
+      });
+      await db().insert(schema.mailLabels).values({ userId: userB, characterId: 3, labelId: 1, name: "Inbox" });
+      await db().insert(schema.esiTokens).values({ characterId: 3, refreshTokenEnc: encryptToken("r"), scopes: [WALLET_SCOPE] });
+      await db()
+        .insert(schema.syncJobs)
+        .values({ jobKey: "wallet.character-transactions", ownerType: "character", ownerId: 3, meta: { newestSeenId: 51 } });
+      await db()
+        .insert(schema.esiCache)
+        .values({ key: "3:GET /characters/3/wallet/transactions", body: {}, expiresAt: new Date(Date.now() + 60_000) });
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) =>
+          reply(path.startsWith("/corporations/") ? { name: "Home", ticker: "HOME", member_count: 3 } : { corporation_id: 100 }),
+        ) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      try {
+        // Bravo moved the alt to another of their EVE accounts (new owner hash) and links it to the same Keystar account.
+        const result = await provisionFromSso({
+          verified: { characterId: 3, name: "Bravo Alt", ownerHash: "h3-moved", scopes: [WALLET_SCOPE], expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", refresh_token: "r", expires_in: 1200, token_type: "Bearer" },
+          intent: "link",
+          currentUserId: userB,
+        });
+        expect(result).toMatchObject({ userId: userB, newCharacter: false, lostOptionalScopes: [] });
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+      }
+      const [alt] = await db().select().from(schema.characters).where(sql`character_id = 3`);
+      expect(alt).toMatchObject({ userId: userB, ownerHash: "h3-moved" });
+      expect((await db().select().from(schema.walletTransactions)).map((r) => r.transactionId)).toEqual([51]);
+      expect((await db().select().from(schema.walletFees)).map((r) => r.journalId)).toEqual([61]);
+      expect(await db().select().from(schema.mailLabels)).toHaveLength(1);
+      const [cursor] = await db().select().from(schema.syncJobs).where(sql`owner_id = 3`);
+      expect(cursor.meta).toEqual({ newestSeenId: 51 });
+      // Responses cached with the old EVE account's token are fetched again.
+      expect(await db().select().from(schema.esiCache).where(sql`key LIKE '3:%'`)).toEqual([]);
+      const [b] = await db().select().from(schema.users).where(sql`id = ${userB}`);
+      expect(b).toMatchObject({ isDisabled: false, mainCharacterId: 2 });
     });
 
     it("reports opt-in scopes that a generic re-link dropped", async () => {
@@ -1685,6 +1875,41 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(hints).toHaveLength(1);
       expect(hints[0]).toMatchObject({ typeId: 1230, rawUnits: 1500, isk: 17_000, sales: 2, baseUnitPrice: 10 });
       expect(hints[0].rawUnitPrice).toBeCloseTo(17_000 / 1500);
+    });
+
+    it("saves settings through actions that refuse with codes instead of throwing", async () => {
+      const form = (fields: Record<string, string>) => {
+        const data = new FormData();
+        for (const [key, value] of Object.entries(fields)) data.set(key, value);
+        return data;
+      };
+      vi.doMock("@/core/auth/dal", () => ({ assertPermission: async () => ({ id: userB, characterIds: [3] }) }));
+      vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+      vi.doMock("server-only", () => ({}));
+      try {
+        const a = await import("@/app/(app)/mining/pnl/actions");
+        expect(await a.setIncomeSource(form({ source: "sales" }))).toEqual({ ok: true });
+        expect(await a.setIncomeSource(form({ source: "guesswork" }))).toEqual({ ok: false, error: "invalidSource" });
+        expect(await a.setIncomeRate(form({ rate: "0" }))).toEqual({ ok: false, error: "invalidRate" });
+        expect(await a.addPriceRule(form({ typeId: "1230", unitPrice: "12", validFrom: "2026-09-10", validTo: "2026-09-01" }))).toEqual({
+          ok: false,
+          error: "invalidRange",
+        });
+        expect(await a.addPriceRule(form({ typeId: "999999", unitPrice: "12" }))).toEqual({ ok: false, error: "unknownType" });
+        expect(await a.setAutoInclude(1, true)).toEqual({ ok: false, error: "notOwned" });
+        expect(await a.deleteManualEntry(424242)).toEqual({ ok: false, error: "notFound" });
+        expect(await a.addManualEntry(form({ date: "2026-09-10", amount: "2.1b", category: "subscription", spreadDays: "1" }))).toEqual({
+          ok: true,
+        });
+      } finally {
+        vi.doUnmock("@/core/auth/dal");
+        vi.doUnmock("next/cache");
+        vi.doUnmock("server-only");
+      }
+      const [settings] = await db().select().from(schema.miningPnlSettings).where(sql`user_id = ${userB}`);
+      expect(settings.incomeSource).toBe("sales");
+      const entries = await db().select().from(schema.miningPnlEntries).where(sql`user_id = ${userB}`);
+      expect(entries.map((e) => e.amount)).toEqual([2.1e9]);
     });
   });
 
@@ -1860,7 +2085,7 @@ describe.skipIf(!enabled)("integration", async () => {
       const { detachTransferredCharacter } = await import("@/core/auth/provision");
       await run(2);
       await run(3);
-      await db().transaction((t) => detachTransferredCharacter(t, 3, userB, { keepAccount: true }));
+      await db().transaction((t) => detachTransferredCharacter(t, 3, userB));
       const rows = await db().select().from(schema.mailMessages);
       expect(rows.every((r) => r.characterId === 2)).toBe(true);
       expect(await db().select().from(schema.mailLabels).where(sql`character_id = 3`)).toEqual([]);
@@ -2450,11 +2675,132 @@ describe.skipIf(!enabled)("integration", async () => {
     it("deletes stored jobs only once access is off", async () => {
       const { deleteIndustryData, setIndustryAccess } = await import("@/app/(app)/industry/actions");
       actor = { id: userB, characterIds: [2, 3] };
+      await db().insert(schema.esiCache).values(
+        ["2:GET /characters/2/industry/jobs?include_completed=true", "2:GET /characters/2/roles"].map((key) => ({ key, body: [] })),
+      );
       expect(await deleteIndustryData(2)).toEqual({ ok: false, error: "stillEnabled" });
       expect(await setIndustryAccess(2, false)).toEqual({ ok: true });
       expect(await deleteIndustryData(2)).toEqual({ ok: true });
       expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([1]);
+      // The cached copy of the jobs goes too; other cached responses stay.
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key)).toEqual(["2:GET /characters/2/roles"]);
       expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ characterId: 2, hasData: false });
+    });
+  });
+
+  describe("ESI answers \"not modified\"", async () => {
+    const { INDUSTRY_SCOPES } = await import("@/modules/industry/module");
+    type CachedEntry = import("@/core/esi/client").CachedEntry;
+    let expires = new Date(0);
+    let body: unknown = [];
+    let requests = 0;
+    // Serves `body` with ETag "v1", and 304 when the client already holds it.
+    const esiFor = (pathPattern: RegExp) => {
+      const store = new Map<string, CachedEntry>();
+      return new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        maxRetries: 0,
+        cache: { get: async (k) => store.get(k) ?? null, set: async (k, e) => void store.set(k, e) },
+        fetchImpl: (async (url: string, init?: RequestInit) => {
+          if (!pathPattern.test(new URL(String(url)).pathname)) return new Response("{}", { status: 404 });
+          requests++;
+          const headers = { "content-type": "application/json", etag: '"v1"', expires: expires.toUTCString() };
+          if ((init?.headers as Record<string, string>)["If-None-Match"] === '"v1"') return new Response(null, { status: 304, headers });
+          return new Response(JSON.stringify(body), { status: 200, headers });
+        }) as typeof fetch,
+      });
+    };
+    const ctx = (esi: InstanceType<typeof EsiClient>, ownerType: "global" | "character" | "corporation", ownerId: number, characterId: number | null) =>
+      ({ jobId: 1, ownerType, ownerId, characterId, esi, db: db(), log: undefined as never, meta: {} });
+
+    beforeEach(async () => {
+      expires = new Date(0);
+      requests = 0;
+      // Everything the jobs would look up is known, so they make no other requests.
+      await db().insert(schema.eveEntities).values([1, 2].map((id) => ({ id, name: `Pilot ${id}`, category: "character" })));
+      await db().insert(schema.eveTypes).values({ typeId: 787, name: "Blueprint", groupId: 462 });
+      await db().insert(schema.industryLocations).values({ locationId: 60003760, kind: "station", name: "Station", resolvedAt: new Date() });
+      await db().insert(schema.esiTokens).values({ characterId: 2, refreshTokenEnc: "x", scopes: [...INDUSTRY_SCOPES] });
+    });
+
+    it("stores industry jobs again that are missing although ESI reports the list unchanged", async () => {
+      const { characterIndustryJobsJob } = await import("@/modules/industry/jobs");
+      body = [{ job_id: 900, installer_id: 2, facility_id: 60003760, station_id: 60003760, activity_id: 1, blueprint_id: 5,
+        blueprint_type_id: 787, blueprint_location_id: 60003760, output_location_id: 60003760, runs: 2, cost: 10, duration: 3600,
+        status: "active", start_date: new Date().toISOString(), end_date: new Date(Date.now() + 3600_000).toISOString() }];
+      const esi = esiFor(/\/industry\/jobs$/);
+      const jobIds = async () => (await db().select().from(schema.industryJobs)).map((j) => j.jobId);
+      expect((await characterIndustryJobsJob.run(ctx(esi, "character", 2, 2)))?.summary).toBe("1 running job, 1 listed");
+      expect(await jobIds()).toEqual([900]);
+
+      // The stored jobs are gone (a failed write, or an unlink and relink) while the cached ETag stays: ESI answers 304.
+      await db().delete(schema.industryJobs);
+      expect((await characterIndustryJobsJob.run(ctx(esi, "character", 2, 2)))?.summary).toBe("1 running job, 1 listed (unchanged)");
+      expect(await jobIds()).toEqual([900]);
+      expect(requests).toBe(2);
+
+      // The same for a run served from Keystar's own cache before Expires.
+      expires = new Date(Date.now() + 300_000);
+      await characterIndustryJobsJob.run(ctx(esi, "character", 2, 2));
+      await db().delete(schema.industryJobs);
+      expect((await characterIndustryJobsJob.run(ctx(esi, "character", 2, 2)))?.summary).toContain("(unchanged)");
+      expect(requests).toBe(3);
+      expect(await jobIds()).toEqual([900]);
+    });
+
+    it("brings the corporation roster up to date although ESI reports the member list unchanged", async () => {
+      const { corporationMembersJob } = await import("@/core/sync/core-jobs");
+      body = [1, 2, 9];
+      const esi = esiFor(/\/corporations\/100\/members$/);
+      const roster = async () =>
+        (await db().select().from(schema.corporationMembers)).map((m) => m.characterId).sort((a, b) => a - b);
+      await corporationMembersJob.run(ctx(esi, "corporation", 100, 1));
+      expect(await roster()).toEqual([1, 2, 9]);
+      const [nine] = await db().select().from(schema.corporationMembers).where(sql`character_id = 9`);
+
+      // A write that never landed: the table holds an older roster, and ESI answers 304.
+      await db().delete(schema.corporationMembers).where(sql`character_id = 2`);
+      await db().insert(schema.corporationMembers).values({ corporationId: 100, characterId: 50 });
+      expect((await corporationMembersJob.run(ctx(esi, "corporation", 100, 1)))?.summary).toBe("3 members");
+      expect(await roster()).toEqual([1, 2, 9]);
+      expect(requests).toBe(2);
+      // Members that stayed are left alone.
+      expect((await db().select().from(schema.corporationMembers).where(sql`character_id = 9`))[0]).toEqual(nine);
+
+      body = [];
+      await db().delete(schema.esiCache);
+      const fresh = esiFor(/\/corporations\/100\/members$/);
+      expect((await corporationMembersJob.run(ctx(fresh, "corporation", 100, 1)))?.summary).toBe("0 members");
+      expect(await roster()).toEqual([]);
+    });
+
+    it("forgets a character's cached ESI responses when it changes hands", async () => {
+      const { detachTransferredCharacter } = await import("@/core/auth/provision");
+      await db().insert(schema.esiCache).values(
+        ["2:GET /characters/2/industry/jobs", "2:GET /characters/2/roles", "21:GET /characters/21/roles", "0:GET /status"].map((key) => ({
+          key,
+          body: {},
+          expiresAt: new Date(Date.now() + 60_000),
+        })),
+      );
+      await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB));
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key).sort()).toEqual(["0:GET /status", "21:GET /characters/21/roles"]);
+    });
+
+    it("purges cache entries without an expiry once they are a week old", async () => {
+      const { housekeepingJob } = await import("@/core/sync/core-jobs");
+      const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
+      await db().insert(schema.esiCache).values([
+        { key: "0:GET /old-no-expiry", body: {}, expiresAt: null, updatedAt: daysAgo(8) },
+        { key: "0:GET /new-no-expiry", body: {}, expiresAt: null, updatedAt: daysAgo(1) },
+        { key: "0:GET /expired", body: {}, expiresAt: daysAgo(8) },
+        { key: "0:GET /fresh", body: {}, expiresAt: daysAgo(1) },
+      ]);
+      await housekeepingJob.run(ctx(esiFor(/^$/), "global", 0, null));
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key).sort()).toEqual(["0:GET /fresh", "0:GET /new-no-expiry"]);
     });
   });
 
@@ -2491,6 +2837,22 @@ describe.skipIf(!enabled)("integration", async () => {
       await scheduler.planJobs([def]);
       rows = await db().select().from(schema.syncJobs);
       expect(rows.every((r) => !r.enabled)).toBe(true);
+    });
+
+    it("pauses character jobs while the account is disabled", async () => {
+      const def = job(async () => {});
+      const enabledOwners = async () =>
+        (await db().select().from(schema.syncJobs)).filter((r) => r.enabled).map((r) => r.ownerId);
+      await scheduler.planJobs([def]);
+      expect(await enabledOwners()).toEqual([1]);
+
+      await db().execute(sql`UPDATE users SET is_disabled = true WHERE id = ${userA}`);
+      await scheduler.planJobs([def]);
+      expect(await enabledOwners()).toEqual([]);
+
+      await db().execute(sql`UPDATE users SET is_disabled = false WHERE id = ${userA}`);
+      await scheduler.planJobs([def]);
+      expect(await enabledOwners()).toEqual([1]);
     });
 
     it("claims due jobs exactly once and records success", async () => {
@@ -2553,6 +2915,26 @@ describe.skipIf(!enabled)("integration", async () => {
       const base = { ...job(async () => {}), owner: "corporation" as const };
       expect(await scheduler.corporationCandidates(db(), 100, base)).toEqual([2, 3]);
       expect(await scheduler.corporationCandidates(db(), 100, { ...base, anyCorpMember: true })).toEqual([2, 1, 3]);
+    });
+
+    it("keeps disabled accounts' characters out of corporation jobs", async () => {
+      const { setSetting } = await import("@/core/settings");
+      await setSetting("corp.homeCorporationId", 100);
+      await db().insert(schema.characterCorpRoles).values({ characterId: 2, roles: ["Director"] });
+      await db().execute(sql`UPDATE esi_tokens SET scopes = ARRAY['scope.a'], status = 'active'`);
+      const def = { ...job(async () => {}), owner: "corporation" as const, anyCorpMember: true };
+      const corpJobEnabled = async () => {
+        await scheduler.planJobs([def]);
+        return (await db().select().from(schema.syncJobs)).some((r) => r.ownerId === 100 && r.enabled);
+      };
+
+      await db().execute(sql`UPDATE users SET is_disabled = true WHERE id = ${userB}`);
+      expect(await scheduler.corporationCandidates(db(), 100, def)).toEqual([1]);
+      expect(await corpJobEnabled()).toBe(true);
+
+      await db().execute(sql`UPDATE users SET is_disabled = true WHERE id = ${userA}`);
+      expect(await scheduler.corporationCandidates(db(), 100, def)).toEqual([]);
+      expect(await corpJobEnabled()).toBe(false);
     });
   });
 

@@ -1,5 +1,5 @@
 {
-  "id": "86d0a50b-5df8-4a1d-8364-f680b130f0ce",
+  "id": "909af16e-89a8-4fff-8ae8-a1a5b785e827",
   "prevId": "58706156-fcb8-495d-89c8-c472d6266c01",
   "version": "7",
   "dialect": "postgresql",
@@ -4281,12 +4281,6 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
-        },
-        "implants_synced_at": {
-          "name": "implants_synced_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -4369,107 +4363,6 @@
           "columns": [
             "character_id",
             "skill_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.skills_implant_attributes": {
-      "name": "skills_implant_attributes",
-      "schema": "",
-      "columns": {
-        "type_id": {
-          "name": "type_id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "charisma": {
-          "name": "charisma",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "intelligence": {
-          "name": "intelligence",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "memory": {
-          "name": "memory",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "perception": {
-          "name": "perception",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "willpower": {
-          "name": "willpower",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.skills_implants": {
-      "name": "skills_implants",
-      "schema": "",
-      "columns": {
-        "character_id": {
-          "name": "character_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type_id": {
-          "name": "type_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "skills_implants_character_id_type_id_pk": {
-          "name": "skills_implants_character_id_type_id_pk",
-          "columns": [
-            "character_id",
-            "type_id"
           ]
         }
       },
@@ -4909,6 +4802,60 @@
           ]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.appraisal_attempts": {
+      "name": "appraisal_attempts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "appraisal_attempts_user_idx": {
+          "name": "appraisal_attempts_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},

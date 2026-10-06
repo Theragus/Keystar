@@ -73,8 +73,10 @@ docker/                entrypoint, Caddyfile
 2. `/auth/callback` exchanges the code, validates the JWT (signature via CCP's JWKS, issuer, audience contains the
    client id **and** `"EVE Online"`, expiry) and calls `provisionFromSso()`.
 3. Provisioning creates or finds the user, links the character, stores the encrypted refresh token, applies the role
-   policy and detects **character transfers** (the SSO `owner` hash changes → the old account loses the character;
-   an account left without characters is disabled and signed out).
+   policy and detects **character transfers** (the SSO `owner` hash changes → the old account loses the character
+   with its wallet history, mail and industry jobs; an account left without characters is disabled and signed out).
+   A character moved between the player's own EVE accounts and linked back to the same Keystar account hasn't
+   changed hands: it keeps its data; only the owner hash and token are updated and cached ESI responses refetched.
 4. Sessions are random 32-byte tokens; only their SHA-256 hash is stored. 30-day sliding expiry: the database row
    is extended on activity (authoritative) and `src/proxy.ts` renews the cookie on each navigation.
 
@@ -152,13 +154,20 @@ them; its scores, tags and template notes are stored as data and shown in the re
   before bumping it)
 - `ETag` / `If-None-Match` revalidation and `Expires`-based caching in the `esi_cache` table, so jobs can run on a
   timer without spending rate-limit tokens
+  (the entry is written before the job stores the body, so `notModified` and `fromCache` say the body is unchanged,
+  not that it was stored: a job that skips its write on them never repeats a failed write; write idempotently
+  instead)
 - `X-Pages` pagination
 - back-off when the legacy error budget runs low (`X-ESI-Error-Limit-*`) and per rate-limit group on `429`
   (`Retry-After`, `X-Ratelimit-Group`)
 - one automatic token refresh on `401`; `403` raises `EsiForbiddenError` (missing scope or in-game role)
 
-Tokens are refreshed in `src/core/esi/tokens.ts` under a row lock; `invalid_grant` marks the token invalid so the
-pilot sees "Re-authorise".
+Tokens are refreshed in `src/core/esi/tokens.ts`, serialised per character by an advisory lock rather than the
+`esi_tokens` row lock, so scope switches and logins don't wait on CCP. The refresh token SSO returns (it may rotate)
+is committed right after the SSO call, before the new access token is verified; the access token and its scopes are
+stored in a second short transaction. Both writes only apply if the row still holds the refresh token they started
+from, so a login that replaced the token meanwhile wins. `invalid_grant` marks the token invalid so the pilot sees
+"Re-authorise".
 
 ## Sync engine
 
@@ -200,6 +209,7 @@ Current jobs:
 | `intel.housekeeping`             | 6 h      | Retention of killmail digests, pilot profiles and scans    |
 | `intel.corporation-contacts`     | 15 min   | Home corporation contacts (standings), any member's token  |
 | `intel.alliance-contacts`        | 15 min   | Home alliance contacts (standings), any member's token     |
+| `trade.housekeeping`             | 6 h      | Deletes appraisals older than a year, old rate-limit rows  |
 | `wallet.character-transactions`  | 1 h      | Market transactions of characters that opted in to wallets |
 | `wallet.corporation-wallets`     | 1 h      | Corporation balances, journal and transactions, all divisions (Accountant / Junior Accountant) |
 | `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
@@ -274,8 +284,8 @@ character (enabled from the mail page). The page only ever shows the signed-in a
 - **Storage**: `mail_messages` has one row per mailbox (`character_id`, `mail_id`) with the owning account
   (`user_id`). `mail_labels` and `mail_lists` store labels and mailing lists the same way. Mailing-list names come
   only from `mail_lists`, because `/universe/names` can't resolve them. As with the wallet, mail never follows a
-  sold character: it is deleted with the account, when the character is removed, when it is transferred, and on
-  request once mail access is turned off. Mail bypasses the ESI response cache.
+  sold character: it is deleted with the account, when the character is removed, when it is transferred to another
+  account, and on request once mail access is turned off. Mail bypasses the ESI response cache.
 - **Folders**: Inbox, Sent, Corporation and Alliance are the built-in labels 1, 2, 4 and 8. Sent means sent by the
   mailbox's character. Mailing lists come from the recipients, and custom labels are merged by name across
   characters. A mail in several of the account's mailboxes is listed once, with the characters that received it.
@@ -475,7 +485,12 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
   corporation and alliance (own corp/alliance always friendly; otherwise the most specific contact wins, the
   corporation's list before the alliance's); and **history with us** from the killboard tables: kills on us,
   losses to us and the hulls flown against us, plus fights (our killmails with any pasted pilot, clustered by system
-  and a 30-minute gap) with what they brought and who else was there.
+  and a 30-minute gap) with what they brought and who else was there. D-scan types we don't know yet are fetched from
+  ESI (`GET /universe/types/{id}`) within limits, because a pasted made-up id costs a 404 from the per-IP error budget
+  that pauses all ESI calls once drained: at most 50 lookups per paste (most common types first), at most 20 pastes
+  with lookups per user in 10 minutes (`intel_dscan_lookups`, reserved in a locked transaction), none once the shared
+  client reports fewer than 50 errors left, and ids ESI answered 404 for are not asked again for 6 hours. Ships still
+  unknown are left out; known ones always show.
 - **The worker** (`intel.scan-worker`) works through `intel_queue`, one row per pilot shared by every scan, in
   stages: zKillboard statistics for every pilot first (`/api/stats/characterID/`), then each pilot's newest 200
   killmails, highest quick score first, then older pages only until 30 days are covered (at most 3 pages; a stored
@@ -521,10 +536,14 @@ saved under an unguessable id like an appraisal. Only the normalised names are s
 
 - `src/modules/trade/appraisal/parse.ts` turns a paste into candidate (name, quantity) pairs per line: tab
   separated inventory/contract/survey copies (English or German numbers), d-scan, EFT, killmail lines and free text
-  ("x 10", "10x", "10 Name", "Name 10"). Ambiguous lines yield several candidates in order of preference.
+  ("x 10", "10x", "10 Name", "Name 10"). Ambiguous lines yield several candidates in order of preference. A quantity
+  above `MAX_QUANTITY` (10¹²) is not read as a quantity.
 - Names resolve against `eve_types`, then ESI `POST /universe/ids` (case-insensitive exact matches); new types are
   stored through the resolver. Prices are the Jita 4-4 `type_values`; types without a value, or older than two
   hours, are priced live with the same code as the hourly price job, which then keeps them fresh for 14 days after
   the last appraisal that asked for them. An appraisal is refused if any of them can't be priced.
 - An appraisal is a snapshot (items, unit prices, totals, unrecognised lines, input) in `appraisals`, opened by an
-  unguessable id. "Appraise again" creates a new snapshot at current prices.
+  unguessable id. "Appraise again" creates a new snapshot at current prices. A user can start
+  `APPRAISAL_RATE_LIMIT` appraisals per ten minutes (counted in `appraisal_attempts`, so failed, empty and deleted
+  ones count too); `trade.housekeeping` deletes them after
+  `APPRAISAL_RETENTION_DAYS` (a year), and their share links stop working.

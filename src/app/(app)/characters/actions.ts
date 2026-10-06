@@ -22,6 +22,7 @@ import {
   industryJobs,
   walletTransactions,
 } from "@/core/db";
+import { forgetCharacterEsiCache } from "@/core/esi";
 import { optionalScopePermission, optionalScopes } from "@/core/modules/registry";
 import { triggerJobs } from "@/core/sync/scheduler";
 import { ok, refused, type ActionResult } from "@/lib/action-result";
@@ -74,6 +75,7 @@ export async function removeCharacter(characterId: number): Promise<ActionResult
     // character that changed hands meanwhile keeps its new owner's jobs.
     if (removed.length) {
       await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
+      await forgetCharacterEsiCache(tx, characterId);
       await tx
         .update(syncJobs)
         .set({ meta: null })
@@ -85,17 +87,18 @@ export async function removeCharacter(characterId: number): Promise<ActionResult
           ),
         );
     }
+    // This account's imported data goes in the same transaction, so a crash can't leave it behind to resurface on relink.
+    await tx
+      .delete(walletTransactions)
+      .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, user.id)));
+    await tx.delete(walletFees).where(and(eq(walletFees.characterId, characterId), eq(walletFees.userId, user.id)));
+    await tx
+      .delete(miningPnlFeeOverrides)
+      .where(and(eq(miningPnlFeeOverrides.characterId, characterId), eq(miningPnlFeeOverrides.userId, user.id)));
+    await tx.delete(mailMessages).where(and(eq(mailMessages.characterId, characterId), eq(mailMessages.userId, user.id)));
+    await tx.delete(mailLabels).where(and(eq(mailLabels.characterId, characterId), eq(mailLabels.userId, user.id)));
+    await tx.delete(mailLists).where(and(eq(mailLists.characterId, characterId), eq(mailLists.userId, user.id)));
   });
-  await db
-    .delete(walletTransactions)
-    .where(and(eq(walletTransactions.characterId, characterId), eq(walletTransactions.userId, user.id)));
-  await db.delete(walletFees).where(and(eq(walletFees.characterId, characterId), eq(walletFees.userId, user.id)));
-  await db
-    .delete(miningPnlFeeOverrides)
-    .where(and(eq(miningPnlFeeOverrides.characterId, characterId), eq(miningPnlFeeOverrides.userId, user.id)));
-  await db.delete(mailMessages).where(and(eq(mailMessages.characterId, characterId), eq(mailMessages.userId, user.id)));
-  await db.delete(mailLabels).where(and(eq(mailLabels.characterId, characterId), eq(mailLabels.userId, user.id)));
-  await db.delete(mailLists).where(and(eq(mailLists.characterId, characterId), eq(mailLists.userId, user.id)));
   if (user.main?.characterId === characterId) {
     const next = user.characterIds.find((id) => id !== characterId) ?? null;
     await db.update(users).set({ mainCharacterId: next }).where(eq(users.id, user.id));

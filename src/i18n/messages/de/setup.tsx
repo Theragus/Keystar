@@ -15,6 +15,14 @@ export const setup: typeof en = {
   progress: (step: number, total: number) => `Schritt ${n(step)} von ${n(total)}`,
   back: "Zurück",
   continue: "Weiter",
+  toast: {
+    failed: "Dieser Schritt konnte nicht gespeichert werden",
+    errors: {
+      forbidden: "Du darfst die Einstellungen nicht mehr ändern.",
+      invalidCorporation: "Wähle eine Corporation oder gib eine numerische Corporation-ID ein.",
+      unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
+    },
+  },
   corporation: {
     title: "Deine Heimat-Corporation",
     intro:

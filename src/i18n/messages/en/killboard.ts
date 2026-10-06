@@ -177,5 +177,14 @@ export const killboard = {
     claudeHint: "Set ANTHROPIC_API_KEY on the server to have Claude write these reports.",
     rewrite: "Rewrite report",
     rewriting: "Writing…",
+    toast: {
+      rewritten: "Situation report rewritten",
+      failed: "Couldn't rewrite the situation report",
+      errors: {
+        forbidden: "You no longer have permission to manage the killboard.",
+        noCorporation: "Set the home corporation first (Admin → Settings).",
+        unknown: "Something went wrong. Reload the page and try again.",
+      },
+    },
   },
 };
