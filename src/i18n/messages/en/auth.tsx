@@ -17,10 +17,11 @@ export const auth = {
     genericError: "Something went wrong.",
     signIn: "Log in with EVE Online",
     register: "New here? Register & grant ESI access",
-    privacy: (site: ReactNode) => (
+    /** `link` renders the link to EVE's authorised apps page. */
+    privacy: (link: (text: string) => ReactNode) => (
       <>
         Signing in only proves who you are — no ESI access is requested. Tokens are requested separately, are encrypted
-        at rest, and you can revoke them any time at {site}.
+        at rest, and you can revoke them any time in {link("Authorized Apps")} on the EVE developers site.
       </>
     ),
     setupTitle: "Server setup needed",

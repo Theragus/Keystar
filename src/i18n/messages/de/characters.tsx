@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { characters as en } from "../en/characters";
 import { FORMATTERS } from "@/lib/format";
 
@@ -116,7 +117,11 @@ export const characters: typeof en = {
     wallet:
       "Wallet-Zugriff ist optional und gilt pro Charakter (Mining-GuV → Einstellungen). Importierte Wallet-Transaktionen siehst nur du, und sie werden gelöscht, wenn du den Charakter entfernst.",
     mail: "Mail-Zugriff ist optional und gilt pro Charakter (EVE-Mail). Importierte Mails siehst nur du, und sie werden gelöscht, wenn du den Charakter entfernst.",
-    revoke:
-      "Optionalen Zugriff kannst du hier in Keystar jederzeit abschalten; eine neue Autorisierung entfernt ihn dann aus dem Token. Um Keystar ganz zu widerrufen, nutze „Third-Party Applications“ auf der EVE-Online-Website.",
+    revoke: (link: (text: string) => ReactNode) => (
+      <>
+        Optionalen Zugriff kannst du hier in Keystar jederzeit abschalten; eine neue Autorisierung entfernt ihn dann aus
+        dem Token. Um Keystar ganz zu widerrufen, nutze {link("Authorized Apps")} auf der EVE-Entwicklerseite.
+      </>
+    ),
   },
 };

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { FORMATTERS } from "@/lib/format";
 
 const n = FORMATTERS.en.integer;
@@ -120,7 +121,12 @@ export const characters = {
     wallet:
       "Wallet access is optional and per character (Mining P&L → Settings). Imported wallet transactions are only ever shown to you, and are deleted when you remove the character.",
     mail: "Mail access is optional and per character (EVE Mail). Imported mail is only ever shown to you, and is deleted when you remove the character.",
-    revoke:
-      "Optional access can be switched off here in Keystar any time; re-authorising then removes it from the token. To revoke Keystar entirely, use Third-Party Applications on the EVE Online website.",
+    /** `link` renders the link to EVE's authorised apps page. */
+    revoke: (link: (text: string) => ReactNode) => (
+      <>
+        Optional access can be switched off here in Keystar any time; re-authorising then removes it from the token. To
+        revoke Keystar entirely, use {link("Authorized Apps")} on the EVE developers site.
+      </>
+    ),
   },
 };
