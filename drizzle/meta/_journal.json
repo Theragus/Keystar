@@ -127,6 +127,13 @@
       "when": 1791304530050,
       "tag": "0017_intel_dscan_lookups",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791305645821,
+      "tag": "0018_skills_implants",
+      "breakpoints": true
     }
   ]
 }

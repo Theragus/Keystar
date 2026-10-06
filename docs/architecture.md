@@ -216,6 +216,7 @@ Current jobs:
 | `social.character-mail`          | 5 min    | EVE mail, labels and mailing lists of characters that opted in to mail |
 | `skills.queue`                   | 15 min   | Skill queue of characters that share their skills; static skill attributes and ranks |
 | `skills.character`               | 1 h      | Trained skills, skill points and attributes of characters that share their skills |
+| `skills.implants`                | 1 h      | Active-clone implants and their attribute bonuses, for characters that share their skills |
 
 ## System info and support package
 
@@ -422,9 +423,20 @@ the owner deletes them.
   (total and unallocated SP, the five attributes, bonus remaps and the yearly remap date).
 - **Static data**: `skills_type_attributes` holds each queued skill's primary and secondary attribute (dogma
   attribute ids 164–168) and rank, read from the `dogma_attributes` of `/universe/types/{id}`.
-- **Planned on top of it**: a remap optimiser (a skill trains at primary + secondary / 2 SP per minute and a level
-  needs rank × that level's base SP, so queue, attributes and `skills_type_attributes` are all it needs; implants
-  would add `esi-clones.read_implants.v1`), and corporation skill plans checked against `skills_character_skills`.
+- **Implants**: `esi-clones.read_implants.v1` is part of skill sharing (`SKILLS_SCOPES`): "Share skills" requests
+  it, and Keystar switches it on and off with the skills scopes. Being shared only takes the queue and skills scopes
+  (`SKILLS_CORE_SCOPES`), so characters that shared before implants were added stay shared and are asked to
+  re-authorise. `skills.implants` replaces `skills_implants` with the active clone's implants;
+  `skills_implant_attributes` caches each implant's attribute bonuses (dogma 175–179, zeros for implants without
+  one), read before the implant names so a name lookup failure can't hold them up.
+- **Remap optimiser** (`/skills/remap`, `src/modules/skills/remap.ts`, pure): a skill trains at primary + secondary
+  / 2 SP per minute. ESI's attributes include implant bonuses, so the base is the ESI attributes minus implants. The
+  SP still to train is summed per primary/secondary pair, and every legal remap (2,885: 17–27 per attribute, 99 in
+  total) is timed with the implants on top; ties keep the current attributes, then the closest remap. When the base
+  isn't a legal remap (unknown implants or a booster), nothing is recommended: unknown implants change which remap is
+  fastest, not only the times. A queue shorter than 180 days after the remap (or as it trains now, without a
+  recommendation) gets a warning, since the yearly remap only returns after 365 days.
+- **Planned on top of it**: corporation skill plans checked against `skills_character_skills`.
   ESI has no skill-plan endpoint, so plans would be pasted from the in-game "copy to clipboard" text and resolved
   with `/universe/ids`.
 
