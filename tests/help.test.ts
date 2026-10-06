@@ -91,8 +91,10 @@ describe("the scopes topic", () => {
     expect(groups.optional.flatMap((g) => g.scopes.map((s) => s.scope)).sort()).toEqual(optionalScopes());
     expect(new Set(groups.optional.map((g) => g.href)).size).toBe(groups.optional.length);
     const skills = groups.optional.find((g) => g.href === "/skills/settings");
-    expect(skills?.scopes).toHaveLength(2);
-    expect(skills?.label).toBe(t.skills.module.scopes.queueLabel);
+    const skillScopes = allScopeRequirements().filter((s) => s.optional && s.manageHref === "/skills/settings");
+    expect(skills?.scopes.map((s) => s.scope)).toEqual(skillScopes.map((s) => s.scope));
+    expect(skills?.scopes.length).toBeGreaterThan(1);
+    expect(skills?.label).toBe(skillScopes[0]!.label!(t));
   });
 
   it("offers the switch only with the permission to use it", () => {

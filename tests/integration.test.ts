@@ -2348,8 +2348,8 @@ describe.skipIf(!enabled)("integration", async () => {
   });
 
   describe("skills", async () => {
-    const { skillQueueJob, characterSkillsJob } = await import("@/modules/skills/jobs");
-    const { SKILLQUEUE_SCOPE, SKILLS_SCOPE } = await import("@/modules/skills/module");
+    const { skillQueueJob, characterSkillsJob, implantsJob } = await import("@/modules/skills/jobs");
+    const { IMPLANTS_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE } = await import("@/modules/skills/module");
     const skills = await import("@/modules/skills/queries");
 
     type QueueItem = { queue_position: number; skill_id: number; finished_level: number; start_date?: string; finish_date?: string;
@@ -2357,6 +2357,12 @@ describe.skipIf(!enabled)("integration", async () => {
     let queues: Record<number, QueueItem[]> = {};
     let trained: Record<number, { skill_id: number; trained_skill_level: number; active_skill_level: number; skillpoints_in_skill: number }[]> = {};
     let typeRequests: number[] = [];
+    let implants: Record<number, number[]> = {};
+    // Ocular Filter - Standard (+4 perception) and an implant without attribute bonuses.
+    const IMPLANT_DOGMA: Record<number, { attribute_id: number; value: number }[]> = {
+      10216: [175, 176, 177, 178, 179].map((id) => ({ attribute_id: id, value: id === 178 ? 4 : 0 })),
+      9957: [{ attribute_id: 331, value: 7 }],
+    };
     const esi = new EsiClient({
       baseUrl: "https://esi.test",
       userAgent: "t",
@@ -2369,11 +2375,14 @@ describe.skipIf(!enabled)("integration", async () => {
         const type = /^\/universe\/types\/(\d+)$/.exec(path);
         if (type) {
           typeRequests.push(Number(type[1]));
+          const implantDogma = IMPLANT_DOGMA[Number(type[1])];
+          if (implantDogma) return reply({ type_id: Number(type[1]), name: "Implant", group_id: 745, published: true, dogma_attributes: implantDogma });
           return reply({ type_id: Number(type[1]), name: "Skill", group_id: 255, published: true,
             dogma_attributes: [{ attribute_id: 180, value: 165 }, { attribute_id: 181, value: 168 }, { attribute_id: 275, value: 2 }] });
         }
-        const m = /^\/characters\/(\d+)\/(skillqueue|skills|attributes)$/.exec(path)!;
+        const m = /^\/characters\/(\d+)\/(skillqueue|skills|attributes|implants)$/.exec(path)!;
         const id = Number(m[1]);
+        if (m[2] === "implants") return reply(implants[id] ?? []);
         if (m[2] === "skillqueue") return reply(queues[id] ?? []);
         if (m[2] === "skills") return reply({ skills: trained[id] ?? [], total_sp: 5_000_000, unallocated_sp: 1000 });
         return reply({ charisma: 19, intelligence: 27, memory: 21, perception: 20, willpower: 20, bonus_remaps: 1,
@@ -2386,6 +2395,7 @@ describe.skipIf(!enabled)("integration", async () => {
 
     beforeEach(async () => {
       typeRequests = [];
+      implants = { 2: [10216, 9957] };
       queues = {
         2: [
           { queue_position: 0, skill_id: 3300, finished_level: 4, start_date: future(-1), finish_date: future(10),
@@ -2399,6 +2409,8 @@ describe.skipIf(!enabled)("integration", async () => {
       // Names are already known, so ensureTypes stays off the network.
       await db().insert(schema.eveGroups).values({ groupId: 255, name: "Gunnery", categoryId: 16 });
       await db().insert(schema.eveTypes).values([3300, 3301, 3302].map((typeId) => ({ typeId, name: `Skill ${typeId}`, groupId: 255 })));
+      await db().insert(schema.eveGroups).values({ groupId: 745, name: "Cyber Learning", categoryId: 20 });
+      await db().insert(schema.eveTypes).values([10216, 9957].map((typeId) => ({ typeId, name: `Implant ${typeId}`, groupId: 745 })));
       await db().insert(schema.characters).values({ characterId: 4, userId: userA, name: "Alpha Abroad", corporationId: 200, ownerHash: "h4" });
       await db().insert(schema.esiTokens).values([
         { characterId: 1, refreshTokenEnc: "x", scopes: [] },
@@ -2466,6 +2478,53 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(ownB.characters.map((c) => [c.characterId, c.queueEnabled])).toEqual([[2, false], [3, false]]);
       expect(ownB.queues.size).toBe(0);
       expect((await skills.getSkillsAccess(userB)).map((a) => [a.characterId, a.granted, a.hasData])).toEqual([[2, false, true], [3, false, false]]);
+    });
+
+    it("stores implants with their attribute bonuses for the remap optimiser", async () => {
+      await skillQueueJob.run(ctx(2));
+      expect(await skills.getRemapInputs([2], [3300, 3301, 3302])).toMatchObject({ implantsShared: new Set() });
+
+      await db().update(schema.esiTokens).set({ scopes: [SKILLQUEUE_SCOPE, SKILLS_SCOPE, IMPLANTS_SCOPE] }).where(sql`character_id = 2`);
+      // Shared but not read yet: implants unknown, not "none".
+      expect((await skills.getRemapInputs([2], [])).implants.get(2)).toBeNull();
+
+      expect((await implantsJob.run(ctx(2)))?.summary).toBe("2 implants");
+      const attrs = await db().select().from(schema.skillsImplantAttributes);
+      expect(attrs.map((a) => [a.typeId, a.perception]).sort()).toEqual([[10216, 4], [9957, 0]].sort());
+      const inputs = await skills.getRemapInputs([2], [3300, 3301, 3302]);
+      expect(inputs.implants.get(2)).toEqual({ charisma: 0, intelligence: 0, memory: 0, perception: 4, willpower: 0 });
+      expect(inputs.implantsShared.has(2)).toBe(true);
+      // Skill 3302 was never queued, so its attributes are unknown.
+      expect([...inputs.skillAttributes.keys()].sort()).toEqual([3300, 3301]);
+
+      // Unplugged implants disappear; known bonuses aren't fetched again.
+      implants[2] = [];
+      typeRequests = [];
+      await db().execute(sql`DELETE FROM esi_cache`);
+      expect((await implantsJob.run(ctx(2)))?.summary).toBe("0 implants");
+      expect((await skills.getRemapInputs([2], [])).implants.get(2)).toEqual({ charisma: 0, intelligence: 0, memory: 0, perception: 0, willpower: 0 });
+      expect(typeRequests).toEqual([]);
+    });
+
+    it("stores implant bonuses even when their names can't be resolved", async () => {
+      const { getEsi } = await import("@/core/esi");
+      // Unknown names send ensureTypes to ESI, where the implant's group can't be read.
+      await db().execute(sql`DELETE FROM eve_types WHERE type_id = 10216`);
+      const names = vi.spyOn(getEsi(), "get").mockImplementation(async (path: string) => {
+        if (path.startsWith("/universe/groups/")) throw new Error("ESI down");
+        return { data: { type_id: 10216, name: "Ocular Filter - Standard", group_id: 99_999 } } as never;
+      });
+      implants[2] = [10216];
+      expect((await implantsJob.run(ctx(2)))?.summary).toBe("1 implant");
+      names.mockRestore();
+      const [bonus] = await db().select().from(schema.skillsImplantAttributes);
+      expect(bonus).toMatchObject({ typeId: 10216, perception: 4 });
+    });
+
+    it("counts a character as sharing with the queue and skills scopes alone", async () => {
+      const [access] = await skills.getSkillsAccess(userB);
+      expect(access).toMatchObject({ characterId: 2, granted: true, implantsGranted: false });
+      expect((await skills.getRemapInputs([2], [])).implantsShared.has(2)).toBe(false);
     });
 
     it("switches sharing off and back on in Keystar while the token holds both scopes", async () => {

@@ -20,6 +20,7 @@ export const setup: typeof en = {
     errors: {
       forbidden: "Du darfst die Einstellungen nicht mehr ändern.",
       invalidCorporation: "Wähle eine Corporation oder gib eine numerische Corporation-ID ein.",
+      invalidValuation: "Wähle aus der Liste, wonach Erz bewertet wird. Lade die Seite neu, falls sie veraltet wirkt.",
       unknown: "Etwas ist schiefgelaufen. Lade die Seite neu und versuche es noch einmal.",
     },
   },

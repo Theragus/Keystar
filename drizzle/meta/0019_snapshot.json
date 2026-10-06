@@ -1,6 +1,6 @@
 {
-  "id": "e25e9ee6-2502-4974-8de3-6126b6a73751",
-  "prevId": "91867c53-8518-4041-8c6c-dc33efd7c06b",
+  "id": "3e55de84-db10-4d21-b120-bab607203806",
+  "prevId": "e25e9ee6-2502-4974-8de3-6126b6a73751",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -568,6 +568,12 @@
         "last_login_at": {
           "name": "last_login_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seen_version": {
+          "name": "seen_version",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },

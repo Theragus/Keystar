@@ -138,7 +138,8 @@ character, so it lives in one module.
 - ✅ **Skill queues** (opt-in per character, `esi-skills.read_skillqueue.v1`, `esi-skills.read_skills.v1`): skill in
   training with progress, finish time of every queued skill and of the whole queue, paused/empty/ending-soon
   warnings, attributes and remap availability; own characters, plus a corporation view for directors
-- 💡 Remap optimiser: the attribute remap (yearly or bonus) that finishes the current queue fastest
+- ✅ **Remap optimiser** (`esi-clones.read_implants.v1` with skill sharing, for implants): the attribute remap that finishes the
+  current queue fastest, time saved, remap availability, and a warning for queues shorter than 180 days
 - 💡 Corporation skill plans: paste a plan copied from the game, see which members have it trained and what is missing
 
 ### 📝 Assets / inventory

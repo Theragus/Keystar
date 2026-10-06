@@ -6,6 +6,16 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Upgrade notes
+
+Sharing skills now includes the implants of the active clone, so the remap optimiser knows the base attributes.
+
+1. Add `esi-clones.read_implants.v1` to the scopes of your EVE application at
+   <https://developers.eveonline.com/applications>. Without it, "Share skills" on the Skills access page fails at the
+   EVE login with `invalid_scope`.
+2. Update as usual; the database migrations run on start. Characters that already share their skills keep sharing;
+   they are asked to re-authorise once to include their implants.
+
 ### Added
 
 - **Help, welcome tour and What's new.** A new **Help** button next to Alerts in the top bar (or the `?` key on any
@@ -25,9 +35,14 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   release notes on GitHub; admins also see what the update needs on the server. Pages that are new in the release
   get a dot in the sidebar until you open them, and the version in the sidebar footer opens What's new again.
   Release PRs add the highlights in English and German (`docs/releasing.md`).
+  ([PR #182](https://github.com/Theragus/Keystar/pull/182))
 
 ### Fixed
 
+- Saving the settings page or the setup walkthrough's access step with a price source or price date Keystar doesn't
+  know (a page left open across an update, or an edited form) now explains which field to fix in a toast and changes
+  nothing, instead of failing with "Something went wrong".
+  ([#145](https://github.com/Theragus/Keystar/issues/145))
 - A pasted d-scan with made-up type ids can no longer pause ESI for the whole web app. Unknown types are looked up on
   ESI at most 50 per paste and for at most 20 pastes per user in 10 minutes, lookups stop while the shared ESI error
   budget is low, and ids ESI doesn't know are not asked again for 6 hours. Ships that couldn't be looked up yet are
@@ -78,6 +93,18 @@ Industry jobs need two optional character scopes.
   Pointing at a slice highlights its row in the queue table and the other way round.
 - **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
   container's memory against its limit, free host memory and the host's load average.
+- **Remap optimiser.** A new page under Pilots recommends the neural remap that trains each character's current skill
+  queue the fastest.
+  - Tries every legal remap (17–27 per attribute, 99 points) against the SP still to train and shows the attributes
+    to remap to, the queue time now and after the remap, and the time saved.
+  - Warns when the queue runs less than 180 days with the recommended attributes: the yearly remap only comes back
+    after 365 days and bonus remaps are gone once used.
+  - Shows whether the yearly remap or a bonus remap is available, and when the next one is.
+  - Skill sharing now also reads the active clone's implants (`esi-clones.read_implants.v1`), so their bonuses are
+    told apart from the base attributes; the remap only redistributes base points. Characters that shared before
+    are taken as implant-free until they re-authorise, and the page says so. When the attributes don't add up to 99
+    (implants or a booster Keystar doesn't know about), no remap is recommended.
+  - Own characters, plus the corporation view for directors; linked from each character on Skill queues.
 
 ### Changed
 
