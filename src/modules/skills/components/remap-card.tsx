@@ -5,6 +5,7 @@ import { Portrait } from "@/components/ui/eve-image";
 import { Glass } from "@/components/ui/glass";
 import type { Messages } from "@/i18n/messages";
 import type { Formatter } from "@/lib/format";
+import { SKILLS_MANAGE_HREF } from "../module";
 import type { QueueRow, SkillCharacter } from "../queries";
 import { ATTRIBUTE_NAMES, durationParts, summarizeQueue, type SkillTrainingAttributes } from "../queue";
 import { isShortQueue, optimizeRemap, remapAvailability, type AttributeSet } from "../remap";
@@ -16,7 +17,6 @@ export function RemapCard({
   skillAttributes,
   implants,
   implantsShared,
-  shareImplantsHref,
   t,
   f,
   now,
@@ -26,9 +26,8 @@ export function RemapCard({
   skillAttributes: Map<number, SkillTrainingAttributes>;
   /** Summed implant bonuses; null when unknown. */
   implants: AttributeSet | null;
+  /** The token holds the implants scope (characters that shared before it was added don't). */
   implantsShared: boolean;
-  /** Re-authorise link adding the implants scope (own characters only). */
-  shareImplantsHref: string | null;
   t: Messages["skills"];
   f: Formatter;
   now: Date;
@@ -68,8 +67,17 @@ export function RemapCard({
   const notes: string[] = [];
   if (summary.status === "paused") notes.push(r.notes.paused);
   if (result.unknownEntries) notes.push(r.notes.unknownEntries(result.unknownEntries));
-  if (!result.comparable) notes.push(r.notes.notComparable(f.integer(ATTRIBUTE_NAMES.reduce((sum, n) => sum + c.attributes![n], 0))));
-  else if (!implantsShared) notes.push(r.notes.implantsNotShared);
+  if (!result.comparable) {
+    const total = f.integer(ATTRIBUTE_NAMES.reduce((sum, n) => sum + c.attributes![n], 0));
+    // Why the base attributes aren't known decides what the pilot can do about it.
+    notes.push(
+      !implantsShared
+        ? r.notes.notComparable(total)
+        : implants === null
+          ? r.notes.notComparableWaiting(total)
+          : r.notes.notComparableStale(total),
+    );
+  } else if (!implantsShared) notes.push(r.notes.implantsNotShared);
   else if (implants === null) notes.push(r.notes.implantsWaiting);
   else if (result.implantsUncertain) notes.push(r.notes.implantsUncertain);
 
@@ -173,9 +181,9 @@ export function RemapCard({
           ))}
         </ul>
       )}
-      {!implantsShared && shareImplantsHref && (
-        <ButtonLink href={shareImplantsHref} size="sm">
-          <KeyRound className="size-3.5" aria-hidden /> {r.notes.shareImplants}
+      {!implantsShared && c.isOwn && (
+        <ButtonLink href={SKILLS_MANAGE_HREF} size="sm">
+          <KeyRound className="size-3.5" aria-hidden /> {r.notes.includeImplants}
         </ButtonLink>
       )}
 

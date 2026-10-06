@@ -1,4 +1,4 @@
-import { Brain, GraduationCap, KeyRound, Trash2 } from "lucide-react";
+import { GraduationCap, KeyRound, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { ActionForm } from "@/components/ui/action-form";
 import { StatusBadge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { requirePermission } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { reauthorizeHref } from "@/core/modules/registry";
 import { getI18n } from "@/i18n/server";
-import { IMPLANTS_SCOPE, SKILLS_MANAGE_HREF, SKILLS_PERMISSIONS, SKILLS_SCOPES } from "@/modules/skills/module";
+import { SKILLS_MANAGE_HREF, SKILLS_PERMISSIONS, SKILLS_SCOPES } from "@/modules/skills/module";
 import { getSkillsAccess } from "@/modules/skills/queries";
 import { deleteSkillData, setSkillsSharing } from "../actions";
 
@@ -66,7 +66,7 @@ export default async function SkillsSettingsPage() {
                         ? m.kept
                         : m.nothing}
                     {anyGranted && a.lastStatus === "error" && a.lastError ? ` · ${a.lastError}` : ""}
-                    {a.granted && a.implantsGranted ? ` · ${m.implants.shared}` : ""}
+                    {a.granted ? ` · ${a.implantsGranted ? m.implants.shared : m.implants.missing}` : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -98,20 +98,7 @@ export default async function SkillsSettingsPage() {
                       <GraduationCap className="size-3.5" aria-hidden /> {m.enable}
                     </ButtonLink>
                   )}
-                  {a.granted && !a.implantsGranted && a.tokenStatus === "active" && !demo && (
-                    <ButtonLink
-                      href={reauthorizeHref(a.grantedScopes, {
-                        add: [IMPLANTS_SCOPE],
-                        returnTo: SKILLS_MANAGE_HREF,
-                        characterId: a.characterId,
-                      })}
-                      size="sm"
-                      title={m.implants.hint}
-                    >
-                      <Brain className="size-3.5" aria-hidden /> {m.implants.enable}
-                    </ButtonLink>
-                  )}
-                  {anyGranted && a.tokenStatus === "invalid" && !demo && (
+                  {anyGranted && (a.tokenStatus === "invalid" || (a.granted && !a.implantsGranted)) && !demo && (
                     <ButtonLink href={enable} size="sm" variant="primary">
                       <KeyRound className="size-3.5" aria-hidden /> {m.reauthorize}
                     </ButtonLink>
@@ -135,7 +122,7 @@ export default async function SkillsSettingsPage() {
         </div>
         <ul className="mt-4 list-disc space-y-1 pl-4 text-xs text-ink-3">
           <li>{m.notes.corp}</li>
-          <li>{m.implants.hint}</li>
+          <li>{m.notes.implants}</li>
           <li>{m.notes.stop}</li>
         </ul>
       </Panel>

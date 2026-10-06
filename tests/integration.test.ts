@@ -2506,6 +2506,27 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(typeRequests).toEqual([]);
     });
 
+    it("stores implant bonuses even when their names can't be resolved", async () => {
+      const { getEsi } = await import("@/core/esi");
+      // Unknown names send ensureTypes to ESI, where the implant's group can't be read.
+      await db().execute(sql`DELETE FROM eve_types WHERE type_id = 10216`);
+      const names = vi.spyOn(getEsi(), "get").mockImplementation(async (path: string) => {
+        if (path.startsWith("/universe/groups/")) throw new Error("ESI down");
+        return { data: { type_id: 10216, name: "Ocular Filter - Standard", group_id: 99_999 } } as never;
+      });
+      implants[2] = [10216];
+      expect((await implantsJob.run(ctx(2)))?.summary).toBe("1 implant");
+      names.mockRestore();
+      const [bonus] = await db().select().from(schema.skillsImplantAttributes);
+      expect(bonus).toMatchObject({ typeId: 10216, perception: 4 });
+    });
+
+    it("counts a character as sharing with the queue and skills scopes alone", async () => {
+      const [access] = await skills.getSkillsAccess(userB);
+      expect(access).toMatchObject({ characterId: 2, granted: true, implantsGranted: false });
+      expect((await skills.getRemapInputs([2], [])).implantsShared.has(2)).toBe(false);
+    });
+
     it("switches sharing off and back on in Keystar while the token holds both scopes", async () => {
       const { disableOptionalScope, enableOptionalScope } = await import("@/core/auth/scope-switch");
       for (const scope of [SKILLQUEUE_SCOPE, SKILLS_SCOPE]) await disableOptionalScope(2, scope);

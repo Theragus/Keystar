@@ -120,8 +120,8 @@ When future modules (assets) are added, add their scopes to the application as w
 > the EVE login with `invalid_scope`. Nobody is asked for the scopes unless they share their skills themselves.
 
 > **Upgrading to the release with the remap optimiser (see the CHANGELOG):** add `esi-clones.read_implants.v1` to the
-> EVE application. Without it, "Share implants" fails at the EVE login with `invalid_scope`; sharing skills keeps
-> working. Nobody is asked for the scope unless they share their implants themselves.
+> EVE application. "Share skills" now requests it along with the skills scopes, so without it that EVE login fails
+> with `invalid_scope`. Characters that already share keep sharing until they re-authorise.
 
 > **Upgrading to the release with EVE Mail (see the CHANGELOG):** add `esi-mail.read_mail.v1` to the EVE application.
 > Without it, "Enable mail" on the EVE Mail page fails at the EVE login with `invalid_scope`. Nobody is asked for the

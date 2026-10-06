@@ -216,7 +216,7 @@ Current jobs:
 | `social.character-mail`          | 5 min    | EVE mail, labels and mailing lists of characters that opted in to mail |
 | `skills.queue`                   | 15 min   | Skill queue of characters that share their skills; static skill attributes and ranks |
 | `skills.character`               | 1 h      | Trained skills, skill points and attributes of characters that share their skills |
-| `skills.implants`                | 1 h      | Active-clone implants and their attribute bonuses, for characters that share implants |
+| `skills.implants`                | 1 h      | Active-clone implants and their attribute bonuses, for characters that share their skills |
 
 ## System info and support package
 
@@ -423,10 +423,12 @@ the owner deletes them.
   (total and unallocated SP, the five attributes, bonus remaps and the yearly remap date).
 - **Static data**: `skills_type_attributes` holds each queued skill's primary and secondary attribute (dogma
   attribute ids 164–168) and rank, read from the `dogma_attributes` of `/universe/types/{id}`.
-- **Implants**: `esi-clones.read_implants.v1` is a separate opt-in ("Share implants" on the Skills access page), so
-  installs whose EVE application lacks it can still share skills. `skills.implants` replaces `skills_implants` with
-  the active clone's implants; `skills_implant_attributes` caches each implant's attribute bonuses (dogma 175–179,
-  zeros for implants without one). Switching skill sharing off or back on switches the implants scope along.
+- **Implants**: `esi-clones.read_implants.v1` is part of skill sharing (`SKILLS_SCOPES`): "Share skills" requests
+  it, and Keystar switches it on and off with the skills scopes. Being shared only takes the queue and skills scopes
+  (`SKILLS_CORE_SCOPES`), so characters that shared before implants were added stay shared and are asked to
+  re-authorise. `skills.implants` replaces `skills_implants` with the active clone's implants;
+  `skills_implant_attributes` caches each implant's attribute bonuses (dogma 175–179, zeros for implants without
+  one), read before the implant names so a name lookup failure can't hold them up.
 - **Remap optimiser** (`/skills/remap`, `src/modules/skills/remap.ts`, pure): a skill trains at primary + secondary
   / 2 SP per minute. ESI's attributes include implant bonuses, so the base is the ESI attributes minus implants. The
   SP still to train is summed per primary/secondary pair, and every legal remap (2,885: 17–27 per attribute, 99 in

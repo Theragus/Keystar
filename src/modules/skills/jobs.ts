@@ -65,52 +65,75 @@ export function queueRows(characterId: number, entries: EsiQueueEntry[], now: Da
   }));
 }
 
+type Dogma = { attribute_id: number; value: number }[] | undefined;
+
 /**
- * Stores primary/secondary attribute and rank for skills not seen before. `ensureTypes` has usually just fetched the
- * same /universe/types responses, so these come from the ESI cache.
+ * Caches data read from the dogma attributes of /universe/types/{id} for types not seen before: `known` lists the ids
+ * already stored, `parse` turns a type's dogma into a row (null to skip it), `store` inserts the new rows. `ensureTypes`
+ * has often just fetched the same responses, so these usually come from the ESI cache.
  */
-export async function ensureSkillAttributes(esi: EsiClient, db: Db, skillIds: number[]): Promise<void> {
-  const wanted = [...new Set(skillIds)];
+async function ensureTypeDogma<Row>(
+  esi: EsiClient,
+  typeIds: number[],
+  what: string,
+  known: (ids: number[]) => Promise<number[]>,
+  parse: (typeId: number, dogma: Dogma) => Row | null,
+  store: (rows: Row[]) => Promise<unknown>,
+): Promise<void> {
+  const wanted = [...new Set(typeIds)];
   if (!wanted.length) return;
-  const known = await db
-    .select({ id: skillsTypeAttributes.typeId })
-    .from(skillsTypeAttributes)
-    .where(inArray(skillsTypeAttributes.typeId, wanted));
-  const knownSet = new Set(known.map((r) => r.id));
-  const missing = wanted.filter((id) => !knownSet.has(id));
-  const rows: (typeof skillsTypeAttributes.$inferInsert)[] = [];
-  await mapLimit(missing, 6, async (typeId) => {
-    try {
-      const res = await esi.get<{ dogma_attributes?: { attribute_id: number; value: number }[] }>(`/universe/types/${typeId}`);
-      const parsed = parseSkillDogma(res.data.dogma_attributes);
-      if (parsed) rows.push({ typeId, ...parsed });
-    } catch (err) {
-      log.warn("Could not read skill attributes", { typeId, error: (err as Error).message });
-    }
-  });
-  if (rows.length) await db.insert(skillsTypeAttributes).values(rows).onConflictDoNothing();
+  const knownSet = new Set(await known(wanted));
+  const rows: Row[] = [];
+  await mapLimit(
+    wanted.filter((id) => !knownSet.has(id)),
+    6,
+    async (typeId) => {
+      try {
+        const res = await esi.get<{ dogma_attributes?: Dogma }>(`/universe/types/${typeId}`);
+        const row = parse(typeId, res.data.dogma_attributes);
+        if (row) rows.push(row);
+      } catch (err) {
+        log.warn(`Could not read ${what}`, { typeId, error: (err as Error).message });
+      }
+    },
+  );
+  if (rows.length) await store(rows);
+}
+
+/** Stores primary/secondary attribute and rank for skills not seen before. */
+export function ensureSkillAttributes(esi: EsiClient, db: Db, skillIds: number[]): Promise<void> {
+  return ensureTypeDogma(
+    esi,
+    skillIds,
+    "skill attributes",
+    async (ids) =>
+      (
+        await db.select({ id: skillsTypeAttributes.typeId }).from(skillsTypeAttributes).where(inArray(skillsTypeAttributes.typeId, ids))
+      ).map((r) => r.id),
+    (typeId, dogma) => {
+      const parsed = parseSkillDogma(dogma);
+      return parsed ? { typeId, ...parsed } : null;
+    },
+    (rows) => db.insert(skillsTypeAttributes).values(rows).onConflictDoNothing(),
+  );
 }
 
 /** Stores the attribute bonuses of implant types not seen before (zeros for implants without one). */
-export async function ensureImplantAttributes(esi: EsiClient, db: Db, typeIds: number[]): Promise<void> {
-  const wanted = [...new Set(typeIds)];
-  if (!wanted.length) return;
-  const known = await db
-    .select({ id: skillsImplantAttributes.typeId })
-    .from(skillsImplantAttributes)
-    .where(inArray(skillsImplantAttributes.typeId, wanted));
-  const knownSet = new Set(known.map((r) => r.id));
-  const missing = wanted.filter((id) => !knownSet.has(id));
-  const rows: (typeof skillsImplantAttributes.$inferInsert)[] = [];
-  await mapLimit(missing, 6, async (typeId) => {
-    try {
-      const res = await esi.get<{ dogma_attributes?: { attribute_id: number; value: number }[] }>(`/universe/types/${typeId}`);
-      rows.push({ typeId, ...(parseImplantDogma(res.data.dogma_attributes) ?? zeroAttributes()) });
-    } catch (err) {
-      log.warn("Could not read implant attributes", { typeId, error: (err as Error).message });
-    }
-  });
-  if (rows.length) await db.insert(skillsImplantAttributes).values(rows).onConflictDoNothing();
+export function ensureImplantAttributes(esi: EsiClient, db: Db, typeIds: number[]): Promise<void> {
+  return ensureTypeDogma(
+    esi,
+    typeIds,
+    "implant attributes",
+    async (ids) =>
+      (
+        await db
+          .select({ id: skillsImplantAttributes.typeId })
+          .from(skillsImplantAttributes)
+          .where(inArray(skillsImplantAttributes.typeId, ids))
+      ).map((r) => r.id),
+    (typeId, dogma) => ({ typeId, ...(parseImplantDogma(dogma) ?? zeroAttributes()) }),
+    (rows) => db.insert(skillsImplantAttributes).values(rows).onConflictDoNothing(),
+  );
 }
 
 export const skillQueueJob: JobDefinition = {
@@ -239,8 +262,9 @@ export const implantsJob: JobDefinition = {
         .values({ characterId: id, implantsSyncedAt: now })
         .onConflictDoUpdate({ target: skillsCharacter.characterId, set: { implantsSyncedAt: now } });
     });
-    await ensureTypes(typeIds);
+    // The bonuses are what the remap optimiser needs; names are a nicety, so their failure doesn't fail the run.
     await ensureImplantAttributes(esi, db, typeIds);
+    await ensureTypes(typeIds).catch((err: Error) => log.warn("Could not resolve implant names", { characterId: id, error: err.message }));
     return { summary: `${typeIds.length} implant${typeIds.length === 1 ? "" : "s"}`, nextRunAt: res.expiresAt };
   },
 };

@@ -5,15 +5,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Glass } from "@/components/ui/glass";
 import { PendingFrame, PendingProvider } from "@/components/ui/pending";
 import { requirePermission } from "@/core/auth/dal";
-import { env } from "@/core/env";
-import { reauthorizeHref } from "@/core/modules/registry";
 import { getSettings } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
 import { SkillsFilterBar } from "@/modules/skills/components/filter-bar";
 import { RemapCard } from "@/modules/skills/components/remap-card";
 import { parseSkillsFilters } from "@/modules/skills/filters";
-import { IMPLANTS_SCOPE, SKILLS_MANAGE_HREF, SKILLS_PERMISSIONS, SKILLS_REMAP_HREF } from "@/modules/skills/module";
-import { canViewCorpSkills, getRemapInputs, getSkillsAccess, getSkillsOverview, skillsScope } from "@/modules/skills/queries";
+import { SKILLS_MANAGE_HREF, SKILLS_PERMISSIONS } from "@/modules/skills/module";
+import { canViewCorpSkills, getRemapInputs, getSkillsOverview, skillsScope } from "@/modules/skills/queries";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -35,19 +33,10 @@ export default async function SkillsRemapPage({ searchParams }: PageProps<"/skil
   const picked = new Set(filters.characters);
   const characters = picked.size ? all.characters.filter((c) => picked.has(c.characterId)) : all.characters;
   const queued = characters.flatMap((c) => (all.queues.get(c.characterId) ?? []).map((q) => q.skillId));
-  const [inputs, access] = await Promise.all([
-    getRemapInputs(
-      characters.map((c) => c.characterId),
-      queued,
-    ),
-    // Links to share implants are only offered for the viewer's own characters (outside demo mode).
-    env().KEYSTAR_DEMO_MODE ? Promise.resolve([]) : getSkillsAccess(user.id),
-  ]);
-  const grantedScopes = new Map(access.map((a) => [a.characterId, a.grantedScopes]));
-  const shareImplantsHref = (characterId: number) => {
-    const granted = grantedScopes.get(characterId);
-    return granted ? reauthorizeHref(granted, { add: [IMPLANTS_SCOPE], returnTo: SKILLS_REMAP_HREF, characterId }) : null;
-  };
+  const inputs = await getRemapInputs(
+    characters.map((c) => c.characterId),
+    queued,
+  );
 
   return (
     <PendingProvider>
@@ -90,7 +79,6 @@ export default async function SkillsRemapPage({ searchParams }: PageProps<"/skil
                   skillAttributes={inputs.skillAttributes}
                   implants={inputs.implants.get(c.characterId) ?? null}
                   implantsShared={inputs.implantsShared.has(c.characterId)}
-                  shareImplantsHref={c.isOwn ? shareImplantsHref(c.characterId) : null}
                   t={s}
                   f={f}
                   now={now}

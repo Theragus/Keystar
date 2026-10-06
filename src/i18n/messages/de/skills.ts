@@ -173,13 +173,17 @@ export const skills: typeof en = {
       unknownEntries: (count: number) =>
         `${plural(count, "Skill", "Skills")} in der Queue nicht berücksichtigt: Trainingsdaten noch unbekannt.`,
       implantsNotShared:
-        "Implantate sind nicht freigegeben, daher werden die Attribute als implantatfrei angenommen. Mit Attributimplantaten liegt die Empfehlung daneben.",
-      implantsWaiting: "Implantate sind freigegeben, aber noch nicht gelesen; vorerst wird ohne gerechnet.",
+        "Implantate sind noch nicht einbezogen (dieser Charakter hat seine Skills geteilt, bevor es sie gab), daher werden die Attribute als implantatfrei angenommen. Autorisiere ihn auf der Seite Skill-Zugriff neu, um sie einzubeziehen.",
+      implantsWaiting: "Implantate sind einbezogen, aber noch nicht gelesen; vorerst wird ohne gerechnet.",
       implantsUncertain:
         "Attribute minus Implantate ergeben keinen gültigen Remap (aktiver Booster oder veraltete Daten?), daher bleiben Implantate außen vor.",
       notComparable: (total: string) =>
-        `Die Attribute ergeben ${total} statt 99 Punkte, also bringen Implantate (oder ein Booster) Punkte mit, die Keystar nicht kennt. Sie ändern auch, welcher Remap am schnellsten ist, daher gibt es keine Empfehlung: Gib die Implantate frei, um eine zu bekommen.`,
-      shareImplants: "Implantate freigeben",
+        `Die Attribute ergeben ${total} statt 99 Punkte, also bringen Implantate (oder ein Booster) Punkte mit, die Keystar nicht kennt. Sie ändern auch, welcher Remap am schnellsten ist, daher gibt es keine Empfehlung: Autorisiere den Charakter auf der Seite Skill-Zugriff neu, um seine Implantate einzubeziehen.`,
+      notComparableWaiting: (total: string) =>
+        `Die Attribute ergeben ${total} statt 99 Punkte, und die Implantate wurden noch nicht gelesen, daher gibt es keine Empfehlung. Sie erscheint nach der nächsten Aktualisierung.`,
+      notComparableStale: (total: string) =>
+        `Die Attribute ergeben ${total} Punkte, was die gespeicherten Implantate nicht erklären: Die Implantate haben sich seit der letzten Aktualisierung geändert, oder ein Booster ist aktiv. Daher gibt es keine Empfehlung; versuche es nach der nächsten Aktualisierung erneut.`,
+      includeImplants: "Implantate einbeziehen",
     },
     empty: {
       title: "Kein Charakter zum Optimieren",
@@ -189,7 +193,7 @@ export const skills: typeof en = {
   settings: {
     description: "Lege für jeden Charakter fest, ob Keystar seine Skill-Queue, Skills und Attribute lesen darf.",
     title: "Skill-Zugriff pro Charakter",
-    subtitle: "Beim Teilen wird der Charakter bei EVE neu autorisiert und um die beiden Skill-Scopes ergänzt.",
+    subtitle: "Beim Teilen wird der Charakter bei EVE neu autorisiert und um die Skill- und Implantat-Scopes ergänzt.",
     on: "Geteilt",
     off: "Nicht geteilt",
     revoked: "Token widerrufen",
@@ -206,9 +210,8 @@ export const skills: typeof en = {
     deleteDataHint: "Entfernt die gespeicherte Queue, Skills und Attribute dieses Charakters aus Keystar.",
     sharingLabel: "Skill-Freigabe",
     implants: {
-      shared: "Implantate für den Remap-Optimierer freigegeben.",
-      hint: "Gib auch die Implantate frei, damit der Remap-Optimierer deine Basisattribute genau kennt.",
-      enable: "Implantate freigeben",
+      shared: "Implantate für den Remap-Optimierer einbezogen.",
+      missing: "Implantate noch nicht einbezogen: Autorisiere neu für genaue Remap-Empfehlungen.",
     },
     toast: {
       deleted: (name: string) => `Gespeicherte Skills von ${name} gelöscht`,
@@ -222,6 +225,8 @@ export const skills: typeof en = {
     },
     notes: {
       corp: "Direktoren und alle anderen, die Corporation-Skills sehen dürfen, sehen die Queues geteilter Charaktere deiner Heimat-Corporation.",
+      implants:
+        "Das Teilen umfasst die Implantate des aktiven Klons: Die Attribute von ESI enthalten deren Boni, daher braucht der Remap-Optimierer sie, um die Basisattribute zu kennen.",
       stop: "Beenden schaltet das Teilen in Keystar sofort ab; gespeicherte Daten bleiben, bis du sie löschst. Autorisiere den Charakter unter Meine Charaktere neu, um die Scopes auch aus seinem EVE-Token zu entfernen.",
     },
   },

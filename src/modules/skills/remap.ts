@@ -79,12 +79,6 @@ export function queueTrainingMinutes(groups: SpGroup[], attributes: AttributeSet
   return minutes;
 }
 
-const add = (a: AttributeSet, b: AttributeSet): AttributeSet => {
-  const out = zeroAttributes();
-  for (const name of ATTRIBUTE_NAMES) out[name] = a[name] + b[name];
-  return out;
-};
-
 /** Whether these base attributes are a legal remap (17–27 each, 99 in total). */
 export function isValidBase(base: AttributeSet): boolean {
   let total = 0;
@@ -205,11 +199,23 @@ export function optimizeRemap({ entries, skillAttributes, effective, implants, n
   };
   if (!comparable) return { ...result, recommendedBase: null, recommendedMinutes: null, savedMinutes: null, optimal: false };
 
+  // Thousands of candidates per character: resolve attribute names once and score without allocating.
+  const scored = spGroups
+    .filter((g) => g.sp > 0)
+    .map((g) => ({ p: NAME_BY_ID.get(g.primaryAttribute), s: NAME_BY_ID.get(g.secondaryAttribute), sp: g.sp }));
+  const minutesWith = (base: AttributeSet) => {
+    let minutes = 0;
+    for (const g of scored) {
+      const speed = (g.p ? base[g.p] + assumedImplants[g.p] : 0) + (g.s ? base[g.s] + assumedImplants[g.s] : 0) / 2;
+      minutes += speed > 0 ? g.sp / speed : Infinity;
+    }
+    return minutes;
+  };
   let best = currentBase;
-  let bestMinutes = queueTrainingMinutes(spGroups, add(currentBase, assumedImplants));
+  let bestMinutes = minutesWith(currentBase);
   const EPSILON = 1e-9;
   for (const candidate of (remapCache ??= allRemaps())) {
-    const minutes = queueTrainingMinutes(spGroups, add(candidate, assumedImplants));
+    const minutes = minutesWith(candidate);
     const better =
       minutes < bestMinutes - EPSILON ||
       (minutes <= bestMinutes + EPSILON && distance(candidate, currentBase) < distance(best, currentBase));

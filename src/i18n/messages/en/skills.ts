@@ -171,13 +171,17 @@ export const skills = {
       paused: "Training is paused in game; times are calculated from the SP still to train.",
       unknownEntries: (count: number) => `${plural(count, "queued skill", "queued skills")} left out: training data not known yet.`,
       implantsNotShared:
-        "Implants aren't shared, so the attributes are taken as having no implants. With attribute implants plugged in, the advice is off.",
-      implantsWaiting: "Implants are shared but not read yet; assuming none for now.",
+        "Implants aren't included yet (this character shared its skills before they were), so the attributes are taken as having no implants. Re-authorise it on the Skills access page to include them.",
+      implantsWaiting: "Implants are included but not read yet; assuming none for now.",
       implantsUncertain:
         "Attributes minus implants isn't a valid remap (an active booster or stale data?), so implants are left out of the calculation.",
       notComparable: (total: string) =>
-        `The attributes add up to ${total} instead of 99, so implants (or a booster) add points Keystar doesn't know about. They also change which remap is fastest, so no remap is recommended: share implants to get one.`,
-      shareImplants: "Share implants",
+        `The attributes add up to ${total} instead of 99, so implants (or a booster) add points Keystar doesn't know about. They also change which remap is fastest, so no remap is recommended: re-authorise the character on the Skills access page to include its implants.`,
+      notComparableWaiting: (total: string) =>
+        `The attributes add up to ${total} instead of 99, and the implants haven't been read yet, so no remap is recommended. Advice appears after the next update.`,
+      notComparableStale: (total: string) =>
+        `The attributes add up to ${total}, which the stored implants don't explain: implants changed since the last update, or a booster is active. No remap is recommended; try again after the next update.`,
+      includeImplants: "Include implants",
     },
     empty: {
       title: "No character to optimise",
@@ -187,7 +191,7 @@ export const skills = {
   settings: {
     description: "Choose for each character whether Keystar may read its skill queue, skills and attributes.",
     title: "Skill access per character",
-    subtitle: "Sharing re-authorises the character with EVE and adds the two skills scopes.",
+    subtitle: "Sharing re-authorises the character with EVE and adds the skills and implants scopes.",
     on: "Shared",
     off: "Not shared",
     revoked: "Token revoked",
@@ -204,9 +208,8 @@ export const skills = {
     deleteDataHint: "Removes the stored queue, skills and attributes of this character from Keystar.",
     sharingLabel: "Skill sharing",
     implants: {
-      shared: "Implants shared for the remap optimiser.",
-      hint: "Share implants too, so the remap optimiser knows your base attributes exactly.",
-      enable: "Share implants",
+      shared: "Implants included for the remap optimiser.",
+      missing: "Implants not included yet: re-authorise for exact remap advice.",
     },
     toast: {
       deleted: (name: string) => `Stored skills of ${name} deleted`,
@@ -220,6 +223,8 @@ export const skills = {
     },
     notes: {
       corp: "Directors and anyone else allowed to view corporation skills can see the queues of shared characters in your home corporation.",
+      implants:
+        "Sharing includes the implants of the active clone: ESI's attributes include their bonuses, so the remap optimiser needs them to know the base attributes.",
       stop: "Stopping switches sharing off in Keystar at once; stored data stays until you delete it. Re-authorise the character on My Characters to remove the scopes from its EVE token too.",
     },
   },

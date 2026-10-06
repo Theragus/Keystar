@@ -3,13 +3,12 @@ import type { KeystarModule } from "@/core/modules/types";
 
 export const SKILLQUEUE_SCOPE = "esi-skills.read_skillqueue.v1";
 export const SKILLS_SCOPE = "esi-skills.read_skills.v1";
-/** Both scopes are turned on and off together from the skills settings page. */
-export const SKILLS_SCOPES = [SKILLQUEUE_SCOPE, SKILLS_SCOPE] as const;
-/**
- * Implants, for the remap optimiser (ESI attributes include implant bonuses). Shared separately from the skills scopes
- * so installs whose EVE application lacks it can still share skills.
- */
+/** Implants, for the remap optimiser: ESI's attributes include implant bonuses, so the base attributes need them. */
 export const IMPLANTS_SCOPE = "esi-clones.read_implants.v1";
+/** What a character shares: queue and skills. Characters that shared before implants were added stay shared. */
+export const SKILLS_CORE_SCOPES = [SKILLQUEUE_SCOPE, SKILLS_SCOPE] as const;
+/** Requested, switched on and off, and deleted together from the skills settings page. */
+export const SKILLS_SCOPES = [...SKILLS_CORE_SCOPES, IMPLANTS_SCOPE] as const;
 export const SKILLS_MANAGE_HREF = "/skills/settings";
 export const SKILLS_REMAP_HREF = "/skills/remap";
 

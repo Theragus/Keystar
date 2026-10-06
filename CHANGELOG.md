@@ -8,12 +8,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Upgrade notes
 
-The remap optimiser can read implants with a new optional character scope.
+Sharing skills now includes the implants of the active clone, so the remap optimiser knows the base attributes.
 
 1. Add `esi-clones.read_implants.v1` to the scopes of your EVE application at
-   <https://developers.eveonline.com/applications>. Nobody is asked for it unless they click "Share implants", but
-   without it on the application that EVE login fails with `invalid_scope`. Sharing skills keeps working without it.
-2. Update as usual; the database migrations run on start.
+   <https://developers.eveonline.com/applications>. Without it, "Share skills" on the Skills access page fails at the
+   EVE login with `invalid_scope`.
+2. Update as usual; the database migrations run on start. Characters that already share their skills keep sharing;
+   they are asked to re-authorise once to include their implants.
 
 ### Fixed
 
@@ -74,9 +75,10 @@ Industry jobs need two optional character scopes.
   - Warns when the queue runs less than 180 days with the recommended attributes: the yearly remap only comes back
     after 365 days and bonus remaps are gone once used.
   - Shows whether the yearly remap or a bonus remap is available, and when the next one is.
-  - Implants can be shared per character (`esi-clones.read_implants.v1`) so their bonuses are told apart from the
-    base attributes. Without them, attributes are taken as implant-free and the page says so; when the attributes
-    don't add up to 99 (implants or a booster Keystar doesn't know about), no remap is recommended.
+  - Skill sharing now also reads the active clone's implants (`esi-clones.read_implants.v1`), so their bonuses are
+    told apart from the base attributes; the remap only redistributes base points. Characters that shared before
+    are taken as implant-free until they re-authorise, and the page says so. When the attributes don't add up to 99
+    (implants or a booster Keystar doesn't know about), no remap is recommended.
   - Own characters, plus the corporation view for directors; linked from each character on Skill queues.
 
 ### Changed

@@ -12,7 +12,7 @@ import {
   syncJobs,
   type Db,
 } from "@/core/db";
-import { IMPLANTS_SCOPE, SKILLS_SCOPES } from "@/modules/skills/module";
+import { SKILLS_CORE_SCOPES, SKILLS_SCOPES } from "@/modules/skills/module";
 import { ATTRIBUTE_IDS, type AttributeName } from "@/modules/skills/queue";
 
 /** Real skills (ids, groups, attributes and ranks as ESI lists them). */
@@ -229,7 +229,8 @@ export async function seedSkills(db: Db, opts: { characters: { characterId: numb
     if (entry.implants) {
       await db.insert(skillsImplants).values(IMPLANTS.map((i) => ({ characterId: c.characterId, typeId: i.typeId })));
     }
-    for (const scope of entry.implants ? [...SKILLS_SCOPES, IMPLANTS_SCOPE] : SKILLS_SCOPES) {
+    // Characters without implants shared before implants were part of sharing.
+    for (const scope of entry.implants ? SKILLS_SCOPES : SKILLS_CORE_SCOPES) {
       await db
         .update(esiTokens)
         .set({ scopes: sql`array_append(${esiTokens.scopes}, ${scope})` })
