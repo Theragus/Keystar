@@ -17,10 +17,11 @@ export const auth: typeof en = {
     genericError: "Etwas ist schiefgelaufen.",
     signIn: "Mit EVE Online anmelden",
     register: "Neu hier? Registrieren & ESI-Zugriff erteilen",
-    privacy: (site: ReactNode) => (
+    privacy: (link: (text: string) => ReactNode) => (
       <>
         Die Anmeldung bestätigt nur, wer du bist – dabei wird kein ESI-Zugriff angefragt. Tokens werden separat
-        angefragt, verschlüsselt gespeichert und können jederzeit unter {site} widerrufen werden.
+        angefragt, verschlüsselt gespeichert und können jederzeit unter {link("Authorized Apps")} auf der
+        EVE-Entwicklerseite widerrufen werden.
       </>
     ),
     setupTitle: "Server-Einrichtung nötig",

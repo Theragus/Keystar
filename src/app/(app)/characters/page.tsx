@@ -1,6 +1,6 @@
 import { inArray } from "drizzle-orm";
 import Link from "next/link";
-import { Building2, Crown, KeyRound, Link2, RefreshCw, Trash2, TriangleAlert } from "lucide-react";
+import { Building2, Crown, ExternalLink, KeyRound, Link2, RefreshCw, Trash2, TriangleAlert } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ActionForm } from "@/components/ui/action-form";
@@ -9,6 +9,7 @@ import { CorpLogo, Portrait } from "@/components/ui/eve-image";
 import { Glass, Panel } from "@/components/ui/glass";
 import { requireUser } from "@/core/auth/dal";
 import { characterCorpRoles, esiTokens, eveCorporations, getDb, syncJobs } from "@/core/db";
+import { EVE_AUTHORIZED_APPS_URL } from "@/core/eve/links";
 import {
   allScopeRequirements,
   characterScopes,
@@ -59,6 +60,18 @@ export default async function CharactersPage({ searchParams }: PageProps<"/chara
   const scopeLabels = optionalScopeLabels(t);
   const tc = m.toast;
   const manageHrefs = new Map(allScopeRequirements().flatMap((s) => (s.manageHref ? [[s.scope, s.manageHref] as const] : [])));
+  const authorizedApps = (text: string) => (
+    <a
+      href={EVE_AUTHORIZED_APPS_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-0.5 text-accent hover:underline"
+    >
+      {text}
+      <ExternalLink className="size-3" aria-hidden />
+      <span className="sr-only">{t.common.opensInNewTab}</span>
+    </a>
+  );
 
   return (
     <div className="space-y-6">
@@ -298,7 +311,7 @@ export default async function CharactersPage({ searchParams }: PageProps<"/chara
               <li>{m.privacy.removal}</li>
               <li>{m.privacy.wallet}</li>
               <li>{m.privacy.mail}</li>
-              <li>{m.privacy.revoke}</li>
+              <li>{m.privacy.revoke(authorizedApps)}</li>
             </ul>
           </Panel>
         </div>
