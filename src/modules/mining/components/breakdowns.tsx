@@ -183,40 +183,42 @@ export async function ClassComposition({
 export async function SystemTable({ rows, filters }: { rows: SystemRow[]; filters: MiningFilters }) {
   const { t, f } = await getI18n();
   return (
-    <table className="ks-table">
-      <thead>
-        <tr>
-          <th>{t.mining.columns.system}</th>
-          <th className="num">{t.mining.columns.miners}</th>
-          <th className="num">{t.mining.columns.units}</th>
-          <th className="num">{t.mining.columns.volume}</th>
-          <th className="num">{t.mining.columns.value}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.systemId ?? "unknown"}>
-            <td>
-              {r.systemId ? (
-                <Link
-                  href={`?${miningQueryString(filters, { systems: [r.systemId], page: 1 })}`}
-                  scroll={false}
-                  className="flex items-center gap-2.5 hover:text-accent"
-                >
-                  <SecurityStatus value={r.security} />
-                  <span className="font-medium">{r.name}</span>
-                </Link>
-              ) : (
-                <span className="text-ink-3">{t.mining.breakdowns.unknownLocation}</span>
-              )}
-            </td>
-            <td className="num">{f.integer(r.miners)}</td>
-            <td className="num">{f.integer(r.quantity)}</td>
-            <td className="num">{f.volume(r.volume)}</td>
-            <td className="num font-semibold">{f.isk(r.value)}</td>
+    <div className="overflow-x-auto">
+      <table className="ks-table">
+        <thead>
+          <tr>
+            <th>{t.mining.columns.system}</th>
+            <th className="num">{t.mining.columns.miners}</th>
+            <th className="num">{t.mining.columns.units}</th>
+            <th className="num">{t.mining.columns.volume}</th>
+            <th className="num">{t.mining.columns.value}</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.systemId ?? "unknown"}>
+              <td>
+                {r.systemId ? (
+                  <Link
+                    href={`?${miningQueryString(filters, { systems: [r.systemId], page: 1 })}`}
+                    scroll={false}
+                    className="flex items-center gap-2.5 hover:text-accent"
+                  >
+                    <SecurityStatus value={r.security} />
+                    <span className="font-medium">{r.name}</span>
+                  </Link>
+                ) : (
+                  <span className="text-ink-3">{t.mining.breakdowns.unknownLocation}</span>
+                )}
+              </td>
+              <td className="num">{f.integer(r.miners)}</td>
+              <td className="num">{f.integer(r.quantity)}</td>
+              <td className="num">{f.volume(r.volume)}</td>
+              <td className="num font-semibold">{f.isk(r.value)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

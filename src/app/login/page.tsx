@@ -47,9 +47,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   );
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <main className="flex min-h-screen items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-[460px]">
-        <Glass className="rounded-2xl px-9 pt-10 pb-8 text-center">
+        <Glass className="rounded-2xl px-6 pt-10 sm:px-9 pb-8 text-center">
           <KeystarMark className="mx-auto size-16" />
           <h1 className="mt-4 font-display text-[2.4rem] leading-none font-bold tracking-[0.2em]">KEYSTAR</h1>
           <p className="mt-2 text-sm text-ink-2">{t.auth.login.tagline}</p>

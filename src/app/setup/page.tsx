@@ -55,7 +55,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
   });
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <main className="flex min-h-screen items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-[560px]">
         <div className="mb-6 flex items-center justify-center gap-2" aria-label={m.progress(step, STEPS.length)}>
           {STEPS.map((id, i) => (
@@ -70,7 +70,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
           ))}
         </div>
 
-        <Glass className="rounded-2xl px-9 pt-9 pb-8">
+        <Glass className="rounded-2xl px-6 pt-9 sm:px-9 pb-8">
           {step === 1 && (
             <ActionForm action={saveSetupCorporation} {...failure} redirectTo="/setup?step=2">
               <StepHeader icon={Building2} title={m.corporation.title}>

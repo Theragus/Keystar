@@ -151,7 +151,8 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
                 {purchases.rows.length === 0 ? (
                   <p className="py-8 text-center text-sm text-ink-3">{m.purchases.empty}</p>
                 ) : (
-                  <div className="overflow-x-auto">
+                  // `relative` keeps the icon buttons' sr-only labels inside the scroll box on phones.
+                  <div className="relative overflow-x-auto">
                     <table className="ks-table">
                       <thead>
                         <tr>
@@ -290,7 +291,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
               {fees.rows.length === 0 ? (
                 <p className="py-4 text-center text-sm text-ink-3">{m.fees.empty}</p>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="relative overflow-x-auto">
                   <table className="ks-table">
                     <thead>
                       <tr>
@@ -430,7 +431,7 @@ export default async function PnlExpensesPage({ searchParams }: PageProps<"/mini
               {entries.length === 0 ? (
                 <p className="py-8 text-center text-sm text-ink-3">{m.manual.empty}</p>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="relative overflow-x-auto">
                   <table className="ks-table">
                     <thead>
                       <tr>

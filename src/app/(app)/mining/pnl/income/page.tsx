@@ -162,7 +162,8 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
                 {sales.rows.length === 0 ? (
                   <p className="py-8 text-center text-sm text-ink-3">{m.sales.empty}</p>
                 ) : (
-                  <div className="overflow-x-auto">
+                  // `relative` keeps the icon buttons' sr-only labels inside the scroll box on phones.
+                  <div className="relative overflow-x-auto">
                     <table className="ks-table">
                       <thead>
                         <tr>
@@ -302,7 +303,7 @@ export default async function PnlIncomePage({ searchParams }: PageProps<"/mining
                   f.volume(flows.totals.leftVolume),
                 )}
               </p>
-              <div className="overflow-x-auto">
+              <div className="relative overflow-x-auto">
                 <table className="ks-table">
                   <thead>
                     <tr>

@@ -74,6 +74,12 @@ Sharing skills now includes the implants of the active clone, so the remap optim
   "LOG IN with EVE Online" button (black on the dark theme, white on the light one), as CCP asks of third-party
   applications. The CCP notice now carries the wording of the Developer License Agreement and also appears on the
   join page and under "How Keystar works" in Help. ([PR #189](https://github.com/Theragus/Keystar/pull/189))
+- **Keystar is usable on phones.** Desktop is unchanged; below tablet width:
+  - The sidebar is a menu that slides in from the ☰ button in the top bar and closes when you pick a page, tap beside
+    it or press Escape. The top bar keeps the page name, alerts, help and EVE time and no longer runs off the screen.
+  - Pages fit the screen instead of being shrunk to fit: wide tables scroll inside their panel, filter menus stay on
+    screen, and stat tiles, the mining observers and the killboard's top pilots fit two to a row.
+  - Tapping a text field no longer zooms the page in on iPhones, and filter menus don't open the keyboard by themselves.
 
 ### Fixed
 
