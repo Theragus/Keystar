@@ -31,7 +31,7 @@ they enable market access on the Market access page, but without it on the appli
   too, from the 90 days ESI reports back. Access is opt-in per character on the new Market access page, like
   industry jobs, so nobody is asked for the new scope (`esi-markets.read_character_orders.v1`) at sign-up. It
   shares the structure scope with industry access: switching one of them off keeps that scope while the other is
-  on. Only you see your characters' orders.
+  on. Only you see your characters' orders. ([PR #187](https://github.com/Theragus/Keystar/pull/187))
 - **Help, welcome tour and What's new.** A new **Help** button next to Alerts in the top bar (or the `?` key on any
   page) explains Keystar in five topics:
   - **This page:** what the page you are on shows, where its data comes from, which role can open it, and whether
