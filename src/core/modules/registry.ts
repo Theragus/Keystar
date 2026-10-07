@@ -22,7 +22,6 @@ import type { AlertDef, KeystarModule, NavSection, ScopeRequirement } from "./ty
  */
 export const MODULES: KeystarModule[] = [
   coreModule,
-  mapModule,
   skillsModule,
   miningModule,
   industryModule,
@@ -30,6 +29,7 @@ export const MODULES: KeystarModule[] = [
   fleetModule,
   intelModule,
   gatecheckModule,
+  mapModule,
   tradeModule,
   walletModule,
   socialModule,
