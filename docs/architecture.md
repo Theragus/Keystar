@@ -33,7 +33,7 @@ Keystar is one TypeScript codebase that runs as two processes against one Postgr
 ```
 src/
   app/                 Next.js routes
-    (app)/             signed-in area (sidebar shell): dashboard, mining, industry, market, characters, admin
+    (app)/             signed-in area (sidebar shell): dashboard (_dashboard/ holds its panels), mining, industry, market, characters, admin
     auth/              SSO login / callback / logout / demo routes
     setup/             first-start walkthrough for the first admin
     login/, join/      public pages

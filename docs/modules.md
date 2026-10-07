@@ -139,6 +139,14 @@ const corpWide = user.can("skills.view.corp");
 
 Server actions must call `assertPermission(...)` themselves — never rely on the page having checked.
 
+Keep `page.tsx` to the data access check, the queries and the layout; the panels it lays out are async server
+components in files next to it (`admin/system/*-panels.tsx`, `mining/pnl/expenses/purchases-panel.tsx`) or, when
+another page could use them, in `src/modules/<name>/components/`. Each takes the rows it shows as props and calls
+`getI18n()` itself, so it needs no `t` and `f` passed down. Computations behind the panels (totals, grouping, what a
+tab covers) go into a plain `.ts` file (`src/modules/mining/pnl/review-totals.ts`, `src/modules/killboard/table-rows.ts`)
+so they can be unit-tested without rendering. The dashboard keeps its pieces in the private folder
+`src/app/(app)/_dashboard/`, which Next excludes from routing.
+
 Reuse the UI kit in `src/components/ui` (`Panel`, `StatTile`, `MultiSelect`, `DateRangePicker`, `Segmented`,
 `StatusBadge`, `Portrait`, `TypeIcon`, …) and keep filters in the URL like the mining pages do (`PendingProvider`
 dims the previous render while new data loads).
