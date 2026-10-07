@@ -560,18 +560,26 @@ stargate route and checks it gate by gate. Nothing on the page calls zKillboard.
   and low). Avoided systems are left out (never the start or destination); Zarzakh is never passed through, since
   its emanation lock keeps you at the gate you came in by.
 - **Check** (`check.ts`, pure): per system the gate you arrive by and the gate you leave by; kills there in the last two
-  hours are "route" kills, the rest of the system's kills are listed apart. Tags (`tags.ts`):
+  hours are "route" kills, the rest of the system's kills are listed apart. Only kills of ships (category 6, capsules
+  included) and of deployables that are only out while their owner flies beside them (mobile tractor units, cyno and
+  scan inhibitors, micro jump units) count as a camp (`isMinorVictim` in `tags.ts`; types not named yet count): a
+  mobile depot or structure shot in the system makes it "activity" at most, adds a live weight of only 0.05 (a ship
+  killed elsewhere in the system adds 0.2) and never enters the history or the regulars. Tags (`tags.ts`):
   smartbomb (a weapon in the Smart Bomb group), interdictor, HIC, gank (CONCORD on the mail), hot drop (Black Ops,
   capitals) and pod. Status: camp (a player kill at a route gate in the last 30 minutes, or three within the hour),
   recent, activity elsewhere in the system, quiet, or unknown while the feed is behind.
-- **Camp estimate** (`predict.ts`, pure) for the time each gate is reached (leaving now, about a minute a jump): history
-  (on how many of the last up to 30 days there were kills at these gates within an hour of that time of day,
-  smoothed as (days + ½) / (N + 1)), live (the newest route-gate kill, half-life 45 minutes to the arrival), and
+- **Camp estimate** (`predict.ts`, pure) for every gate right now (no arrival times: on a route of 20–30 jumps they are
+  noise): history (on how many of the last up to 30 days there were kills at these gates within an hour of the
+  current time of day, smoothed as (days + ½) / (N + 1)), live (the newest route-gate kill, half-life 45 minutes), and
   regulars (pilots with kills at these gates on two or more days, seen killing within 5 jumps in the last two hours
   anywhere but at these gates; half-life 60 minutes). They combine as independent chances; under 3 days of history
   the history part is left out. The page shows the parts, the busiest hours, the regulars and the groups behind most
   kills.
-- The map's travel check (`/api/map/gate-check`) reads the same table instead of zKillboard.
+- **Page**: one row per system, collapsed unless it is a hotspot (camp, kills at the gate, high or very high); the
+  collapsed row keeps its tint, status and estimate badges, tags and kill counts. A gate's kills show five at a time
+  ("Show 5 more", a small client component), and each kill row opens on zKillboard.
+- The map's travel check (`/api/map/gate-check`) reads the same table instead of zKillboard, and also skips mobile
+  depots and structures.
 
 ## Threat intel
 

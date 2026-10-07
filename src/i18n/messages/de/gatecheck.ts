@@ -10,7 +10,7 @@ export const gatecheck: typeof en = {
   module: {
     navItem: "Gate-Check",
     permissionGroup: "Gate-Check",
-    help: "Plane eine Stargate-Route (kürzeste, sicherere oder weniger sichere) und sieh die Kills an den Toren entlang der Route, live aus dem Feed von zKillboard: Camps, Smartbombs, Interdictoren und Ganker, Tor für Tor. Schätzt, wie wahrscheinlich ein Camp ist, wenn du an jedes Tor kommst – aus den Kills an diesen Toren der letzten Wochen und den Stamm-Campern, die gerade unterwegs sind.",
+    help: "Plane eine Stargate-Route (kürzeste, sicherere oder weniger sichere) und sieh die Kills an den Toren entlang der Route, live aus dem Feed von zKillboard: Camps, Smartbombs, Interdictoren und Ganker, Tor für Tor. Schätzt, wie wahrscheinlich gerade ein Camp an jedem Tor ist – aus den Kills an diesen Toren der letzten Wochen und den Stamm-Campern, die gerade unterwegs sind.",
     permissions: {
       use: {
         label: "Gate-Check nutzen",
@@ -21,7 +21,7 @@ export const gatecheck: typeof en = {
   },
   page: {
     title: "Gate-Check",
-    description: "Kills an den Toren entlang einer Route, live, und wie wahrscheinlich ein Camp ist, wenn du dort ankommst.",
+    description: "Kills an den Toren entlang einer Route, live, und wie wahrscheinlich ein Camp an jedem Tor ist.",
   },
   form: {
     from: "Von",
@@ -67,7 +67,6 @@ export const gatecheck: typeof en = {
   summary: {
     jumps: (value: number) => count(value, "Sprung", "Sprünge"),
     mix: (high: number, low: number, nul: number) => `${n(high)} High · ${n(low)} Low · ${n(nul)} Null`,
-    arrival: "Ankunft ≈",
     hotspots: "Vorsicht",
     noHotspots:
       "Keine Kills an den Toren der Route in den letzten zwei Stunden und keine wahrscheinlichen Camps. Bleib trotzdem wachsam: Camps, die nichts erwischen, hinterlassen keine Spuren.",
@@ -75,7 +74,6 @@ export const gatecheck: typeof en = {
     avoid: "Meiden",
     avoidTitle: (system: string) => `Route um ${system} herum planen`,
     avoiding: (names: string[]) => `Meidet ${list(names)}`,
-    eta: "ET",
   },
   status: {
     camp: "Camp",
@@ -87,7 +85,8 @@ export const gatecheck: typeof en = {
   statusHint: {
     camp: "Ein Spieler-Kill an einem deiner Tore in den letzten 30 Minuten oder drei innerhalb einer Stunde.",
     recent: (hours: number) => `Spieler-Kills an einem deiner Tore in den letzten ${count(hours, "Stunde", "Stunden")}.`,
-    activity: "Spieler-Kills anderswo im System: an anderen Toren oder abseits der Tore.",
+    activity:
+      "Spieler-Kills anderswo im System (an anderen Toren oder abseits der Tore) oder an einem deiner Tore abgeschossene Mobile Depots und Strukturen.",
     quiet: "Keine Kills in den letzten zwei Stunden.",
     unknown: "Keine Kills gefunden, aber der Feed hängt hinterher – das heißt wenig.",
   },
@@ -120,7 +119,11 @@ export const gatecheck: typeof en = {
     npc: "Nur NPCs",
     gankLoss: "Ganker von CONCORD erledigt",
     by: "von",
-    more: (value: number) => `und ${count(value, "weiterer Kill", "weitere Kills")}`,
+    atGates: (value: number) => count(value, "Kill an den Toren", "Kills an den Toren"),
+    minorKills: (value: number) =>
+      `${count(value, "Deployable oder Struktur", "Deployables oder Strukturen")} an diesen Toren abgeschossen (zählt nicht als Camp)`,
+    showMore: (next: number, left: number) => `${n(next)} weitere zeigen (noch ${n(left)})`,
+    showFewer: "Weniger zeigen",
     otherKills: (value: number) => count(value, "Kill anderswo im System", "Kills anderswo im System"),
     npcKills: (value: number) => count(value, "Kill durch NPCs", "Kills durch NPCs"),
   },
@@ -144,11 +147,11 @@ export const gatecheck: typeof en = {
     live: (ago: string) => `Letzter Kill an einem Routentor ${ago}`,
     regulars: (value: number) => `${count(value, "Stamm-Camper", "Stamm-Camper")} in den letzten zwei Stunden in der Nähe gesehen`,
     quietHistory: "Keine Kills an diesen Toren im Verlauf.",
-    hourly: "Kills an diesen Toren nach Stunde (EVE-Zeit); markiert ist die Stunde deiner Ankunft.",
+    hourly: "Kills an diesen Toren nach Stunde (EVE-Zeit); markiert ist die aktuelle Stunde.",
     regularsTitle: "Stammgäste an diesen Toren",
     regular: (days: number, kills: number) => `${count(days, "Tag", "Tage")}, ${count(kills, "Kill", "Kills")}`,
     regularHours: (hours: string) => `meist ${hours}`,
-    nearEta: "Um deine Ankunftszeit aktiv",
+    nearNow: "Meist um diese Tageszeit aktiv",
     lastSeen: (ago: string) => `zuletzt dort ${ago}`,
     sighting: (system: string, jumps: number, ago: string) =>
       jumps === 0 ? `Kill in ${system} ${ago}` : `Kill in ${system} (${count(jumps, "Sprung", "Sprünge")} entfernt) ${ago}`,

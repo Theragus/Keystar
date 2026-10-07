@@ -31,6 +31,32 @@ export interface TaggableKill {
 }
 
 export type GroupOf = (typeId: number) => number | undefined;
+export type CategoryOf = (typeId: number) => number | undefined;
+
+/** Inventory category of ships, capsules included. */
+const SHIP_CATEGORY = 6;
+/**
+ * Deployables that are only out while their owner flies beside them: losing
+ * one means someone hunted a pilot here, much like a ship kill.
+ */
+const ACTIVE_DEPLOYABLE_GROUPS = new Set<number>([
+  1249, // Mobile Cyno Inhibitor
+  1250, // Mobile Tractor Unit
+  1275, // Mobile Scan Inhibitor
+  1276, // Mobile Micro Jump Unit
+]);
+
+/**
+ * A victim that says little about a camp: anything but a ship or an active
+ * deployable, such as a mobile depot left anchored for days, a siphon or a
+ * structure, which anyone passing may shoot. Unnamed types count as ships.
+ */
+export function isMinorVictim(typeId: number, groupOf: GroupOf, categoryOf: CategoryOf): boolean {
+  const category = categoryOf(typeId);
+  if (category === undefined || category === SHIP_CATEGORY) return false;
+  const group = groupOf(typeId);
+  return group === undefined || !ACTIVE_DEPLOYABLE_GROUPS.has(group);
+}
 
 export function killTags(kill: TaggableKill, groupOf: GroupOf): KillTag[] {
   const ships = new Set(kill.attackerShipTypeIds.map(groupOf));
