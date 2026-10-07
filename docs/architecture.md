@@ -22,7 +22,8 @@ Keystar is one TypeScript codebase that runs as two processes against one Postgr
 
 - The **app** never calls authenticated ESI routes on page loads; pages read from Postgres. It only talks to EVE
   during sign-in and for public lookups a user asks for (the ore field estimator and the appraisal resolving and
-  pricing item types they haven't seen before, a threat intel scan resolving pasted names and affiliations).
+  pricing item types they haven't seen before, a threat intel scan resolving pasted names and affiliations, a gate
+  check naming the pilots and ships it shows).
 - The **worker** owns all background ESI traffic and token refreshes, and also pulls public killmails and pilot
   statistics from zKillboard and (optionally) asks the Claude API to write the killboard's weekly situation report
   and threat intel briefings. Dossiers and d-scan reads are written when a user asks for them.
@@ -53,6 +54,9 @@ src/
     killboard/         zKillboard client and sync, combat aggregates, situation report (Claude or template), UI
     intel/             threat intel: paste parser, scans, zKillboard worker, scoring, standings, history with us,
                        d-scan matching, briefings and dossiers (Claude or template), UI
+    gatecheck/         gate check: kills near stargates from the live feed, routes (EVE's autopilot weights),
+                       route check, camp estimates, UI
+    map/               3D universe map, travel check and jump ranges (static data in public/data)
     trade/             appraisal: paste parser, name resolution, Jita pricing, saved shareable snapshots
     wallet/            opt-in character wallet transactions (raw data used by the mining P&L); corp/: corporation
                        wallet archive (balances, journal, transactions), classification, finances pages' queries
@@ -211,7 +215,7 @@ Current jobs:
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
 | `industry.character-jobs`        | 5 min    | Industry jobs of each character (incl. finished ones), names their stations and structures |
 | `killboard.zkill-sync`           | 1 h      | Home corporation kills/losses from zKillboard (no token)   |
-| `killboard.live-feed`            | 10 s     | zKillboard's live feed (R2Z2): home-corporation killmails within seconds, for the live notifications |
+| `killboard.live-feed`            | 10 s     | zKillboard's live feed (R2Z2): home-corporation killmails within seconds, for the live notifications; every kill near a stargate for the gate check |
 | `killboard.situation-report`     | 1 h      | Writes the weekly situation report once a week has closed  |
 | `intel.scan-worker`              | 2 s      | zKillboard work for threat intel scans (idles at 1 min; woken by new scans) |
 | `intel.briefings`                | 1 min    | Briefings for scans that became ready (woken by the scan worker) |
@@ -219,6 +223,7 @@ Current jobs:
 | `intel.corporation-contacts`     | 15 min   | Home corporation contacts (standings), any member's token  |
 | `intel.alliance-contacts`        | 15 min   | Home alliance contacts (standings), any member's token     |
 | `trade.housekeeping`             | 6 h      | Deletes appraisals older than a year, old rate-limit rows  |
+| `gatecheck.housekeeping`         | 6 h      | Retention of the gate check's kills (60 days at gates, 7 days elsewhere) |
 | `wallet.character-transactions`  | 1 h      | Market transactions of characters that opted in to wallets |
 | `wallet.corporation-wallets`     | 1 h      | Corporation balances, journal and transactions, all divisions (Accountant / Junior Accountant) |
 | `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
@@ -505,6 +510,9 @@ the owner deletes them.
   pilot, corporation tickers and regions) are resolved right away. A missing number below the published pointer is
   skipped as a gap; a position older than 20 h (files are kept for at least 24 h) or for another corporation starts
   over at the pointer, and the hourly sweep fills anything in between. A 403/429 keeps it away for 10 minutes.
+  Starting over, it reads `START_BACKLOG` (2,500) files back from the pointer, a few hours of New Eden, so the gate
+  check knows recent camps at once. The same read feeds the gate check (see below), so the job also runs without a
+  home corporation.
 - **Live notifications**: for users with `killboard.view`, the top bar polls `/api/killboard/live` every 15 s and
   shows a toast for each kill or loss stored after its cursor (`first_seen_at` to the microsecond plus the killmail
   id, since one insert stores many rows with the same timestamp; killmails older than 3 h are never announced, so
@@ -528,6 +536,39 @@ the owner deletes them.
   set; otherwise, or if the call fails, a deterministic template writes it. Reports use a tiny inline markup
   (`**bold**`, `{+good}`, `{-bad}`, `{@Pilot}`) rendered as React text — model output is never rendered as HTML.
   Reports are stored with the facts they were written from (`killboard_reports`).
+
+## Gate check
+
+`/gatecheck` (Combat; `gatecheck.use`, every role down to guest, since everything it shows is public) plans a
+stargate route and checks it gate by gate. Nothing on the page calls zKillboard.
+
+- **Data**: `killboard.live-feed` already reads every killmail in New Eden from R2Z2; it hands each batch to
+  `recordFeedKillmails` (`src/modules/gatecheck/ingest.ts`), which keeps the ones in known-space systems with
+  stargates in `gatecheck_kills`: the stargate within 150 km of the victim's position (`gate_id`, null away from the
+  gates; without a position, zKillboard's `locationID` if it is one of the system's gates), the victim, zKillboard's
+  `npc` flag, whether CONCORD is on the mail (a suicide gank), and the player attackers (at most 100, by damage) as
+  aligned arrays of character, corporation, alliance, hull and weapon. Hull and weapon types are named through the
+  resolver, so tags can be told from their inventory groups. `gatecheck_feed` records since when the feed has been
+  read without a gap and when it last caught up: without a catch-up in the last 3 minutes a quiet gate shows as
+  "unknown", after 15 minutes the feed counts as offline. Kills at gates are kept 60 days, others 7.
+- **Routes** (`route.ts`, pure): Dijkstra over the static stargate network (`public/data/map-gates.json`) with EVE's
+  autopilot weights (`developers.eveonline.com/docs/guides/route-calculation`): every system entered costs 1 on
+  "shortest"; on "safer" high-sec costs 0.9, low-sec e^(0.15 × 50) and null-sec twice that ("less secure" swaps high
+  and low). Avoided systems are left out (never the start or destination); Zarzakh is never passed through, since
+  its emanation lock keeps you at the gate you came in by.
+- **Check** (`check.ts`, pure): per system the gate you arrive by and the gate you leave by; kills there in the last two
+  hours are "route" kills, the rest of the system's kills are listed apart. Tags (`tags.ts`):
+  smartbomb (a weapon in the Smart Bomb group), interdictor, HIC, gank (CONCORD on the mail), hot drop (Black Ops,
+  capitals) and pod. Status: camp (a player kill at a route gate in the last 30 minutes, or three within the hour),
+  recent, activity elsewhere in the system, quiet, or unknown while the feed is behind.
+- **Camp estimate** (`predict.ts`, pure) for the time each gate is reached (leaving now, about a minute a jump): history
+  (on how many of the last up to 30 days there were kills at these gates within an hour of that time of day,
+  smoothed as (days + ½) / (N + 1)), live (the newest route-gate kill, half-life 45 minutes to the arrival), and
+  regulars (pilots with kills at these gates on two or more days, seen killing within 5 jumps in the last two hours
+  anywhere but at these gates; half-life 60 minutes). They combine as independent chances; under 3 days of history
+  the history part is left out. The page shows the parts, the busiest hours, the regulars and the groups behind most
+  kills.
+- The map's travel check (`/api/map/gate-check`) reads the same table instead of zKillboard.
 
 ## Threat intel
 

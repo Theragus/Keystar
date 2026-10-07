@@ -7,6 +7,7 @@ import { core } from "./core";
 import { dashboard } from "./dashboard";
 import { eve } from "./eve";
 import { fleet } from "./fleet";
+import { gatecheck } from "./gatecheck";
 import { industry } from "./industry";
 import { intel } from "./intel";
 import { killboard } from "./killboard";
@@ -42,6 +43,7 @@ export const en = {
   fleet,
   industry,
   intel,
+  gatecheck,
   trade,
   wallet,
   social,
