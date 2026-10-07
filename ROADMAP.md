@@ -100,6 +100,13 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 
 - ✅ **Appraisal**: paste cargo, contracts, fits, d-scans or lists; Jita 4-4 buy/sell/split, volume, percentage
   price, shareable links, "appraise again" at current prices
+- ✅ **Market orders** of your own characters (`esi-markets.read_character_orders.v1`): open buy and sell orders with
+  price, remaining quantity, station or structure, issue date and expiry, closed orders of the last 90 days, totals
+  for selling, buying and escrow, orders about to expire; opt-in per character on the Market access page
+- 💡 Market orders: compare each order with the best price at its location (outbid / undercut), order slots per
+  character from the trade skills
+- 💡 Corporation market orders (`esi-markets.read_corporation_orders.v1`, Accountant / Trader) for directors
+- 💡 Live alert when an order is filled or about to expire
 - 💡 More markets (Amarr, Dodixie, Rens, Hek) and a market selector
 - 💡 Corp buyback: a configured percentage per item group, contract instructions for members
 
@@ -196,3 +203,13 @@ Route planning for ships with a jump drive.
 ## Universe map
 
 - ✅ Interactive 3D map under Combat with system search, names and security status from CCP static data.
+
+## Gate check
+
+- ✅ Route planning (shortest, safer, less secure, avoided systems) with kills at every gate on the route, live from
+  zKillboard's feed, tagged smartbombs, interdictors, HICs, gankers, hot drops and pod kills
+- ✅ Camp estimates for the time you reach each gate: history by time of day, live camps, regular campers seen nearby
+- 💡 Ansiblex jump bridges and Thera/Turnur wormhole connections (EVE Scout) as route options
+- 💡 Backfill of camp history from EVE Ref's daily killmail archives, so estimates are useful from day one
+- 💡 System traffic from ESI (`/universe/system_jumps`) to weigh kills against how busy a system is
+- 💡 A live alert when a camp appears on a saved route

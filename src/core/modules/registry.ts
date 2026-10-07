@@ -1,8 +1,10 @@
 import { mapModule } from "@/modules/map/module";
 import { fleetModule } from "@/modules/fleet/module";
+import { gatecheckModule } from "@/modules/gatecheck/module";
 import { industryModule } from "@/modules/industry/module";
 import { intelModule } from "@/modules/intel/module";
 import { killboardModule } from "@/modules/killboard/module";
+import { marketModule } from "@/modules/market/module";
 import { miningModule } from "@/modules/mining/module";
 import { skillsModule } from "@/modules/skills/module";
 import { socialModule } from "@/modules/social/module";
@@ -21,14 +23,16 @@ import type { AlertDef, KeystarModule, NavSection, ScopeRequirement } from "./ty
  */
 export const MODULES: KeystarModule[] = [
   coreModule,
-  mapModule,
   skillsModule,
   miningModule,
   industryModule,
   killboardModule,
   fleetModule,
   intelModule,
+  gatecheckModule,
+  mapModule,
   tradeModule,
+  marketModule,
   walletModule,
   socialModule,
 ];
@@ -87,6 +91,20 @@ export function applicationScopes(): string[] {
 /** The permission needed to switch an opt-in scope on or off (`managePermission`), if it declares one. */
 export function optionalScopePermission(scope: string): string | undefined {
   return allScopeRequirements().find((s) => s.optional && s.scope === scope)?.managePermission;
+}
+
+/**
+ * Of the opt-in scopes managed on `manageHref`, those that switching that access off may disable. A scope another
+ * access also declares stays while that access is on (`granted` holds all of its other scopes): industry and market
+ * orders both name structures, and switching one off must not stop the other naming them.
+ */
+export function scopesToSwitchOff(manageHref: string, granted: readonly string[]): string[] {
+  const optional = allScopeRequirements().filter((s) => s.optional && s.manageHref);
+  const scopesOf = (href: string) => [...new Set(optional.filter((s) => s.manageHref === href).map((s) => s.scope))];
+  return scopesOf(manageHref).filter((scope) => {
+    const sharedWith = new Set(optional.filter((s) => s.scope === scope && s.manageHref !== manageHref).map((s) => s.manageHref!));
+    return ![...sharedWith].some((href) => scopesOf(href).every((s) => s === scope || granted.includes(s)));
+  });
 }
 
 /** Short names of the opt-in scopes ("Fleet access"), falling back to the scope id. */

@@ -141,6 +141,20 @@
       "when": 1791309291646,
       "tag": "0019_users_seen_version",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791367844337,
+      "tag": "0020_gatecheck",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791371606350,
+      "tag": "0021_market_orders",
+      "breakpoints": true
     }
   ]
 }

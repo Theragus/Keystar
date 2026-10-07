@@ -15,7 +15,7 @@ Keystar signs pilots in with **EVE SSO**, collects their **ESI tokens** with exa
 syncs data in the background and turns it into dashboards. Modules so far: **mining** (personal and moon-refinery
 ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export, an ore field estimator
 for survey scans and a personal **mining P&L** with opt-in wallet import), **industry jobs** of your own characters
-with progress and completion times, **skill queues** with a remap optimiser, a **killboard** with the corporation's
+with progress and completion times, **market orders** of your own characters, **skill queues** with a remap optimiser, a **killboard** with the corporation's
 PvP performance from zKillboard and a weekly situation report, **live fleet** tracking, **threat intel** for pasted
 local, fleets and d-scans, a **3D universe map**, an **appraisal** tool for Jita prices, **EVE Mail** and
 **corporation wallets** with income, expenses and a long-term journal archive.
@@ -56,6 +56,10 @@ local, fleets and d-scans, a **3D universe map**, an **appraisal** tool for Jita
 - **Industry jobs**: every job of your own characters (manufacturing, ME/TE research, copying, invention,
   reactions) with a progress bar, time left and end time, filterable by running/finished, character, activity, system
   and station. Opt-in per character on the Industry access page; only you see your characters' jobs.
+- **Market orders**: the buy and sell orders of your own characters with item, price, remaining quantity, station or
+  structure, issue date and expiry, plus closed orders of the last 90 days; totals for what you are selling, buying
+  and holding in escrow, and orders about to expire. Opt-in per character on the Market access page; only you see
+  your characters' orders.
 - **Mining**
   - Personal ledgers (opt-in per character, deletable once switched off) *and* corporation moon-observer ledgers,
     de-duplicated in a combined view
@@ -85,6 +89,10 @@ local, fleets and d-scans, a **3D universe map**, an **appraisal** tool for Jita
   "recently seen hostiles" list.
 - **Appraisal** (Trade): paste cargo, inventory, contracts, EFT fittings, d-scans, killmails or item lists and get
   Jita 4-4 buy / sell / split values, volume and a percentage price (e.g. for buyback), saved as a shareable link.
+- **Gate check** (Combat, every role): plan a route (shortest, safer or less secure, avoiding systems) and see kills at
+  each gate you pass, live from zKillboard's feed, tagged smartbombs, interdictors, HICs, gankers, hot drops and pod
+  kills; plus a camp estimate for the time you get to each gate from weeks of history and the regular campers seen
+  nearby.
 - **Universe map** (Combat): interactive 3D map with stargate routes and capital jump ranges.
 - **EVE Mail** (Social): read-only mail per character, opt-in and private to you.
 - **Live alerts**: kills, losses and new mail as in-app or desktop notifications.
@@ -179,5 +187,5 @@ modify and share it; if you run a modified version as a service for other people
 
 ---
 
-EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide. Keystar is a
-fan-made tool and is not affiliated with or endorsed by CCP hf.
+© 2014 CCP hf. All rights reserved. "EVE", "EVE Online", "CCP", and all related logos and images are trademarks or
+registered trademarks of CCP hf. Keystar is a fan-made tool, not affiliated with or endorsed by CCP hf.

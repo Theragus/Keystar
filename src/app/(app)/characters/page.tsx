@@ -60,7 +60,8 @@ export default async function CharactersPage({ searchParams }: PageProps<"/chara
   const reasons = new Map(allScopeRequirements().map((s) => [s.scope, s.reason(t)]));
   const scopeLabels = optionalScopeLabels(t);
   const tc = m.toast;
-  const manageHrefs = new Map(allScopeRequirements().flatMap((s) => (s.manageHref ? [[s.scope, s.manageHref] as const] : [])));
+  // A scope two accesses share (structure names) links to the first module that declares it, as its permission does.
+  const manageHrefs = new Map(allScopeRequirements().flatMap((s) => (s.manageHref ? [[s.scope, s.manageHref] as const] : [])).reverse());
   const authorizedApps = (text: string) => (
     <a
       href={EVE_AUTHORIZED_APPS_URL}

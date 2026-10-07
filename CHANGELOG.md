@@ -16,7 +16,39 @@ Sharing skills now includes the implants of the active clone, so the remap optim
 2. Update as usual; the database migrations run on start. Characters that already share their skills keep sharing;
    they are asked to re-authorise once to include their implants.
 
+Market orders need one more optional character scope: add `esi-markets.read_character_orders.v1` to the scopes of
+your EVE application (and `esi-universe.read_structures.v1`, if it isn't there yet). Nobody is asked for it unless
+they enable market access on the Market access page, but without it on the application that EVE login fails with
+`invalid_scope`.
+
 ### Added
+
+- **Market orders.** A new Market Orders page under Trade lists the buy and sell orders of your own characters: the
+  item, its price per unit and the total, how much is left of the quantity, the station or structure with its system
+  and region, when the order was issued and when it expires. Filter by open or closed orders, buy or sell, character
+  and location; tiles add up what you are selling and buying, the ISK held in escrow and the orders that expire
+  within three days, and a panel shows where your orders are. Closed orders (filled, cancelled or expired) are listed
+  too, from the 90 days ESI reports back. Access is opt-in per character on the new Market access page, like
+  industry jobs, so nobody is asked for the new scope (`esi-markets.read_character_orders.v1`) at sign-up. It
+  shares the structure scope with industry access: switching one of them off keeps that scope while the other is
+  on. Only you see your characters' orders. ([PR #187](https://github.com/Theragus/Keystar/pull/187))
+- **Gate check** (Combat, for every role): plan a stargate route and see what waits at each gate before you jump.
+  - Routes like EVE's autopilot: shortest, safer (stays in high-sec as long as there is a way) or less secure, around
+    any systems you want to avoid; never through Zarzakh, whose gate lock would trap you.
+  - Kills of the last two hours at the gate you arrive by and the gate you leave by in every system, with the victim,
+    attackers, their ships and groups and the distance to the gate, kept apart from kills at the system's other gates.
+    Tags show smartbombs, interdictors and HICs (bubbles), gankers (CONCORD on the mail), hot drops and pod kills; a
+    system is marked as a camp after a kill at your gate in the last 30 minutes or three within the hour.
+  - A camp estimate for the time you reach each gate, leaving now at about a minute a jump: how often those gates saw
+    kills around that time of day over the last weeks, a camp there right now, and the regular campers of those gates
+    who were seen killing nearby in the last two hours, each explained, with the busiest hours and the groups behind
+    the kills.
+  - No extra load on zKillboard: the worker's live feed, which already reads every killmail for the killboard, keeps
+    the kills near stargates (60 days at gates, 7 days elsewhere). It now runs without a home corporation too, and on
+    a fresh start reads the last few hours back. The map's travel check reads the same data instead of asking
+    zKillboard for every system on the route.
+
+  ([PR #188](https://github.com/Theragus/Keystar/pull/188))
 
 - **Help, welcome tour and What's new.** A new **Help** button next to Alerts in the top bar (or the `?` key on any
   page) explains Keystar in five topics:
@@ -52,6 +84,12 @@ Sharing skills now includes the implants of the active clone, so the remap optim
     with a character that is already on your account no longer changes its access.
   - "Link with corporation access" no longer includes the mining ledger. A director whose character shares it is
     asked once to turn it back on, like wallet import or skill sharing.
+- The sign-in, registration and "Link a character" buttons on the login and join pages are now CCP's official
+  "LOG IN with EVE Online" button (black on the dark theme, white on the light one), as CCP asks of third-party
+  applications. The CCP notice now carries the wording of the Developer License Agreement and also appears on the
+  join page and under "How Keystar works" in Help. ([PR #189](https://github.com/Theragus/Keystar/pull/189))
+- The Map moved to the bottom of the Combat section of the sidebar, below Gate check.
+  ([PR #190](https://github.com/Theragus/Keystar/pull/190))
 
 ### Fixed
 

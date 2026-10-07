@@ -94,6 +94,7 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    esi-industry.read_character_mining.v1
    esi-industry.read_corporation_mining.v1
    esi-mail.read_mail.v1
+   esi-markets.read_character_orders.v1
    esi-skills.read_skillqueue.v1
    esi-skills.read_skills.v1
    esi-universe.read_structures.v1
@@ -104,11 +105,17 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    Registering asks members for no scope at all. Corporation scopes are requested only when a director links a
    character with "corporation access", and every character scope only when a pilot switches it on for a character:
    the mining ledger on the Mining access page, wallet import in the mining P&L, mail on the EVE Mail page, fleet
-   access on the Live fleet page, skill sharing on the Skills access page or industry access on the Industry access
-   page. (The login page also shows this exact list while SSO is not configured yet.)
+   access on the Live fleet page, skill sharing on the Skills access page, industry access on the Industry access
+   page or market access on the Market access page. (The login page also shows this exact list while SSO is not
+   configured yet.)
 5. Save and keep the **Client ID** and **Secret Key** for the next step.
 
 When future modules (assets) are added, add their scopes to the application as well.
+
+> **Upgrading to the release with market orders (see the CHANGELOG):** add `esi-markets.read_character_orders.v1`
+> to the EVE application (and `esi-universe.read_structures.v1`, if it isn't there yet from industry jobs). Without
+> it, "Enable market access" on the Market access page fails at the EVE login with `invalid_scope`. Nobody is asked
+> for the scope unless they enable market access themselves.
 
 > **Upgrading to the release with industry jobs (see the CHANGELOG):** add `esi-industry.read_character_jobs.v1` and
 > `esi-universe.read_structures.v1` to the EVE application. Without them, "Enable industry access" on the Industry
@@ -200,7 +207,9 @@ the moment it starts syncing.
 
 The **killboard** needs no extra setup: the worker imports the home corporation's last 90 days of kills and losses
 from zKillboard (public data, no ESI scopes) and then checks hourly. The first weekly situation report is written
-once a full week has been imported, shortly after 02:00 EVE time. The server needs outbound HTTPS to
+once a full week has been imported, shortly after 02:00 EVE time. The **gate check** needs no setup either: the
+worker's live feed stores every kill near a stargate (a few thousand rows a day, kept 60 days at gates and 7 days
+elsewhere, a few hundred MB at most), so camp estimates get better over the first weeks. The server needs outbound HTTPS to
 `esi.evetech.net`, `login.eveonline.com`, `zkillboard.com` and, with `ANTHROPIC_API_KEY`, `api.anthropic.com`.
 
 ## Operating Keystar
