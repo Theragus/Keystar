@@ -101,11 +101,11 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    esi-wallet.read_corporation_wallets.v1
    ```
 
-   Keystar only ever asks members for the scopes its enabled modules need; corporation scopes are requested only when
-   a director links a character with "corporation access", and the wallet, mail, fleet, skills and industry scopes
-   only when a pilot enables wallet import for a character in the mining P&L, mail for a character on the EVE Mail
-   page, fleet access for a character on the Live fleet page, skill sharing on the Skills access page or industry
-   access on the Industry access page. (The login page also shows this exact list while SSO is not configured yet.)
+   Registering asks members for no scope at all. Corporation scopes are requested only when a director links a
+   character with "corporation access", and every character scope only when a pilot switches it on for a character:
+   the mining ledger on the Mining access page, wallet import in the mining P&L, mail on the EVE Mail page, fleet
+   access on the Live fleet page, skill sharing on the Skills access page or industry access on the Industry access
+   page. (The login page also shows this exact list while SSO is not configured yet.)
 5. Save and keep the **Client ID** and **Secret Key** for the next step.
 
 When future modules (assets) are added, add their scopes to the application as well.
@@ -191,8 +191,8 @@ Then open `https://keystar.example.com`. To build from the checkout instead of u
    3. **Corporation data** — link a character that has the in-game **Accountant** (or Director) role with corporation
       access, so Keystar can read refinery observers, the corporation wallets and the roster. Skippable.
    4. **Invite** — copy the `/join` link for your members.
-3. Link your alts under **My Characters → Link a character**. Alts in other corporations work too: once linked with
-   the mining scope, their personal mining ledgers sync like any other character's and appear in the mining P&L and in the **My characters** view of
+3. Link your alts under **My Characters → Link a character**, and switch on their mining ledger under **Mining →
+   Access**. Alts in other corporations work too: once their mining ledger is on, their personal mining ledgers sync like any other character's and appear in the mining P&L and in the **My characters** view of
    the mining overview, ledger and export. The corporation view only counts characters in the home corporation.
 
 The worker picks up new tokens within a minute. ESI keeps 30 days of mining history; Keystar keeps everything from

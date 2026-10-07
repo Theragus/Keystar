@@ -1,4 +1,5 @@
 import { Activity, KeyRound, Plus, Trash2, Wallet } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { StatusBadge } from "@/components/ui/badge";
 import { ActionForm } from "@/components/ui/action-form";
@@ -14,6 +15,7 @@ import { pnlQueryString } from "@/modules/mining/pnl/filters";
 import { pnlPageContext } from "@/modules/mining/pnl/page-context";
 import { INCOME_SOURCES } from "@/modules/mining/pnl/scope";
 import { getMinedTypes, getPriceRules, getSaleHints, getWalletStatus, HINT_DAYS, hintRange } from "@/modules/mining/pnl/queries";
+import { MINING_LEDGER_SCOPE, MINING_MANAGE_HREF } from "@/modules/mining/module";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
 import {
   addPriceRule,
@@ -34,7 +36,6 @@ export async function generateMetadata() {
 
 const inputClass = "glass-inset h-9 w-full rounded-lg px-3 text-sm text-ink";
 const RETURN_TO = "/mining/pnl/settings";
-const MINING_SCOPE = "esi-industry.read_character_mining.v1";
 
 function isoDay(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -62,6 +63,11 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
   const sw = t.characters.scopeSwitch;
   const walletLabel = t.wallet.module.scopes.characterWalletLabel;
   const tt = t.pnl.toast;
+  const miningAccessLink = (text: string) => (
+    <Link href={MINING_MANAGE_HREF} className="text-accent hover:underline">
+      {text}
+    </Link>
+  );
   const failure = { failed: tt.failed, errors: tt.errors };
 
   return (
@@ -77,7 +83,7 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
         <div className="space-y-3">
           {wallet.map((w) => {
             const enable = reauthorizeHref(w.grantedScopes, { add: [WALLET_SCOPE], returnTo: RETURN_TO, characterId: w.characterId });
-            const tracksMining = w.grantedScopes.includes(MINING_SCOPE);
+            const tracksMining = w.grantedScopes.includes(MINING_LEDGER_SCOPE);
             return (
               <Glass key={w.characterId} className="flex flex-wrap items-center gap-4 rounded-2xl px-4 py-3">
                 <Portrait id={w.characterId} size={44} />
@@ -110,11 +116,12 @@ export default async function PnlSettingsPage({ searchParams }: PageProps<"/mini
                   </p>
                   <p className="flex items-center gap-1 text-xs text-ink-3">
                     <Activity className="size-3.5" aria-hidden />
-                    {w.activitySince
-                      ? m.wallet.activitySince(f.shortDate(isoDay(w.activitySince)))
-                      : tracksMining
-                        ? m.wallet.activityNext
-                        : m.wallet.activityNone}
+                    {/* Measured history stays after the ledger is switched off, but nothing new is measured. */}
+                    {tracksMining
+                      ? w.activitySince
+                        ? m.wallet.activitySince(f.shortDate(isoDay(w.activitySince)))
+                        : m.wallet.activityNext
+                      : m.wallet.activityNone(miningAccessLink)}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">

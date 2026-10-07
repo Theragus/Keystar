@@ -30,6 +30,7 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 ## Mining
 
 - ✅ Personal mining ledgers and corporation moon-observer ledgers, de-duplicated
+- ✅ Personal mining ledger opt-in per character (Mining → Access), with deletion of the stored history
 - ✅ Filters: date range, members, ore class, ore type, system, data source
 - ✅ Daily value / volume / units, resource mix, moon rarity, top miners (pilots or characters), ore and system breakdowns
 - ✅ Valuation from Jita 4-4 buy/sell/split or ESI average, current or historical prices

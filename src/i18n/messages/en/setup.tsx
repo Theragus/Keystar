@@ -58,8 +58,10 @@ export const setup = {
   },
   invite: {
     title: "Invite your members",
-    intro: "Share this link in corp chat or MOTD. It explains exactly what Keystar reads and walks pilots through EVE SSO.",
-    worker: "The sync worker picks up new characters within a minute; first ledgers appear shortly after.",
+    intro:
+      "Share this link in corp chat or MOTD. It explains what Keystar reads and walks pilots through EVE SSO; registering asks EVE for no access.",
+    worker:
+      "Each pilot switches on what they share, such as their mining ledger, per character under Mining → Access. The sync worker picks it up within a minute; first ledgers appear shortly after.",
     history: "ESI only keeps 30 days of mining — Keystar keeps everything from today on.",
     /** `path` is the settings page's place in the navigation, e.g. "Administration → Settings". */
     settings: (path: string) => `Everything here can be changed later under ${path}.`,
