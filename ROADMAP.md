@@ -196,3 +196,13 @@ Route planning for ships with a jump drive.
 ## Universe map
 
 - ✅ Interactive 3D map under Combat with system search, names and security status from CCP static data.
+
+## Gate check
+
+- ✅ Route planning (shortest, safer, less secure, avoided systems) with kills at every gate on the route, live from
+  zKillboard's feed, tagged smartbombs, interdictors, HICs, gankers, hot drops and pod kills
+- ✅ Camp estimates for the time you reach each gate: history by time of day, live camps, regular campers seen nearby
+- 💡 Ansiblex jump bridges and Thera/Turnur wormhole connections (EVE Scout) as route options
+- 💡 Backfill of camp history from EVE Ref's daily killmail archives, so estimates are useful from day one
+- 💡 System traffic from ESI (`/universe/system_jumps`) to weigh kills against how busy a system is
+- 💡 A live alert when a camp appears on a saved route

@@ -2,7 +2,7 @@ import type { map as en } from "../en/map";
 export const map: typeof en = {
  universe: "Universum",
  title: "Karte", description: "Erkunde das EVE-Universum in 3D. Wähle ein System für Name und Sicherheitsstatus.",
- help: "Eine 3D-Karte des EVE-Universums aus CCPs statischen Daten: Suche ein System, wechsle zwischen bekanntem Weltraum und Wurmlochraum und klicke ein System an, um es zu fokussieren. Die Reiseprüfung berechnet die kürzeste Stargate-Route und sucht auf zKillboard nach Kills an ihren Toren in den letzten zwei Stunden; die Sprungreichweite zeigt, wohin ein Carrier, Sprungfrachter oder Black-Ops-Schiff springen kann.",
+ help: "Eine 3D-Karte des EVE-Universums aus CCPs statischen Daten: Suche ein System, wechsle zwischen bekanntem Weltraum und Wurmlochraum und klicke ein System an, um es zu fokussieren. Die Reiseprüfung berechnet die kürzeste Stargate-Route und markiert Kills an ihren Toren in den letzten zwei Stunden (Details auf der Seite Gate-Check); die Sprungreichweite zeigt, wohin ein Carrier, Sprungfrachter oder Black-Ops-Schiff springen kann.",
  search: "System suchen", all: "Gesamter Weltraum", known: "Bekannter Weltraum", wormholes: "Wurmlochraum", reset: "Ansicht zurücksetzen",
  controls: "Ziehen zum Drehen · Rechts- oder Umschalt-Ziehen zum Verschieben · Scrollen zum Zoomen · System anklicken zum Fokussieren", security: "Sicherheitsstatus", systems: "Systeme",
  high: "Highsec", low: "Lowsec", null: "Nullsec", loading: "Universum wird geladen…", error: "Universumsdaten konnten nicht geladen werden.", retry: "Erneut versuchen", source: "Quelle: CCP Static Data Export", labels: "Systembeschriftungen", empty: "Keine passenden Systeme", canvas: "Interaktive 3D-Universumskarte", zoomIn: "Vergrößern", zoomOut: "Verkleinern",
@@ -20,7 +20,8 @@ export const map: typeof en = {
  notChecked: "Nicht geprüft",
  checkFailed: "Torevidenz nicht verfügbar",
  routeHint: "Kürzeste Route nach Toranzahl. Nur statische Stargates; keine Wurmlöcher oder Spieler-Sprungbrücken.",
- evidenceHint: "Letzte 2 Stunden · innerhalb von 150 km eines Routentors oder dem Tor zugeordneter Killmail. Grün bedeutet keine Evidenz gefunden, keine garantierte Sicherheit. zKillboard kann Kills verzögert oder unvollständig liefern und Ergebnisse eine Stunde cachen.",
+ evidenceHint: "Letzte 2 Stunden · Spieler-Kills innerhalb von 150 km eines Routentors, aus dem Live-Feed von zKillboard. Grün bedeutet keine Evidenz gefunden, keine garantierte Sicherheit; Kills kommen Minuten bis eine halbe Stunde verspätet bei zKillboard an.",
+ openGatecheck: "Im Gate-Check öffnen",
  checked: "Geprüft",
  gateTo: "Tor nach",
  killmail: "Killmail",
