@@ -43,14 +43,32 @@ export function allScopeRequirements(): (ScopeRequirement & { module: string })[
   return MODULES.flatMap((m) => m.scopes.map((s) => ({ ...s, module: m.name })));
 }
 
-/** Scope requirements every member grants when linking a character (no opt-in scopes). */
+/**
+ * Scope requirements every member grants when linking a character (no opt-in scopes). Empty: every character scope
+ * is opt-in, so registering and linking only prove who the pilot is.
+ */
 export function memberScopeRequirements(): (ScopeRequirement & { module: string })[] {
   return allScopeRequirements().filter((s) => s.level === "character" && !s.optional);
 }
 
-/** Scopes every member grants when linking a character. */
+/** Scopes every member grants when linking a character (empty, see memberScopeRequirements). */
 export function characterScopes(): string[] {
   return [...new Set(memberScopeRequirements().map((s) => s.scope))].sort();
+}
+
+/**
+ * The state of a character's ESI access: `revoked` (EVE refused the token), `missing` (a scope every member grants is
+ * not held), `none` (nothing in use: no token, or every opt-in scope switched off; that is fine) or `ok`.
+ */
+export type EsiHealth = "ok" | "none" | "missing" | "revoked";
+
+export function esiHealth(
+  token: { status: string | null; scopes: readonly string[] | null } | null | undefined,
+  required: readonly string[] = characterScopes(),
+): EsiHealth {
+  if (token?.status === "invalid") return "revoked";
+  if (required.some((s) => !token?.scopes?.includes(s))) return "missing";
+  return token?.status && token.scopes?.length ? "ok" : "none";
 }
 
 /** Character scopes plus corporation-level scopes for directors/accountants. */

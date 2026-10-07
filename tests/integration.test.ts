@@ -1373,6 +1373,8 @@ describe.skipIf(!enabled)("integration", async () => {
     });
 
     it("records ledger growth in the sync job", async () => {
+      const { MINING_LEDGER_SCOPE } = await import("@/modules/mining/module");
+      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: "x", scopes: [MINING_LEDGER_SCOPE] });
       const today = new Date().toISOString().slice(0, 10);
       let quantity = 1000;
       const esi = new EsiClient({
@@ -1884,6 +1886,62 @@ describe.skipIf(!enabled)("integration", async () => {
       }
     });
 
+    it("deletes the token only when a character is re-authorised with no scope at all", async () => {
+      const { encryptToken } = await import("@/core/crypto");
+      const { provisionFromSso } = await import("@/core/auth/provision");
+      const { MINING_LEDGER_SCOPE: MINING } = await import("@/modules/mining/module");
+      // Wallet import on, the mining ledger switched off in Keystar but still in the token.
+      await db()
+        .insert(schema.esiTokens)
+        .values({ characterId: 2, refreshTokenEnc: encryptToken("old-refresh"), scopes: [WALLET_SCOPE], disabledScopes: [MINING] });
+      const { getEsi } = await import("@/core/esi");
+      const reply = <T,>(data: T) => ({ data, status: 200, expiresAt: null, pages: 1, fromCache: false, notModified: false, lastModified: null });
+      const getSpy = vi
+        .spyOn(getEsi(), "get")
+        .mockImplementation(async (path: string) =>
+          reply(path.startsWith("/corporations/") ? { name: "Home", ticker: "HOME", member_count: 3 } : { corporation_id: 100 }),
+        ) as unknown as { mockRestore: () => void };
+      const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
+      // Only CCP's revoke endpoint is fetched directly.
+      const revoke = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+      const login = (intent: "login" | "join" | "link", reauthorize?: boolean, ownerHash = "h2") =>
+        provisionFromSso({
+          verified: { characterId: 2, name: "Bravo", ownerHash, scopes: [], expiresAt: new Date(Date.now() + 1e6) },
+          tokens: { access_token: "a", expires_in: 1200, token_type: "Bearer" },
+          intent,
+          currentUserId: intent === "link" ? userB : null,
+          reauthorize,
+        });
+      const tokens = async () => db().select().from(schema.esiTokens);
+      try {
+        // Signing in, joining, and a plain link with a character already on the account leave its access alone.
+        expect(await login("login")).toMatchObject({ tokenRemoved: false, lostOptionalScopes: [] });
+        expect(await login("join")).toMatchObject({ tokenRemoved: false, lostOptionalScopes: [] });
+        expect(await login("link")).toMatchObject({ tokenRemoved: false, newCharacter: false, lostOptionalScopes: [] });
+        expect(await tokens()).toMatchObject([{ scopes: [WALLET_SCOPE], disabledScopes: [MINING] }]);
+        expect(revoke).not.toHaveBeenCalled();
+
+        // Re-authorising this very character without any scope withdraws everything, switched-off scopes included.
+        expect(await login("link", true)).toMatchObject({ tokenRemoved: true, lostOptionalScopes: [WALLET_SCOPE] });
+        expect(await tokens()).toEqual([]);
+        expect(revoke).toHaveBeenCalledOnce();
+        expect(String(revoke.mock.calls[0][1]?.body)).toContain("token=old-refresh");
+        // Nothing left to remove the second time.
+        expect(await login("link", true)).toMatchObject({ tokenRemoved: false, lostOptionalScopes: [] });
+        expect(revoke).toHaveBeenCalledOnce();
+
+        // Linked back from another of the player's EVE accounts: the old token belongs to the account it left.
+        await db().insert(schema.esiTokens).values({ characterId: 2, refreshTokenEnc: encryptToken("old-account"), scopes: [WALLET_SCOPE] });
+        expect(await login("link", false, "h2-moved")).toMatchObject({ tokenRemoved: true, lostOptionalScopes: [WALLET_SCOPE] });
+        expect(await tokens()).toEqual([]);
+        expect(String(revoke.mock.calls[1][1]?.body)).toContain("token=old-account");
+      } finally {
+        getSpy.mockRestore();
+        postSpy.mockRestore();
+        revoke.mockRestore();
+      }
+    });
+
     it("hints at realised sale prices per raw unit, raw or compressed", async () => {
       await db().insert(schema.walletTransactions).values([
         tx(3, 21, 62516, { isBuy: false, quantity: 10, unitPrice: 1100 }), // 10 compressed = 1000 raw
@@ -2335,8 +2393,9 @@ describe.skipIf(!enabled)("integration", async () => {
       const { disableOptionalScope, enableOptionalScope } = await import("@/core/auth/scope-switch");
       const { fleetJobs } = await import("@/modules/fleet/jobs");
       const { FLEET_SCOPE } = await import("@/modules/fleet/logic");
-      const MINING = "esi-industry.read_character_mining.v1";
-      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: "x", scopes: [MINING, FLEET_SCOPE] });
+      // A corporation scope: never opt-in, so the switch refuses it.
+      const CORP_MINING = "esi-industry.read_corporation_mining.v1";
+      await db().insert(schema.esiTokens).values({ characterId: 1, refreshTokenEnc: "x", scopes: [CORP_MINING, FLEET_SCOPE] });
       const token = async () => (await db().select().from(schema.esiTokens))[0];
       const fleetJobEnabled = async () => {
         await scheduler.planJobs(fleetJobs);
@@ -2345,15 +2404,15 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await fleetJobEnabled()).toBe(true);
 
       expect(await disableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
-      expect(await token()).toMatchObject({ scopes: [MINING], disabledScopes: [FLEET_SCOPE] });
+      expect(await token()).toMatchObject({ scopes: [CORP_MINING], disabledScopes: [FLEET_SCOPE] });
       expect(await fleetJobEnabled()).toBe(false);
       // Idempotent, and only for opt-in scopes the token holds.
       expect(await disableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
-      expect(await disableOptionalScope(1, MINING)).toBe("unknownScope");
+      expect(await disableOptionalScope(1, CORP_MINING)).toBe("unknownScope");
       expect(await disableOptionalScope(2, FLEET_SCOPE)).toBe("notHeld");
 
       expect(await enableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
-      expect(await token()).toMatchObject({ scopes: [MINING, FLEET_SCOPE], disabledScopes: [] });
+      expect(await token()).toMatchObject({ scopes: [CORP_MINING, FLEET_SCOPE], disabledScopes: [] });
       expect(await fleetJobEnabled()).toBe(true);
       expect(await enableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
       expect(await enableOptionalScope(2, FLEET_SCOPE)).toBe("notHeld");
@@ -2362,7 +2421,7 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(await disableOptionalScope(1, FLEET_SCOPE)).toBe("ok");
       await db().execute(sql`UPDATE esi_tokens SET status = 'invalid' WHERE character_id = 1`);
       expect(await enableOptionalScope(1, FLEET_SCOPE)).toBe("notHeld");
-      expect(await token()).toMatchObject({ scopes: [MINING], disabledScopes: [FLEET_SCOPE] });
+      expect(await token()).toMatchObject({ scopes: [CORP_MINING], disabledScopes: [FLEET_SCOPE] });
     });
   });
 
@@ -2742,6 +2801,176 @@ describe.skipIf(!enabled)("integration", async () => {
       // The cached copy of the jobs goes too; other cached responses stay.
       expect((await db().select().from(schema.esiCache)).map((r) => r.key)).toEqual(["2:GET /characters/2/roles"]);
       expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ characterId: 2, hasData: false });
+    });
+  });
+
+  describe("mining access", async () => {
+    const { MINING_LEDGER_SCOPE: MINING } = await import("@/modules/mining/module");
+    const { characterLedgerJob } = await import("@/modules/mining/jobs");
+    // Who the server actions run as; null makes the permission check fail.
+    let actor: { id: string; characterIds: number[] } | null = null;
+
+    beforeEach(async () => {
+      await db().insert(schema.esiTokens).values([
+        { characterId: 1, refreshTokenEnc: "x", scopes: [MINING] },
+        { characterId: 2, refreshTokenEnc: "x", scopes: [MINING] },
+        { characterId: 3, refreshTokenEnc: "x", scopes: [] },
+      ]);
+      const windowEnd = new Date("2026-09-10T12:00:00Z");
+      for (const characterId of [1, 2]) {
+        await db().insert(schema.miningActivity).values({
+          characterId,
+          windowStart: new Date(windowEnd.getTime() - 900_000),
+          windowEnd,
+          date: "2026-09-10",
+          typeId: 1230,
+          quantity: 10,
+        });
+        await db().insert(schema.miningActivityCoverage).values({ characterId, since: windowEnd, lastObservedAt: windowEnd });
+      }
+      vi.doMock("@/core/auth/dal", () => ({
+        assertPermission: async () => {
+          if (!actor) throw new Error("forbidden");
+          return actor;
+        },
+        getCurrentUser: async () => actor,
+      }));
+      vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+      vi.doMock("server-only", () => ({}));
+    });
+    afterEach(() => {
+      vi.doUnmock("@/core/auth/dal");
+      vi.doUnmock("next/cache");
+      vi.doUnmock("server-only");
+    });
+    const characterRows = async (table: typeof schema.miningCharacterLedger | typeof schema.miningActivity | typeof schema.miningActivityCoverage) =>
+      (await db().select({ characterId: table.characterId }).from(table)).map((r) => r.characterId).sort();
+
+    it("switches the ledger off and on in Keystar, keeping the history", async () => {
+      const { setOptionalScope } = await import("@/app/(app)/characters/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      expect(await q.getMiningAccess(userB)).toMatchObject([
+        { characterId: 2, granted: true, switchedOff: false, tokenStatus: "active", firstDate: "2026-09-10", lastDate: "2026-09-10" },
+        { characterId: 3, granted: false, switchedOff: false, firstDate: "2026-09-11" },
+      ]);
+      expect(await q.getCoverage(own([2, 3]))).toMatchObject({ trackedCharacters: 1, notEnabled: 1, invalidTokens: 0 });
+
+      expect(await setOptionalScope(2, MINING, false)).toEqual({ ok: true });
+      const [token] = await db().select().from(schema.esiTokens).where(sql`character_id = 2`);
+      expect(token).toMatchObject({ scopes: [], disabledScopes: [MINING] });
+      expect((await q.getMiningAccess(userB))[0]).toMatchObject({ granted: false, switchedOff: true, firstDate: "2026-09-10" });
+      expect(await q.getCoverage(own([2, 3]))).toMatchObject({ trackedCharacters: 0, notEnabled: 2 });
+      // The sync stops, but the stored history still counts.
+      await scheduler.planJobs([characterLedgerJob]);
+      expect((await db().select().from(schema.syncJobs)).filter((j) => j.enabled).map((j) => j.ownerId)).toEqual([1]);
+      expect((await q.getMiningSummary(filters(), own([2, 3]), val)).current.value).toBe(100 * 600 + 500 * 10);
+
+      expect(await setOptionalScope(2, MINING, true)).toEqual({ ok: true });
+      expect(await q.getCoverage(own([2, 3]))).toMatchObject({ trackedCharacters: 1, notEnabled: 1 });
+      // A token that never held the scope needs the EVE login.
+      expect(await setOptionalScope(3, MINING, true)).toEqual({ ok: false, error: "notHeld" });
+    });
+
+    it("counts characters without a token as not sharing, and revoked tokens apart", async () => {
+      await db().delete(schema.esiTokens).where(sql`character_id = 3`);
+      await db().update(schema.esiTokens).set({ status: "invalid" }).where(sql`character_id = 1`);
+      expect(await q.getCoverage(corp)).toMatchObject({ trackedCharacters: 1, notEnabled: 1, invalidTokens: 1 });
+      expect((await q.getMiningAccess(userB))[1]).toMatchObject({ characterId: 3, granted: false, tokenStatus: null });
+    });
+
+    it("deletes the stored ledger only once it is off", async () => {
+      const { setOptionalScope } = await import("@/app/(app)/characters/actions");
+      const { deleteMiningData } = await import("@/app/(app)/mining/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      await db().insert(schema.esiCache).values(
+        ["2:GET /characters/2/mining?page=1", "2:GET /characters/2/roles", "1:GET /characters/1/mining?page=1"].map((key) => ({ key, body: [] })),
+      );
+      expect(await deleteMiningData(2)).toEqual({ ok: false, error: "stillEnabled" });
+      expect(await setOptionalScope(2, MINING, false)).toEqual({ ok: true });
+      expect(await deleteMiningData(2)).toEqual({ ok: true });
+
+      expect(await characterRows(schema.miningCharacterLedger)).toEqual([1, 3]);
+      expect(await characterRows(schema.miningActivity)).toEqual([1]);
+      expect(await characterRows(schema.miningActivityCoverage)).toEqual([1]);
+      // Moon-drill records belong to the corporation and stay.
+      expect((await db().select().from(schema.miningObserverLedger)).map((r) => r.characterId).sort()).toEqual([2, 9]);
+      // The cached copy of the ledger goes too; other cached responses stay.
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key).sort()).toEqual([
+        "1:GET /characters/1/mining?page=1",
+        "2:GET /characters/2/roles",
+      ]);
+      expect((await q.getMiningAccess(userB))[0]).toMatchObject({ characterId: 2, firstDate: null, lastDate: null });
+    });
+
+    it("checks the permission and the owner, also against the database", async () => {
+      const { setOptionalScope } = await import("@/app/(app)/characters/actions");
+      const { deleteMiningData } = await import("@/app/(app)/mining/actions");
+      actor = null;
+      expect(await setOptionalScope(2, MINING, false)).toEqual({ ok: false, error: "forbidden" });
+      expect(await deleteMiningData(2)).toEqual({ ok: false, error: "forbidden" });
+      actor = { id: userB, characterIds: [3] };
+      expect(await setOptionalScope(2, MINING, false)).toEqual({ ok: false, error: "notOwned" });
+      expect(await deleteMiningData(2)).toEqual({ ok: false, error: "notOwned" });
+      // The session's character list is stale: character 1 belongs to Alpha, not Bravo.
+      await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 1`);
+      actor = { id: userB, characterIds: [1] };
+      expect(await deleteMiningData(1)).toEqual({ ok: false, error: "notOwned" });
+      expect(await characterRows(schema.miningCharacterLedger)).toEqual([1, 2, 3]);
+    });
+
+    it("skips a sync's write once the ledger is off, so deleted history stays deleted", async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      let requests = 0;
+      let offAfterFetch = false;
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        maxRetries: 0,
+        fetchImpl: (async () => {
+          requests++;
+          // Simulates the ledger being switched off while the ESI request is in flight.
+          if (offAfterFetch) await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+          return new Response(JSON.stringify([{ date: today, quantity: 700, solar_system_id: 30000180, type_id: 1230 }]), {
+            status: 200,
+            headers: { "content-type": "application/json", "last-modified": new Date().toUTCString() },
+          });
+        }) as unknown as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 2, characterId: 2, esi, db: db(), log: undefined as never, meta: {} };
+      const todayRows = async () => db().select().from(schema.miningCharacterLedger).where(sql`character_id = 2 AND date = ${today}`);
+
+      // Off: a run claimed before the planner disables the schedule reads nothing from ESI.
+      await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+      expect((await characterLedgerJob.run(ctx))?.summary).toBe("Mining ledger is switched off");
+      expect(requests).toBe(0);
+
+      // A run whose ESI request already happened when the ledger went off writes nothing either, and drops the cached
+      // response (stored on its way in), which a run after switching back on would otherwise skip as already applied.
+      await db().update(schema.esiTokens).set({ scopes: [MINING] }).where(sql`character_id = 2`);
+      await db().insert(schema.esiCache).values(
+        ["2:GET /characters/2/mining?page=1", "2:GET /characters/2/roles"].map((key) => ({ key, body: [] })),
+      );
+      offAfterFetch = true;
+      expect((await characterLedgerJob.run(ctx))?.summary).toBe("Mining ledger was switched off during the sync");
+      expect(requests).toBe(1);
+      expect(await todayRows()).toEqual([]);
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key)).toEqual(["2:GET /characters/2/roles"]);
+
+
+      // On: the run stores the ledger.
+      offAfterFetch = false;
+      await db().update(schema.esiTokens).set({ scopes: [MINING] }).where(sql`character_id = 2`);
+      await db().delete(schema.esiCache);
+      expect((await characterLedgerJob.run(ctx))?.summary).toContain("1 ledger entries");
+      expect(await todayRows()).toHaveLength(1);
+
+      // A revoked token isn't "switched off": the run goes on to fail at the token refresh (stubbed here), as before.
+      await db().update(schema.esiTokens).set({ status: "invalid" }).where(sql`character_id = 2`);
+      const before = requests;
+      expect((await characterLedgerJob.run(ctx))?.summary).not.toContain("switched off");
+      expect(requests).toBe(before + 1);
     });
   });
 
@@ -3248,6 +3477,14 @@ describe.skipIf(!enabled)("integration", async () => {
         matched: 5,
         accountName: null,
       });
+    });
+
+    it("counts only revoked tokens while no scope is required of every member", async () => {
+      // Bravo Alt has no token and Bravo only some scopes: fine while every scope is opt-in.
+      expect((await audit.getMemberAuditStats(100, [], params())).esiTrouble).toBe(0);
+      await db().update(schema.esiTokens).set({ status: "invalid" }).where(sql`character_id = 2`);
+      expect((await audit.getMemberAuditStats(100, [], params())).esiTrouble).toBe(1);
+      expect((await audit.getMemberAuditPage(100, [], params({ filter: "esi" }))).map((r) => r.id)).toEqual(["2"]);
     });
 
     it("lists registered characters first, then by name", async () => {

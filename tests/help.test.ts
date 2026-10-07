@@ -91,8 +91,15 @@ describe("who else sees your data", () => {
 describe("the scopes topic", () => {
   const groups = scopeGroups(allScopeRequirements(), t, () => true);
 
-  it("lists the scopes everyone grants", () => {
+  it("lists the scopes everyone grants: none, every character scope is opt-in", () => {
     expect(groups.member.map((s) => s.scope).sort()).toEqual(characterScopes());
+    expect(groups.member).toEqual([]);
+  });
+
+  it("offers the mining ledger on the Mining access page", () => {
+    const mining = groups.optional.find((g) => g.href === "/mining/settings");
+    expect(mining?.scopes.map((s) => s.scope)).toEqual(["esi-industry.read_character_mining.v1"]);
+    expect(mining?.label).toBe(t.mining.module.scopes.characterMiningLabel);
   });
 
   it("groups the optional scopes by the page that switches them", () => {
@@ -128,6 +135,7 @@ describe("this page's help", () => {
     ["/mining", "/mining"],
     ["/mining/ledger", "/mining/ledger"],
     ["/mining/pnl/settings", "/mining/pnl"],
+    ["/mining/settings", "/mining"],
     ["/industry/settings", "/industry"],
     ["/market/settings", "/market"],
     ["/skills/settings", "/skills"],

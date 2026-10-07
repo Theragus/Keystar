@@ -45,7 +45,7 @@ export const help: typeof en = {
       },
       grant: {
         title: "Lesezugriff erteilen",
-        body: "Damit Keystar deine Daten zeigen kann, erteilt ein Charakter ESI-Scopes: Leserechte für jeweils eine Art von Daten, etwa sein Mining-Ledger. Die meisten sind optional und gelten pro Charakter.",
+        body: "Damit Keystar deine Daten zeigen kann, erteilt ein Charakter ESI-Scopes: Leserechte für jeweils eine Art von Daten, etwa sein Mining-Ledger. Alle sind optional: Du schaltest sie pro Charakter auf der Seite der jeweiligen Funktion ein.",
       },
       sync: {
         title: "Keystar synchronisiert im Hintergrund",
@@ -64,7 +64,7 @@ export const help: typeof en = {
     intro:
       "Ein ESI-Scope ist ein Leserecht für eine Art von Daten eines Charakters, etwa sein Mining-Ledger oder seine Skill-Queue. EVE listet die Scopes auf seiner Login-Seite, bevor du zustimmst.",
     facts: {
-      signIn: "Die Anmeldung fragt keine Scopes an: Sie beweist nur, wer du bist.",
+      signIn: "Anmeldung, Registrierung und das Verknüpfen eines Charakters fragen keine Scopes an: Sie beweisen nur, wer du bist.",
       readOnly: "Jeder Scope, den Keystar anfragt, liest nur. Keystar kann keine Items, ISK oder Schiffe bewegen und im Spiel nichts tun.",
       perCharacter:
         "Jeder Charakter hat sein eigenes Token. EVE ersetzt die Scopes eines Charakters bei jeder Anmeldung, deshalb fragt Keystar die bereits erteilten erneut an.",
@@ -95,7 +95,7 @@ export const help: typeof en = {
   data: {
     stored: {
       title: "Was Keystar speichert",
-      body: "Namen und Corporations deiner Charaktere, deine Keystar-Rolle und die Daten, die die Scopes deiner Charaktere liefern, etwa Mining-Ledger oder, wenn du sie einschaltest, Skill-Queues und Mails.",
+      body: "Namen und Corporations deiner Charaktere, deine Keystar-Rolle und die Daten, die deine Charaktere für den Zugriff liefern, den du einschaltest, etwa Mining-Ledger, Skill-Queues oder Mails.",
     },
     security: {
       title: "Wie sie geschützt sind",
@@ -124,10 +124,10 @@ export const help: typeof en = {
     },
     delete: {
       title: "Daten entfernen",
-      body: "Wenn du einen Charakter unter „Meine Charaktere“ entfernst, wird sein Token gelöscht und bei CCP widerrufen, und seine Wallet-, Mail-, Industrie- und Marktdaten werden gelöscht; sein Mining-Verlauf bleibt bei der Corporation. Skill-, Industrie-, Markt-, Mail- und Wallet-Daten kannst du auch auf ihren eigenen Seiten löschen. Einen Knopf zum Löschen deines Kontos gibt es nicht: Bitte einen Direktor oder Admin, es zu deaktivieren.",
+      body: "Wenn du einen Charakter unter „Meine Charaktere“ entfernst, wird sein Token gelöscht und bei CCP widerrufen, und seine Wallet-, Mail-, Industrie- und Marktdaten werden gelöscht; sein Mining-Verlauf bleibt bei der Corporation, außer du löschst ihn vorher unter Mining-Zugriff. Mining-, Skill-, Industrie-, Markt-, Mail- und Wallet-Daten kannst du auch auf ihren eigenen Seiten löschen. Einen Knopf zum Löschen deines Kontos gibt es nicht: Bitte einen Direktor oder Admin, es zu deaktivieren.",
     },
     retention: (r: { appraisals: number; scans: number; pilots: number; killmails: number }) =>
-      `Automatisch gelöscht: Bewertungen nach ${n(r.appraisals)} Tagen, Scans der Bedrohungsanalyse nach ${n(r.scans)} Tagen, Pilotenprofile nach ${n(r.pilots)} Tagen und Killmail-Zusammenfassungen nach ${n(r.killmails)} Tagen. Mining-Ledger und das Archiv der Corporation-Wallet bleiben dauerhaft.`,
+      `Automatisch gelöscht: Bewertungen nach ${n(r.appraisals)} Tagen, Scans der Bedrohungsanalyse nach ${n(r.scans)} Tagen, Pilotenprofile nach ${n(r.pilots)} Tagen und Killmail-Zusammenfassungen nach ${n(r.killmails)} Tagen. Mining-Ledger (bis du deine eigenen löschst) und das Archiv der Corporation-Wallet bleiben dauerhaft.`,
     ai: "Dieser Server hat einen Claude-API-Schlüssel, daher schreibt Claude (von Anthropic) den wöchentlichen Lagebericht und die Lagebilder der Bedrohungsanalyse. Es bekommt Fakten, die Keystar aus öffentlichen Killmails und Scans ermittelt hat, etwa Piloten-, Corporation- und Schiffsnamen, Systeme und Standings; nie deine Tokens, Mails, Wallets oder Skills.",
   },
 

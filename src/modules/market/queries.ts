@@ -252,7 +252,7 @@ export async function getMarketFilterOptions(scope: MarketScope, t: { unknownLoc
 export interface MarketCoverage {
   /** Own characters whose token holds both market scopes and works. */
   tracked: number;
-  /** Own characters with a working token without (full) market access: the access page turns it on. */
+  /** Own characters without a token, or with a working token without (full) market access: the access page turns it on. */
   notEnabled: number;
   invalidTokens: number;
   lastSync: Date | null;
@@ -263,7 +263,7 @@ export async function getMarketCoverage(characterIds: number[]): Promise<MarketC
   if (!characterIds.length) return { tracked: 0, notEnabled: 0, invalidTokens: 0, lastSync: null };
   const [row] = await getDb().execute<Record<string, unknown>>(sql`
     SELECT count(*) FILTER (WHERE t.status = 'active' AND ${HOLDS_SCOPES}) AS tracked,
-           count(*) FILTER (WHERE t.status = 'active' AND NOT (${HOLDS_SCOPES})) AS not_enabled,
+           count(*) FILTER (WHERE t.character_id IS NULL OR (t.status = 'active' AND NOT (${HOLDS_SCOPES}))) AS not_enabled,
            count(*) FILTER (WHERE t.status = 'invalid') AS invalid_tokens,
            max(j.last_success_at) AS last_sync
     FROM characters c

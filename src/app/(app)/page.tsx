@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
-import { StatusBadge } from "@/components/ui/badge";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { CorpLogo, Portrait } from "@/components/ui/eve-image";
 import { InfoItem } from "@/components/ui/info-item";
@@ -28,7 +28,7 @@ import { Delta, StatTile } from "@/components/ui/stat-tile";
 import { requireUser } from "@/core/auth/dal";
 import { esiTokens, getDb, workerHeartbeats } from "@/core/db";
 import { getCorporation } from "@/core/corp";
-import { characterScopes } from "@/core/modules/registry";
+import { esiHealth } from "@/core/modules/registry";
 import { getSettings } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
 import { addDays } from "@/lib/dates";
@@ -114,10 +114,11 @@ export default async function OverviewPage() {
   const eff = killsNow ? efficiency(killsNow.iskDestroyed, killsNow.iskLost) : null;
   const effBefore = killsBefore ? efficiency(killsBefore.iskDestroyed, killsBefore.iskLost) : null;
 
-  const required = characterScopes();
+  // A character without ESI access is fine (every scope is opt-in); a revoked token or a missing required scope isn't.
+  const health = new Map(user.characters.map((c) => [c.characterId, esiHealth(tokens.find((x) => x.characterId === c.characterId))]));
   const healthy = user.characters.filter((c) => {
-    const token = tokens.find((x) => x.characterId === c.characterId);
-    return token?.status === "active" && required.every((s) => token.scopes.includes(s));
+    const h = health.get(c.characterId);
+    return h === "ok" || h === "none";
   }).length;
 
   // Tiles open the killboard on the same 30 days rather than its 90-day default.
@@ -348,18 +349,19 @@ export default async function OverviewPage() {
           >
             <ul className="space-y-2">
               {user.characters.map((c) => {
-                const token = tokens.find((x) => x.characterId === c.characterId);
-                const ok = token?.status === "active" && required.every((s) => token.scopes.includes(s));
+                const h = health.get(c.characterId);
                 return (
                   <li key={c.characterId} className="flex items-center gap-3 text-sm">
                     <Portrait id={c.characterId} size={28} />
                     <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                    {ok ? (
+                    {h === "ok" ? (
                       <StatusBadge status="ok" label="ESI" />
-                    ) : token?.status === "invalid" ? (
+                    ) : h === "revoked" ? (
                       <StatusBadge status="error" label={d.panels.tokenRevoked} />
-                    ) : (
+                    ) : h === "missing" ? (
                       <StatusBadge status="warning" label={d.panels.tokenScopes} />
+                    ) : (
+                      <Badge>{d.panels.noAccess}</Badge>
                     )}
                   </li>
                 );
