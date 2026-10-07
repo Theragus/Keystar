@@ -1,5 +1,6 @@
 import { mapModule } from "@/modules/map/module";
 import { fleetModule } from "@/modules/fleet/module";
+import { gatecheckModule } from "@/modules/gatecheck/module";
 import { industryModule } from "@/modules/industry/module";
 import { intelModule } from "@/modules/intel/module";
 import { killboardModule } from "@/modules/killboard/module";
@@ -29,6 +30,7 @@ export const MODULES: KeystarModule[] = [
   killboardModule,
   fleetModule,
   intelModule,
+  gatecheckModule,
   tradeModule,
   marketModule,
   walletModule,

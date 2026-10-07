@@ -32,6 +32,24 @@ they enable market access on the Market access page, but without it on the appli
   industry jobs, so nobody is asked for the new scope (`esi-markets.read_character_orders.v1`) at sign-up. It
   shares the structure scope with industry access: switching one of them off keeps that scope while the other is
   on. Only you see your characters' orders. ([PR #187](https://github.com/Theragus/Keystar/pull/187))
+- **Gate check** (Combat, for every role): plan a stargate route and see what waits at each gate before you jump.
+  - Routes like EVE's autopilot: shortest, safer (stays in high-sec as long as there is a way) or less secure, around
+    any systems you want to avoid; never through Zarzakh, whose gate lock would trap you.
+  - Kills of the last two hours at the gate you arrive by and the gate you leave by in every system, with the victim,
+    attackers, their ships and groups and the distance to the gate, kept apart from kills at the system's other gates.
+    Tags show smartbombs, interdictors and HICs (bubbles), gankers (CONCORD on the mail), hot drops and pod kills; a
+    system is marked as a camp after a kill at your gate in the last 30 minutes or three within the hour.
+  - A camp estimate for the time you reach each gate, leaving now at about a minute a jump: how often those gates saw
+    kills around that time of day over the last weeks, a camp there right now, and the regular campers of those gates
+    who were seen killing nearby in the last two hours, each explained, with the busiest hours and the groups behind
+    the kills.
+  - No extra load on zKillboard: the worker's live feed, which already reads every killmail for the killboard, keeps
+    the kills near stargates (60 days at gates, 7 days elsewhere). It now runs without a home corporation too, and on
+    a fresh start reads the last few hours back. The map's travel check reads the same data instead of asking
+    zKillboard for every system on the route.
+
+  ([PR #188](https://github.com/Theragus/Keystar/pull/188))
+
 - **Help, welcome tour and What's new.** A new **Help** button next to Alerts in the top bar (or the `?` key on any
   page) explains Keystar in five topics:
   - **This page:** what the page you are on shows, where its data comes from, which role can open it, and whether
@@ -66,6 +84,10 @@ they enable market access on the Market access page, but without it on the appli
     with a character that is already on your account no longer changes its access.
   - "Link with corporation access" no longer includes the mining ledger. A director whose character shares it is
     asked once to turn it back on, like wallet import or skill sharing.
+- The sign-in, registration and "Link a character" buttons on the login and join pages are now CCP's official
+  "LOG IN with EVE Online" button (black on the dark theme, white on the light one), as CCP asks of third-party
+  applications. The CCP notice now carries the wording of the Developer License Agreement and also appears on the
+  join page and under "How Keystar works" in Help. ([PR #189](https://github.com/Theragus/Keystar/pull/189))
 
 ### Fixed
 

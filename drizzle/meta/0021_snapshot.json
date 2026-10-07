@@ -1,6 +1,6 @@
 {
-  "id": "70d5197a-c20a-4b58-8680-1adbde799621",
-  "prevId": "3e55de84-db10-4d21-b120-bab607203806",
+  "id": "ce9df400-f76c-471b-8fb8-914d3d57017e",
+  "prevId": "70d5197a-c20a-4b58-8680-1adbde799621",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3634,6 +3634,172 @@
             },
             {
               "expression": "killmail_time",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.market_orders": {
+      "name": "market_orders",
+      "schema": "",
+      "columns": {
+        "order_id": {
+          "name": "order_id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "character_id": {
+          "name": "character_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type_id": {
+          "name": "type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region_id": {
+          "name": "region_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location_id": {
+          "name": "location_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_buy_order": {
+          "name": "is_buy_order",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_corporation": {
+          "name": "is_corporation",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price": {
+          "name": "price",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "volume_total": {
+          "name": "volume_total",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "volume_remain": {
+          "name": "volume_remain",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "min_volume": {
+          "name": "min_volume",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "escrow": {
+          "name": "escrow",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "range": {
+          "name": "range",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration": {
+          "name": "duration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issued": {
+          "name": "issued",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_seen_at": {
+          "name": "first_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "market_orders_character_idx": {
+          "name": "market_orders_character_idx",
+          "columns": [
+            {
+              "expression": "character_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "market_orders_location_idx": {
+          "name": "market_orders_location_idx",
+          "columns": [
+            {
+              "expression": "location_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

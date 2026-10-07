@@ -34,8 +34,6 @@ export const auth: typeof en = {
     ),
     setupFirstPilot: "Melde dich an – der erste Pilot wird Admin und durch die restliche Einrichtung geführt.",
     demoTitle: "Demo-Modus – anmelden als",
-    trademark:
-      "EVE Online und das EVE-Logo sind eingetragene Marken von CCP hf. Keystar ist ein Fan-Projekt ohne Verbindung zu CCP.",
     license: "Keystar ist freie Software unter der AGPL-3.0",
     sourceCode: "Quellcode",
   },

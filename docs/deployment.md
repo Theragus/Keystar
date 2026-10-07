@@ -207,7 +207,9 @@ the moment it starts syncing.
 
 The **killboard** needs no extra setup: the worker imports the home corporation's last 90 days of kills and losses
 from zKillboard (public data, no ESI scopes) and then checks hourly. The first weekly situation report is written
-once a full week has been imported, shortly after 02:00 EVE time. The server needs outbound HTTPS to
+once a full week has been imported, shortly after 02:00 EVE time. The **gate check** needs no setup either: the
+worker's live feed stores every kill near a stargate (a few thousand rows a day, kept 60 days at gates and 7 days
+elsewhere, a few hundred MB at most), so camp estimates get better over the first weeks. The server needs outbound HTTPS to
 `esi.evetech.net`, `login.eveonline.com`, `zkillboard.com` and, with `ANTHROPIC_API_KEY`, `api.anthropic.com`.
 
 ## Operating Keystar
