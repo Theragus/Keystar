@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { audit, auditInTx } from "@/core/audit";
-import { encryptToken } from "@/core/crypto";
+import { decryptToken, encryptToken } from "@/core/crypto";
 import {
   characters,
   esiTokens,
@@ -26,7 +26,7 @@ import type { Role } from "@/core/rbac/roles";
 import { getSettings, setSetting } from "@/core/settings";
 import { lockUsers } from "./manage-users";
 import { mayRegister, policyRole, reconcileRole } from "./policy";
-import { SsoError, type TokenResponse, type VerifiedCharacter } from "./sso";
+import { revokeRefreshToken, SsoError, type TokenResponse, type VerifiedCharacter } from "./sso";
 
 export type SsoIntent = "login" | "join" | "link" | "link-corp";
 
@@ -107,6 +107,11 @@ export interface ProvisionResult {
   lostOptionalScopes: string[];
   /** Opt-in scopes this login granted that the character didn't use before. */
   addedOptionalScopes: string[];
+  /**
+   * A login granting no scope deleted the character's token: a re-authorisation (see `reauthorize`), or a link back
+   * from another of the player's EVE accounts, whose old token belongs to the account the character left.
+   */
+  tokenRemoved: boolean;
 }
 
 /**
@@ -119,8 +124,15 @@ export async function provisionFromSso(params: {
   tokens: TokenResponse;
   intent: SsoIntent;
   currentUserId: string | null;
+  /**
+   * The login re-authorised this very character (`character=` in the OAuth state). Granting no scope then withdraws
+   * all of its access, so its token is deleted; any other login without scopes leaves an existing token alone.
+   */
+  reauthorize?: boolean;
 }): Promise<ProvisionResult> {
   const { verified, tokens, intent, currentUserId } = params;
+  // Refresh token of a deleted token, revoked with CCP once the transaction has committed.
+  let droppedRefreshToken: string | null = null;
   // A token with scopes is only stored with a refresh token; without one it would expire unusable.
   if (verified.scopes.length > 0 && !tokens.refresh_token) throw new SsoError("SSO granted scopes but returned no refresh token");
   const linking = intent === "link" || intent === "link-corp";
@@ -272,6 +284,16 @@ export async function provisionFromSso(params: {
         .insert(esiTokens)
         .values({ characterId: verified.characterId, ...tokenValues })
         .onConflictDoUpdate({ target: esiTokens.characterId, set: tokenValues });
+    } else if (linking && owned && (params.reauthorize || relinkedByOwner)) {
+      // Re-authorised with no scope at all (say, its only opt-in access was switched off or dropped), or linked back
+      // from another EVE account of the player's: the user consented to nothing for this character, so the old token,
+      // with any switched-off scopes, goes.
+      const [previous] = await tx
+        .delete(esiTokens)
+        .where(eq(esiTokens.characterId, verified.characterId))
+        .returning({ scopes: esiTokens.scopes, refreshTokenEnc: esiTokens.refreshTokenEnc });
+      lostOptionalScopes = optionalScopes().filter((s) => previous?.scopes.includes(s));
+      droppedRefreshToken = previous?.refreshTokenEnc ?? null;
     }
 
     await tx
@@ -292,6 +314,7 @@ export async function provisionFromSso(params: {
       newCharacter: owned?.userId !== userId,
       lostOptionalScopes,
       addedOptionalScopes,
+      tokenRemoved: droppedRefreshToken !== null,
     };
   });
   const result = await transaction.catch(async (err: unknown) => {
@@ -308,6 +331,14 @@ export async function provisionFromSso(params: {
     throw err;
   });
 
+  if (droppedRefreshToken) {
+    try {
+      await revokeRefreshToken(decryptToken(droppedRefreshToken));
+    } catch {
+      // Revocation is best effort; the token is deleted locally either way.
+    }
+  }
+
   // The first admin's corporation becomes the home corporation if none is configured.
   if (!homeCorporationId && result.role === "admin") {
     homeCorporationId = corporationId;
@@ -320,7 +351,7 @@ export async function provisionFromSso(params: {
     action: linking ? "character.linked" : result.createdUser ? "user.registered" : "user.login",
     targetType: "character",
     targetId: verified.characterId,
-    details: { intent, scopes: verified.scopes.length, role: result.role },
+    details: { intent, scopes: verified.scopes.length, role: result.role, ...(result.tokenRemoved ? { tokenRemoved: true } : {}) },
   });
 
   return result;

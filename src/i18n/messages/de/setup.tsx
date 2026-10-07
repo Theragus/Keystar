@@ -60,8 +60,9 @@ export const setup: typeof en = {
   invite: {
     title: "Lade deine Mitglieder ein",
     intro:
-      "Teile diesen Link im Corp-Chat oder in der MOTD. Er erklärt genau, was Keystar liest, und führt Piloten durch EVE SSO.",
-    worker: "Der Sync-Worker übernimmt neue Charaktere innerhalb einer Minute; erste Mining-Ledger erscheinen kurz danach.",
+      "Teile diesen Link im Corp-Chat oder in der MOTD. Er erklärt, was Keystar liest, und führt Piloten durch EVE SSO; die Registrierung fragt bei EVE keinen Zugriff an.",
+    worker:
+      "Jeder Pilot schaltet pro Charakter ein, was er teilt, etwa sein Mining-Ledger unter Mining → Zugriff. Der Sync-Worker übernimmt das innerhalb einer Minute; erste Mining-Ledger erscheinen kurz danach.",
     history: "ESI speichert Mining-Daten nur 30 Tage – Keystar behält alles ab heute.",
     settings: (path: string) => `Alles hier lässt sich später unter ${path} ändern.`,
     finish: "Einrichtung abschließen",

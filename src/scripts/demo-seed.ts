@@ -34,12 +34,13 @@ import {
 import { encryptToken } from "@/core/crypto";
 import { env } from "@/core/env";
 import { classifyOre, type OreClass } from "@/core/eve/ore";
-import { characterScopes, corporationScopes } from "@/core/modules/registry";
+import { corporationScopes } from "@/core/modules/registry";
 import type { Role } from "@/core/rbac/roles";
 import { setSetting } from "@/core/settings";
 import { KEYSTAR_VERSION } from "@/core/version";
 import { mulberry32 } from "@/lib/random";
 import { FLEET_SCOPE } from "@/modules/fleet/logic";
+import { MINING_LEDGER_SCOPE } from "@/modules/mining/module";
 import { generateSituationReport } from "@/modules/killboard/report/generate";
 import { runMigrations } from "@/scripts/migrate";
 import staticData from "./demo-data/eve-static.json";
@@ -231,8 +232,9 @@ async function main() {
   let nextId = DEMO_CHARACTER_BASE + 1;
   const demoUserIds: Record<string, string> = {};
   const allChars: (DemoChar & { characterId: number; userId: string; role: Role })[] = [];
-  const memberScopes = characterScopes();
   const corpScopes = corporationScopes();
+  // Characters whose token shares the mining ledger (opt-in): only they get a ledger sync.
+  const sharesMining = new Set<number>();
 
   for (const [index, u] of DEMO_USERS.entries()) {
     const [user] = await db
@@ -255,11 +257,17 @@ async function main() {
       if (ci === 0) await db.update(users).set({ mainCharacterId: characterId }).where(sql`${users.id} = ${user.id}`);
 
       const isLeadership = u.role === "admin" || u.role === "director";
-      // Leadership mains also run fleets, so they have the opt-in fleet scope.
-      let scopes = isLeadership && ci === 0 ? [...corpScopes, FLEET_SCOPE] : memberScopes;
+      // Members share their mining ledger (opt-in); leadership mains also run fleets, so they have the fleet scope.
+      let scopes = isLeadership && ci === 0 ? [...corpScopes, MINING_LEDGER_SCOPE, FLEET_SCOPE] : [MINING_LEDGER_SCOPE];
+      let disabledScopes: string[] = [];
       let status: "active" | "invalid" = "active";
       let lastError: string | null = null;
-      if (index === 5) scopes = scopes.filter((s) => !s.includes("mining")); // a member missing the mining scope
+      if (index === 5) {
+        // A member who switched the mining ledger off: the token still holds it, the history stays until deleted.
+        scopes = scopes.filter((s) => s !== MINING_LEDGER_SCOPE);
+        disabledScopes = [MINING_LEDGER_SCOPE];
+      }
+      if (scopes.includes(MINING_LEDGER_SCOPE)) sharesMining.add(characterId);
       if (c.name === "Vasko Hollowpoint") {
         status = "invalid";
         lastError = "SSO token request failed: Invalid refresh token. Token missing/expired.";
@@ -268,6 +276,7 @@ async function main() {
         characterId,
         refreshTokenEnc: encryptToken("demo-refresh-token"),
         scopes,
+        disabledScopes,
         status,
         lastError,
         lastRefreshedAt: new Date(Date.now() - rand() * 3600_000),
@@ -459,7 +468,7 @@ async function main() {
       lastError: "No linked character with Station_Manager role could access this data (ESI forbidden (missing scope or in-game role): /corporations/98765432/structures)",
       consecutiveFailures: 3,
     },
-    ...allChars.map((c) => ({
+    ...allChars.filter((c) => sharesMining.has(c.characterId)).map((c) => ({
       jobKey: "mining.character-ledger",
       ownerType: "character" as const,
       ownerId: c.characterId,

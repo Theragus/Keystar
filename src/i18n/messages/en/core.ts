@@ -16,7 +16,7 @@ export const core = {
     },
     membersAudit: {
       label: "Corporation member audit",
-      description: "Compare the in-game roster with registered characters and missing scopes.",
+      description: "Compare the in-game roster with registered characters and their ESI access.",
     },
     auditView: {
       label: "View audit log",
@@ -53,11 +53,11 @@ export const core = {
     dashboard:
       "A summary of your corporation's last 30 days compared with the 30 days before: kills, losses and ISK efficiency from the Combat Report and mined value from the Mining Overview, as far as your role can see them. The top row and Your characters show registered members, your ESI access and whether the sync worker is running; tiles open the page behind them.",
     characters:
-      "Link every character you play through the EVE login and keep its ESI token complete: Re-authorise fixes a revoked token or missing scopes, Sync now queues its background syncs. Directors, accountants and station managers can also link a character with corporation access, which Keystar needs for corp data like the member roster and moon-drill ledgers.",
+      "Link every character you play through the EVE login; linking asks for no ESI access. The optional access each character shares is listed with a link to the page that switches it; Re-authorise fixes a revoked token, Sync now queues its background syncs. Directors, accountants and station managers can also link a character with corporation access, which Keystar needs for corp data like the member roster and moon-drill ledgers.",
     users:
       "Every Keystar account with its characters, ESI health, last login and role; click a role at the top to show only its accounts. If you can manage users, you approve guests, change roles below your own and disable accounts here. Keystar roles decide what an account can see and are separate from in-game corporation roles.",
     members:
-      "Compares the home corporation's in-game roster with the characters registered in Keystar, so you see who hasn't registered and whose ESI access is missing or revoked. The roster comes from the hourly Corporation roster sync, which needs a home corporation character linked with corporation access. Share the Request ESI access link with members who are missing.",
+      "Compares the home corporation's in-game roster with the characters registered in Keystar, so you see who hasn't registered and whose ESI token was revoked. ESI access is optional per character, so a character without any isn't a problem. The roster comes from the hourly Corporation roster sync, which needs a home corporation character linked with corporation access. Share the Registration link with members who haven't registered.",
     sync:
       "The ESI jobs the worker runs in the background for the corporation, each linked character and the system, with their last result or error and when they run next. If your role may trigger syncs, Run now queues a job at once, but it can't fetch fresher data than ESI's cache allows; admins can also pause all syncing here.",
     settings:
