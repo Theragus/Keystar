@@ -8,7 +8,7 @@ import type { Messages } from "@/i18n/messages";
 import type { Formatter } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { mapSystemHref } from "@/modules/map/links";
-import type { CheckedKill, FeedHealth, SystemCheck, SystemStatus } from "../check";
+import { isThreat, type CheckedKill, type FeedHealth, type SystemCheck, type SystemStatus } from "../check";
 import type { GatecheckQuery } from "../params";
 import { gatecheckHref } from "../params";
 import type { RiskLevel, SystemPrediction } from "../predict";
@@ -264,8 +264,9 @@ function SystemRow({ check, prediction, ctx }: { check: SystemCheck; prediction:
   const region = result.regions.get(check.systemId);
   const endpoint = check.index === 0 || check.index === result.check.systems.length - 1;
   const hot = isHotspot(check, prediction);
-  const counted = check.routeKills.filter((k) => !k.minor);
-  const minor = check.routeKills.length - counted.length;
+  const counted = check.routeKills.filter(isThreat);
+  const minor = check.routeKills.filter((k) => k.minor).length;
+  const war = check.routeKills.filter((k) => k.war && !k.minor).length;
   const elsewhere = check.otherKills.filter((k) => !k.npc).length;
   const avoidList = [query.avoid, name].filter(Boolean).join(", ");
   const interesting =
@@ -274,6 +275,7 @@ function SystemRow({ check, prediction, ctx }: { check: SystemCheck; prediction:
   const counts = [
     counted.length > 0 ? t.kill.atGates(counted.length) : null,
     minor > 0 ? t.kill.minorKills(minor) : null,
+    war > 0 ? t.kill.warKills(war) : null,
     elsewhere > 0 ? t.kill.otherKills(elsewhere) : null,
     check.npcKills > 0 ? t.kill.npcKills(check.npcKills) : null,
   ].filter((c): c is string => c !== null);
@@ -351,6 +353,7 @@ function SystemRow({ check, prediction, ctx }: { check: SystemCheck; prediction:
             </div>
           )}
           {minor > 0 && <p className="mt-1 pl-9 text-xs text-ink-3">{t.kill.minorKills(minor)}</p>}
+          {war > 0 && <p className="mt-1 pl-9 text-xs text-ink-3">{t.kill.warKills(war)}</p>}
           {(elsewhere > 0 || check.npcKills > 0) && (
             <p className="mt-1 pl-9 text-xs text-ink-3">
               {[elsewhere > 0 ? t.kill.otherKills(elsewhere) : null, check.npcKills > 0 ? t.kill.npcKills(check.npcKills) : null]

@@ -1,7 +1,21 @@
 import "server-only";
 import { and, eq, gte, inArray, isNotNull, min, sql } from "drizzle-orm";
-import { eveConstellations, eveEntities, eveGroups, eveSystems, eveTypes, gatecheckFeed, gatecheckKills, getDb, type Db } from "@/core/db";
+import { getCorporation } from "@/core/corp";
+import {
+  eveConstellations,
+  eveEntities,
+  eveGroups,
+  eveSystems,
+  eveTypes,
+  gatecheckFeed,
+  gatecheckKills,
+  gatecheckWars,
+  getDb,
+  type Db,
+} from "@/core/db";
+import { getSetting } from "@/core/settings";
 import type { FeedStatus, KillRecord } from "./check";
+import { NO_WARS, warContext, type WarContext } from "./tags";
 
 const KILL_COLUMNS = {
   killmailId: gatecheckKills.killmailId,
@@ -22,6 +36,7 @@ const KILL_COLUMNS = {
   attackerWeaponTypeIds: gatecheckKills.attackerWeaponTypeIds,
   npc: gatecheckKills.npc,
   concord: gatecheckKills.concord,
+  warId: gatecheckKills.warId,
 };
 
 /** Safety cap on history rows per check (the busiest pipes see a few thousand kills a month). */
@@ -96,6 +111,29 @@ export async function typeGroups(typeIds: Iterable<number>, db: Db = getDb()): P
     .leftJoin(eveGroups, eq(eveGroups.groupId, eveTypes.groupId))
     .where(inArray(eveTypes.typeId, ids));
   return new Map(rows.map((r) => [r.id, { groupId: r.groupId, categoryId: r.categoryId }]));
+}
+
+/**
+ * The wars on these kills that the gatecheck.wars job has looked up, and which
+ * of them the home corporation or its alliance fights.
+ */
+export async function loadWarContext(kills: readonly Pick<KillRecord, "warId">[], db: Db = getDb()): Promise<WarContext> {
+  const ids = [...new Set(kills.map((k) => k.warId).filter((id): id is number => !!id))];
+  if (!ids.length) return NO_WARS;
+  const homeCorporationId = await getSetting("corp.homeCorporationId");
+  const [wars, corp] = await Promise.all([
+    db
+      .select({
+        warId: gatecheckWars.warId,
+        aggressorId: gatecheckWars.aggressorId,
+        defenderId: gatecheckWars.defenderId,
+        allyIds: gatecheckWars.allyIds,
+      })
+      .from(gatecheckWars)
+      .where(inArray(gatecheckWars.warId, ids)),
+    getCorporation(homeCorporationId),
+  ]);
+  return warContext(wars, [homeCorporationId ?? 0, corp?.allianceId ?? 0]);
 }
 
 /** Region names of systems, where the universe job has filed them. */

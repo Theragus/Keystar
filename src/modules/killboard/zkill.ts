@@ -34,6 +34,8 @@ export interface ZkillKillmail {
   killmail_id: number;
   killmail_time: string;
   solar_system_id: number;
+  /** Set when the kill was part of an official war (war declaration). */
+  war_id?: number;
   victim: {
     character_id?: number;
     corporation_id?: number;

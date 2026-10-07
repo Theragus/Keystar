@@ -17,7 +17,7 @@ export const gatecheck: typeof en = {
         description: "Routen planen und Kills und Camp-Schätzungen entlang der Route sehen.",
       },
     },
-    jobs: { housekeeping: "Gate-Check aufräumen" },
+    jobs: { housekeeping: "Gate-Check aufräumen", wars: "Gate-Check: wer welchen Krieg führt" },
   },
   page: {
     title: "Gate-Check",
@@ -86,7 +86,7 @@ export const gatecheck: typeof en = {
     camp: "Ein Spieler-Kill an einem deiner Tore in den letzten 30 Minuten oder drei innerhalb einer Stunde.",
     recent: (hours: number) => `Spieler-Kills an einem deiner Tore in den letzten ${count(hours, "Stunde", "Stunden")}.`,
     activity:
-      "Spieler-Kills anderswo im System (an anderen Toren oder abseits der Tore) oder an einem deiner Tore abgeschossene Mobile Depots und Strukturen.",
+      "Spieler-Kills anderswo im System (an anderen Toren oder abseits der Tore) oder an einem deiner Tore abgeschossene Mobile Depots und Strukturen sowie Kriegs-Kills anderer im Hochsicherheitsraum.",
     quiet: "Keine Kills in den letzten zwei Stunden.",
     unknown: "Keine Kills gefunden, aber der Feed hängt hinterher – das heißt wenig.",
   },
@@ -97,6 +97,7 @@ export const gatecheck: typeof en = {
     elsewhere: "abseits der Tore",
   },
   tags: {
+    war: "Kriegsgegner",
     smartbomb: "Smartbombs",
     interdictor: "Interdictor",
     hic: "HIC",
@@ -105,6 +106,7 @@ export const gatecheck: typeof en = {
     pod: "Pods gekillt",
   },
   tagHints: {
+    war: "Deine Corporation oder Allianz ist mit den Angreifern im Krieg: Dieses Camp jagt euch.",
     smartbomb: "Smartbombs haben Schaden gemacht: Schnelle Schiffe und Pods sterben, bevor sie alignen können.",
     interdictor: "Ein Interdictor war am Kill beteiligt: Warp-Störblasen im Nullsec.",
     hic: "Ein Heavy Interdiction Cruiser war am Kill beteiligt: Blasen im Nullsec, ein unbrechbarer Point überall.",
@@ -122,6 +124,8 @@ export const gatecheck: typeof en = {
     atGates: (value: number) => count(value, "Kill an den Toren", "Kills an den Toren"),
     minorKills: (value: number) =>
       `${count(value, "Deployable oder Struktur", "Deployables oder Strukturen")} an diesen Toren abgeschossen (zählt nicht als Camp)`,
+    warKills: (value: number) =>
+      `${count(value, "Kill", "Kills")} in Kriegen anderer Corporations an diesen Toren (keine Gefahr für Neutrale)`,
     showMore: (next: number, left: number) => `${n(next)} weitere zeigen (noch ${n(left)})`,
     showFewer: "Weniger zeigen",
     otherKills: (value: number) => count(value, "Kill anderswo im System", "Kills anderswo im System"),

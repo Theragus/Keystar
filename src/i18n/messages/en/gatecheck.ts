@@ -16,7 +16,7 @@ export const gatecheck = {
         description: "Plan routes and see kills and camp estimates along them.",
       },
     },
-    jobs: { housekeeping: "Gate check housekeeping" },
+    jobs: { housekeeping: "Gate check housekeeping", wars: "Gate check: who fights which war" },
   },
   page: {
     title: "Gate check",
@@ -84,7 +84,7 @@ export const gatecheck = {
     camp: "A player kill at a gate you use in the last 30 minutes, or three within the hour.",
     recent: (hours: number) => `Player kills at a gate you use in the last ${count(hours, "hour", "hours")}.`,
     activity:
-      "Player kills elsewhere in the system (at other gates or away from the gates), or mobile depots and structures shot at a gate you use.",
+      "Player kills elsewhere in the system (at other gates or away from the gates), or mobile depots, structures and high-sec war kills between others at a gate you use.",
     quiet: "No kills in the last two hours.",
     unknown: "No kills found, but the feed is behind, so that means little.",
   },
@@ -95,6 +95,7 @@ export const gatecheck = {
     elsewhere: "away from the gates",
   },
   tags: {
+    war: "War targets",
     smartbomb: "Smartbombs",
     interdictor: "Interdictor",
     hic: "HIC",
@@ -103,6 +104,7 @@ export const gatecheck = {
     pod: "Pods killed",
   },
   tagHints: {
+    war: "Your corporation or alliance is at war with the attackers: this camp hunts you.",
     smartbomb: "Smartbombs did damage: fast ships and pods die before they can align.",
     interdictor: "An Interdictor was on the kill: warp disruption bubbles in null-sec.",
     hic: "A Heavy Interdiction Cruiser was on the kill: bubbles in null-sec, an unbreakable point anywhere.",
@@ -120,6 +122,8 @@ export const gatecheck = {
     atGates: (value: number) => count(value, "kill at the gates", "kills at the gates"),
     minorKills: (value: number) =>
       `${count(value, "deployable or structure", "deployables or structures")} shot at these gates (not counted as a camp)`,
+    warKills: (value: number) =>
+      `${count(value, "kill", "kills")} in wars between other corporations at these gates (no threat to neutrals)`,
     showMore: (next: number, left: number) => `Show ${n(next)} more (${n(left)} left)`,
     showFewer: "Show fewer",
     otherKills: (value: number) => count(value, "kill elsewhere in the system", "kills elsewhere in the system"),

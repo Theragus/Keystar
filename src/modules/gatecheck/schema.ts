@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { bigint, boolean, doublePrecision, index, integer, pgTable, smallint, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
@@ -40,11 +41,14 @@ export const gatecheckKills = pgTable(
     npc: boolean("npc").notNull().default(false),
     /** CONCORD on the mail: the attackers were CONCORDed (a suicide gank). */
     concord: boolean("concord").notNull().default(false),
+    /** The war the kill was part of (ESI's war_id); who fights it is in gatecheck_wars. */
+    warId: bigint("war_id", { mode: "number" }),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("gatecheck_kills_system_time_idx").on(t.solarSystemId, t.killmailTime),
     index("gatecheck_kills_time_idx").on(t.killmailTime),
+    index("gatecheck_kills_war_idx").on(t.warId).where(sql`${t.warId} IS NOT NULL`),
   ],
 );
 
@@ -61,5 +65,20 @@ export const gatecheckFeed = pgTable("gatecheck_feed", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Who fights the wars seen on stored kills, from ESI /wars/{id}/ (the
+ * gatecheck.wars job). Participants are corporation or alliance ids (their
+ * ranges never overlap). A war ESI does not know has no participants.
+ */
+export const gatecheckWars = pgTable("gatecheck_wars", {
+  warId: bigint("war_id", { mode: "number" }).primaryKey(),
+  aggressorId: bigint("aggressor_id", { mode: "number" }),
+  defenderId: bigint("defender_id", { mode: "number" }),
+  allyIds: bigint("ally_ids", { mode: "number" }).array().notNull().default([]),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type GatecheckKillRow = typeof gatecheckKills.$inferSelect;
 export type GatecheckKillInsert = typeof gatecheckKills.$inferInsert;
+export type GatecheckWarInsert = typeof gatecheckWars.$inferInsert;

@@ -1,6 +1,6 @@
 import type { ZkillKillmail } from "@/modules/killboard/zkill";
 import { CONCORD_CORPORATION_ID, CONCORD_FACTION_ID, GATE_RADIUS_METRES, MAX_ATTACKERS } from "./constants";
-import type { GatecheckKillInsert } from "./schema";
+import type { GatecheckKillInsert, GatecheckWarInsert } from "./schema";
 import type { Gate } from "./universe";
 
 const id = (v: unknown) => (typeof v === "number" && Number.isSafeInteger(v) && v > 0 ? v : 0);
@@ -67,5 +67,36 @@ export function toGateKill(km: ZkillKillmail, gates: readonly Gate[] | undefined
     attackerWeaponTypeIds: players.map((a) => id(a.weapon_type_id)),
     npc: km.zkb.npc === true,
     concord: km.attackers.some((a) => a.faction_id === CONCORD_FACTION_ID || a.corporation_id === CONCORD_CORPORATION_ID),
+    warId: id(km.war_id) || null,
+  };
+}
+
+/** A war party in ESI: a corporation or an alliance. */
+export interface EsiWarParty {
+  corporation_id?: number;
+  alliance_id?: number;
+}
+
+/** ESI GET /wars/{war_id}/ (the fields the gate check needs). */
+export interface EsiWar {
+  id: number;
+  aggressor: EsiWarParty;
+  defender: EsiWarParty;
+  allies?: EsiWarParty[];
+  finished?: string;
+}
+
+const party = (p: EsiWarParty | undefined) => id(p?.alliance_id) || id(p?.corporation_id) || null;
+
+/** The row stored for a war: who fights it and when it ends. */
+export function warRow(war: EsiWar, fetchedAt: Date): GatecheckWarInsert {
+  const finished = war.finished ? new Date(war.finished) : null;
+  return {
+    warId: war.id,
+    aggressorId: party(war.aggressor),
+    defenderId: party(war.defender),
+    allyIds: (war.allies ?? []).map(party).filter((p): p is number => p !== null),
+    finishedAt: finished && Number.isFinite(finished.getTime()) ? finished : null,
+    fetchedAt,
   };
 }
