@@ -152,10 +152,11 @@ describe("optional scopes", () => {
 describe("ESI health", () => {
   const active = (scopes: string[]) => ({ status: "active", scopes });
 
-  it("treats a character without a token as fine while nothing is required", () => {
+  it("treats a character that shares nothing as fine while nothing is required", () => {
     expect(esiHealth(undefined)).toBe("none");
     expect(esiHealth(null, [])).toBe("none");
-    expect(esiHealth(active([]))).toBe("ok");
+    // Every opt-in scope switched off: the token is still there, but Keystar reads nothing.
+    expect(esiHealth(active([]))).toBe("none");
     expect(esiHealth(active([MINING]))).toBe("ok");
   });
 

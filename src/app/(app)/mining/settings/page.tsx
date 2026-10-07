@@ -99,6 +99,8 @@ export default async function MiningSettingsPage() {
                   {!a.granted && a.firstDate && (
                     <ActionForm
                       action={deleteMiningData.bind(null, a.characterId)}
+                      // ESI only keeps 30 days: older history can't be fetched again.
+                      confirm={m.deleteDataConfirm(a.name)}
                       success={m.toast.deleted(a.name)}
                       failed={m.toast.failed(a.name)}
                       errors={m.toast.errors}

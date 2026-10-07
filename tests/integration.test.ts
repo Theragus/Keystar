@@ -1885,9 +1885,9 @@ describe.skipIf(!enabled)("integration", async () => {
       const postSpy = vi.spyOn(getEsi(), "post").mockImplementation(async () => reply([]));
       // Only CCP's revoke endpoint is fetched directly.
       const revoke = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
-      const login = (intent: "login" | "join" | "link", reauthorize?: boolean) =>
+      const login = (intent: "login" | "join" | "link", reauthorize?: boolean, ownerHash = "h2") =>
         provisionFromSso({
-          verified: { characterId: 2, name: "Bravo", ownerHash: "h2", scopes: [], expiresAt: new Date(Date.now() + 1e6) },
+          verified: { characterId: 2, name: "Bravo", ownerHash, scopes: [], expiresAt: new Date(Date.now() + 1e6) },
           tokens: { access_token: "a", expires_in: 1200, token_type: "Bearer" },
           intent,
           currentUserId: intent === "link" ? userB : null,
@@ -1910,6 +1910,12 @@ describe.skipIf(!enabled)("integration", async () => {
         // Nothing left to remove the second time.
         expect(await login("link", true)).toMatchObject({ tokenRemoved: false, lostOptionalScopes: [] });
         expect(revoke).toHaveBeenCalledOnce();
+
+        // Linked back from another of the player's EVE accounts: the old token belongs to the account it left.
+        await db().insert(schema.esiTokens).values({ characterId: 2, refreshTokenEnc: encryptToken("old-account"), scopes: [WALLET_SCOPE] });
+        expect(await login("link", false, "h2-moved")).toMatchObject({ tokenRemoved: true, lostOptionalScopes: [WALLET_SCOPE] });
+        expect(await tokens()).toEqual([]);
+        expect(String(revoke.mock.calls[1][1]?.body)).toContain("token=old-account");
       } finally {
         getSpy.mockRestore();
         postSpy.mockRestore();
@@ -2904,12 +2910,18 @@ describe.skipIf(!enabled)("integration", async () => {
       expect((await characterLedgerJob.run(ctx))?.summary).toBe("Mining ledger is switched off");
       expect(requests).toBe(0);
 
-      // A run whose ESI request already happened when the ledger went off writes nothing either.
+      // A run whose ESI request already happened when the ledger went off writes nothing either, and drops the cached
+      // response (stored on its way in), which a run after switching back on would otherwise skip as already applied.
       await db().update(schema.esiTokens).set({ scopes: [MINING] }).where(sql`character_id = 2`);
+      await db().insert(schema.esiCache).values(
+        ["2:GET /characters/2/mining?page=1", "2:GET /characters/2/roles"].map((key) => ({ key, body: [] })),
+      );
       offAfterFetch = true;
       expect((await characterLedgerJob.run(ctx))?.summary).toBe("Mining ledger was switched off during the sync");
       expect(requests).toBe(1);
       expect(await todayRows()).toEqual([]);
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key)).toEqual(["2:GET /characters/2/roles"]);
+
 
       // On: the run stores the ledger.
       offAfterFetch = false;
@@ -2917,6 +2929,12 @@ describe.skipIf(!enabled)("integration", async () => {
       await db().delete(schema.esiCache);
       expect((await characterLedgerJob.run(ctx))?.summary).toContain("1 ledger entries");
       expect(await todayRows()).toHaveLength(1);
+
+      // A revoked token isn't "switched off": the run goes on to fail at the token refresh (stubbed here), as before.
+      await db().update(schema.esiTokens).set({ status: "invalid" }).where(sql`character_id = 2`);
+      const before = requests;
+      expect((await characterLedgerJob.run(ctx))?.summary).not.toContain("switched off");
+      expect(requests).toBe(before + 1);
     });
   });
 

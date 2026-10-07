@@ -56,7 +56,7 @@ export function characterScopes(): string[] {
 
 /**
  * The state of a character's ESI access: `revoked` (EVE refused the token), `missing` (a scope every member grants is
- * not held), `none` (no token: nothing was ever granted, which is fine) or `ok`.
+ * not held), `none` (nothing in use: no token, or every opt-in scope switched off; that is fine) or `ok`.
  */
 export type EsiHealth = "ok" | "none" | "missing" | "revoked";
 
@@ -66,7 +66,7 @@ export function esiHealth(
 ): EsiHealth {
   if (token?.status === "invalid") return "revoked";
   if (required.some((s) => !token?.scopes?.includes(s))) return "missing";
-  return token?.status ? "ok" : "none";
+  return token?.status && token.scopes?.length ? "ok" : "none";
 }
 
 /** Character scopes plus corporation-level scopes for directors/accountants. */

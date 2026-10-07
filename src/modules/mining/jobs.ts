@@ -7,6 +7,7 @@ import {
   miningObservers,
   type Db,
 } from "@/core/db";
+import { forgetCharacterEsiCache } from "@/core/esi";
 import { ensureNames, ensureSystems, ensureTypes } from "@/core/eve/resolver";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
 import { addDays, isoDate } from "@/lib/dates";
@@ -39,12 +40,15 @@ const CHUNK = 1000;
 
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-/** Whether the character's token currently shares its mining ledger; `lock` share-locks the token row. */
+/**
+ * Whether the character's token currently shares its mining ledger; `lock` share-locks the token row. A revoked token
+ * still counts: its run fails at the token refresh and says so, instead of reporting the ledger as switched off.
+ */
 async function sharesLedger(db: Db | Tx, characterId: number, lock = false): Promise<boolean> {
-  const [token] = await db.execute<{ status: string; scopes: string[] }>(
-    sql`SELECT status, scopes FROM esi_tokens WHERE character_id = ${characterId}${lock ? sql` FOR SHARE` : sql``}`,
+  const [token] = await db.execute<{ scopes: string[] }>(
+    sql`SELECT scopes FROM esi_tokens WHERE character_id = ${characterId}${lock ? sql` FOR SHARE` : sql``}`,
   );
-  return token?.status === "active" && token.scopes.includes(MINING_LEDGER_SCOPE);
+  return Boolean(token?.scopes.includes(MINING_LEDGER_SCOPE));
 }
 
 export const characterLedgerJob: JobDefinition = {
@@ -83,6 +87,9 @@ export const characterLedgerJob: JobDefinition = {
       // actions wait for this write, or this write see the switched-off token. Taken first, before the coverage row.
       if (!(await sharesLedger(tx, characterId!, true))) {
         switchedOff = true;
+        // The response was cached on its way in, possibly after a delete cleared the cache: a run after switching back
+        // on would take it as already applied and write nothing.
+        await forgetCharacterEsiCache(tx, characterId!, `/characters/${characterId}/mining`);
         return;
       }
       // Growth is measured against the stored ledger, so read it before the upsert.

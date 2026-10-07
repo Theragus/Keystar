@@ -11,7 +11,7 @@ import { requirePermission } from "@/core/auth/dal";
 import { outsideGuestIds } from "@/core/auth/manage-users";
 import { getDb } from "@/core/db";
 import { memberAuditHref } from "@/core/member-audit-filters";
-import { esiHealth } from "@/core/modules/registry";
+import { characterScopes, esiHealth } from "@/core/modules/registry";
 import { getSettings } from "@/core/settings";
 import { assignableRoles, canManageRole, isRole, ROLES, type Role } from "@/core/rbac/roles";
 import { getI18n } from "@/i18n/server";
@@ -44,6 +44,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
   const canAudit = actor.can("members.audit");
   const roleParam = (await searchParams).role;
   const roleFilter = isRole(roleParam) ? roleParam : null;
+  const required = characterScopes();
   const settings = await getSettings();
   const home = settings["corp.homeCorporationId"];
   // Once sign-ups are restricted to members, guests who registered from outside before can be cleared in one go.
@@ -200,11 +201,12 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
               )}
               {shown.map((u) => {
                 // No token is fine (every scope is opt-in); a revoked token or a missing required scope isn't.
-                const tokenProblem = (c: UserRow["characters"][number]) => esiHealth(c) === "revoked" || esiHealth(c) === "missing";
-                const invalid = u.characters.filter((c) => esiHealth(c) === "revoked").length;
-                const missing = u.characters.filter((c) => esiHealth(c) === "missing").length;
+                const charHealth = u.characters.map((c) => ({ c, h: esiHealth(c, required) }));
+                const invalid = charHealth.filter((x) => x.h === "revoked").length;
+                const missing = charHealth.filter((x) => x.h === "missing").length;
                 // The member audit only lists home corporation characters.
-                const auditable = home !== null && u.characters.some((c) => c.corporation_id === home && tokenProblem(c));
+                const auditable =
+                  home !== null && charHealth.some((x) => x.c.corporation_id === home && (x.h === "revoked" || x.h === "missing"));
                 const own = u.id === actor.id;
                 const canChange = manageable(u);
                 const tokenTrouble = !u.is_disabled && (invalid > 0 || missing > 0);

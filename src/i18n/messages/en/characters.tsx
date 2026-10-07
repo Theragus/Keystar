@@ -89,6 +89,10 @@ export const characters = {
     /** A plain link (no scopes) with a character that is already on the account. */
     alreadyLinked: (name: string) => `${name} is already linked`,
     alreadyLinkedDetail: "Nothing changed. Switch on optional access, such as the mining ledger, on the feature's page.",
+    /** A login that granted no scope removed the character's old token. */
+    accessRemoved: (name: string) => `${name} no longer shares any ESI access`,
+    accessRemovedDetail:
+      "Its old token was deleted and revoked with CCP. Switch optional access back on, such as the mining ledger, on the feature's page.",
     reauthorized: (name: string) => `${name} re-authorised`,
     corpGranted: (name: string) => `Corporation access granted for ${name}`,
     scopesChanged: (name: string) => `Access updated for ${name}`,

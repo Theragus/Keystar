@@ -45,10 +45,13 @@ Sharing skills now includes the implants of the active clone, so the remap optim
   or via My Characters), can switch it off in Keystar without an EVE login, and can delete a character's stored mining
   history once it is off. Moon-drill records of corporation refineries are kept either way. Characters that already
   share their mining ledger keep sharing; nothing to do on the server or the EVE application.
+  ([PR #186](https://github.com/Theragus/Keystar/pull/186))
   - Characters without any ESI access are no longer flagged on My Characters, the dashboard, Users & Roles or Member
     Audit; only revoked tokens are.
   - Re-authorising a character with no access left removes its token and revokes it with CCP, and "Link a character"
     with a character that is already on your account no longer changes its access.
+  - "Link with corporation access" no longer includes the mining ledger. A director whose character shares it is
+    asked once to turn it back on, like wallet import or skill sharing.
 
 ### Fixed
 

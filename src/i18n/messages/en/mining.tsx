@@ -351,6 +351,8 @@ export const mining = {
     kept: (from: string, to: string) => `Ledger from ${from} to ${to} is still stored.`,
     deleteData: "Delete mining history",
     deleteDataHint: "Removes this character's stored personal mining ledger and measured mining activity from Keystar.",
+    deleteDataConfirm: (name: string) =>
+      `Delete the stored mining history of ${name}? ESI only keeps the last 30 days, so anything older can't be fetched again.`,
     toast: {
       deleted: (name: string) => `Stored mining history of ${name} deleted`,
       failed: (name: string) => `Couldn't delete the mining history of ${name}`,

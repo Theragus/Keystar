@@ -350,6 +350,8 @@ export const mining: typeof en = {
     kept: (from: string, to: string) => `Das Ledger vom ${from} bis ${to} ist noch gespeichert.`,
     deleteData: "Mining-Verlauf löschen",
     deleteDataHint: "Entfernt das gespeicherte persönliche Mining-Ledger und die gemessene Mining-Aktivität dieses Charakters aus Keystar.",
+    deleteDataConfirm: (name: string) =>
+      `Den gespeicherten Mining-Verlauf von ${name} löschen? ESI hält nur die letzten 30 Tage vor, Älteres lässt sich nicht erneut abrufen.`,
     toast: {
       deleted: (name: string) => `Gespeicherter Mining-Verlauf von ${name} gelöscht`,
       failed: (name: string) => `Der Mining-Verlauf von ${name} konnte nicht gelöscht werden`,

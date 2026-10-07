@@ -106,6 +106,6 @@ describe("SSO callback", () => {
       tokenRemoved: true,
     });
     const res = await callback(2, "link");
-    expect(parseFlash(res.cookies.get(FLASH_COOKIE)?.value)).toMatchObject({ kind: "reauthorized", name: "Thargus Audelaire" });
+    expect(parseFlash(res.cookies.get(FLASH_COOKIE)?.value)).toMatchObject({ kind: "accessRemoved", name: "Thargus Audelaire" });
   });
 });

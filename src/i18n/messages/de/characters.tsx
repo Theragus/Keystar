@@ -86,6 +86,10 @@ export const characters: typeof en = {
     alreadyLinked: (name: string) => `${name} ist bereits verknüpft`,
     alreadyLinkedDetail:
       "Es hat sich nichts geändert. Optionalen Zugriff wie das Mining-Ledger schaltest du auf der Seite der jeweiligen Funktion ein.",
+    /** A login that granted no scope removed the character's old token. */
+    accessRemoved: (name: string) => `${name} teilt keinen ESI-Zugriff mehr`,
+    accessRemovedDetail:
+      "Sein altes Token wurde gelöscht und bei CCP widerrufen. Optionalen Zugriff wie das Mining-Ledger schaltest du auf der Seite der jeweiligen Funktion wieder ein.",
     reauthorized: (name: string) => `${name} neu autorisiert`,
     corpGranted: (name: string) => `Corporation-Zugriff für ${name} erteilt`,
     scopesChanged: (name: string) => `Zugriff für ${name} aktualisiert`,

@@ -107,7 +107,10 @@ export interface ProvisionResult {
   lostOptionalScopes: string[];
   /** Opt-in scopes this login granted that the character didn't use before. */
   addedOptionalScopes: string[];
-  /** A re-authorisation granting no scope deleted the character's token (see `reauthorize`). */
+  /**
+   * A login granting no scope deleted the character's token: a re-authorisation (see `reauthorize`), or a link back
+   * from another of the player's EVE accounts, whose old token belongs to the account the character left.
+   */
   tokenRemoved: boolean;
 }
 
@@ -281,9 +284,10 @@ export async function provisionFromSso(params: {
         .insert(esiTokens)
         .values({ characterId: verified.characterId, ...tokenValues })
         .onConflictDoUpdate({ target: esiTokens.characterId, set: tokenValues });
-    } else if (linking && params.reauthorize && owned) {
-      // Re-authorised with no scope at all (say, its only opt-in access was switched off or dropped): the user
-      // consented to nothing, so the old token, with any switched-off scopes, goes.
+    } else if (linking && owned && (params.reauthorize || relinkedByOwner)) {
+      // Re-authorised with no scope at all (say, its only opt-in access was switched off or dropped), or linked back
+      // from another EVE account of the player's: the user consented to nothing for this character, so the old token,
+      // with any switched-off scopes, goes.
       const [previous] = await tx
         .delete(esiTokens)
         .where(eq(esiTokens.characterId, verified.characterId))
