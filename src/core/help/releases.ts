@@ -1,4 +1,4 @@
-import { Factory, GraduationCap, Pickaxe, type LucideIcon } from "lucide-react";
+import { Brain, Factory, GraduationCap, Pickaxe, Route, Store, type LucideIcon } from "lucide-react";
 import type { Messages } from "@/i18n/messages";
 import { en } from "@/i18n/messages/en";
 import { compareVersions } from "@/lib/semver";
@@ -29,6 +29,12 @@ export interface HighlightDef {
 type ReleaseDef<V extends ReleaseVersion> = { [K in ItemKey<V>]: HighlightDef };
 
 export const RELEASES: { [V in ReleaseVersion]: ReleaseDef<V> } = {
+  "0.15.0": {
+    gateCheck: { icon: Route, kind: "new", href: "/gatecheck", anyPermission: ["gatecheck.use"] },
+    marketOrders: { icon: Store, kind: "new", href: "/market", anyPermission: ["market.view.own"] },
+    remapOptimiser: { icon: Brain, kind: "new", href: "/skills/remap", anyPermission: ["skills.view.own", "skills.view.corp"] },
+    miningAccess: { icon: Pickaxe, kind: "improved", href: "/mining", anyPermission: ["mining.view.own", "mining.view.corp"] },
+  },
   "0.14.0": {
     industryJobs: { icon: Factory, kind: "new", href: "/industry", anyPermission: ["industry.view.own"] },
     universeMap: { icon: StarMap, kind: "new", href: "/map", anyPermission: ["map.view"] },

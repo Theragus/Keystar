@@ -30,6 +30,28 @@ export const whatsNew = {
     link: (version: string) => `Upgrade notes for v${version}`,
   },
   releases: {
+    "0.15.0": {
+      upgrade:
+        "Add the scopes esi-clones.read_implants.v1 and esi-markets.read_character_orders.v1 (and esi-universe.read_structures.v1, if missing) to the EVE application at developers.eveonline.com. Until then, sharing skills and switching on market access fail with invalid_scope.",
+      items: {
+        gateCheck: {
+          title: "Gate check",
+          body: "Plan a route under Combat and see the recent kills at every gate you pass, live camps, and how likely a camp is when you get there.",
+        },
+        marketOrders: {
+          title: "Market orders",
+          body: "Follow your characters' buy and sell orders with price, quantity left, location and expiry, plus the ISK in escrow. Switch it on per character on the Access page.",
+        },
+        remapOptimiser: {
+          title: "Remap optimiser",
+          body: "See which neural remap trains each character's skill queue the fastest and how much time it saves, under Pilots.",
+        },
+        miningAccess: {
+          title: "Mining ledger is opt-in",
+          body: "Signing in no longer asks EVE for any access. Share each character's mining ledger on the Mining access page, and switch it off there again.",
+        },
+      },
+    },
     "0.14.0": {
       upgrade:
         "Add the scopes esi-industry.read_character_jobs.v1 and esi-universe.read_structures.v1 to the EVE application at developers.eveonline.com. Until then, switching on industry access fails with invalid_scope.",
