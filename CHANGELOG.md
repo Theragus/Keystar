@@ -74,6 +74,8 @@ Sharing skills now includes the implants of the active clone, so the remap optim
   "LOG IN with EVE Online" button (black on the dark theme, white on the light one), as CCP asks of third-party
   applications. The CCP notice now carries the wording of the Developer License Agreement and also appears on the
   join page and under "How Keystar works" in Help. ([PR #189](https://github.com/Theragus/Keystar/pull/189))
+- The Map moved to the bottom of the Combat section of the sidebar, below Gate check.
+  ([PR #190](https://github.com/Theragus/Keystar/pull/190))
 
 ### Fixed
 
