@@ -205,6 +205,9 @@ export function MobileNavBackdrop() {
  * always shows every section (the heading is only an abbreviation there), and a
  * folded section's heading still takes the section colour when it holds the
  * current page (`group-has-[[aria-current=page]]` sees the hidden links).
+ * The links slide open and shut like the sidebar's width; they are only
+ * clipped while shut or moving, so the active marker (left of the links) and
+ * focus rings show when the section is open.
  */
 export function NavSectionGroup({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   const { collapsed, closedSections, toggleSection } = useSidebar();
@@ -212,6 +215,12 @@ export function NavSectionGroup({ id, label, children }: { id: string; label: st
   const desktop = useIsDesktop();
   const rail = collapsed && desktop;
   const closed = !rail && closedSections.includes(id);
+  const [prevClosed, setPrevClosed] = useState(closed);
+  const [moving, setMoving] = useState(false);
+  if (prevClosed !== closed) {
+    setPrevClosed(closed);
+    setMoving(true);
+  }
   const listId = `nav-section-${id}`;
   const chars = Array.from(label);
   const headingClass =
@@ -238,13 +247,25 @@ export function NavSectionGroup({ id, label, children }: { id: string; label: st
         >
           {text}
           <ChevronDown
-            className={cn("ml-auto size-3 shrink-0 transition-transform duration-150 motion-reduce:transition-none", closed && "-rotate-90")}
+            className={cn("ml-auto size-3 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none", closed && "-rotate-90")}
             aria-hidden
           />
         </button>
       )}
-      <div id={listId} hidden={closed}>
-        {children}
+      <div
+        id={listId}
+        inert={closed}
+        onTransitionEnd={(e) => e.target === e.currentTarget && setMoving(false)}
+        className={cn(
+          "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
+          closed ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
+        )}
+      >
+        {/* -ml-3/pl-3 keeps the active marker inside the clip while moving. No transition
+            ends under reduced motion, so `moving` must not clip there. */}
+        <div className={cn("-ml-3 min-h-0 pl-3", closed ? "overflow-hidden" : moving && "overflow-hidden motion-reduce:overflow-visible")}>
+          {children}
+        </div>
       </div>
     </>
   );

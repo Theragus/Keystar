@@ -96,18 +96,21 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
                 </>
               }
             >
-              <NavSectionGroup id={section.id} label={section.label(t)}>
-                <ul className="space-y-0.5" data-flyout-anchor>
-                  {section.items.map((item) => (
-                    <li key={item.href}>
-                      <NavLink href={item.href} exact={hasNested(item.href)} newKey={newKey(item.href)}>
-                        <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
-                        <span className="truncate md:group-data-[sidebar=collapsed]/shell:sr-only">{item.label(t)}</span>
-                      </NavLink>
-                    </li>
-                  ))}
-                </ul>
-              </NavSectionGroup>
+              {/* Each section's own colour, so a hovered icon shows it (NavLink). */}
+              <div data-section-tone={section.tone ?? "none"}>
+                <NavSectionGroup id={section.id} label={section.label(t)}>
+                  <ul className="space-y-0.5" data-flyout-anchor>
+                    {section.items.map((item) => (
+                      <li key={item.href}>
+                        <NavLink href={item.href} exact={hasNested(item.href)} newKey={newKey(item.href)}>
+                          <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
+                          <span className="truncate md:group-data-[sidebar=collapsed]/shell:sr-only">{item.label(t)}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                </NavSectionGroup>
+              </div>
             </RailFlyout>
           ))}
         </nav>

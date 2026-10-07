@@ -137,6 +137,10 @@
   --section: var(--color-accent);
 }
 
+/* A sidebar section without a tone: back to the accent, whatever the current route's tone. */
+[data-section-tone="none"] {
+  --section: var(--color-accent);
+}
 [data-section-tone="industry"] {
   --section: var(--color-section-industry);
 }

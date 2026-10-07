@@ -13,7 +13,8 @@ import { markNavSeen, useNavNew } from "./nav-news";
  * (e.g. /mining vs /mining/ledger) so only the most specific item lights up.
  * `inFlyout` renders it in the collapsed rail's hover card (RailFlyout): full
  * width, no side marker, out of the tab order. `newKey` ("version:href") marks a page that is
- * new in this release with a dot until it is opened (nav-news.ts).
+ * new in this release with a dot until it is opened (nav-news.ts). The icon takes the
+ * section colour when the link is active or hovered.
  */
 export function NavLink({
   href,
@@ -44,7 +45,7 @@ export function NavLink({
         "relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[0.84rem] transition-colors",
         isActive
           ? "bg-surface-contrast/[0.07] text-ink [&_svg]:text-(--section) [&_svg]:opacity-100"
-          : "text-ink-2 hover:bg-surface-contrast/[0.04] hover:text-ink",
+          : "text-ink-2 hover:bg-surface-contrast/[0.04] hover:text-ink hover:[&_svg]:text-(--section) hover:[&_svg]:opacity-100",
       )}
     >
       {isActive && !inFlyout && (
