@@ -335,8 +335,7 @@ export const mining = {
   /** Mining access: which characters share their personal mining ledger (opt-in). */
   settings: {
     metaTitle: "Mining access",
-    description:
-      "Choose for each character whether Keystar may read its personal mining ledger. Nobody is asked for it at sign-up.",
+    description: "Choose for each character whether Keystar may read its personal mining ledger.",
     title: "Mining ledger per character",
     subtitle: "Enabling re-authorises the character with EVE and adds the mining ledger scope.",
     on: "Enabled",
