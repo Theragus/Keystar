@@ -1,5 +1,6 @@
-import { ExternalLink, FlaskConical, KeyRound, ServerCog, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ExternalLink, FlaskConical, ServerCog, ShieldCheck, TriangleAlert } from "lucide-react";
 import { redirect } from "next/navigation";
+import { EveSsoButton } from "@/components/auth/eve-sso-button";
 import { ButtonLink } from "@/components/ui/button";
 import { CopyField } from "@/components/ui/copy-button";
 import { Glass } from "@/components/ui/glass";
@@ -12,6 +13,7 @@ import { applicationScopes } from "@/core/modules/registry";
 import { isRole } from "@/core/rbac/roles";
 import { getSetting } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
+import { getTheme } from "@/theme/server";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -21,6 +23,7 @@ export async function generateMetadata() {
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   if (await getCurrentUser()) redirect("/");
   const { t } = await getI18n();
+  const theme = await getTheme();
   const params = await searchParams;
   const error = typeof params.error === "string" ? params.error : null;
   const message = typeof params.message === "string" ? params.message : null;
@@ -61,10 +64,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             </div>
           )}
 
-          <div className="mt-8 space-y-3">
-            <ButtonLink href="/auth/login?intent=login" variant="primary" size="lg" className="w-full">
-              <KeyRound className="size-5" aria-hidden /> {t.auth.login.signIn}
-            </ButtonLink>
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <EveSsoButton href="/auth/login?intent=login" label={t.auth.login.signIn} theme={theme} />
             <ButtonLink href="/join" variant="glass" size="md" className="w-full">
               {t.auth.login.register}
             </ButtonLink>
@@ -129,7 +130,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         )}
 
         <p className="mt-6 text-center text-2xs leading-relaxed text-ink-3">
-          {t.auth.login.trademark}
+          {t.common.ccpNotice}
           <br />
           {t.auth.login.license} ·{" "}
           <a href={env().SOURCE_URL} className="underline decoration-surface-contrast/20 underline-offset-2 hover:text-ink">

@@ -161,6 +161,7 @@ export function BasicsTopic({ data, headingId }: { data: HelpData; headingId: st
         })}
       </ol>
       <p className="text-sm text-ink-2">{b.public}</p>
+      <p className="text-2xs leading-relaxed text-ink-3">{t.common.ccpNotice}</p>
     </div>
   );
 }
