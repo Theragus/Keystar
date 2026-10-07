@@ -6,6 +6,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-07
+
 ### Upgrade notes
 
 Sharing skills now includes the implants of the active clone, so the remap optimiser knows the base attributes.
@@ -49,6 +51,21 @@ they enable market access on the Market access page, but without it on the appli
     zKillboard for every system on the route.
 
   ([PR #188](https://github.com/Theragus/Keystar/pull/188))
+
+- **Remap optimiser.** A new page under Pilots recommends the neural remap that trains each character's current skill
+  queue the fastest.
+  - Tries every legal remap (17–27 per attribute, 99 points) against the SP still to train and shows the attributes
+    to remap to, the queue time now and after the remap, and the time saved.
+  - Warns when the queue runs less than 180 days with the recommended attributes: the yearly remap only comes back
+    after 365 days and bonus remaps are gone once used.
+  - Shows whether the yearly remap or a bonus remap is available, and when the next one is.
+  - Skill sharing now also reads the active clone's implants (`esi-clones.read_implants.v1`), so their bonuses are
+    told apart from the base attributes; the remap only redistributes base points. Characters that shared before
+    are taken as implant-free until they re-authorise, and the page says so. When the attributes don't add up to 99
+    (implants or a booster Keystar doesn't know about), no remap is recommended.
+  - Own characters, plus the corporation view for directors; linked from each character on Skill queues.
+
+  ([PR #117](https://github.com/Theragus/Keystar/pull/117))
 
 - **Help, welcome tour and What's new.** A new **Help** button next to Alerts in the top bar (or the `?` key on any
   page) explains Keystar in five topics:
@@ -150,19 +167,6 @@ Industry jobs need two optional character scopes.
   Pointing at a slice highlights its row in the queue table and the other way round.
 - **Load on System Info.** The page now shows the CPU share, memory and JS heap of the web app and the worker, the
   container's memory against its limit, free host memory and the host's load average.
-- **Remap optimiser.** A new page under Pilots recommends the neural remap that trains each character's current skill
-  queue the fastest.
-  - Tries every legal remap (17–27 per attribute, 99 points) against the SP still to train and shows the attributes
-    to remap to, the queue time now and after the remap, and the time saved.
-  - Warns when the queue runs less than 180 days with the recommended attributes: the yearly remap only comes back
-    after 365 days and bonus remaps are gone once used.
-  - Shows whether the yearly remap or a bonus remap is available, and when the next one is.
-  - Skill sharing now also reads the active clone's implants (`esi-clones.read_implants.v1`), so their bonuses are
-    told apart from the base attributes; the remap only redistributes base points. Characters that shared before
-    are taken as implant-free until they re-authorise, and the page says so. When the attributes don't add up to 99
-    (implants or a booster Keystar doesn't know about), no remap is recommended.
-  - Own characters, plus the corporation view for directors; linked from each character on Skill queues.
-
 ### Changed
 
 - **Map interaction.** Use compact glass panels, batched rendering and cached geometry; support mouse rotation and

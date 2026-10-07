@@ -20,6 +20,28 @@ export const whatsNew: typeof en = {
     link: (version: string) => `Upgrade-Hinweise zu v${version}`,
   },
   releases: {
+    "0.15.0": {
+      upgrade:
+        "Die Scopes esi-clones.read_implants.v1 und esi-markets.read_character_orders.v1 (und esi-universe.read_structures.v1, falls er fehlt) zur EVE-Anwendung auf developers.eveonline.com hinzufügen. Bis dahin schlagen das Teilen der Skills und das Einschalten des Marktzugriffs mit invalid_scope fehl.",
+      items: {
+        gateCheck: {
+          title: "Gate-Check",
+          body: "Plane unter Kampf eine Route und sieh die letzten Kills an jedem Gate auf dem Weg, aktive Camps und wie wahrscheinlich ein Camp ist, wenn du ankommst.",
+        },
+        marketOrders: {
+          title: "Marktaufträge",
+          body: "Verfolge die Kauf- und Verkaufsaufträge deiner Charaktere mit Preis, Restmenge, Ort und Ablauf, dazu das ISK im Escrow. Schalte es pro Charakter auf der Zugriffsseite ein.",
+        },
+        remapOptimiser: {
+          title: "Remap-Optimierer",
+          body: "Sieh unter Piloten, mit welchem Neural Remap jeder Charakter seine Skill-Queue am schnellsten abschließt und wie viel Zeit das spart.",
+        },
+        miningAccess: {
+          title: "Mining-Ledger nach Wahl",
+          body: "Die Anmeldung fragt EVE nach keinem Zugriff mehr. Teile das Mining-Ledger pro Charakter auf der Seite Mining-Zugriff und schalte es dort auch wieder aus.",
+        },
+      },
+    },
     "0.14.0": {
       upgrade:
         "Die Scopes esi-industry.read_character_jobs.v1 und esi-universe.read_structures.v1 zur EVE-Anwendung auf developers.eveonline.com hinzufügen. Bis dahin schlägt das Einschalten des Industrie-Zugriffs mit invalid_scope fehl.",
