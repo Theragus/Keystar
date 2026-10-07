@@ -13,13 +13,19 @@ export function useKeepInViewport(ref: RefObject<HTMLElement | null>, open: bool
   useLayoutEffect(() => {
     const el = ref.current;
     if (!open || !el) return;
-    el.style.translate = "";
-    const { left, right } = el.getBoundingClientRect();
-    const width = document.documentElement.clientWidth;
-    let shift = Math.min(0, width - EDGE_GAP - right);
-    if (left + shift < EDGE_GAP) shift = EDGE_GAP - left;
-    if (shift) el.style.translate = `${shift}px 0`;
-  });
+    const fit = () => {
+      el.style.translate = "";
+      const { left, right } = el.getBoundingClientRect();
+      const width = document.documentElement.clientWidth;
+      let shift = Math.min(0, width - EDGE_GAP - right);
+      if (left + shift < EDGE_GAP) shift = EDGE_GAP - left;
+      if (shift) el.style.translate = `${shift}px 0`;
+    };
+    fit();
+    // Rotating a phone or resizing the window moves the trigger.
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [ref, open]);
 }
 
 /** Minimal anchored popover: closes on outside click and Escape, and stays on screen. */
@@ -49,7 +55,11 @@ export function Popover({
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault(); // handled: an enclosing drawer stays open
+      onClose();
+    };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {

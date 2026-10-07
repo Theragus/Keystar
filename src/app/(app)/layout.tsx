@@ -42,7 +42,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <FlashToasts scopeLabels={optionalScopeLabels(t)} />
           <SectionScope items={crumbs}>
             <Sidebar user={user} corpTicker={userCorp?.ticker ?? null} />
-            <div className="section-glow flex min-w-0 flex-1 flex-col">
+            <div id="app-page" className="section-glow flex min-w-0 flex-1 flex-col">
               <TopBar
                 homeCorp={homeCorp}
                 serverStatus={settings["eve.serverStatus"]}

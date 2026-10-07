@@ -59,9 +59,9 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
       className={cn(
         "relative z-30 w-[232px] shrink-0 self-stretch border-r border-surface-contrast/[0.07] bg-space-900/70 backdrop-blur-xl transition-[width] duration-300 ease-out md:group-data-[sidebar=collapsed]/shell:w-14 motion-reduce:transition-none",
         // Phones: an off-canvas drawer, opened from the top bar (MobileNavButton).
-        "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:invisible max-md:-translate-x-full max-md:bg-space-900/95 max-md:shadow-2xl max-md:transition-[translate,visibility] max-md:duration-200",
+        "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:invisible max-md:-translate-x-full max-md:bg-space-900/95 max-md:shadow-2xl max-md:duration-200 max-md:motion-safe:transition-[translate,visibility]",
         // Visible at once when opening (so focus can move in), hidden only after sliding out.
-        "group-data-[mobile-nav=open]/shell:max-md:visible group-data-[mobile-nav=open]/shell:max-md:translate-x-0 group-data-[mobile-nav=open]/shell:max-md:transition-[translate]",
+        "group-data-[mobile-nav=open]/shell:max-md:visible group-data-[mobile-nav=open]/shell:max-md:translate-x-0 group-data-[mobile-nav=open]/shell:max-md:motion-safe:transition-[translate]",
       )}
     >
       {/* Preserve heading space so collapsed icons keep their vertical positions. */}

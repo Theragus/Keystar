@@ -2,13 +2,24 @@
 
 import { ChevronDown, Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS_COOKIE, serializeClosedNavSections, SIDEBAR_COOKIE, SIDEBAR_COOKIE_MAX_AGE } from "./sidebar-config";
 
 /** Below this width the sidebar is an off-canvas drawer (Tailwind's `md`). */
 export const DESKTOP_QUERY = "(min-width: 48rem)";
+
+const subscribeDesktop = (onChange: () => void) => {
+  const query = window.matchMedia(DESKTOP_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+
+/** Whether the viewport is desktop width; the server and hydration assume it is. */
+export function useIsDesktop() {
+  return useSyncExternalStore(subscribeDesktop, () => window.matchMedia(DESKTOP_QUERY).matches, () => true);
+}
 
 const SidebarContext = createContext<{
   collapsed: boolean;
@@ -38,8 +49,9 @@ const writeCookie = (name: string, value: string) => {
  * request is involved. The width changes without hiding the contents.
  *
  * On phones the sidebar is a drawer instead (`mobileOpen`): it closes on
- * navigation, Escape, or when the window grows to desktop width, and locks
- * page scrolling while open.
+ * navigation, a link tap, Escape, or when the window grows to desktop width.
+ * While open the page behind it is inert and does not scroll; closing returns
+ * focus to the menu button.
  */
 export function SidebarProvider({
   collapsed: initial,
@@ -67,27 +79,42 @@ export function SidebarProvider({
   );
 
   const pathname = usePathname();
-  const [openedAt, setOpenedAt] = useState<string | null>(null);
-  // Navigating closes the drawer.
-  const mobileOpen = openedAt === pathname;
-  const setMobileOpen = useCallback((open: boolean) => setOpenedAt(open ? pathname : null), [pathname]);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  // Navigating (back/forward included) closes the drawer.
+  const [shownPath, setShownPath] = useState(pathname);
+  if (pathname !== shownPath) {
+    setShownPath(pathname);
+    setMobileOpen(false);
+  }
 
   useEffect(() => {
     if (!mobileOpen) return;
-    const close = () => setOpenedAt(null);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const close = () => setMobileOpen(false);
+    // A popover in the drawer takes its own Escape first (it prevents the default).
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !e.defaultPrevented && close();
+    // Any link closes it, also one to the current page (no pathname change).
+    const sidebar = document.getElementById("app-sidebar");
+    const onClick = (e: MouseEvent) => e.target instanceof Element && e.target.closest("a[href]") && close();
     const desktop = window.matchMedia(DESKTOP_QUERY);
     const onResize = () => desktop.matches && close();
     window.addEventListener("keydown", onKey);
+    sidebar?.addEventListener("click", onClick);
     desktop.addEventListener("change", onResize);
     const root = document.documentElement;
     const overflow = root.style.overflow;
     root.style.overflow = "hidden";
+    // Keep focus and taps in the drawer: the page column behind it is inert.
+    const page = document.getElementById("app-page");
+    if (page) page.inert = true;
     document.getElementById("app-sidebar-close")?.focus();
     return () => {
       window.removeEventListener("keydown", onKey);
+      sidebar?.removeEventListener("click", onClick);
       desktop.removeEventListener("change", onResize);
       root.style.overflow = overflow;
+      if (page) page.inert = false;
+      const focused = document.activeElement;
+      if (!focused || focused === document.body || sidebar?.contains(focused)) document.getElementById("app-nav-open")?.focus();
     };
   }, [mobileOpen]);
 
@@ -144,6 +171,7 @@ export function MobileNavButton() {
   const { mobileOpen, setMobileOpen } = useSidebar();
   return (
     <button
+      id="app-nav-open"
       type="button"
       onClick={() => setMobileOpen(true)}
       aria-expanded={mobileOpen}
@@ -179,7 +207,10 @@ export function MobileNavBackdrop() {
  * current page (`group-has-[[aria-current=page]]` sees the hidden links).
  */
 export function NavSectionGroup({ id, label, children }: { id: string; label: string; children: ReactNode }) {
-  const { collapsed: rail, closedSections, toggleSection } = useSidebar();
+  const { collapsed, closedSections, toggleSection } = useSidebar();
+  // The rail exists from `md` up; the phone drawer folds sections like the expanded sidebar.
+  const desktop = useIsDesktop();
+  const rail = collapsed && desktop;
   const closed = !rail && closedSections.includes(id);
   const listId = `nav-section-${id}`;
   const chars = Array.from(label);
