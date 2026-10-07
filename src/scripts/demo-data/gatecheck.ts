@@ -1,4 +1,4 @@
-import { eveEntities, eveGroups, eveTypes, gatecheckFeed, gatecheckKills, type Db } from "@/core/db";
+import { eveEntities, eveGroups, eveTypes, gatecheckFeed, gatecheckKills, gatecheckWars, type Db } from "@/core/db";
 import { gateKillRows } from "@/modules/gatecheck/ingest";
 import { getUniverse } from "@/modules/gatecheck/universe-data";
 import type { ZkillAttacker, ZkillKillmail } from "@/modules/killboard/zkill";
@@ -8,8 +8,10 @@ import { hostilePilots } from "./killboard";
  * Demo gate check: a month of camps at well-known gates (smartbombs in
  * Rancer, Sabres in Tama and Amamake, Catalyst ganks in Uedama, bubbles at
  * the EC-P8R gate), with the same regulars on most evenings, a live camp right
- * now, a regular seen next door and mobile depots shot at a New Caldari gate
- * (activity, no camp). Stored through the same classification as
+ * now, a regular seen next door, mobile depots shot at a New Caldari gate
+ * (activity, no camp), war targets shooting each other at Perimeter's Jita gate
+ * (a war between others: no camp) and a war target of the home corporation
+ * killed at Jita's Perimeter gate (a camp hunting us). Stored through the same classification as
  * live feed data. Deterministic for a given PRNG.
  */
 const DAY = 86_400_000;
@@ -72,9 +74,19 @@ interface Camp {
   ships: number[];
   smartbombs?: boolean;
   gank?: boolean;
+  /** The war the kills are part of. */
+  warId?: number;
+  victimCorporationId?: number;
 }
 
-export async function seedGatecheck(db: Db, opts: { rand: () => number; now: Date }): Promise<{ kills: number }> {
+/** Demo wars: one between outsiders, one against the home corporation. */
+const OTHERS_WAR = 762_001;
+const OUR_WAR = 762_002;
+
+export async function seedGatecheck(
+  db: Db,
+  opts: { rand: () => number; now: Date; homeCorporationId: number },
+): Promise<{ kills: number }> {
   const { rand, now } = opts;
   const pick = <T>(arr: T[]): T => arr[Math.floor(rand() * arr.length)];
   const u = getUniverse();
@@ -148,7 +160,7 @@ export async function seedGatecheck(db: Db, opts: { rand: () => number; now: Dat
   const kill = (systemId: number, gateTo: number, time: Date, crew: number[], camp: Camp, victimShip?: number) => {
     const gate = u.gates.get(systemId)?.find((g) => g.destinationId === gateTo);
     if (!gate || time > now) return;
-    const corp = pick(VICTIM_CORPS);
+    const corp = camp.victimCorporationId ? { id: camp.victimCorporationId } : pick(VICTIM_CORPS);
     const attackers: ZkillAttacker[] = crew.map((c, i) => {
       const p = pilots[c % pilots.length];
       const ship = camp.smartbombs && i === 0 ? T.machariel : pick(camp.ships);
@@ -167,6 +179,7 @@ export async function seedGatecheck(db: Db, opts: { rand: () => number; now: Dat
       killmail_id: killmailId++,
       killmail_time: time.toISOString(),
       solar_system_id: systemId,
+      ...(camp.warId ? { war_id: camp.warId } : {}),
       victim: {
         corporation_id: corp.id,
         ship_type_id: ship,
@@ -252,6 +265,26 @@ export async function seedGatecheck(db: Db, opts: { rand: () => number; now: Dat
   // Someone shooting abandoned mobile depots at New Caldari's Jita gate: activity, not a camp.
   const depots: Camp = { system: "New Caldari", gates: ["Jita"], hours: [0, 0], daily: 0, crew: [15], ships: [T.thrasher] };
   for (const minutesAgo of [3, 5, 9, 13, 14, 22, 31]) live("New Caldari", "Jita", minutesAgo, depots, T.mobileDepot);
+  // War targets shooting each other at Perimeter's Jita gate (no camp for neutrals); a war target of ours killed at Jita's Perimeter gate.
+  const othersWar: Camp = {
+    ...depots,
+    system: "Perimeter",
+    gates: ["Jita"],
+    crew: [16, 17],
+    ships: [T.thrasher, T.jaguar],
+    warId: OTHERS_WAR,
+    victimCorporationId: VICTIM_CORPS[0].id,
+  };
+  for (const minutesAgo of [4, 8, 15, 27]) live("Perimeter", "Jita", minutesAgo, othersWar);
+  const ourWar: Camp = { ...othersWar, crew: [18], warId: OUR_WAR, victimCorporationId: opts.homeCorporationId };
+  live("Jita", "Perimeter", 9, ourWar);
+  await db
+    .insert(gatecheckWars)
+    .values([
+      { warId: OTHERS_WAR, aggressorId: pilots[16 % pilots.length].corporationId, defenderId: VICTIM_CORPS[0].id, allyIds: [], fetchedAt: now },
+      { warId: OUR_WAR, aggressorId: pilots[18 % pilots.length].corporationId, defenderId: opts.homeCorporationId, allyIds: [], fetchedAt: now },
+    ])
+    .onConflictDoNothing();
   const sujarento = id("Sujarento");
   const sujarentoGate = id("Tama");
   if (sujarento !== undefined && sujarentoGate !== undefined) {

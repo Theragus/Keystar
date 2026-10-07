@@ -202,7 +202,7 @@ async function main() {
     mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries,
     corp_wallet_divisions, corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions,
     corp_wallet_sync_state, mail_messages, mail_labels, mail_lists, skills_queue, skills_character_skills, skills_character, skills_type_attributes,
-    industry_jobs, industry_locations, skills_implants, skills_implant_attributes, gatecheck_kills, gatecheck_feed, market_orders
+    industry_jobs, industry_locations, skills_implants, skills_implant_attributes, gatecheck_kills, gatecheck_feed, gatecheck_wars, market_orders
     RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
@@ -515,7 +515,7 @@ async function main() {
     now: new Date(),
   });
 
-  const gatecheck = await seedGatecheck(db, { rand, now: new Date() });
+  const gatecheck = await seedGatecheck(db, { rand, now: new Date(), homeCorporationId: HOME_CORP.corporationId });
 
   const fleetCount = await seedFleets(db, {
     pilots: combatPilots.map((p) => p.characterId),

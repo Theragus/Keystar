@@ -7,7 +7,7 @@ import { checkRoute, feedHealth, routeGates, type FeedHealth, type KillRecord, t
 import { NEARBY_MS, PREDICTION_DAYS, WINDOW_HOURS } from "./constants";
 import { resolveQuery, type GatecheckQuery, type ResolvedQuery } from "./params";
 import { historyDays, predictRoute, routeRegulars, type SystemPrediction } from "./predict";
-import { killsAtGates, killsByPilots, killsInSystems, loadFeedStatus, systemRegions, typeGroups } from "./queries";
+import { killsAtGates, killsByPilots, killsInSystems, loadFeedStatus, loadWarContext, systemRegions, typeGroups } from "./queries";
 import { planRoute, securityMix } from "./route";
 import { getUniverse } from "./universe-data";
 
@@ -128,12 +128,16 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
     killsInSystems(route, new Date(now.getTime() - WINDOW_HOURS * 3600_000)),
     days > 0 ? killsAtGates(route, gateIds, new Date(now.getTime() - days * DAY)) : Promise.resolve([]),
   ]);
-  const groups = await typeGroups(killTypes([...recent, ...history]));
+  const [groups, routeWars] = await Promise.all([typeGroups(killTypes([...recent, ...history])), loadWarContext([...recent, ...history])]);
   const groupOf = (typeId: number) => groups.get(typeId)?.groupId;
   const categoryOf = (typeId: number) => groups.get(typeId)?.categoryId ?? undefined;
-  const regulars = routeRegulars(u, route, history, { now, days, groupOf, categoryOf });
+  const regulars = routeRegulars(u, route, history, { now, days, groupOf, categoryOf, wars: routeWars });
   const sightings = await killsByPilots([...regulars], new Date(now.getTime() - NEARBY_MS));
-  for (const [id, group] of await typeGroups(killTypes(sightings).filter((id) => !groups.has(id)))) groups.set(id, group);
+  const [sightingGroups, wars] = await Promise.all([
+    typeGroups(killTypes(sightings).filter((id) => !groups.has(id))),
+    loadWarContext([...recent, ...history, ...sightings]),
+  ]);
+  for (const [id, group] of sightingGroups) groups.set(id, group);
 
   const check = checkRoute(u, route, recent, {
     now,
@@ -141,12 +145,14 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
     feed,
     groupOf,
     categoryOf,
+    wars,
   });
   const predictions = predictRoute(u, route, check, history, sightings, {
     now,
     days,
     groupOf,
     categoryOf,
+    wars,
   });
 
   const ids = shownIds(check, predictions);

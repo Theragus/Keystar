@@ -16,6 +16,11 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- **Gate check: wars between others no longer raise camp alerts.** In high-sec, war targets may shoot each other at
+  the gates, but nobody else: kills in wars between other corporations count as activity in the system, keep the
+  camp estimate low and are summarised under the kills. Kills in wars your corporation or alliance fights still count
+  as a camp and are tagged "War targets"; in low- and null-sec war kills count as before. Keystar looks up who fights
+  which war on ESI in the background (new job "Gate check: who fights which war").
 - **Gate check: mobile depots no longer raise camp alerts.** Only ship kills (pods included) and kills of
   deployables that are only out while their owner flies beside them, such as mobile tractor units, count as a camp.
   Mobile depots and structures shot at a gate count as activity in the system, keep the camp estimate low, and are

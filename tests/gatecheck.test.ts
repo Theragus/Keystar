@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { checkRoute, feedHealth, type KillRecord } from "@/modules/gatecheck/check";
-import { locateKill, toGateKill } from "@/modules/gatecheck/classify";
+import { locateKill, toGateKill, warRow } from "@/modules/gatecheck/classify";
 import { gatecheckHref, parseQuery, resolveQuery } from "@/modules/gatecheck/params";
 import { confidenceOf, historyDays, predictRoute, riskLevel, routeRegulars } from "@/modules/gatecheck/predict";
 import { NO_TRANSIT, planRoute, securityMix, systemCost } from "@/modules/gatecheck/route";
-import { isMinorVictim, killTags, mergeTags } from "@/modules/gatecheck/tags";
+import { isMinorVictim, isOthersWarKill, killTags, mergeTags, NO_WARS, warContext } from "@/modules/gatecheck/tags";
 import { buildUniverse, findSystem, gateTo, jumpsWithin } from "@/modules/gatecheck/universe";
 import { getUniverse } from "@/modules/gatecheck/universe-data";
 import type { ZkillKillmail } from "@/modules/killboard/zkill";
@@ -71,6 +71,7 @@ function record(over: Partial<KillRecord>): KillRecord {
     attackerWeaponTypeIds: [587],
     npc: false,
     concord: false,
+    warId: null,
     ...over,
   };
 }
@@ -219,7 +220,47 @@ describe("gate check classification", () => {
       npc: false,
       totalValue: 5e6,
     });
+    expect(row.warId).toBeNull();
+    expect(toGateKill({ ...km(), war_id: 762_001 }, u.gates.get(2))!.warId).toBe(762_001);
     expect(toGateKill(km({ solar_system_id: 31_000_005 }), undefined)).toBeNull();
+  });
+
+  it("stores who fights a war and tells the home side's wars apart", () => {
+    const at = new Date("2026-10-07T12:00:00Z");
+    expect(
+      warRow(
+        {
+          id: 1,
+          aggressor: { corporation_id: 98_000_001 },
+          defender: { alliance_id: 99_000_002 },
+          allies: [{ corporation_id: 98_000_003 }, { alliance_id: 99_000_004 }],
+          finished: "2026-10-08T06:58:00Z",
+        },
+        at,
+      ),
+    ).toEqual({
+      warId: 1,
+      aggressorId: 98_000_001,
+      defenderId: 99_000_002,
+      allyIds: [98_000_003, 99_000_004],
+      finishedAt: new Date("2026-10-08T06:58:00Z"),
+      fetchedAt: at,
+    });
+    const wars = [
+      { warId: 1, aggressorId: 98_000_001, defenderId: 99_000_002, allyIds: [] },
+      { warId: 2, aggressorId: 98_000_005, defenderId: 98_000_006, allyIds: [99_000_009] },
+      { warId: 3, aggressorId: null, defenderId: null, allyIds: [] },
+    ];
+    // Home corporation 98_000_007 in alliance 99_000_009: war 2 through the alliance as an ally.
+    const ctx = warContext(wars, [98_000_007, 99_000_009]);
+    expect([...ctx.known].sort()).toEqual([1, 2, 3]);
+    expect([...ctx.ours]).toEqual([2]);
+    expect([...warContext(wars, [0, 0]).ours]).toEqual([]);
+    expect(isOthersWarKill(1, 0.9, ctx)).toBe(true);
+    expect(isOthersWarKill(1, 0.3, ctx)).toBe(false); // low-sec: anyone may shoot
+    expect(isOthersWarKill(2, 0.9, ctx)).toBe(false); // our war
+    expect(isOthersWarKill(4, 0.9, ctx)).toBe(false); // not looked up yet
+    expect(isOthersWarKill(null, 0.9, ctx)).toBe(false);
   });
 
   it("tags smartbombs, dictors, HICs, gankers, hot drops and pods", () => {
@@ -252,7 +293,7 @@ describe("gate check assessment", () => {
     coverageSince: new Date("2026-09-01T00:00:00Z"),
     caughtUpAt: new Date(NOW.getTime() - 30_000),
   };
-  const opts = { now: NOW, windowHours: 2, feed: fresh, groupOf, categoryOf };
+  const opts = { now: NOW, windowHours: 2, feed: fresh, groupOf, categoryOf, wars: NO_WARS };
 
   it("tells the route's gates from the system's other gates", () => {
     const kills = [
@@ -340,7 +381,7 @@ describe("gate check assessment", () => {
     expect(bravo.status).toBe("activity");
     expect(bravo.lastRouteKill).toBeNull();
     expect(bravo.lastActivity).toBeNull();
-    expect(bravo.lastMinorKill).toEqual(depots[0].killmailTime);
+    expect(bravo.lastBackgroundKill).toEqual(depots[0].killmailTime);
     expect(bravo.routeKills.every((k) => k.minor)).toBe(true);
     expect(bravo.routeTags).toEqual([]);
     expect(bravo.systemTags).toEqual(["hic"]);
@@ -349,12 +390,49 @@ describe("gate check assessment", () => {
       days: 30,
       groupOf,
       categoryOf,
+      wars: NO_WARS,
     });
     expect(predicted.factors.live).toBeLessThanOrEqual(0.05);
     expect(predicted.level).toBe("low");
 
     const mtu = record({ killmailId: 9, gateId: 21, victimShipTypeId: 33475 });
     expect(checkRoute(u, route, [mtu], opts).systems[1].status).toBe("camp");
+  });
+
+  it("counts no camp for high-sec war kills between others, but for our wars and low-sec", () => {
+    const wars = warContext(
+      [
+        { warId: 1, aggressorId: 200, defenderId: 9, allyIds: [] },
+        { warId: 2, aggressorId: 200, defenderId: 500, allyIds: [] },
+      ],
+      [500],
+    );
+    // Delta (0.5) is high-sec; its arrival gate from Bravo is 42.
+    const inDelta = (over: Partial<KillRecord>) => record({ solarSystemId: 4, gateId: 42, ...over });
+    const others = [5, 9, 14].map((m, i) => inDelta({ killmailId: i + 1, warId: 1, killmailTime: new Date(NOW.getTime() - m * 60_000) }));
+    const delta = checkRoute(u, route, others, { ...opts, wars }).systems[2];
+    expect(delta.status).toBe("activity");
+    expect(delta.lastRouteKill).toBeNull();
+    expect(delta.routeKills.every((k) => k.war)).toBe(true);
+    expect(delta.lastBackgroundKill).toEqual(others[0].killmailTime);
+    const predicted = predictRoute(u, route, checkRoute(u, route, others, { ...opts, wars }), others, [], {
+      now: NOW,
+      days: 30,
+      groupOf,
+      categoryOf,
+      wars,
+    })[2];
+    expect(predicted.factors.live).toBeLessThanOrEqual(0.05);
+    expect(predicted.campDays).toBe(0);
+    expect(predicted.level).toBe("low");
+
+    // Our war: a camp, tagged.
+    const ours = checkRoute(u, route, [inDelta({ warId: 2 })], { ...opts, wars }).systems[2];
+    expect(ours.status).toBe("camp");
+    expect(ours.routeTags).toEqual(["war"]);
+    // A war not looked up yet, or a war kill in low-sec Bravo: a camp.
+    expect(checkRoute(u, route, [inDelta({ warId: 3 })], { ...opts, wars }).systems[2].status).toBe("camp");
+    expect(checkRoute(u, route, [record({ gateId: 21, warId: 1 })], { ...opts, wars }).systems[1].status).toBe("camp");
   });
 
   it("collects the route gates' tags, gankers included", () => {
@@ -407,12 +485,14 @@ describe("gate check predictions", () => {
       feed: fresh,
       groupOf,
       categoryOf,
+      wars: NO_WARS,
     });
     const regulars = routeRegulars(u, route, hist, {
       now: NOW,
       days: 30,
       groupOf,
       categoryOf,
+      wars: NO_WARS,
     });
     expect([...regulars].sort()).toEqual([100, 101]);
     // Pilot 100 killed in Charlie (two jumps from Delta, one from Bravo) 20 minutes ago.
@@ -427,6 +507,7 @@ describe("gate check predictions", () => {
       days: 30,
       groupOf,
       categoryOf,
+      wars: NO_WARS,
     });
     expect(bravo.activeDays).toBe(6);
     expect(bravo.campDays).toBe(6);
@@ -466,6 +547,7 @@ describe("gate check predictions", () => {
       days: 30,
       groupOf,
       categoryOf,
+      wars: NO_WARS,
     })[1];
     expect(again.sightings).toEqual([]);
 
@@ -483,16 +565,17 @@ describe("gate check predictions", () => {
       days: 30,
       groupOf,
       categoryOf,
+      wars: NO_WARS,
     })[1];
     expect(am.regulars.find((r) => r.characterId === 100)?.nearNow).toBe(false);
   });
 
   it("builds no history or regulars from mobile depots", () => {
     const depots = history([1, 2, 3, 5, 8, 13], { victimShipTypeId: 33474 });
-    const regulars = routeRegulars(u, route, depots, { now: NOW, days: 30, groupOf, categoryOf });
+    const regulars = routeRegulars(u, route, depots, { now: NOW, days: 30, groupOf, categoryOf, wars: NO_WARS });
     expect(regulars.size).toBe(0);
-    const check = checkRoute(u, route, [], { now: NOW, windowHours: 2, feed: fresh, groupOf, categoryOf });
-    const bravo = predictRoute(u, route, check, depots, [], { now: NOW, days: 30, groupOf, categoryOf })[1];
+    const check = checkRoute(u, route, [], { now: NOW, windowHours: 2, feed: fresh, groupOf, categoryOf, wars: NO_WARS });
+    const bravo = predictRoute(u, route, check, depots, [], { now: NOW, days: 30, groupOf, categoryOf, wars: NO_WARS })[1];
     expect(bravo.campDays).toBe(0);
     expect(bravo.activeDays).toBe(0);
     expect(bravo.regulars).toEqual([]);
@@ -514,12 +597,14 @@ describe("gate check predictions", () => {
       feed: fresh,
       groupOf,
       categoryOf,
+      wars: NO_WARS,
     });
     const bravo = predictRoute(u, route, check, [...morning, ...once], [], {
       now: NOW,
       days: 30,
       groupOf,
       categoryOf,
+      wars: NO_WARS,
     })[1];
     expect(bravo.activeDays).toBe(1);
     expect(bravo.regulars.map((r) => r.characterId)).not.toContain(555);
@@ -528,8 +613,8 @@ describe("gate check predictions", () => {
   it("fades a live camp with the age of its last kill", () => {
     const liveAt = (minutes: number) => {
       const kill = record({ killmailId: 1, gateId: 21, killmailTime: new Date(NOW.getTime() - minutes * 60_000) });
-      const check = checkRoute(u, route, [kill], { now: NOW, windowHours: 2, feed: fresh, groupOf, categoryOf });
-      return predictRoute(u, route, check, [], [], { now: NOW, days: 0, groupOf, categoryOf })[1];
+      const check = checkRoute(u, route, [kill], { now: NOW, windowHours: 2, feed: fresh, groupOf, categoryOf, wars: NO_WARS });
+      return predictRoute(u, route, check, [], [], { now: NOW, days: 0, groupOf, categoryOf, wars: NO_WARS })[1];
     };
     const now = liveAt(5);
     const later = liveAt(100);

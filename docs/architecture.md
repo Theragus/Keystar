@@ -226,7 +226,8 @@ Current jobs:
 | `intel.corporation-contacts`     | 15 min   | Home corporation contacts (standings), any member's token  |
 | `intel.alliance-contacts`        | 15 min   | Home alliance contacts (standings), any member's token     |
 | `trade.housekeeping`             | 6 h      | Deletes appraisals older than a year, old rate-limit rows  |
-| `gatecheck.housekeeping`         | 6 h      | Retention of the gate check's kills (60 days at gates, 7 days elsewhere) |
+| `gatecheck.housekeeping`         | 6 h      | Retention of the gate check's kills (60 days at gates, 7 days elsewhere) and of wars no kill refers to |
+| `gatecheck.wars`                 | 10 min   | Who fights the wars on stored kills (public ESI `/wars/{id}/`; running wars again every 6 h) |
 | `wallet.character-transactions`  | 1 h      | Market transactions of characters that opted in to wallets |
 | `wallet.corporation-wallets`     | 1 h      | Corporation balances, journal and transactions, all divisions (Accountant / Junior Accountant) |
 | `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
@@ -549,8 +550,10 @@ stargate route and checks it gate by gate. Nothing on the page calls zKillboard.
   `recordFeedKillmails` (`src/modules/gatecheck/ingest.ts`), which keeps the ones in known-space systems with
   stargates in `gatecheck_kills`: the stargate within 150 km of the victim's position (`gate_id`, null away from the
   gates; without a position, zKillboard's `locationID` if it is one of the system's gates), the victim, zKillboard's
-  `npc` flag, whether CONCORD is on the mail (a suicide gank), and the player attackers (at most 100, by damage) as
-  aligned arrays of character, corporation, alliance, hull and weapon. Hull and weapon types are named through the
+  `npc` flag, whether CONCORD is on the mail (a suicide gank), the war it was part of (ESI's `war_id`), and the player
+  attackers (at most 100, by damage) as aligned arrays of character, corporation, alliance, hull and weapon. The
+  `gatecheck.wars` job looks up who fights those wars (`gatecheck_wars`: aggressor, defender and allies, each a
+  corporation or alliance). Hull and weapon types are named through the
   resolver, so tags can be told from their inventory groups. `gatecheck_feed` records since when the feed has been
   read without a gap and when it last caught up: without a catch-up in the last 3 minutes a quiet gate shows as
   "unknown", after 15 minutes the feed counts as offline. Kills at gates are kept 60 days, others 7.
@@ -564,7 +567,10 @@ stargate route and checks it gate by gate. Nothing on the page calls zKillboard.
   included) and of deployables that are only out while their owner flies beside them (mobile tractor units, cyno and
   scan inhibitors, micro jump units) count as a camp (`isMinorVictim` in `tags.ts`; types not named yet count): a
   mobile depot or structure shot in the system makes it "activity" at most, adds a live weight of only 0.05 (a ship
-  killed elsewhere in the system adds 0.2) and never enters the history or the regulars. Tags (`tags.ts`):
+  killed elsewhere in the system adds 0.2) and never enters the history or the regulars. The same goes for a high-sec
+  kill in a war between others (`isOthersWarKill`): war targets may shoot each other there, neutrals they may not.
+  Kills in wars the home corporation or its alliance fights (aggressor, defender or ally) still count and are tagged
+  "war"; so do war kills in low- and null-sec and in wars not looked up yet. Tags (`tags.ts`): war,
   smartbomb (a weapon in the Smart Bomb group), interdictor, HIC, gank (CONCORD on the mail), hot drop (Black Ops,
   capitals) and pod. Status: camp (a player kill at a route gate in the last 30 minutes, or three within the hour),
   recent, activity elsewhere in the system, quiet, or unknown while the feed is behind.
@@ -579,7 +585,7 @@ stargate route and checks it gate by gate. Nothing on the page calls zKillboard.
   collapsed row keeps its tint, status and estimate badges, tags and kill counts. A gate's kills show five at a time
   ("Show 5 more", a small client component), and each kill row opens on zKillboard.
 - The map's travel check (`/api/map/gate-check`) reads the same table instead of zKillboard, and also skips mobile
-  depots and structures.
+  depots, structures and high-sec war kills between others.
 
 ## Threat intel
 

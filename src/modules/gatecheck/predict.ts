@@ -1,7 +1,7 @@
 import { NEARBY_JUMPS, NEARBY_MS, REGULAR_MIN_DAYS } from "./constants";
-import type { KillRecord, RouteCheck } from "./check";
+import type { KillClassifier, KillRecord, RouteCheck } from "./check";
 import { routeGates } from "./check";
-import { isMinorVictim, killTags, KILL_TAGS, type CategoryOf, type GroupOf, type KillTag } from "./tags";
+import { isMinorVictim, isOthersWarKill, killTags, KILL_TAGS, type KillTag } from "./tags";
 import { jumpsWithin, type Universe } from "./universe";
 
 /**
@@ -17,8 +17,9 @@ import { jumpsWithin, type Universe } from "./universe";
  *   within a few jumps in the last two hours, other than at these gates
  *   (fading with the time since).
  *
- * Only ship kills (and active deployables) count: a mobile depot or structure
- * shot at a gate is no camp and adds a few percent at most.
+ * Only ship kills (and active deployables) count, and not in others' high-sec
+ * wars: a mobile depot or structure shot at a gate, or war targets shooting each
+ * other, is no camp and adds a few percent at most.
  *
  * They combine as independent chances: 1 − (1 − history)(1 − live)(1 − regulars).
  * It is an estimate from public killmails, not a forecast: camps that kill
@@ -95,11 +96,16 @@ export function historyDays(historySince: Date | null, now: Date, maxDays: numbe
   return Math.max(0, Math.min(maxDays, Math.floor((now.getTime() - historySince.getTime()) / DAY)));
 }
 
-/** Kills that tell of a camp: players on the mail, or CONCORD (a gank), and a ship (not a mobile depot) lost. */
+/**
+ * Kills that tell of a camp: players on the mail, or CONCORD (a gank), a ship
+ * (not a mobile depot) lost, and not in a high-sec war between others.
+ */
 const campKills =
-  (groupOf: GroupOf, categoryOf: CategoryOf) =>
+  (u: Universe, c: KillClassifier) =>
   (k: KillRecord): boolean =>
-    (!k.npc || k.concord) && !isMinorVictim(k.victimShipTypeId, groupOf, categoryOf);
+    (!k.npc || k.concord) &&
+    !isMinorVictim(k.victimShipTypeId, c.groupOf, c.categoryOf) &&
+    !isOthersWarKill(k.warId, u.systems.get(k.solarSystemId)?.security ?? 0, c.wars);
 
 /** Time-of-day distance in milliseconds (0 to 12 hours). */
 function timeOfDayGap(a: number, b: number): number {
@@ -194,10 +200,10 @@ export function routeRegulars(
   u: Universe,
   route: readonly number[],
   history: readonly KillRecord[],
-  opts: { now: Date; days: number; groupOf: GroupOf; categoryOf: CategoryOf },
+  opts: { now: Date; days: number } & KillClassifier,
 ): Set<number> {
   const since = opts.now.getTime() - opts.days * DAY;
-  const isCampKill = campKills(opts.groupOf, opts.categoryOf);
+  const isCampKill = campKills(u, opts);
   const ids = new Set<number>();
   route.forEach((_, index) => {
     for (const r of regularsAt(routeGateHistory(u, route, index, history, since, opts.now.getTime(), isCampKill), opts.now))
@@ -212,11 +218,11 @@ export function predictRoute(
   check: RouteCheck,
   history: readonly KillRecord[],
   recent: readonly KillRecord[],
-  opts: { now: Date; days: number; groupOf: GroupOf; categoryOf: CategoryOf },
+  opts: { now: Date; days: number } & KillClassifier,
 ): SystemPrediction[] {
   const now = opts.now.getTime();
   const since = now - opts.days * DAY;
-  const isCampKill = campKills(opts.groupOf, opts.categoryOf);
+  const isCampKill = campKills(u, opts);
   // Kills by regulars in the last two hours, anywhere (the page looked them up by pilot).
   const latestByPilot = new Map<number, { k: KillRecord; i: number }[]>();
   for (const k of recent) {
@@ -243,7 +249,7 @@ export function predictRoute(
       const back = Math.round((now - t) / DAY);
       if (back >= 1 && back <= opts.days && Math.abs(now - t - back * DAY) <= NEAR_HOUR_MS) activeDays.add(back);
       hourly[k.killmailTime.getUTCHours()] += 1;
-      for (const tag of killTags(k, opts.groupOf)) tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
+      for (const tag of killTags(k, opts.groupOf, opts.wars)) tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
       const owners = new Set(k.attackerCharacterIds.map((_, i) => k.attackerAllianceIds[i] || k.attackerCorporationIds[i]).filter(Boolean));
       for (const g of owners) groups.set(g, (groups.get(g) ?? 0) + 1);
     }
@@ -260,9 +266,9 @@ export function predictRoute(
       const minutes = Math.max(0, (now - checked.lastActivity.getTime()) / 60_000);
       live = Math.max(live, 0.2 * 0.5 ** (minutes / LIVE_HALF_LIFE_MIN));
     }
-    // Mobile depots and structures get shot by anyone passing: barely a sign of a camp.
-    if (checked?.lastMinorKill) {
-      const minutes = Math.max(0, (now - checked.lastMinorKill.getTime()) / 60_000);
+    // Mobile depots and structures get shot by anyone passing, war targets by their enemies: barely a sign of a camp.
+    if (checked?.lastBackgroundKill) {
+      const minutes = Math.max(0, (now - checked.lastBackgroundKill.getTime()) / 60_000);
       live = Math.max(live, 0.05 * 0.5 ** (minutes / LIVE_HALF_LIFE_MIN));
     }
 
