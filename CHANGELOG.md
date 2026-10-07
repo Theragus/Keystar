@@ -18,8 +18,8 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - **Gate check: mobile depots no longer raise camp alerts.** Only ship kills (pods included) and kills of
   deployables that are only out while their owner flies beside them, such as mobile tractor units, count as a camp.
-  Mobile depots and structures shot at a gate count as activity in the system, carry little weight in the estimate,
-  and are summarised under the kills instead of filling the list. The map's travel check skips them too.
+  Mobile depots and structures shot at a gate count as activity in the system, keep the camp estimate low, and are
+  summarised under the kills instead of filling the list. The map's travel check skips them too.
   ([PR #197](https://github.com/Theragus/Keystar/pull/197))
 - **Gate check: systems fold.** Each system on the route can be folded away. Hotspots start open and the rest start
   folded, and a folded system still shows its colour, status, camp estimate, tags and kill counts.

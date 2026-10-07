@@ -563,8 +563,8 @@ stargate route and checks it gate by gate. Nothing on the page calls zKillboard.
   hours are "route" kills, the rest of the system's kills are listed apart. Only kills of ships (category 6, capsules
   included) and of deployables that are only out while their owner flies beside them (mobile tractor units, cyno and
   scan inhibitors, micro jump units) count as a camp (`isMinorVictim` in `tags.ts`; types not named yet count): a
-  mobile depot or structure shot at a route gate makes it "activity" at most, carries the 0.2 weight of a kill
-  elsewhere in the system and never enters the history or the regulars. Tags (`tags.ts`):
+  mobile depot or structure shot in the system makes it "activity" at most, adds a live weight of only 0.05 (a ship
+  killed elsewhere in the system adds 0.2) and never enters the history or the regulars. Tags (`tags.ts`):
   smartbomb (a weapon in the Smart Bomb group), interdictor, HIC, gank (CONCORD on the mail), hot drop (Black Ops,
   capitals) and pod. Status: camp (a player kill at a route gate in the last 30 minutes, or three within the hour),
   recent, activity elsewhere in the system, quiet, or unknown while the feed is behind.

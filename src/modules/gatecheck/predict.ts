@@ -18,7 +18,7 @@ import { jumpsWithin, type Universe } from "./universe";
  *   (fading with the time since).
  *
  * Only ship kills (and active deployables) count: a mobile depot or structure
- * shot at a gate is no camp, at most activity in the system.
+ * shot at a gate is no camp and adds a few percent at most.
  *
  * They combine as independent chances: 1 − (1 − history)(1 − live)(1 − regulars).
  * It is an estimate from public killmails, not a forecast: camps that kill
@@ -259,6 +259,11 @@ export function predictRoute(
     if (checked?.lastActivity) {
       const minutes = Math.max(0, (now - checked.lastActivity.getTime()) / 60_000);
       live = Math.max(live, 0.2 * 0.5 ** (minutes / LIVE_HALF_LIFE_MIN));
+    }
+    // Mobile depots and structures get shot by anyone passing: barely a sign of a camp.
+    if (checked?.lastMinorKill) {
+      const minutes = Math.max(0, (now - checked.lastMinorKill.getTime()) / 60_000);
+      live = Math.max(live, 0.05 * 0.5 ** (minutes / LIVE_HALF_LIFE_MIN));
     }
 
     const regulars = regularsAt(kills, opts.now);

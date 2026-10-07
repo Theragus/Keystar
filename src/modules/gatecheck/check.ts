@@ -104,8 +104,10 @@ export interface SystemCheck {
   npcKills: number;
   /** Newest player kill of a ship at a route gate. */
   lastRouteKill: Date | null;
-  /** Newest player kill in the system that is not a camp at the route gates: elsewhere, or of a minor victim. */
+  /** Newest player kill of a ship elsewhere in the system. */
   lastActivity: Date | null;
+  /** Newest player kill of a minor victim (a mobile depot, a structure) anywhere in the system. */
+  lastMinorKill: Date | null;
   /** What the camp at the route gates used, and what showed up anywhere in the system. */
   routeTags: KillTag[];
   systemTags: KillTag[];
@@ -117,6 +119,9 @@ export interface RouteCheck {
   windowHours: number;
   feed: FeedHealth;
 }
+
+const newest = (kills: readonly CheckedKill[]) =>
+  kills.reduce<Date | null>((last, k) => (last && last >= k.time ? last : k.time), null);
 
 export function toCheckedKill(k: KillRecord, place: KillPlace, u: Universe, groupOf: GroupOf, categoryOf: CategoryOf): CheckedKill {
   const gate = k.gateId === null ? null : (u.gates.get(k.solarSystemId)?.find((g) => g.id === k.gateId) ?? null);
@@ -195,8 +200,8 @@ export function checkRoute(
     }
     const playerRouteKills = routeKills.filter((k) => !k.npc && !k.minor);
     const lastRouteKill = playerRouteKills[0]?.time ?? null;
-    const activity = [...routeKills.filter((k) => !k.npc && k.minor), ...otherKills.filter((k) => !k.npc)];
-    const lastActivity = activity.reduce<Date | null>((last, k) => (last && last >= k.time ? last : k.time), null);
+    const shipActivity = otherKills.filter((k) => !k.npc && !k.minor);
+    const minorKills = [...routeKills, ...otherKills].filter((k) => !k.npc && k.minor);
     const hourAgo = opts.now.getTime() - 3600_000;
     const camp =
       lastRouteKill !== null &&
@@ -206,7 +211,7 @@ export function checkRoute(
       ? "camp"
       : playerRouteKills.length
         ? "recent"
-        : activity.length
+        : shipActivity.length || minorKills.length
           ? "activity"
           : health === "fresh"
             ? "quiet"
@@ -220,7 +225,8 @@ export function checkRoute(
       otherKills,
       npcKills,
       lastRouteKill,
-      lastActivity,
+      lastActivity: newest(shipActivity),
+      lastMinorKill: newest(minorKills),
       routeTags: mergeTags(routeKills.filter((k) => !k.minor).map((k) => k.tags)),
       systemTags: mergeTags([...routeKills, ...otherKills].map((k) => k.tags)),
       status,

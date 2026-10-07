@@ -339,18 +339,19 @@ describe("gate check assessment", () => {
     const bravo = checkRoute(u, route, depots, opts).systems[1];
     expect(bravo.status).toBe("activity");
     expect(bravo.lastRouteKill).toBeNull();
-    expect(bravo.lastActivity).toEqual(depots[0].killmailTime);
+    expect(bravo.lastActivity).toBeNull();
+    expect(bravo.lastMinorKill).toEqual(depots[0].killmailTime);
     expect(bravo.routeKills.every((k) => k.minor)).toBe(true);
     expect(bravo.routeTags).toEqual([]);
     expect(bravo.systemTags).toEqual(["hic"]);
     const [, predicted] = predictRoute(u, route, checkRoute(u, route, depots, opts), [], [], {
       now: NOW,
-      days: 0,
+      days: 30,
       groupOf,
       categoryOf,
     });
-    expect(predicted.factors.live).toBeLessThanOrEqual(0.2);
-    expect(predicted.level).not.toBe("severe");
+    expect(predicted.factors.live).toBeLessThanOrEqual(0.05);
+    expect(predicted.level).toBe("low");
 
     const mtu = record({ killmailId: 9, gateId: 21, victimShipTypeId: 33475 });
     expect(checkRoute(u, route, [mtu], opts).systems[1].status).toBe("camp");
