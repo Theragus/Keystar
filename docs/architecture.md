@@ -33,7 +33,7 @@ Keystar is one TypeScript codebase that runs as two processes against one Postgr
 ```
 src/
   app/                 Next.js routes
-    (app)/             signed-in area (sidebar shell): dashboard, mining, industry, characters, admin
+    (app)/             signed-in area (sidebar shell): dashboard, mining, industry, market, characters, admin
     auth/              SSO login / callback / logout / demo routes
     setup/             first-start walkthrough for the first admin
     login/, join/      public pages
@@ -58,6 +58,8 @@ src/
                        route check, camp estimates, UI
     map/               3D universe map, travel check and jump ranges (static data in public/data)
     trade/             appraisal: paste parser, name resolution, Jita pricing, saved shareable snapshots
+    market/            opt-in market orders of the viewer's own characters: schema, sync job, UI (station and
+                       structure names shared with industry)
     wallet/            opt-in character wallet transactions (raw data used by the mining P&L); corp/: corporation
                        wallet archive (balances, journal, transactions), classification, finances pages' queries
     social/            opt-in EVE mail (read-only): mail sync, EVE HTML parser, link resolution, mail UI
@@ -214,6 +216,7 @@ Current jobs:
 | `mining.corporation-observers`   | 1 h      | Moon-refinery observer ledgers (Accountant)                |
 | `mining.corporation-structures`  | 6 h      | Refinery names and locations (Station Manager)             |
 | `industry.character-jobs`        | 5 min    | Industry jobs of each character (incl. finished ones), names their stations and structures |
+| `market.character-orders`        | 20 min   | Open market orders of each character and its order history (90 days), names their stations and structures |
 | `killboard.zkill-sync`           | 1 h      | Home corporation kills/losses from zKillboard (no token)   |
 | `killboard.live-feed`            | 10 s     | zKillboard's live feed (R2Z2): home-corporation killmails within seconds, for the live notifications; every kill near a stargate for the gate check |
 | `killboard.situation-report`     | 1 h      | Writes the weekly situation report once a week has closed  |

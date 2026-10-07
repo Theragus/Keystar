@@ -1,4 +1,4 @@
-import { Factory, KeyRound, Trash2 } from "lucide-react";
+import { KeyRound, Store, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { ActionForm } from "@/components/ui/action-form";
 import { StatusBadge } from "@/components/ui/badge";
@@ -9,33 +9,33 @@ import { requirePermission } from "@/core/auth/dal";
 import { env } from "@/core/env";
 import { reauthorizeHref } from "@/core/modules/registry";
 import { getI18n } from "@/i18n/server";
-import { INDUSTRY_MANAGE_HREF, INDUSTRY_PERMISSIONS, INDUSTRY_SCOPES } from "@/modules/industry/module";
-import { getIndustryAccess } from "@/modules/industry/queries";
-import { deleteIndustryData, setIndustryAccess } from "../actions";
+import { MARKET_MANAGE_HREF, MARKET_PERMISSIONS, MARKET_SCOPES } from "@/modules/market/module";
+import { getMarketAccess } from "@/modules/market/queries";
+import { deleteMarketData, setMarketAccess } from "../actions";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
-  return { title: t.industry.settings.metaTitle };
+  return { title: t.market.settings.metaTitle };
 }
 
-export default async function IndustrySettingsPage() {
-  const user = await requirePermission(INDUSTRY_PERMISSIONS.viewOwn);
+export default async function MarketSettingsPage() {
+  const user = await requirePermission(MARKET_PERMISSIONS.viewOwn);
   const { t, f } = await getI18n();
-  const m = t.industry.settings;
+  const m = t.market.settings;
   const sw = t.characters.scopeSwitch;
   const demo = env().KEYSTAR_DEMO_MODE;
-  const access = await getIndustryAccess(user.id);
+  const access = await getMarketAccess(user.id);
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow={t.mining.module.navSection} title={m.metaTitle} description={m.description} />
+      <PageHeader eyebrow={t.trade.module.navSection} title={m.metaTitle} description={m.description} />
 
       <Panel title={m.title} subtitle={m.subtitle}>
         <div className="space-y-3">
           {access.map((a) => {
             const enable = reauthorizeHref(a.grantedScopes, {
-              add: INDUSTRY_SCOPES,
-              returnTo: INDUSTRY_MANAGE_HREF,
+              add: MARKET_SCOPES,
+              returnTo: MARKET_MANAGE_HREF,
               characterId: a.characterId,
             });
             const anyGranted = a.granted || a.partial;
@@ -70,7 +70,7 @@ export default async function IndustrySettingsPage() {
                   {anyGranted || a.switchedOff ? (
                     // In Keystar only: the token keeps the scopes until the character is re-authorised.
                     <ActionForm
-                      action={setIndustryAccess.bind(null, a.characterId, !anyGranted)}
+                      action={setMarketAccess.bind(null, a.characterId, !anyGranted)}
                       success={anyGranted ? sw.off(m.accessLabel, a.name) : sw.on(m.accessLabel, a.name)}
                       successDetail={anyGranted ? sw.offDetail : undefined}
                       failed={sw.failed(m.accessLabel, a.name)}
@@ -82,7 +82,7 @@ export default async function IndustrySettingsPage() {
                         </Button>
                       ) : (
                         <Button type="submit" size="sm" variant="primary">
-                          <Factory className="size-3.5" aria-hidden /> {m.enable}
+                          <Store className="size-3.5" aria-hidden /> {m.enable}
                         </Button>
                       )}
                     </ActionForm>
@@ -92,7 +92,7 @@ export default async function IndustrySettingsPage() {
                     </Button>
                   ) : (
                     <ButtonLink href={enable} size="sm" variant="primary">
-                      <Factory className="size-3.5" aria-hidden /> {m.enable}
+                      <Store className="size-3.5" aria-hidden /> {m.enable}
                     </ButtonLink>
                   )}
                   {/* A revoked token, or one holding only one of the scopes, needs the EVE login to get both. */}
@@ -103,7 +103,7 @@ export default async function IndustrySettingsPage() {
                   )}
                   {!anyGranted && a.hasData && (
                     <ActionForm
-                      action={deleteIndustryData.bind(null, a.characterId)}
+                      action={deleteMarketData.bind(null, a.characterId)}
                       success={m.toast.deleted(a.name)}
                       failed={m.toast.failed(a.name)}
                       errors={m.toast.errors}
@@ -121,6 +121,7 @@ export default async function IndustrySettingsPage() {
         <ul className="mt-4 list-disc space-y-1 pl-4 text-xs text-ink-3">
           <li>{m.notes.scopes}</li>
           <li>{m.notes.stop}</li>
+          <li>{m.notes.shared}</li>
         </ul>
       </Panel>
     </div>

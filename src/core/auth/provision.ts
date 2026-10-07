@@ -15,6 +15,7 @@ import {
   users,
   walletFees,
   industryJobs,
+  marketOrders,
   walletTransactions,
   type Db,
 } from "@/core/db";
@@ -53,8 +54,9 @@ type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
  */
 export async function detachTransferredCharacter(tx: Tx, characterId: number, previousUserId: string): Promise<{ retired: boolean }> {
   await tx.delete(characters).where(eq(characters.characterId, characterId));
-  // Wallet history, mail and industry jobs imported for the previous owner are theirs, not the new owner's.
+  // Wallet history, mail, industry jobs and market orders imported for the previous owner are theirs, not the new owner's.
   await tx.delete(industryJobs).where(eq(industryJobs.characterId, characterId));
+  await tx.delete(marketOrders).where(eq(marketOrders.characterId, characterId));
   // ESI responses cached with the previous owner's token hold their private data too.
   await forgetCharacterEsiCache(tx, characterId);
   await tx
@@ -155,7 +157,7 @@ export async function provisionFromSso(params: {
     const [existing] = await tx.select().from(characters).where(eq(characters.characterId, verified.characterId));
     const ownerChanged = existing !== undefined && existing.ownerHash !== verified.ownerHash;
     // A character moved between the player's own EVE accounts and linked back to the same Keystar account never
-    // changed hands: it keeps its wallet history, mail and industry jobs.
+    // changed hands: it keeps its wallet history, mail, industry jobs and market orders.
     const relinkedByOwner = ownerChanged && linking && existing.userId === currentUserId;
     const owned = existing && (!ownerChanged || relinkedByOwner) ? existing : undefined;
 

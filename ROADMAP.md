@@ -100,6 +100,13 @@ Status: ✅ done · 🚧 in progress · 📝 planned · 💡 idea
 
 - ✅ **Appraisal**: paste cargo, contracts, fits, d-scans or lists; Jita 4-4 buy/sell/split, volume, percentage
   price, shareable links, "appraise again" at current prices
+- ✅ **Market orders** of your own characters (`esi-markets.read_character_orders.v1`): open buy and sell orders with
+  price, remaining quantity, station or structure, issue date and expiry, closed orders of the last 90 days, totals
+  for selling, buying and escrow, orders about to expire; opt-in per character on the Market access page
+- 💡 Market orders: compare each order with the best price at its location (outbid / undercut), order slots per
+  character from the trade skills
+- 💡 Corporation market orders (`esi-markets.read_corporation_orders.v1`, Accountant / Trader) for directors
+- 💡 Live alert when an order is filled or about to expire
 - 💡 More markets (Amarr, Dodixie, Rens, Hek) and a market selector
 - 💡 Corp buyback: a configured percentage per item group, contract instructions for members
 

@@ -16,8 +16,22 @@ Sharing skills now includes the implants of the active clone, so the remap optim
 2. Update as usual; the database migrations run on start. Characters that already share their skills keep sharing;
    they are asked to re-authorise once to include their implants.
 
+Market orders need one more optional character scope: add `esi-markets.read_character_orders.v1` to the scopes of
+your EVE application (and `esi-universe.read_structures.v1`, if it isn't there yet). Nobody is asked for it unless
+they enable market access on the Market access page, but without it on the application that EVE login fails with
+`invalid_scope`.
+
 ### Added
 
+- **Market orders.** A new Market Orders page under Trade lists the buy and sell orders of your own characters: the
+  item, its price per unit and the total, how much is left of the quantity, the station or structure with its system
+  and region, when the order was issued and when it expires. Filter by open or closed orders, buy or sell, character
+  and location; tiles add up what you are selling and buying, the ISK held in escrow and the orders that expire
+  within three days, and a panel shows where your orders are. Closed orders (filled, cancelled or expired) are listed
+  too, from the 90 days ESI reports back. Access is opt-in per character on the new Market access page, like
+  industry jobs, so nobody is asked for the new scope (`esi-markets.read_character_orders.v1`) at sign-up. It
+  shares the structure scope with industry access: switching one of them off keeps that scope while the other is
+  on. Only you see your characters' orders. ([PR #187](https://github.com/Theragus/Keystar/pull/187))
 - **Gate check** (Combat, for every role): plan a stargate route and see what waits at each gate before you jump.
   - Routes like EVE's autopilot: shortest, safer (stays in high-sec as long as there is a way) or less secure, around
     any systems you want to avoid; never through Zarzakh, whose gate lock would trap you.

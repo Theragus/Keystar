@@ -16,6 +16,7 @@ import {
 import { FLEET_SCOPE } from "@/modules/fleet/logic";
 import { IMPLANTS_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE } from "@/modules/skills/module";
 import { INDUSTRY_JOBS_SCOPE, STRUCTURES_SCOPE } from "@/modules/industry/module";
+import { MARKET_ORDERS_SCOPE } from "@/modules/market/module";
 import { MINING_LEDGER_SCOPE, MINING_MANAGE_HREF } from "@/modules/mining/module";
 import { MAIL_SCOPE } from "@/modules/social/module";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
@@ -35,6 +36,7 @@ describe("optional scopes", () => {
       INDUSTRY_JOBS_SCOPE,
       MINING,
       MAIL_SCOPE,
+      MARKET_ORDERS_SCOPE,
       SKILLQUEUE_SCOPE,
       SKILLS_SCOPE,
       STRUCTURES_SCOPE,
