@@ -82,6 +82,10 @@ local, fleets and d-scans, a **3D universe map**, an **appraisal** tool for Jita
   "recently seen hostiles" list.
 - **Appraisal** (Trade): paste cargo, inventory, contracts, EFT fittings, d-scans, killmails or item lists and get
   Jita 4-4 buy / sell / split values, volume and a percentage price (e.g. for buyback), saved as a shareable link.
+- **Gate check** (Combat, every role): plan a route (shortest, safer or less secure, avoiding systems) and see kills at
+  each gate you pass, live from zKillboard's feed, tagged smartbombs, interdictors, HICs, gankers, hot drops and pod
+  kills; plus a camp estimate for the time you get to each gate from weeks of history and the regular campers seen
+  nearby, and a route briefing by Claude (optional API key).
 - **Universe map** (Combat): interactive 3D map with stargate routes and capital jump ranges.
 - **EVE Mail** (Social): read-only mail per character, opt-in and private to you.
 - **Live alerts**: kills, losses and new mail as in-app or desktop notifications.

@@ -1,7 +1,7 @@
 /**
  * Seeds a self-contained demo corporation (users of every role, ~120 days of
  * mining, two moon refineries, prices, a killboard, past fleets, threat-intel
- * scans, a mining P&L, skill queues and industry jobs) so Keystar can be explored without EVE SSO
+ * scans, a month of gate camps, a mining P&L, skill queues and industry jobs) so Keystar can be explored without EVE SSO
  * credentials. Requires KEYSTAR_DEMO_MODE=true to log in as demo users.
  *
  *   pnpm demo:seed            # refuses if real (non-demo) users exist
@@ -45,6 +45,7 @@ import { runMigrations } from "@/scripts/migrate";
 import staticData from "./demo-data/eve-static.json";
 import { seedCorpWallet } from "./demo-data/corp-wallet";
 import { seedFleets } from "./demo-data/fleet";
+import { seedGatecheck } from "./demo-data/gatecheck";
 import { seedIndustry } from "./demo-data/industry";
 import { seedIntel } from "./demo-data/intel";
 import { seedKillboard } from "./demo-data/killboard";
@@ -199,7 +200,7 @@ async function main() {
     mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries,
     corp_wallet_divisions, corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions,
     corp_wallet_sync_state, mail_messages, mail_labels, mail_lists, skills_queue, skills_character_skills, skills_character, skills_type_attributes,
-    industry_jobs, industry_locations, skills_implants, skills_implant_attributes
+    industry_jobs, industry_locations, skills_implants, skills_implant_attributes, gatecheck_kills, gatecheck_feed, gatecheck_briefings
     RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
@@ -504,6 +505,8 @@ async function main() {
     now: new Date(),
   });
 
+  const gatecheck = await seedGatecheck(db, { rand, now: new Date() });
+
   const fleetCount = await seedFleets(db, {
     pilots: combatPilots.map((p) => p.characterId),
     systems: staticData.systems,
@@ -548,7 +551,7 @@ async function main() {
 
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
-      `${killboard.killmails} killmails, ${fleetCount} fleets, ${pnl.transactions} wallet transactions, ${pnl.windows} ` +
+      `${killboard.killmails} killmails, ${gatecheck.kills} gate check kills, ${fleetCount} fleets, ${pnl.transactions} wallet transactions, ${pnl.windows} ` +
       `activity windows, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, ${queued} queued skills, ${industryCount} industry jobs, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");

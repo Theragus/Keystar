@@ -2,7 +2,7 @@ export const map = {
  universe: "Universe",
  title: "Map", description: "Explore the EVE universe in 3D. Select a system to see its name and security status.",
  /** "This page" help for the nav item (NavItem.help), one to three sentences. */
- help: "A 3D map of the EVE universe from CCP's static data: search for a system, switch between known and wormhole space and click a system to focus it. Travel check finds the shortest stargate route and looks on zKillboard for kills near its gates in the last two hours; jump range shows where a carrier, jump freighter or Black Ops ship can jump.",
+ help: "A 3D map of the EVE universe from CCP's static data: search for a system, switch between known and wormhole space and click a system to focus it. Travel check finds the shortest stargate route and marks kills at its gates in the last two hours (the Gate check page has the details); jump range shows where a carrier, jump freighter or Black Ops ship can jump.",
  search: "Find a system", all: "All space", known: "Known space", wormholes: "Wormhole space", reset: "Reset view",
  controls: "Drag to rotate · Right-drag or Shift-drag to pan · Scroll to zoom · Click a system to focus", security: "Security status", systems: "Systems",
  high: "High security", low: "Low security", null: "Null security", loading: "Loading universe…", error: "Universe data could not be loaded.", retry: "Retry", source: "Source: CCP Static Data Export", labels: "System labels", empty: "No matching systems", canvas: "Interactive 3D universe map", zoomIn: "Zoom in", zoomOut: "Zoom out",
@@ -20,7 +20,8 @@ export const map = {
  notChecked: "Not checked",
  checkFailed: "Gate evidence unavailable",
  routeHint: "Shortest by gate count. Static stargates only; no wormholes or player jump bridges.",
- evidenceHint: "Last 2 hours · within 150 km of a route gate, or a killmail resolved to that gate. Green means no evidence found, not guaranteed safety. zKillboard may delay or omit kills and cache results for an hour.",
+ evidenceHint: "Last 2 hours · player kills within 150 km of a route gate, from zKillboard's live feed. Green means no evidence found, not guaranteed safety; kills reach zKillboard minutes to half an hour late.",
+ openGatecheck: "Open in Gate check",
  checked: "Checked",
  gateTo: "Gate to",
  killmail: "Killmail",

@@ -54,7 +54,7 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().optional().default(""),
   /** Claude model for situation reports. */
   KILLBOARD_REPORT_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
-  /** Claude model for threat intel briefings, pilot dossiers and d-scan reads. */
+  /** Claude model for threat intel briefings, pilot dossiers and d-scan reads, and gate check route briefings. */
   INTEL_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
   /** Enables the demo login (no EVE SSO needed). Never enable on a public instance. */
   KEYSTAR_DEMO_MODE: booleanish.default(false),

@@ -10,6 +10,7 @@ import {
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
 import type { Messages } from "@/i18n/messages";
 import { fleetJobs } from "./fleet/jobs";
+import { gatecheckJobs } from "./gatecheck/jobs";
 import { industrySyncJobs } from "./industry/jobs";
 import { intelJobs } from "./intel/jobs";
 import { killboardJobs } from "./killboard/jobs";
@@ -42,6 +43,7 @@ export const JOBS: JobDefinition[] = [
   ...socialJobs,
   ...skillsJobs,
   ...tradeJobs,
+  ...gatecheckJobs,
 ];
 
 const JOBS_BY_KEY = new Map(JOBS.map((j) => [j.key, j]));
