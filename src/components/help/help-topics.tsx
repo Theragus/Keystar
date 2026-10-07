@@ -7,15 +7,13 @@ import { matchNavItem } from "@/components/shell/nav-match";
 import { KeystarMark } from "@/components/shell/logo";
 import { RoleBadge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
+import { EVE_AUTHORIZED_APPS_URL } from "@/core/eve/links";
 import type { AccessRow } from "@/core/help/access";
 import type { HelpData } from "@/core/help/types";
 import { ROLES, type Role } from "@/core/rbac/roles";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { UpgradeNotes } from "./upgrade-notes";
-
-/** EVE's page for a player's authorised third-party applications (where Keystar can be revoked). */
-export const EVE_AUTHORIZED_APPS_URL = "https://developers.eveonline.com/authorized-apps";
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
