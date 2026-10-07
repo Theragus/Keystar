@@ -6,6 +6,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ## [Unreleased]
 
+### Added
+
+- **Collapsible sidebar sections.** Click a section heading in the sidebar (Industry, Combat, …) to fold its pages
+  away; the arrow beside it shows whether it is open. Folded sections are remembered in your browser, and a folded
+  section's heading still lights up in the section colour while you are on one of its pages.
+  ([PR #195](https://github.com/Theragus/Keystar/pull/195))
+
 ## [0.15.0] - 2026-10-07
 
 ### Upgrade notes
