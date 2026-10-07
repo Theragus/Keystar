@@ -13,7 +13,7 @@ import { Portrait } from "@/components/ui/eve-image";
 import { RoleBadge } from "@/components/ui/badge";
 import { ThemeSwitcher } from "./theme-switcher";
 import { LanguageSwitcher } from "./language-switcher";
-import { SidebarToggle } from "./sidebar-state";
+import { NavSectionGroup, SidebarToggle } from "./sidebar-state";
 import { NavLink } from "./nav-link";
 import { RailFlyout } from "./rail-flyout";
 
@@ -32,6 +32,7 @@ export function visibleNav(user: CurrentUser) {
  * From `md` up it collapses to an icon rail via `data-sidebar` on the shell root (see SectionScope);
  * hidden labels stay in the accessibility tree as `sr-only`, and hovering a section
  * or the portrait shows what the rail hides in a card beside it (RailFlyout).
+ * Expanded, each section heading folds its links away (NavSectionGroup).
  */
 export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTicker: string | null }) {
   const { sections, hasNested } = visibleNav(user);
@@ -95,19 +96,18 @@ export async function Sidebar({ user, corpTicker }: { user: CurrentUser; corpTic
                 </>
               }
             >
-              <div className="eve-label pb-1.5 pl-[calc((2rem-3ch)/2)] text-2xs whitespace-nowrap text-ink-3 group-has-[[aria-current=page]]:text-[color-mix(in_srgb,var(--section)_75%,var(--color-ink-3))]" title={section.label(t)}>
-                <span>{Array.from(section.label(t)).slice(0, 3).join("")}</span><span className="md:group-data-[sidebar=collapsed]/shell:hidden">{Array.from(section.label(t)).slice(3).join("")}</span>
-              </div>
-              <ul className="space-y-0.5" data-flyout-anchor>
-                {section.items.map((item) => (
-                  <li key={item.href}>
-                    <NavLink href={item.href} exact={hasNested(item.href)} newKey={newKey(item.href)}>
-                      <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
-                      <span className="truncate md:group-data-[sidebar=collapsed]/shell:sr-only">{item.label(t)}</span>
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
+              <NavSectionGroup id={section.id} label={section.label(t)}>
+                <ul className="space-y-0.5" data-flyout-anchor>
+                  {section.items.map((item) => (
+                    <li key={item.href}>
+                      <NavLink href={item.href} exact={hasNested(item.href)} newKey={newKey(item.href)}>
+                        <item.icon className="size-4 shrink-0 opacity-75" aria-hidden />
+                        <span className="truncate md:group-data-[sidebar=collapsed]/shell:sr-only">{item.label(t)}</span>
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </NavSectionGroup>
             </RailFlyout>
           ))}
         </nav>

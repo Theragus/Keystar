@@ -5,7 +5,7 @@ import { HelpProvider } from "@/components/help/help-provider";
 import { FlashToasts } from "@/components/shell/flash-toasts";
 import { SectionScope } from "@/components/shell/section-scope";
 import { Sidebar, visibleNav } from "@/components/shell/sidebar";
-import { isSidebarCollapsed, SIDEBAR_COOKIE } from "@/components/shell/sidebar-config";
+import { closedNavSections, isSidebarCollapsed, NAV_SECTIONS_COOKIE, SIDEBAR_COOKIE } from "@/components/shell/sidebar-config";
 import { SidebarProvider } from "@/components/shell/sidebar-state";
 import { TopBar } from "@/components/shell/topbar";
 import { ToastProvider } from "@/components/ui/toast";
@@ -26,7 +26,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const homeCorp = await getCorporation(settings["corp.homeCorporationId"]);
   const userCorp = user.main ? await getCorporation(user.main.corporationId) : null;
   const { t } = await getI18n();
-  const sidebarCollapsed = isSidebarCollapsed((await cookies()).get(SIDEBAR_COOKIE)?.value);
+  const cookieStore = await cookies();
+  const sidebarCollapsed = isSidebarCollapsed(cookieStore.get(SIDEBAR_COOKIE)?.value);
+  const closedSections = closedNavSections(cookieStore.get(NAV_SECTIONS_COOKIE)?.value);
   const { sections, hasNested } = visibleNav(user);
   const crumbs = sections.flatMap((s) =>
     s.items.map((i) => ({ href: i.href, label: i.label(t), exact: hasNested(i.href), tone: s.tone })),
@@ -34,7 +36,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const help = buildHelpData(user, settings, t, homeCorp?.name ?? null);
 
   return (
-    <SidebarProvider collapsed={sidebarCollapsed}>
+    <SidebarProvider collapsed={sidebarCollapsed} closedSections={closedSections}>
       <ToastProvider>
         <HelpProvider data={help} auto={viewerOnboarding(user)}>
           <FlashToasts scopeLabels={optionalScopeLabels(t)} />
