@@ -1,6 +1,6 @@
-import { ArrowLeft, KeyRound, ToggleRight } from "lucide-react";
+import { ArrowLeft, ToggleRight } from "lucide-react";
 import Link from "next/link";
-import { ButtonLink } from "@/components/ui/button";
+import { EveSsoButton } from "@/components/auth/eve-sso-button";
 import { Glass } from "@/components/ui/glass";
 import { LanguageLinks } from "@/components/shell/language-switcher";
 import { KeystarMark } from "@/components/shell/logo";
@@ -10,6 +10,7 @@ import { scopeGroups } from "@/core/help/access";
 import { allScopeRequirements } from "@/core/modules/registry";
 import { getSetting } from "@/core/settings";
 import { getI18n } from "@/i18n/server";
+import { getTheme } from "@/theme/server";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -23,6 +24,7 @@ export async function generateMetadata() {
 export default async function JoinPage() {
   const user = await getCurrentUser();
   const { t } = await getI18n();
+  const theme = await getTheme();
   const corp = await getCorporation(await getSetting("corp.homeCorporationId"));
   // Every character scope is opt-in (tests/optional-scopes.test.ts), so there is nothing to grant here.
   const optional = scopeGroups(allScopeRequirements(), t, () => false).optional;
@@ -58,16 +60,12 @@ export default async function JoinPage() {
           ))}
         </ul>
 
-        <div className="mt-7">
-          <ButtonLink
+        <div className="mt-7 text-center">
+          <EveSsoButton
             href={user ? "/auth/login?intent=link" : "/auth/login?intent=join"}
-            variant="primary"
-            size="lg"
-            className="w-full"
-          >
-            <KeyRound className="size-5" aria-hidden />
-            {user ? t.auth.join.link : t.auth.join.register}
-          </ButtonLink>
+            label={user ? t.auth.join.link : t.auth.join.register}
+            theme={theme}
+          />
           <p className="mt-3 text-center text-xs text-ink-3">
             {t.auth.join.alts(<span className="text-ink-2">{t.shell.nav.characters}</span>)}
           </p>
@@ -78,6 +76,7 @@ export default async function JoinPage() {
         <div className="mt-4 flex justify-center">
           <LanguageLinks />
         </div>
+        <p className="mt-5 text-center text-2xs leading-relaxed text-ink-3">{t.common.ccpNotice}</p>
       </Glass>
     </main>
   );

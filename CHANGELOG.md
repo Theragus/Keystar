@@ -52,6 +52,10 @@ Sharing skills now includes the implants of the active clone, so the remap optim
     with a character that is already on your account no longer changes its access.
   - "Link with corporation access" no longer includes the mining ledger. A director whose character shares it is
     asked once to turn it back on, like wallet import or skill sharing.
+- The sign-in, registration and "Link a character" buttons on the login and join pages are now CCP's official
+  "LOG IN with EVE Online" button (black on the dark theme, white on the light one), as CCP asks of third-party
+  applications. The CCP notice now carries the wording of the Developer License Agreement and also appears on the
+  join page and under "How Keystar works" in Help.
 
 ### Fixed
 

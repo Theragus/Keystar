@@ -179,5 +179,5 @@ modify and share it; if you run a modified version as a service for other people
 
 ---
 
-EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide. Keystar is a
-fan-made tool and is not affiliated with or endorsed by CCP hf.
+© 2014 CCP hf. All rights reserved. "EVE", "EVE Online", "CCP", and all related logos and images are trademarks or
+registered trademarks of CCP hf. Keystar is a fan-made tool, not affiliated with or endorsed by CCP hf.
