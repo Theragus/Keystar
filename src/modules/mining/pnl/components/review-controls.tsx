@@ -76,7 +76,8 @@ export async function IncludeActions({
   const m = t.pnl.expenses.purchases;
   const failure = { failed: t.pnl.toast.failed, errors: t.pnl.toast.errors };
   return (
-    <span className="inline-flex items-center gap-1">
+    // `relative` keeps the icon buttons' sr-only labels inside a table's scroll box on phones.
+    <span className="relative inline-flex items-center gap-1">
       {status !== "counted" && (
         <ActionForm action={setIncluded(true)} {...failure}>
           <SubmitButton title={includeHint}>

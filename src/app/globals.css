@@ -659,3 +659,26 @@ select option:disabled {
 [data-theme="light"] .mail-color[data-pale] {
   color: color-mix(in oklab, var(--mail-color) 25%, var(--color-ink));
 }
+
+/* Phones. Page grids mostly get their columns at xl; below that their one implicit
+   column grows to the widest child (a wide table), pushing the page sideways. Let
+   children shrink so tables scroll inside their panel. Base layer: min-w-* still wins. */
+@layer base {
+  .grid > * {
+    @variant max-md {
+      min-width: 0;
+    }
+  }
+}
+
+/* iOS Safari zooms the page into any focused field under 16px and stays zoomed.
+   Phones only, unlayered so it wins over the text-xs/text-sm utilities on fields. */
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"], [type="submit"], [type="reset"], [type="button"], [type="image"]),
+select,
+textarea {
+  @variant max-md {
+    @variant pointer-coarse {
+      font-size: 16px;
+    }
+  }
+}

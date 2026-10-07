@@ -42,7 +42,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <FlashToasts scopeLabels={optionalScopeLabels(t)} />
           <SectionScope items={crumbs}>
             <Sidebar user={user} corpTicker={userCorp?.ticker ?? null} />
-            <div className="section-glow flex min-w-0 flex-1 flex-col">
+            <div id="app-page" className="section-glow flex min-w-0 flex-1 flex-col">
               <TopBar
                 homeCorp={homeCorp}
                 serverStatus={settings["eve.serverStatus"]}
@@ -50,7 +50,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
                 crumbs={crumbs}
                 alerts={availableAlerts(user, settings).map((a) => ({ id: a.id, label: a.label(t), hint: a.hint(t) }))}
               />
-              <main className="mx-auto w-full max-w-[1600px] flex-1 px-8 pt-8 pb-16">
+              <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 pt-5 pb-16 md:px-8 md:pt-8">
                 {user.role === "guest" && (
                   <div className="glass mb-6 flex items-center gap-3 px-5 py-3.5 text-sm">
                     <Hourglass className="size-4 text-warning" aria-hidden />

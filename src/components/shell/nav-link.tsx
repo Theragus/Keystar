@@ -60,7 +60,7 @@ export function NavLink({
               "ml-auto size-1.5 shrink-0 rounded-full bg-accent",
               // In the collapsed rail, on the icon's corner.
               !inFlyout &&
-                "group-data-[sidebar=collapsed]/shell:absolute group-data-[sidebar=collapsed]/shell:top-1.5 group-data-[sidebar=collapsed]/shell:left-[1.45rem] group-data-[sidebar=collapsed]/shell:ring-2 group-data-[sidebar=collapsed]/shell:ring-space-900",
+                "md:group-data-[sidebar=collapsed]/shell:absolute md:group-data-[sidebar=collapsed]/shell:top-1.5 md:group-data-[sidebar=collapsed]/shell:left-[1.45rem] md:group-data-[sidebar=collapsed]/shell:ring-2 md:group-data-[sidebar=collapsed]/shell:ring-space-900",
             )}
           />
           <span className="sr-only">{t.help.newBadge}</span>
@@ -74,5 +74,5 @@ export function NavLink({
 export function CurrentPageCrumb({ items }: { items: { href: string; label: string; exact?: boolean }[] }) {
   const pathname = usePathname();
   const match = matchNavItem(pathname, items);
-  return <span className="font-medium text-ink">{match?.label ?? "Keystar"}</span>;
+  return <span className="min-w-0 truncate font-medium text-ink">{match?.label ?? "Keystar"}</span>;
 }

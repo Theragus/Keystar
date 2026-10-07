@@ -18,6 +18,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 - Hovering a page in the sidebar now shows its icon in the section colour, as the current page already did.
   ([PR #196](https://github.com/Theragus/Keystar/pull/196))
+- **Keystar is usable on phones.** These changes apply only below tablet width; desktop is unchanged.
+  ([PR #192](https://github.com/Theragus/Keystar/pull/192))
+  - The sidebar is a menu that slides in from the ☰ button in the top bar and closes when you pick a page, tap beside
+    it or press Escape. The top bar keeps the page name, alerts, help and EVE time and no longer runs off the screen.
+  - Pages fit the screen instead of being shrunk to fit: wide tables scroll inside their panel, filter menus stay on
+    screen, and stat tiles, the mining observers and the killboard's top pilots fit two to a row.
+  - Tapping a text field no longer zooms the page in on iPhones, and filter menus don't open the keyboard by themselves.
 
 ## [0.15.0] - 2026-10-07
 

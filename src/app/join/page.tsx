@@ -30,8 +30,8 @@ export default async function JoinPage() {
   const optional = scopeGroups(allScopeRequirements(), t, () => false).optional;
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Glass className="w-full max-w-[560px] rounded-2xl px-9 py-9">
+    <main className="flex min-h-screen items-center justify-center p-4 sm:p-6">
+      <Glass className="w-full max-w-[560px] rounded-2xl px-6 py-9 sm:px-9">
         <div className="flex items-center gap-3">
           <KeystarMark className="size-11" />
           <div>
