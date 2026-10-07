@@ -55,7 +55,7 @@ src/
     intel/             threat intel: paste parser, scans, zKillboard worker, scoring, standings, history with us,
                        d-scan matching, briefings and dossiers (Claude or template), UI
     gatecheck/         gate check: kills near stargates from the live feed, routes (EVE's autopilot weights),
-                       route check, camp estimates, Claude route briefings, UI
+                       route check, camp estimates, UI
     map/               3D universe map, travel check and jump ranges (static data in public/data)
     trade/             appraisal: paste parser, name resolution, Jita pricing, saved shareable snapshots
     wallet/            opt-in character wallet transactions (raw data used by the mining P&L); corp/: corporation
@@ -215,7 +215,7 @@ Current jobs:
 | `intel.corporation-contacts`     | 15 min   | Home corporation contacts (standings), any member's token  |
 | `intel.alliance-contacts`        | 15 min   | Home alliance contacts (standings), any member's token     |
 | `trade.housekeeping`             | 6 h      | Deletes appraisals older than a year, old rate-limit rows  |
-| `gatecheck.housekeeping`         | 6 h      | Retention of the gate check's kills (60 days at gates, 7 days elsewhere) and route briefings |
+| `gatecheck.housekeeping`         | 6 h      | Retention of the gate check's kills (60 days at gates, 7 days elsewhere) |
 | `wallet.character-transactions`  | 1 h      | Market transactions of characters that opted in to wallets |
 | `wallet.corporation-wallets`     | 1 h      | Corporation balances, journal and transactions, all divisions (Accountant / Junior Accountant) |
 | `wallet.corporation-divisions`   | 6 h      | Custom wallet division names (Director)                    |
@@ -554,11 +554,6 @@ stargate route and checks it gate by gate. Nothing on the page calls zKillboard.
   anywhere but at these gates; half-life 60 minutes). They combine as independent chances; under 3 days of history
   the history part is left out. The page shows the parts, the busiest hours, the regulars and the groups behind most
   kills.
-- **Claude** (optional, `gatecheck.ai`, members and up): on request, the server runs the check again from the URL and
-  Claude (`INTEL_MODEL`) writes a short briefing from the computed facts (`ai/facts.ts`) via structured outputs,
-  rendered through the killboard's safe markup. Hotspots may only name listed systems. A briefing for the same facts
-  and language is reused for 15 minutes; calls are capped at 10 per user and 60 per instance an hour (reserved in a
-  locked transaction, failed calls count).
 - The map's travel check (`/api/map/gate-check`) reads the same table instead of zKillboard.
 
 ## Threat intel

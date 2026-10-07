@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeRouteBriefing } from "@/modules/gatecheck/ai/briefing";
-import type { RouteFacts } from "@/modules/gatecheck/ai/facts";
 import { checkRoute, feedHealth, type KillRecord } from "@/modules/gatecheck/check";
 import { locateKill, toGateKill } from "@/modules/gatecheck/classify";
 import { gatecheckHref, parseQuery, resolveQuery } from "@/modules/gatecheck/params";
@@ -541,41 +539,5 @@ describe("gate check parameters", () => {
     expect(r.unknownAvoid).toEqual(["Nowhere"]);
     expect(gatecheckHref(parseQuery({ from: "Jita", to: "Amamake" }))).toBe("/gatecheck?from=Jita&to=Amamake");
     expect(gatecheckHref(q, { preference: "safer" })).toBe("/gatecheck?from=alpha&to=Echo&pref=safer&avoid=Delta%2C+Nowhere%2C+delta");
-  });
-});
-
-describe("gate check briefing", () => {
-  it("keeps only hotspots Claude was told about, by their exact names", () => {
-    const facts = {
-      systems: [{ name: "Tama" }, { name: "Rancer" }],
-    } as unknown as RouteFacts;
-    const out = sanitizeRouteBriefing(
-      {
-        headline: "**Camps** ahead",
-        threatLevel: "high",
-        summary: "Two camps.",
-        hotspots: [
-          { system: "tama", note: "Sabres" },
-          { system: "Jita", note: "made up" },
-          { system: "Tama", note: "twice" },
-        ],
-        advice: "Scout ahead.",
-      },
-      facts,
-    );
-    expect(out.headline).toBe("Camps ahead");
-    expect(out.hotspots).toEqual([{ system: "Tama", note: "Sabres" }]);
-    expect(() =>
-      sanitizeRouteBriefing(
-        {
-          headline: " ",
-          threatLevel: "low",
-          summary: "",
-          hotspots: [],
-          advice: "",
-        },
-        facts,
-      ),
-    ).toThrow();
   });
 });

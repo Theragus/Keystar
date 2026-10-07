@@ -167,7 +167,7 @@ Edit `.env` (`nano .env`) and set at least:
 | `KEYSTAR_VERSION`                 | release to run, e.g. `0.1.1`, or `latest` (default) — see [releases](https://github.com/theragus/keystar/releases). `main` follows unreleased, possibly unstable changes |
 | `ANTHROPIC_API_KEY`               | optional: a [Claude API key](https://console.anthropic.com) so Claude writes the killboard's weekly situation report (≈ one call a day, one to two US cents each with the default model) and threat intel briefings. Without it both are written from templates |
 | `KILLBOARD_REPORT_MODEL`          | optional: Claude model for the report, default `claude-sonnet-5-5` (`claude-haiku-4-5-20251001` is about half the cost) |
-| `INTEL_MODEL`                     | optional: Claude model for threat intel briefings, dossiers and d-scan reads, and gate check route briefings, default `claude-sonnet-5-5`. Uses the same `ANTHROPIC_API_KEY`; a briefing of a 30-pilot local costs a few US cents. Intel calls are capped at 20 per user and 120 per instance per hour, route briefings at 10 and 60; only roles with **Use Claude for intel** / **Ask Claude about routes** can trigger them |
+| `INTEL_MODEL`                     | optional: Claude model for threat intel briefings, dossiers and d-scan reads, default `claude-sonnet-5-5`. Uses the same `ANTHROPIC_API_KEY`; a briefing of a 30-pilot local costs a few US cents. Calls are capped at 20 per user and 120 per instance per hour, and only roles with **Use Claude for intel** can trigger them |
 
 ## 7. Start it
 

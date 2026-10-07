@@ -14,7 +14,7 @@ import type { BriefingFacts, DossierFacts, DscanFacts } from "./facts";
  */
 
 export type ClaudeClient = Pick<Anthropic, "messages">;
-export type Effort = "low" | "medium" | "high";
+type Effort = "low" | "medium" | "high";
 
 export interface ClaudeOptions {
   apiKey: string;
@@ -110,7 +110,7 @@ const LANGUAGE: Record<Locale, string> = {
 const ask = (task: string, facts: unknown, locale: Locale) =>
   `${task}\n\n<facts>\n${JSON.stringify(facts, null, 1)}\n</facts>\n\n${LANGUAGE[locale]}`;
 
-export async function callStructured<S extends z.ZodType>(
+async function callStructured<S extends z.ZodType>(
   schema: S,
   system: string,
   user: string,

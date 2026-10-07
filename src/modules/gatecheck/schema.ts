@@ -1,18 +1,4 @@
-import {
-  bigint,
-  boolean,
-  doublePrecision,
-  index,
-  integer,
-  jsonb,
-  pgTable,
-  serial,
-  smallint,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
-import type { Locale } from "@/i18n/config";
+import { bigint, boolean, doublePrecision, index, integer, pgTable, smallint, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
  * Killmails in known-space systems with stargates, from zKillboard's live feed
@@ -74,31 +60,6 @@ export const gatecheckFeed = pgTable("gatecheck_feed", {
   lastKillmailAt: timestamp("last_killmail_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
-
-/** Route briefings written by Claude on request, with the facts they were written from. */
-export const gatecheckBriefings = pgTable(
-  "gatecheck_briefings",
-  {
-    id: serial("id").primaryKey(),
-    factsHash: text("facts_hash").notNull(),
-    /** "claude", "pending" while it is being written, or "failed". */
-    source: text("source").notNull(),
-    /** Claude was called, whatever came of it; the hourly budget counts these. */
-    claudeCalled: boolean("claude_called").notNull().default(false),
-    model: text("model"),
-    error: text("error"),
-    locale: text("locale").$type<Locale>().notNull(),
-    content: jsonb("content").notNull(),
-    facts: jsonb("facts").notNull(),
-    usage: jsonb("usage"),
-    createdBy: uuid("created_by"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index("gatecheck_briefings_hash_idx").on(t.factsHash, t.locale, t.createdAt),
-    index("gatecheck_briefings_user_idx").on(t.createdBy, t.createdAt),
-  ],
-);
 
 export type GatecheckKillRow = typeof gatecheckKills.$inferSelect;
 export type GatecheckKillInsert = typeof gatecheckKills.$inferInsert;

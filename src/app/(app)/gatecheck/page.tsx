@@ -3,10 +3,8 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Panel } from "@/components/ui/glass";
 import { requirePermission } from "@/core/auth/dal";
-import { env } from "@/core/env";
 import { getI18n } from "@/i18n/server";
 import { AutoRefresh } from "@/modules/fleet/components/auto-refresh";
-import { BriefingPanel } from "@/modules/gatecheck/components/briefing-panel";
 import { RouteForm } from "@/modules/gatecheck/components/route-form";
 import { FeedLine, RouteSummary, RouteSystems } from "@/modules/gatecheck/components/route-result";
 import { GATECHECK_PERMISSIONS } from "@/modules/gatecheck/module";
@@ -14,7 +12,6 @@ import { gatecheckHref, parseQuery } from "@/modules/gatecheck/params";
 import { runGatecheck } from "@/modules/gatecheck/service";
 import { findSystem } from "@/modules/gatecheck/universe";
 import { getUniverse } from "@/modules/gatecheck/universe-data";
-import { askRouteBriefing } from "./actions";
 
 export async function generateMetadata() {
   const { t } = await getI18n();
@@ -25,7 +22,7 @@ export async function generateMetadata() {
 const REFRESH_SECONDS = 60;
 
 export default async function GatecheckPage({ searchParams }: PageProps<"/gatecheck">) {
-  const user = await requirePermission(GATECHECK_PERMISSIONS.use);
+  await requirePermission(GATECHECK_PERMISSIONS.use);
   const { t, f } = await getI18n();
   const g = t.gatecheck;
   const query = parseQuery(await searchParams);
@@ -39,9 +36,6 @@ export default async function GatecheckPage({ searchParams }: PageProps<"/gatech
   }
   if (result?.resolved.unknownAvoid.length) errors.push(g.errors.unknownAvoid(result.resolved.unknownAvoid));
   if (result && !result.route) errors.push(g.errors.noRoute);
-  const canAsk = user.can(GATECHECK_PERMISSIONS.ai) && !!env().ANTHROPIC_API_KEY;
-  // The briefing action re-runs the check from the canonical parameters.
-  const params = Object.fromEntries(new URL(gatecheckHref(query), "http://x").searchParams);
 
   return (
     <div className="space-y-5">
@@ -60,16 +54,7 @@ export default async function GatecheckPage({ searchParams }: PageProps<"/gatech
         <>
           <AutoRefresh seconds={REFRESH_SECONDS} />
           <FeedLine feed={result.feed} t={g} f={f} now={result.now} />
-          <div className="grid items-start gap-4 xl:grid-cols-12">
-            <div className={canAsk ? "xl:col-span-7" : "xl:col-span-12"}>
-              <RouteSummary result={result} query={query} t={g} f={f} />
-            </div>
-            {canAsk && (
-              <div className="xl:col-span-5">
-                <BriefingPanel key={gatecheckHref(query)} params={params} action={askRouteBriefing} />
-              </div>
-            )}
-          </div>
+          <RouteSummary result={result} query={query} t={g} f={f} />
           <RouteSystems result={result} query={query} t={g} f={f} />
         </>
       ) : (

@@ -10,15 +10,11 @@ export const gatecheck: typeof en = {
   module: {
     navItem: "Gate-Check",
     permissionGroup: "Gate-Check",
-    help: "Plane eine Stargate-Route (kürzeste, sicherere oder weniger sichere) und sieh die Kills an den Toren entlang der Route, live aus dem Feed von zKillboard: Camps, Smartbombs, Interdictoren und Ganker, Tor für Tor. Schätzt, wie wahrscheinlich ein Camp ist, wenn du an jedes Tor kommst – aus den Kills an diesen Toren der letzten Wochen und den Stamm-Campern, die gerade unterwegs sind; auf Wunsch fasst Claude die Route zusammen.",
+    help: "Plane eine Stargate-Route (kürzeste, sicherere oder weniger sichere) und sieh die Kills an den Toren entlang der Route, live aus dem Feed von zKillboard: Camps, Smartbombs, Interdictoren und Ganker, Tor für Tor. Schätzt, wie wahrscheinlich ein Camp ist, wenn du an jedes Tor kommst – aus den Kills an diesen Toren der letzten Wochen und den Stamm-Campern, die gerade unterwegs sind.",
     permissions: {
       use: {
         label: "Gate-Check nutzen",
         description: "Routen planen und Kills und Camp-Schätzungen entlang der Route sehen.",
-      },
-      ai: {
-        label: "Claude zu Routen fragen",
-        description: "Claude eine Routen-Einschätzung schreiben lassen (nutzt den gemeinsamen Claude-API-Schlüssel).",
       },
     },
     jobs: { housekeeping: "Gate-Check aufräumen" },
@@ -161,29 +157,6 @@ export const gatecheck: typeof en = {
     factors: "Verlauf · live · Stammgäste",
     disclaimer:
       "Eine Schätzung aus öffentlichen Killmails, keine Vorhersage. Sie kennt nur Camps, die etwas gekillt haben; ein gerade entstandenes oder wartendes Camp sieht sie nicht.",
-  },
-  briefing: {
-    title: "Claudes Routen-Einschätzung",
-    ask: "Claude fragen",
-    again: "Erneut fragen",
-    writing: "Claude liest die Route…",
-    intro:
-      "Claude liest die berechneten Fakten oben (Kills, Tags, Schätzungen, Stammgäste) und fasst die Route zusammen. Sonst sieht Claude nichts.",
-    noKey: "Claude ist auf dieser Instanz nicht eingerichtet (kein API-Schlüssel).",
-    failed: "Claude konnte die Einschätzung nicht schreiben. Versuch es gleich noch einmal.",
-    budgetUser: "Du hast Claude in dieser Stunde schon oft genug zu Routen gefragt. Versuch es später noch einmal.",
-    budgetInstance: "Dieses Keystar hat sein stündliches Claude-Budget für Routen aufgebraucht. Versuch es später noch einmal.",
-    forbidden: "Du darfst Claude nicht zu Routen fragen.",
-    stale: "Die Route hat sich geändert; prüfe sie zuerst erneut.",
-    level: {
-      minimal: "Minimal",
-      low: "Niedrig",
-      elevated: "Erhöht",
-      high: "Hoch",
-      critical: "Kritisch",
-    },
-    advice: "Empfehlung",
-    by: (model: string, when: string) => `Geschrieben von ${model} ${when}`,
   },
   hint: "Die Kills stammen aus dem Live-Feed von zKillboard, den Keystar ohnehin für das Killboard liest: Eine Routenprüfung kostet zKillboard nichts. Ein Kill innerhalb von 150 km eines Stargates zählt als Kill an diesem Tor. Nur Tore: keine Wurmlöcher, Ansiblex-Sprungbrücken oder Filamente; durch Zarzakh führt keine Route (Torsperre).",
 };

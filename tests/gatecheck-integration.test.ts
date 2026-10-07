@@ -20,8 +20,6 @@ describe.skipIf(!enabled)("gate check integration", async () => {
   const { getUniverse } = await import("@/modules/gatecheck/universe-data");
   const { checkGates } = await import("@/modules/map/check-gates");
   const { gatecheckHousekeepingJob } = await import("@/modules/gatecheck/jobs");
-  const { buildRouteFacts } = await import("@/modules/gatecheck/ai/facts");
-  const { routeBriefing } = await import("@/modules/gatecheck/ai/generate");
 
   const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("[]", { status: 200 }));
   const db = () => getDb();
@@ -65,9 +63,7 @@ describe.skipIf(!enabled)("gate check integration", async () => {
   });
 
   beforeEach(async () => {
-    await db().execute(
-      sql`TRUNCATE gatecheck_kills, gatecheck_feed, gatecheck_briefings, eve_types, eve_groups, eve_entities RESTART IDENTITY CASCADE`,
-    );
+    await db().execute(sql`TRUNCATE gatecheck_kills, gatecheck_feed, eve_types, eve_groups, eve_entities RESTART IDENTITY CASCADE`);
     await db()
       .insert(schema.eveGroups)
       .values([
@@ -138,34 +134,6 @@ describe.skipIf(!enabled)("gate check integration", async () => {
       [1, CRIELERE],
     ]);
     expect(await runGatecheck(parseQuery({ from: "Nowhere", to: "Rancer" }))).toBeNull();
-
-    // What Claude would read: only Rancer has something to say, with names and tags.
-    const facts = buildRouteFacts(result!, parseQuery({ from: "Miroitem", to: "Crielere" }));
-    expect(facts.route).toMatchObject({
-      from: "Miroitem",
-      to: "Crielere",
-      jumps: 2,
-    });
-    expect(facts.quietSystems).toBe(2);
-    expect(facts.systems).toMatchObject([
-      {
-        name: "Rancer",
-        status: "camp",
-        killsAtRouteGates: 2,
-        routeGateTags: ["smartbomb", "pod"],
-        latestKills: [
-          {
-            where: "departure gate (to Crielere)",
-            attackerShips: ["Machariel"],
-            attackerGroups: ["Bomb Corp"],
-            tags: ["smartbomb", "pod"],
-          },
-          { victimShip: "Capsule" },
-        ],
-      },
-    ]);
-    // Without an API key nothing is written (or counted).
-    expect(await routeBriefing(facts, "00000000-0000-0000-0000-000000000000", "en")).toEqual({ ok: false, reason: "noKey" });
   });
 
   it("keeps gate kills longer than kills elsewhere", async () => {

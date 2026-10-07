@@ -29,7 +29,6 @@ Sharing skills now includes the implants of the active clone, so the remap optim
     kills around that time of day over the last weeks, a camp there right now, and the regular campers of those gates
     who were seen killing nearby in the last two hours, each explained, with the busiest hours and the groups behind
     the kills.
-  - On request, Claude (optional API key) sums up the route and what to do about it.
   - No extra load on zKillboard: the worker's live feed, which already reads every killmail for the killboard, keeps
     the kills near stargates (60 days at gates, 7 days elsewhere). It now runs without a home corporation too, and on
     a fresh start reads the last few hours back. The map's travel check reads the same data instead of asking

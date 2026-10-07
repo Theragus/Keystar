@@ -9,15 +9,11 @@ export const gatecheck = {
   module: {
     navItem: "Gate check",
     permissionGroup: "Gate check",
-    help: "Plan a stargate route (shortest, safer or less secure) and see kills at the gates along it, live from zKillboard's feed: camps, smartbombs, interdictors and gankers, gate by gate. Estimates how likely a camp is when you get to each gate, from the kills at those gates over the last weeks and the regular campers who are about right now; Claude can sum up the route on request.",
+    help: "Plan a stargate route (shortest, safer or less secure) and see kills at the gates along it, live from zKillboard's feed: camps, smartbombs, interdictors and gankers, gate by gate. Estimates how likely a camp is when you get to each gate, from the kills at those gates over the last weeks and the regular campers who are about right now.",
     permissions: {
       use: {
         label: "Use the gate check",
         description: "Plan routes and see kills and camp estimates along them.",
-      },
-      ai: {
-        label: "Ask Claude about routes",
-        description: "Have Claude write a route briefing (uses the shared Claude API key).",
       },
     },
     jobs: { housekeeping: "Gate check housekeeping" },
@@ -159,28 +155,6 @@ export const gatecheck = {
     factors: "History · live · regulars",
     disclaimer:
       "An estimate from public killmails, not a forecast. It only knows camps that killed something; it can't see a camp that just formed or one that is waiting.",
-  },
-  briefing: {
-    title: "Claude's route briefing",
-    ask: "Ask Claude",
-    again: "Ask again",
-    writing: "Claude is reading the route…",
-    intro: "Claude reads the computed facts above (kills, tags, estimates, regulars) and sums up the route. It sees nothing else.",
-    noKey: "Claude is not set up on this instance (no API key).",
-    failed: "Claude could not write the briefing. Try again in a moment.",
-    budgetUser: "You have asked Claude for enough route briefings this hour. Try again later.",
-    budgetInstance: "This Keystar has used its hourly Claude budget for route briefings. Try again later.",
-    forbidden: "You may not ask Claude about routes.",
-    stale: "The route changed; check it again first.",
-    level: {
-      minimal: "Minimal",
-      low: "Low",
-      elevated: "Elevated",
-      high: "High",
-      critical: "Critical",
-    },
-    advice: "Advice",
-    by: (model: string, when: string) => `Written by ${model} ${when}`,
   },
   hint: "Kills come from zKillboard's live feed, which Keystar reads anyway for the killboard: checking a route costs zKillboard nothing. A kill within 150 km of a stargate counts as a kill at that gate. Gates only: no wormholes, Ansiblex jump bridges or filaments; Zarzakh is never passed through (its gate lock).",
 };

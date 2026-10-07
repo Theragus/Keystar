@@ -1,18 +1,3 @@
-CREATE TABLE "gatecheck_briefings" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"facts_hash" text NOT NULL,
-	"source" text NOT NULL,
-	"claude_called" boolean DEFAULT false NOT NULL,
-	"model" text,
-	"error" text,
-	"locale" text NOT NULL,
-	"content" jsonb NOT NULL,
-	"facts" jsonb NOT NULL,
-	"usage" jsonb,
-	"created_by" uuid,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "gatecheck_feed" (
 	"id" smallint PRIMARY KEY NOT NULL,
 	"coverage_since" timestamp with time zone NOT NULL,
@@ -44,7 +29,5 @@ CREATE TABLE "gatecheck_kills" (
 	"first_seen_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE INDEX "gatecheck_briefings_hash_idx" ON "gatecheck_briefings" USING btree ("facts_hash","locale","created_at");--> statement-breakpoint
-CREATE INDEX "gatecheck_briefings_user_idx" ON "gatecheck_briefings" USING btree ("created_by","created_at");--> statement-breakpoint
 CREATE INDEX "gatecheck_kills_system_time_idx" ON "gatecheck_kills" USING btree ("solar_system_id","killmail_time");--> statement-breakpoint
 CREATE INDEX "gatecheck_kills_time_idx" ON "gatecheck_kills" USING btree ("killmail_time");

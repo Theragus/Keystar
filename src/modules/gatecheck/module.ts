@@ -3,13 +3,11 @@ import type { KeystarModule } from "@/core/modules/types";
 
 export const GATECHECK_PERMISSIONS = {
   use: "gatecheck.use",
-  ai: "gatecheck.ai",
 } as const;
 
 /**
  * Route planning with live gate kills and camp estimates. Public data only
- * (zKillboard's feed, CCP's static data), so every role may use it; Claude
- * briefings spend the shared API key and start at members.
+ * (zKillboard's feed, CCP's static data), so every role may use it.
  */
 export const gatecheckModule: KeystarModule = {
   id: "gatecheck",
@@ -23,13 +21,6 @@ export const gatecheckModule: KeystarModule = {
       description: (t) => t.gatecheck.module.permissions.use.description,
       group: (t) => t.gatecheck.module.permissionGroup,
       defaultMinRole: "guest",
-    },
-    {
-      key: GATECHECK_PERMISSIONS.ai,
-      label: (t) => t.gatecheck.module.permissions.ai.label,
-      description: (t) => t.gatecheck.module.permissions.ai.description,
-      group: (t) => t.gatecheck.module.permissionGroup,
-      defaultMinRole: "member",
     },
   ],
   nav: [

@@ -39,9 +39,3 @@ export const MAX_AVOID = 30;
 /** CONCORD on a killmail means the attackers were CONCORDed: a suicide gank. */
 export const CONCORD_FACTION_ID = 500_006;
 export const CONCORD_CORPORATION_ID = 1_000_125;
-
-/** Claude route briefings per hour. Every call counts, failed ones too. */
-export const BRIEFING_USER_HOURLY = 10;
-export const BRIEFING_INSTANCE_HOURLY = 60;
-/** A briefing for the same facts is reused for this long. */
-export const BRIEFING_REUSE_MS = 15 * 60_000;
