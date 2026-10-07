@@ -94,6 +94,7 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    esi-industry.read_character_mining.v1
    esi-industry.read_corporation_mining.v1
    esi-mail.read_mail.v1
+   esi-markets.read_character_orders.v1
    esi-skills.read_skillqueue.v1
    esi-skills.read_skills.v1
    esi-universe.read_structures.v1
@@ -102,13 +103,18 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    ```
 
    Keystar only ever asks members for the scopes its enabled modules need; corporation scopes are requested only when
-   a director links a character with "corporation access", and the wallet, mail, fleet, skills and industry scopes
-   only when a pilot enables wallet import for a character in the mining P&L, mail for a character on the EVE Mail
-   page, fleet access for a character on the Live fleet page, skill sharing on the Skills access page or industry
-   access on the Industry access page. (The login page also shows this exact list while SSO is not configured yet.)
+   a director links a character with "corporation access", and the wallet, mail, fleet, skills, industry and market
+   scopes only when a pilot enables wallet import for a character in the mining P&L, mail for a character on the EVE
+   Mail page, fleet access for a character on the Live fleet page, skill sharing on the Skills access page, industry
+   access on the Industry access page or market access on the Market access page. (The login page also shows this exact list while SSO is not configured yet.)
 5. Save and keep the **Client ID** and **Secret Key** for the next step.
 
 When future modules (assets) are added, add their scopes to the application as well.
+
+> **Upgrading to the release with market orders (see the CHANGELOG):** add `esi-markets.read_character_orders.v1`
+> to the EVE application (and `esi-universe.read_structures.v1`, if it isn't there yet from industry jobs). Without
+> it, "Enable market access" on the Market access page fails at the EVE login with `invalid_scope`. Nobody is asked
+> for the scope unless they enable market access themselves.
 
 > **Upgrading to the release with industry jobs (see the CHANGELOG):** add `esi-industry.read_character_jobs.v1` and
 > `esi-universe.read_structures.v1` to the EVE application. Without them, "Enable industry access" on the Industry

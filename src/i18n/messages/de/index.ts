@@ -11,6 +11,7 @@ import { fleet } from "./fleet";
 import { industry } from "./industry";
 import { intel } from "./intel";
 import { killboard } from "./killboard";
+import { market } from "./market";
 import { mining } from "./mining";
 import { pnl } from "./pnl";
 import { setup } from "./setup";
@@ -41,6 +42,7 @@ export const de: Messages = {
   industry,
   intel,
   trade,
+  market,
   wallet,
   social,
   skills,

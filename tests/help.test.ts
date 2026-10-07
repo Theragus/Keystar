@@ -58,7 +58,7 @@ describe("the access table", () => {
 
   it("marks the pages that only show the viewer's own data", () => {
     const own = rows("member").filter((r) => r.ownDataOnly).map((r) => r.href);
-    expect(own).toEqual(expect.arrayContaining(["/mail", "/mining/pnl", "/industry"]));
+    expect(own).toEqual(expect.arrayContaining(["/mail", "/mining/pnl", "/industry", "/market"]));
     expect(own).not.toContain("/mining");
   });
 
@@ -96,8 +96,11 @@ describe("the scopes topic", () => {
   });
 
   it("groups the optional scopes by the page that switches them", () => {
-    expect(groups.optional.flatMap((g) => g.scopes.map((s) => s.scope)).sort()).toEqual(optionalScopes());
+    expect([...new Set(groups.optional.flatMap((g) => g.scopes.map((s) => s.scope)))].sort()).toEqual(optionalScopes());
     expect(new Set(groups.optional.map((g) => g.href)).size).toBe(groups.optional.length);
+    // A scope two accesses share (structure names) is listed under each of them.
+    const structures = groups.optional.filter((g) => g.scopes.some((s) => s.scope === "esi-universe.read_structures.v1"));
+    expect(structures.map((g) => g.href).sort()).toEqual(["/industry/settings", "/market/settings"]);
     const skills = groups.optional.find((g) => g.href === "/skills/settings");
     const skillScopes = allScopeRequirements().filter((s) => s.optional && s.manageHref === "/skills/settings");
     expect(skills?.scopes.map((s) => s.scope)).toEqual(skillScopes.map((s) => s.scope));
@@ -126,6 +129,7 @@ describe("this page's help", () => {
     ["/mining/ledger", "/mining/ledger"],
     ["/mining/pnl/settings", "/mining/pnl"],
     ["/industry/settings", "/industry"],
+    ["/market/settings", "/market"],
     ["/skills/settings", "/skills"],
     ["/intel/abc123/pilot/42", "/intel"],
     ["/trade/appraisal/AbC123", "/trade/appraisal"],

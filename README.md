@@ -15,7 +15,7 @@ Keystar signs pilots in with **EVE SSO**, collects their **ESI tokens** with exa
 syncs data in the background and turns it into dashboards. Modules so far: **mining** (personal and moon-refinery
 ledgers with filters, daily volume / value / quantity, member and ore breakdowns, CSV export, an ore field estimator
 for survey scans and a personal **mining P&L** with opt-in wallet import), **industry jobs** of your own characters
-with progress and completion times, **skill queues** with a remap optimiser, a **killboard** with the corporation's
+with progress and completion times, **market orders** of your own characters, **skill queues** with a remap optimiser, a **killboard** with the corporation's
 PvP performance from zKillboard and a weekly situation report, **live fleet** tracking, **threat intel** for pasted
 local, fleets and d-scans, a **3D universe map**, an **appraisal** tool for Jita prices, **EVE Mail** and
 **corporation wallets** with income, expenses and a long-term journal archive.
@@ -54,6 +54,10 @@ local, fleets and d-scans, a **3D universe map**, an **appraisal** tool for Jita
 - **Industry jobs**: every job of your own characters (manufacturing, ME/TE research, copying, invention,
   reactions) with a progress bar, time left and end time, filterable by running/finished, character, activity, system
   and station. Opt-in per character on the Industry access page; only you see your characters' jobs.
+- **Market orders**: the buy and sell orders of your own characters with item, price, remaining quantity, station or
+  structure, issue date and expiry, plus closed orders of the last 90 days; totals for what you are selling, buying
+  and holding in escrow, and orders about to expire. Opt-in per character on the Market access page; only you see
+  your characters' orders.
 - **Mining**
   - Personal ledgers *and* corporation moon-observer ledgers, de-duplicated in a combined view
   - Filters for date range, members, ore class, ore type, system and data source — all in the URL

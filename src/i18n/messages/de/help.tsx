@@ -108,7 +108,7 @@ export const help: typeof en = {
     },
     private: {
       title: "Nur du",
-      body: "EVE-Mail, die Mining-GuV mit deinen Wallet-Importen und Industriejobs. Keine Rolle, nicht einmal Admin, kann sie in Keystar öffnen.",
+      body: "EVE-Mail, die Mining-GuV mit deinen Wallet-Importen, deine Industriejobs und deine Marktaufträge. Keine Rolle, nicht einmal Admin, kann sie in Keystar öffnen.",
     },
     visibility: {
       title: "Wer deine Daten sonst sieht",
@@ -124,7 +124,7 @@ export const help: typeof en = {
     },
     delete: {
       title: "Daten entfernen",
-      body: "Wenn du einen Charakter unter „Meine Charaktere“ entfernst, wird sein Token gelöscht und bei CCP widerrufen, und seine Wallet-, Mail- und Industriedaten werden gelöscht; sein Mining-Verlauf bleibt bei der Corporation. Skill-, Industrie-, Mail- und Wallet-Daten kannst du auch auf ihren eigenen Seiten löschen. Einen Knopf zum Löschen deines Kontos gibt es nicht: Bitte einen Direktor oder Admin, es zu deaktivieren.",
+      body: "Wenn du einen Charakter unter „Meine Charaktere“ entfernst, wird sein Token gelöscht und bei CCP widerrufen, und seine Wallet-, Mail-, Industrie- und Marktdaten werden gelöscht; sein Mining-Verlauf bleibt bei der Corporation. Skill-, Industrie-, Markt-, Mail- und Wallet-Daten kannst du auch auf ihren eigenen Seiten löschen. Einen Knopf zum Löschen deines Kontos gibt es nicht: Bitte einen Direktor oder Admin, es zu deaktivieren.",
     },
     retention: (r: { appraisals: number; scans: number; pilots: number; killmails: number }) =>
       `Automatisch gelöscht: Bewertungen nach ${n(r.appraisals)} Tagen, Scans der Bedrohungsanalyse nach ${n(r.scans)} Tagen, Pilotenprofile nach ${n(r.pilots)} Tagen und Killmail-Zusammenfassungen nach ${n(r.killmails)} Tagen. Mining-Ledger und das Archiv der Corporation-Wallet bleiben dauerhaft.`,
