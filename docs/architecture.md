@@ -542,12 +542,12 @@ stargate route and checks it gate by gate. Nothing on the page calls zKillboard.
   "shortest"; on "safer" high-sec costs 0.9, low-sec e^(0.15 × 50) and null-sec twice that ("less secure" swaps high
   and low). Avoided systems are left out (never the start or destination); Zarzakh is never passed through, since
   its emanation lock keeps you at the gate you came in by.
-- **Check** (`check.ts`, pure): per system the gate you arrive by and the gate you leave by; kills there in the window
-  (1, 2, 6 or 24 hours) are "route" kills, the rest of the system's kills are listed apart. Tags (`tags.ts`):
+- **Check** (`check.ts`, pure): per system the gate you arrive by and the gate you leave by; kills there in the last two
+  hours are "route" kills, the rest of the system's kills are listed apart. Tags (`tags.ts`):
   smartbomb (a weapon in the Smart Bomb group), interdictor, HIC, gank (CONCORD on the mail), hot drop (Black Ops,
   capitals) and pod. Status: camp (a player kill at a route gate in the last 30 minutes, or three within the hour),
   recent, activity elsewhere in the system, quiet, or unknown while the feed is behind.
-- **Camp estimate** (`predict.ts`, pure) for the time each gate is reached (departure plus a pace per jump): history
+- **Camp estimate** (`predict.ts`, pure) for the time each gate is reached (leaving now, about a minute a jump): history
   (on how many of the last up to 30 days there were kills at these gates within an hour of that time of day,
   smoothed as (days + ½) / (N + 1)), live (the newest route-gate kill, half-life 45 minutes to the arrival), and
   regulars (pilots with kills at these gates on two or more days, seen killing within 5 jumps in the last two hours

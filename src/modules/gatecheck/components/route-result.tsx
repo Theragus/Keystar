@@ -380,10 +380,7 @@ export function RouteSummary({ result, query, t, f }: Ctx) {
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm">
         <span className="text-2xl font-semibold text-ink">{t.summary.jumps(route.length - 1)}</span>
         <span className="text-ink-2">{t.summary.mix(result.mix.high, result.mix.low, result.mix.null)}</span>
-        <span className="text-ink-2">
-          {t.summary.departure}: {result.departure.getTime() === result.now.getTime() ? t.summary.now : f.dateTime(result.departure)}
-          {arrival && ` · ${t.summary.arrival}: ${eveTime(arrival)} ${t.summary.eta}`}
-        </span>
+        <span className="text-ink-2">{arrival && `${t.summary.arrival} ${eveTime(arrival)} ${t.summary.eta}`}</span>
         {result.resolved.avoid.length > 0 && (
           <span className="text-ink-3">{t.summary.avoiding(result.resolved.avoid.map((s) => s.name))}</span>
         )}

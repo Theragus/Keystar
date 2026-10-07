@@ -21,7 +21,7 @@ export async function generateMetadata() {
   return { title: t.gatecheck.page.title };
 }
 
-/** Re-check a route that starts now every minute while the tab is open (it only reads the database). */
+/** Re-check the route every minute while the tab is open (it only reads the database). */
 const REFRESH_SECONDS = 60;
 
 export default async function GatecheckPage({ searchParams }: PageProps<"/gatecheck">) {
@@ -58,7 +58,7 @@ export default async function GatecheckPage({ searchParams }: PageProps<"/gatech
       )}
       {result?.route ? (
         <>
-          {!query.depart && <AutoRefresh seconds={REFRESH_SECONDS} />}
+          <AutoRefresh seconds={REFRESH_SECONDS} />
           <FeedLine feed={result.feed} t={g} f={f} now={result.now} />
           <div className="grid items-start gap-4 xl:grid-cols-12">
             <div className={canAsk ? "xl:col-span-7" : "xl:col-span-12"}>

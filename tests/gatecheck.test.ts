@@ -3,7 +3,7 @@ import { sanitizeRouteBriefing } from "@/modules/gatecheck/ai/briefing";
 import type { RouteFacts } from "@/modules/gatecheck/ai/facts";
 import { checkRoute, feedHealth, type KillRecord } from "@/modules/gatecheck/check";
 import { locateKill, toGateKill } from "@/modules/gatecheck/classify";
-import { departureTime, gatecheckHref, parseQuery, resolveQuery } from "@/modules/gatecheck/params";
+import { gatecheckHref, parseQuery, resolveQuery } from "@/modules/gatecheck/params";
 import { arrivalTimes, confidenceOf, historyDays, predictRoute, riskLevel, routeRegulars } from "@/modules/gatecheck/predict";
 import { NO_TRANSIT, planRoute, securityMix, systemCost } from "@/modules/gatecheck/route";
 import { killTags, mergeTags } from "@/modules/gatecheck/tags";
@@ -513,47 +513,20 @@ describe("gate check predictions", () => {
 });
 
 describe("gate check parameters", () => {
-  it("parses the form with safe defaults", () => {
-    expect(
-      parseQuery({
-        from: " Jita ",
-        to: "Amamake",
-        pref: "safer",
-        window: "6",
-        pace: "slow",
-        depart: "2026-10-07T21:00",
-      }),
-    ).toEqual({
+  it("parses the form with safe defaults, ignoring the old window, pace and departure fields", () => {
+    expect(parseQuery({ from: " Jita ", to: "Amamake", pref: "safer", window: "6", pace: "slow", depart: "2026-10-07T21:00" })).toEqual({
       from: "Jita",
       to: "Amamake",
       preference: "safer",
       avoid: "",
-      windowHours: 6,
-      pace: "slow",
-      depart: "2026-10-07T21:00",
     });
-    expect(
-      parseQuery({
-        pref: "fastest",
-        window: "5",
-        pace: "warp",
-        depart: "tomorrow",
-        from: ["Jita", "Perimeter"],
-      }),
-    ).toMatchObject({
+    expect(parseQuery({ pref: "fastest", from: ["Jita", "Perimeter"] })).toEqual({
       from: "Jita",
+      to: "",
       preference: "shortest",
-      windowHours: 2,
-      pace: "normal",
-      depart: "",
+      avoid: "",
     });
-  });
-
-  it("departs now unless a future EVE time (within a week) is asked for", () => {
-    expect(departureTime("", NOW)).toBe(NOW);
-    expect(departureTime("2026-10-07T19:00", NOW)).toBe(NOW);
-    expect(departureTime("2026-10-07T22:30", NOW).toISOString()).toBe("2026-10-07T22:30:00.000Z");
-    expect(departureTime("2026-12-01T00:00", NOW).getTime()).toBe(NOW.getTime() + 7 * 86_400_000);
+    expect(gatecheckHref(parseQuery({ from: "Jita", to: "Amamake", window: "24", pace: "slow" }))).toBe("/gatecheck?from=Jita&to=Amamake");
   });
 
   it("resolves names and keeps the URL short", () => {

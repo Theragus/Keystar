@@ -23,7 +23,6 @@ export interface RouteFacts {
     preference: string;
     jumps: number;
     securityOfSystemsEntered: Record<"high" | "low" | "null", number>;
-    departureEveTime: string;
     arrivalEveTime: string;
     avoiding: string[];
   };
@@ -113,14 +112,12 @@ export function buildRouteFacts(result: GatecheckResult, query: GatecheckQuery):
       preference: query.preference,
       jumps: Math.max(0, route.length - 1),
       securityOfSystemsEntered: result.mix,
-      departureEveTime:
-        result.departure.getTime() === now.getTime() ? "now" : result.departure.toISOString().slice(0, 16).replace("T", " "),
       arrivalEveTime: arrival ? hhmm(arrival) : "",
       avoiding: result.resolved.avoid.map((s) => s.name),
     },
     data: {
       feed: result.feed.health,
-      killWindowHours: query.windowHours,
+      killWindowHours: result.check.windowHours,
       historyDays: result.feed.historyDays,
     },
     systems,

@@ -45,18 +45,7 @@ export const gatecheck: typeof en = {
       insecure: "Zieht Lowsec dem Highsec vor – wie der Autopilot „Weniger sicher“ in EVE.",
     },
     avoid: "Meiden",
-    avoidPlaceholder: "Systeme, um die die Route herumführen soll, durch Kommas getrennt",
-    window: "Kills der letzten",
-    windowOption: (hours: number) => (hours === 1 ? "Stunde" : `${hours} Stunden`),
-    departure: "Abflug (EVE-Zeit)",
-    departureHint: "Leer lassen für jetzt. Die Camp-Schätzung nutzt die Zeit, zu der du jedes Tor erreichst.",
-    pace: "Tempo",
-    paces: {
-      fast: "Schnell (30 s je Sprung)",
-      normal: "Normal (1 min je Sprung)",
-      slow: "Langsam (2 min je Sprung)",
-      freighter: "Frachter (4 min je Sprung)",
-    },
+    avoidPlaceholder: "Systeme, mit Kommas getrennt",
     submit: "Route prüfen",
   },
   errors: {
@@ -82,12 +71,10 @@ export const gatecheck: typeof en = {
   summary: {
     jumps: (value: number) => count(value, "Sprung", "Sprünge"),
     mix: (high: number, low: number, nul: number) => `${n(high)} High · ${n(low)} Low · ${n(nul)} Null`,
-    departure: "Abflug",
-    arrival: "Ankunft",
-    now: "jetzt",
+    arrival: "Ankunft ≈",
     hotspots: "Vorsicht",
     noHotspots:
-      "Keine Kills an den Toren der Route im Zeitraum und keine wahrscheinlichen Camps. Bleib trotzdem wachsam: Camps, die nichts erwischen, hinterlassen keine Spuren.",
+      "Keine Kills an den Toren der Route in den letzten zwei Stunden und keine wahrscheinlichen Camps. Bleib trotzdem wachsam: Camps, die nichts erwischen, hinterlassen keine Spuren.",
     route: "Route",
     avoid: "Meiden",
     avoidTitle: (system: string) => `Route um ${system} herum planen`,
@@ -105,7 +92,7 @@ export const gatecheck: typeof en = {
     camp: "Ein Spieler-Kill an einem deiner Tore in den letzten 30 Minuten oder drei innerhalb einer Stunde.",
     recent: (hours: number) => `Spieler-Kills an einem deiner Tore in den letzten ${count(hours, "Stunde", "Stunden")}.`,
     activity: "Spieler-Kills anderswo im System: an anderen Toren oder abseits der Tore.",
-    quiet: "Keine Kills im Zeitraum.",
+    quiet: "Keine Kills in den letzten zwei Stunden.",
     unknown: "Keine Kills gefunden, aber der Feed hängt hinterher – das heißt wenig.",
   },
   place: {

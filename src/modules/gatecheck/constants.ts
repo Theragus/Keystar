@@ -13,20 +13,11 @@ export const OTHER_KILL_DAYS = 7;
 /** How far back predictions look (within GATE_HISTORY_DAYS). */
 export const PREDICTION_DAYS = 30;
 
-/** Look-back windows for "recent kills", in hours. */
-export const WINDOWS = [1, 2, 6, 24] as const;
-export type WindowHours = (typeof WINDOWS)[number];
-export const DEFAULT_WINDOW: WindowHours = 2;
+/** Recent kills are those of the last two hours (kills reach zKillboard up to half an hour late). */
+export const WINDOW_HOURS = 2;
 
-/** Travel pace for the arrival time at each system, in seconds per jump (align, warp, jump). */
-export const PACES = {
-  fast: 30,
-  normal: 60,
-  slow: 120,
-  freighter: 240,
-} as const;
-export type Pace = keyof typeof PACES;
-export const DEFAULT_PACE: Pace = "normal";
+/** Rough time per jump (align, warp, jump) for the arrival time at each gate, departing now. */
+export const SECONDS_PER_JUMP = 60;
 
 /** The live feed counts as up to date while it caught up this recently (it polls every 10 s). */
 export const FEED_FRESH_MS = 3 * 60_000;

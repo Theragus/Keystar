@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { SystemPicker } from "@/components/ui/system-picker";
 import { useI18n } from "@/i18n/client";
-import { PACES, WINDOWS, type Pace } from "../constants";
 import type { GatecheckQuery } from "../params";
 import { PREFERENCES, type RoutePreference } from "../route";
 
@@ -19,7 +18,7 @@ export function RouteForm({ query }: { query: GatecheckQuery }) {
   const s = t.gatecheck.form;
   const [preference, setPreference] = useState<RoutePreference>(query.preference);
   return (
-    <Form action="/gatecheck" className="space-y-4">
+    <Form action="/gatecheck">
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs text-ink-3">
           {s.from}
@@ -43,54 +42,22 @@ export function RouteForm({ query }: { query: GatecheckQuery }) {
           />
           <input type="hidden" name="pref" value={preference} />
         </div>
-        <Button type="submit" variant="primary" className="ml-auto">
+        <label className="flex min-w-56 flex-1 flex-col gap-1 text-xs text-ink-3">
+          {s.avoid}
+          <input
+            name="avoid"
+            defaultValue={query.avoid}
+            placeholder={s.avoidPlaceholder}
+            autoComplete="off"
+            spellCheck={false}
+            className={field}
+          />
+        </label>
+        <Button type="submit" variant="primary">
           <Route className="size-4" aria-hidden />
           {s.submit}
         </Button>
       </div>
-      <details className="group" open={!!(query.avoid || query.depart || query.pace !== "normal")}>
-        <summary className="cursor-pointer text-xs text-ink-2 hover:text-ink">
-          {s.avoid} · {s.window} · {s.departure} · {s.pace}
-        </summary>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="flex flex-col gap-1 text-xs text-ink-3">
-            {s.avoid}
-            <input
-              name="avoid"
-              defaultValue={query.avoid}
-              placeholder={s.avoidPlaceholder}
-              autoComplete="off"
-              spellCheck={false}
-              className={field}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-ink-3">
-            {s.window}
-            <select name="window" defaultValue={String(query.windowHours)} className={field}>
-              {WINDOWS.map((h) => (
-                <option key={h} value={h}>
-                  {s.windowOption(h)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-ink-3">
-            {s.departure}
-            <input type="datetime-local" name="depart" defaultValue={query.depart} step={60} className={field} />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-ink-3">
-            {s.pace}
-            <select name="pace" defaultValue={query.pace} className={field}>
-              {(Object.keys(PACES) as Pace[]).map((p) => (
-                <option key={p} value={p}>
-                  {s.paces[p]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <p className="mt-2 text-xs text-ink-3">{s.departureHint}</p>
-      </details>
     </Form>
   );
 }

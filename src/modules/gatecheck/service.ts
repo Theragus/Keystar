@@ -4,8 +4,8 @@ import { env } from "@/core/env";
 import { createLogger, errorMessage } from "@/core/logger";
 import { lookupDisplayNames, type DisplayNames } from "@/modules/intel/names";
 import { checkRoute, feedHealth, routeGates, type FeedHealth, type RouteCheck } from "./check";
-import { NEARBY_MS, PACES, PREDICTION_DAYS } from "./constants";
-import { departureTime, resolveQuery, type GatecheckQuery, type ResolvedQuery } from "./params";
+import { NEARBY_MS, PREDICTION_DAYS, SECONDS_PER_JUMP, WINDOW_HOURS } from "./constants";
+import { resolveQuery, type GatecheckQuery, type ResolvedQuery } from "./params";
 import { arrivalTimes, historyDays, predictRoute, routeRegulars, type SystemPrediction } from "./predict";
 import { killsAtGates, killsByPilots, killsInSystems, loadFeedStatus, systemRegions, typeGroups } from "./queries";
 import { planRoute, securityMix } from "./route";
@@ -28,7 +28,6 @@ export interface GatecheckResult {
   resolved: ResolvedQuery;
   route: number[] | null;
   mix: Record<"high" | "low" | "null", number>;
-  departure: Date;
   etas: Date[];
   check: RouteCheck;
   predictions: SystemPrediction[];
@@ -92,17 +91,15 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
     historySince: feed.historySince,
     historyDays: days,
   };
-  const departure = departureTime(q.depart, now);
   if (!route) {
     return {
       resolved,
       route: null,
       mix: { high: 0, low: 0, null: 0 },
-      departure,
       etas: [],
       check: {
         systems: [],
-        windowHours: q.windowHours,
+        windowHours: WINDOW_HOURS,
         feed: feedSummary.health,
       },
       predictions: [],
@@ -114,13 +111,14 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
     };
   }
 
-  const etas = arrivalTimes(route, departure, PACES[q.pace]);
+  // Departing now, at about a minute a jump.
+  const etas = arrivalTimes(route, now, SECONDS_PER_JUMP);
   const gateIds = route.flatMap((_, i) => {
     const g = routeGates(u, route, i);
     return [g.entryGateId, g.exitGateId].filter((id): id is number => id !== null);
   });
   const [recent, history] = await Promise.all([
-    killsInSystems(route, new Date(now.getTime() - q.windowHours * 3600_000)),
+    killsInSystems(route, new Date(now.getTime() - WINDOW_HOURS * 3600_000)),
     days > 0 ? killsAtGates(route, gateIds, new Date(now.getTime() - days * DAY)) : Promise.resolve([]),
   ]);
   const regulars = routeRegulars(u, route, history, { now, days, etas });
@@ -137,7 +135,7 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
 
   const check = checkRoute(u, route, recent, {
     now,
-    windowHours: q.windowHours,
+    windowHours: WINDOW_HOURS,
     feed,
     groupOf,
   });
@@ -167,7 +165,6 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
     resolved,
     route,
     mix: securityMix(u, route),
-    departure,
     etas,
     check,
     predictions,

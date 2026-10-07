@@ -44,18 +44,7 @@ export const gatecheck = {
       insecure: "Prefers low-sec over high-sec, like EVE's “Less secure” autopilot.",
     },
     avoid: "Avoid",
-    avoidPlaceholder: "Systems to route around, comma separated",
-    window: "Kills of the last",
-    windowOption: (hours: number) => (hours === 1 ? "hour" : `${hours} hours`),
-    departure: "Departure (EVE time)",
-    departureHint: "Leave empty for now. Camp estimates use the time you reach each gate.",
-    pace: "Pace",
-    paces: {
-      fast: "Fast (30 s a jump)",
-      normal: "Normal (1 min a jump)",
-      slow: "Slow (2 min a jump)",
-      freighter: "Freighter (4 min a jump)",
-    },
+    avoidPlaceholder: "Systems, comma separated",
     submit: "Check route",
   },
   errors: {
@@ -80,12 +69,10 @@ export const gatecheck = {
   summary: {
     jumps: (value: number) => count(value, "jump", "jumps"),
     mix: (high: number, low: number, nul: number) => `${n(high)} high · ${n(low)} low · ${n(nul)} null`,
-    departure: "Departure",
-    arrival: "Arrival",
-    now: "now",
+    arrival: "Arrival ≈",
     hotspots: "Watch out",
     noHotspots:
-      "No kills at the route's gates in the window and no likely camps. Stay alert anyway: camps that kill nothing leave no trace.",
+      "No kills at the route's gates in the last two hours and no likely camps. Stay alert anyway: camps that kill nothing leave no trace.",
     route: "Route",
     avoid: "Avoid",
     avoidTitle: (system: string) => `Plan the route around ${system}`,
@@ -103,7 +90,7 @@ export const gatecheck = {
     camp: "A player kill at a gate you use in the last 30 minutes, or three within the hour.",
     recent: (hours: number) => `Player kills at a gate you use in the last ${count(hours, "hour", "hours")}.`,
     activity: "Player kills elsewhere in the system: at other gates or away from the gates.",
-    quiet: "No kills in the window.",
+    quiet: "No kills in the last two hours.",
     unknown: "No kills found, but the feed is behind, so that means little.",
   },
   place: {
