@@ -1,8 +1,9 @@
 import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/core/db";
+import { scopesToSwitchOff } from "@/core/modules/registry";
 import { ENDING_SOON_MS, statusesOf, type IndustryActivity, type JobStatus } from "./activities";
 import type { IndustryFilters } from "./filters";
-import { INDUSTRY_JOBS_SCOPE, INDUSTRY_SCOPES, STRUCTURES_SCOPE } from "./module";
+import { INDUSTRY_JOBS_SCOPE, INDUSTRY_MANAGE_HREF, INDUSTRY_SCOPES, STRUCTURES_SCOPE } from "./module";
 
 /** "The token holds both industry scopes", for `esi_tokens` aliased as `t`. */
 const HOLDS_SCOPES = sql`t.scopes @> ARRAY[${INDUSTRY_JOBS_SCOPE}, ${STRUCTURES_SCOPE}]::text[]`;
@@ -261,6 +262,11 @@ export interface IndustryAccessStatus {
   grantedScopes: string[];
   /** Both industry scopes are granted. */
   granted: boolean;
+  /**
+   * Only one of them is granted, so switching off has something to clear. A structure scope that market access still
+   * uses doesn't count.
+   */
+  partial: boolean;
   /** Switched off in Keystar while the active token still holds both scopes: can be switched back on without a login. */
   switchedOff: boolean;
   tokenStatus: "active" | "invalid" | null;
@@ -292,6 +298,7 @@ export async function getIndustryAccess(userId: string): Promise<IndustryAccessS
       name: String(r.name),
       grantedScopes: scopes,
       granted,
+      partial: !granted && scopesToSwitchOff(INDUSTRY_MANAGE_HREF, scopes).some((s) => scopes.includes(s)),
       // A revoked token can't be switched back on in Keystar; it needs the EVE login.
       switchedOff:
         !granted &&

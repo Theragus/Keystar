@@ -45,7 +45,7 @@ describe.skipIf(!enabled)("integration", async () => {
       mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
       corp_wallet_journal, corp_wallet_transactions, corp_wallet_sync_state, mail_messages, mail_labels, mail_lists,
       corporation_members, skills_queue, skills_character_skills, skills_character, skills_type_attributes,
-      industry_jobs, industry_locations
+      industry_jobs, industry_locations, market_orders
       RESTART IDENTITY CASCADE`);
     const [a] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 1 }).returning();
     const [b] = await db().insert(schema.users).values({ role: "member", mainCharacterId: 2 }).returning();
@@ -253,6 +253,24 @@ describe.skipIf(!enabled)("integration", async () => {
         endDate: new Date(Date.now() + 3600_000),
       });
       await db().insert(schema.industryJobs).values([job(1, 1), job(2, 3)]);
+      // Market orders too.
+      const order = (orderId: number, characterId: number) => ({
+        orderId,
+        characterId,
+        typeId: 34,
+        regionId: 10000002,
+        locationId: 60003760,
+        isBuyOrder: false,
+        isCorporation: false,
+        price: 5,
+        volumeTotal: 100,
+        volumeRemain: 40,
+        range: "region" as const,
+        duration: 90,
+        issued: new Date(),
+        state: "open" as const,
+      });
+      await db().insert(schema.marketOrders).values([order(1, 1), order(2, 2), order(3, 3)]);
 
       // Bravo keeps an alt: the account stays active and the alt becomes main.
       const bravo = await db().transaction((tx) => detachTransferredCharacter(tx, 2, userB));
@@ -270,6 +288,7 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(remaining.map((r) => r.userId)).toEqual([userB]);
       expect((await db().select().from(schema.characters)).map((c) => c.characterId)).toEqual([3]);
       expect((await db().select().from(schema.industryJobs)).map((j) => j.jobId)).toEqual([2]);
+      expect((await db().select().from(schema.marketOrders)).map((o) => o.orderId)).toEqual([3]);
     });
 
     it("only invalidates a token on invalid_grant", async () => {
@@ -2689,6 +2708,23 @@ describe.skipIf(!enabled)("integration", async () => {
       expect(STRUCTURES_SCOPE).toBeTruthy();
     });
 
+    it("keeps the structure scope while market access uses it", async () => {
+      const { deleteIndustryData, setIndustryAccess } = await import("@/app/(app)/industry/actions");
+      const { MARKET_ORDERS_SCOPE } = await import("@/modules/market/module");
+      actor = { id: userB, characterIds: [2, 3] };
+      await db().update(schema.esiTokens).set({ scopes: [...INDUSTRY_SCOPES, MARKET_ORDERS_SCOPE] }).where(sql`character_id = 2`);
+
+      expect(await setIndustryAccess(2, false)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([MARKET_ORDERS_SCOPE, STRUCTURES_SCOPE].sort());
+      // Switched off, not partly enabled: the structure scope left is market access's.
+      expect((await industry.getIndustryAccess(userB))[0]).toMatchObject({ granted: false, partial: false, switchedOff: true });
+      expect(await industry.enabledCharacterIds([2])).toEqual([]);
+      expect(await deleteIndustryData(2)).toEqual({ ok: true });
+
+      expect(await setIndustryAccess(2, true)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([...INDUSTRY_SCOPES, MARKET_ORDERS_SCOPE].sort());
+    });
+
     it("checks the permission and the owner, also against the database", async () => {
       const { deleteIndustryData, setIndustryAccess } = await import("@/app/(app)/industry/actions");
       actor = null;
@@ -2935,6 +2971,231 @@ describe.skipIf(!enabled)("integration", async () => {
       const before = requests;
       expect((await characterLedgerJob.run(ctx))?.summary).not.toContain("switched off");
       expect(requests).toBe(before + 1);
+    });
+  });
+
+  describe("market access", async () => {
+    const { INDUSTRY_JOBS_SCOPE, INDUSTRY_SCOPES } = await import("@/modules/industry/module");
+    const { MARKET_ORDERS_SCOPE, MARKET_SCOPES } = await import("@/modules/market/module");
+    const market = await import("@/modules/market/queries");
+    const industry = await import("@/modules/industry/queries");
+    const { parseMarketFilters } = await import("@/modules/market/filters");
+    const order = (orderId: number, characterId: number, extra: Partial<typeof schema.marketOrders.$inferInsert> = {}) => ({
+      orderId,
+      characterId,
+      typeId: 34,
+      regionId: 10000002,
+      locationId: 60003760,
+      isBuyOrder: false,
+      isCorporation: false,
+      price: 5,
+      volumeTotal: 100,
+      volumeRemain: 40,
+      range: "region" as const,
+      duration: 90,
+      issued: new Date(Date.now() - 86_400_000),
+      state: "open" as const,
+      ...extra,
+    });
+    // Who the server actions run as; null makes the permission check fail.
+    let actor: { id: string; characterIds: number[] } | null = null;
+
+    beforeEach(async () => {
+      await db().insert(schema.esiTokens).values([
+        { characterId: 1, refreshTokenEnc: "x", scopes: [...MARKET_SCOPES] },
+        { characterId: 2, refreshTokenEnc: "x", scopes: [...MARKET_SCOPES] },
+        { characterId: 3, refreshTokenEnc: "x", scopes: [] },
+      ]);
+      await db().insert(schema.marketOrders).values([order(1, 1), order(2, 2)]);
+      vi.doMock("@/core/auth/dal", () => ({
+        assertPermission: async () => {
+          if (!actor) throw new Error("forbidden");
+          return actor;
+        },
+      }));
+      vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+      vi.doMock("server-only", () => ({}));
+    });
+    afterEach(() => {
+      vi.doUnmock("@/core/auth/dal");
+      vi.doUnmock("next/cache");
+      vi.doUnmock("server-only");
+    });
+    const scopesOf = async (characterId: number) =>
+      (await db().select({ scopes: schema.esiTokens.scopes }).from(schema.esiTokens).where(sql`character_id = ${characterId}`))[0].scopes.sort();
+
+    it("switches both scopes off and on together, in Keystar only", async () => {
+      const { setMarketAccess } = await import("@/app/(app)/market/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      expect(await market.enabledCharacterIds([2, 3])).toEqual([2]);
+
+      expect(await setMarketAccess(2, false)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([]);
+      expect((await market.getMarketAccess(userB))[0]).toMatchObject({ characterId: 2, granted: false, partial: false, switchedOff: true, hasData: true });
+      // The stored orders stay, but the page no longer reads the character.
+      expect(await market.enabledCharacterIds([2, 3])).toEqual([]);
+      expect(await market.getMarketCoverage([2, 3])).toMatchObject({ tracked: 0, notEnabled: 2 });
+
+      expect(await setMarketAccess(2, true)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([...MARKET_SCOPES].sort());
+      expect(await market.getMarketCoverage([2, 3])).toMatchObject({ tracked: 1, notEnabled: 1 });
+
+      // A token that never held the scopes needs the EVE login.
+      expect(await setMarketAccess(3, true)).toEqual({ ok: false, error: "notHeld" });
+    });
+
+    it("keeps the structure scope while industry access uses it", async () => {
+      const { deleteMarketData, setMarketAccess } = await import("@/app/(app)/market/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      await db().update(schema.esiTokens).set({ scopes: [MARKET_ORDERS_SCOPE, ...INDUSTRY_SCOPES] }).where(sql`character_id = 2`);
+
+      // Market off: industry still names its structures.
+      expect(await setMarketAccess(2, false)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([...INDUSTRY_SCOPES].sort());
+      expect(await industry.enabledCharacterIds([2])).toEqual([2]);
+      expect((await market.getMarketAccess(userB))[0]).toMatchObject({ granted: false, partial: false, switchedOff: true });
+      // The structure scope still held doesn't keep the market orders from being deleted.
+      expect(await deleteMarketData(2)).toEqual({ ok: true });
+      expect((await db().select().from(schema.marketOrders)).map((o) => o.orderId)).toEqual([1]);
+
+      // And back on without a login: the structure scope was never switched off.
+      expect(await setMarketAccess(2, true)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([MARKET_ORDERS_SCOPE, ...INDUSTRY_SCOPES].sort());
+
+      // With industry off, switching market off takes the structure scope too.
+      await db()
+        .update(schema.esiTokens)
+        .set({ scopes: [...MARKET_SCOPES], disabledScopes: [INDUSTRY_JOBS_SCOPE] })
+        .where(sql`character_id = 2`);
+      expect(await setMarketAccess(2, false)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([]);
+    });
+
+    it("refuses a token holding only one scope rather than enabling half", async () => {
+      const { setMarketAccess } = await import("@/app/(app)/market/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      await db().update(schema.esiTokens).set({ scopes: [MARKET_ORDERS_SCOPE] }).where(sql`character_id = 2`);
+      expect(await setMarketAccess(2, true)).toEqual({ ok: false, error: "notHeld" });
+      expect((await market.getMarketAccess(userB))[0]).toMatchObject({ granted: false, partial: true, switchedOff: false });
+      expect(await market.enabledCharacterIds([2])).toEqual([]);
+      expect(await setMarketAccess(2, false)).toEqual({ ok: true });
+      expect(await scopesOf(2)).toEqual([]);
+      // A structure scope industry access left behind alone is not market access.
+      await db().update(schema.esiTokens).set({ scopes: [...INDUSTRY_SCOPES], disabledScopes: [] }).where(sql`character_id = 2`);
+      expect((await market.getMarketAccess(userB))[0]).toMatchObject({ granted: false, partial: false, switchedOff: false });
+    });
+
+    it("checks the permission and the owner, also against the database", async () => {
+      const { deleteMarketData, setMarketAccess } = await import("@/app/(app)/market/actions");
+      actor = null;
+      expect(await setMarketAccess(2, false)).toEqual({ ok: false, error: "forbidden" });
+      expect(await deleteMarketData(2)).toEqual({ ok: false, error: "forbidden" });
+      actor = { id: userB, characterIds: [3] };
+      expect(await setMarketAccess(2, false)).toEqual({ ok: false, error: "notOwned" });
+      expect(await deleteMarketData(2)).toEqual({ ok: false, error: "notOwned" });
+      // The session's character list is stale: character 1 belongs to Alpha, not Bravo.
+      actor = { id: userB, characterIds: [1] };
+      expect(await setMarketAccess(1, false)).toEqual({ ok: false, error: "notOwned" });
+      expect(await deleteMarketData(1)).toEqual({ ok: false, error: "notOwned" });
+      expect(await scopesOf(1)).toEqual([...MARKET_SCOPES].sort());
+      expect((await db().select().from(schema.marketOrders)).map((o) => o.orderId).sort()).toEqual([1, 2]);
+    });
+
+    it("deletes stored orders only once access is off", async () => {
+      const { deleteMarketData, setMarketAccess } = await import("@/app/(app)/market/actions");
+      actor = { id: userB, characterIds: [2, 3] };
+      await db().insert(schema.esiCache).values(
+        ["2:GET /characters/2/orders", "2:GET /characters/2/orders/history", "2:GET /characters/2/roles"].map((key) => ({ key, body: [] })),
+      );
+      expect(await deleteMarketData(2)).toEqual({ ok: false, error: "stillEnabled" });
+      expect(await setMarketAccess(2, false)).toEqual({ ok: true });
+      expect(await deleteMarketData(2)).toEqual({ ok: true });
+      expect((await db().select().from(schema.marketOrders)).map((o) => o.orderId)).toEqual([1]);
+      // The cached copies of the orders go too; other cached responses stay.
+      expect((await db().select().from(schema.esiCache)).map((r) => r.key)).toEqual(["2:GET /characters/2/roles"]);
+      expect((await market.getMarketAccess(userB))[0]).toMatchObject({ characterId: 2, hasData: false });
+    });
+
+    it("syncs open and closed orders, and notices orders that left the market", async () => {
+      const { characterMarketOrdersJob } = await import("@/modules/market/jobs");
+      await db().delete(schema.marketOrders);
+      await db().insert(schema.eveTypes).values({ typeId: 34, name: "Tritanium", groupId: 462 });
+      await db().insert(schema.eveEntities).values({ id: 10000002, name: "The Forge", category: "region" });
+      const issued = new Date(Date.now() - 2 * 86_400_000).toISOString();
+      const esiOrder = (orderId: number, extra: Record<string, unknown> = {}) => ({
+        order_id: orderId, type_id: 34, region_id: 10000002, location_id: 60003760, is_corporation: false, price: 5,
+        volume_total: 100, volume_remain: 40, range: "region", duration: 90, issued, ...extra,
+      });
+      let open: unknown[] = [esiOrder(900), esiOrder(901, { is_buy_order: true, range: "station", escrow: 200, min_volume: 1 })];
+      let history: unknown[] = [esiOrder(902, { state: "cancelled", volume_remain: 70 })];
+      let requests = 0;
+      const esi = new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        maxRetries: 0,
+        fetchImpl: (async (url: string) => {
+          const path = new URL(String(url)).pathname;
+          const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+          if (/\/orders$/.test(path)) {
+            requests++;
+            return reply(open);
+          }
+          if (/\/orders\/history$/.test(path)) return reply(history);
+          if (/\/universe\/stations\//.test(path)) return reply({ name: "Jita IV - Moon 4 - Caldari Navy Assembly Plant", system_id: 30000180, type_id: 52678 });
+          return reply([]);
+        }) as typeof fetch,
+      });
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 2, characterId: 2, esi, db: db(), log: undefined as never, meta: {} };
+      const stored = async () =>
+        Object.fromEntries((await db().select().from(schema.marketOrders)).map((o) => [o.orderId, o] as const));
+
+      expect((await characterMarketOrdersJob.run(ctx))?.summary).toBe("2 open orders, 3 listed");
+      let rows = await stored();
+      expect(rows[900]).toMatchObject({ state: "open", isBuyOrder: false, volumeRemain: 40, closedAt: null });
+      expect(rows[901]).toMatchObject({ state: "open", isBuyOrder: true, range: "station", escrow: 200 });
+      expect(rows[902]).toMatchObject({ state: "cancelled", volumeRemain: 70, closedAt: null });
+
+      // The page reads them, named, with the summary of what is open.
+      const scope = { ownCharacterIds: [2] };
+      const page = await market.getMarketOrders(parseMarketFilters({ view: "all" }), scope, { limit: 10, offset: 0 });
+      expect(page.total).toBe(3);
+      expect(page.orders[0]).toMatchObject({ typeName: "Tritanium", locationName: "Jita IV - Moon 4 - Caldari Navy Assembly Plant", systemName: "Osmon", regionName: "The Forge" });
+      expect(page.orders.map((o) => o.state)).toEqual(["open", "open", "cancelled"]);
+      expect((await market.getMarketOrders(parseMarketFilters({ side: "buy" }), scope, { limit: 10, offset: 0 })).orders.map((o) => o.orderId)).toEqual([901]);
+      expect(await market.getMarketSummary(parseMarketFilters({ view: "closed" }), scope, new Date())).toMatchObject({
+        sellOrders: 1,
+        sellValue: 200,
+        buyOrders: 1,
+        buyValue: 200,
+        escrow: 200,
+        expiringSoon: 0,
+        byLocation: [{ locationId: 60003760, orders: 2, value: 400, regionName: "The Forge" }],
+      });
+
+      // The buy order is gone from the market, the sell order was repriced; the history hasn't caught up yet.
+      open = [esiOrder(900, { price: 4.9, volume_remain: 30 })];
+      expect((await characterMarketOrdersJob.run(ctx))?.summary).toBe("1 open order, 2 listed");
+      rows = await stored();
+      expect(rows[900]).toMatchObject({ state: "open", price: 4.9, volumeRemain: 30 });
+      expect(rows[901].state).toBe("closed");
+      const noticed = rows[901].closedAt;
+      expect(noticed).toBeInstanceOf(Date);
+
+      // Now the history has it (filled), while a stale open list still shows the cancelled one: the history wins.
+      history = [esiOrder(902, { state: "cancelled", volume_remain: 70 }), esiOrder(901, { is_buy_order: true, range: "station", state: "expired", volume_remain: 0 })];
+      open = [esiOrder(900, { price: 4.9, volume_remain: 30 }), esiOrder(902)];
+      await characterMarketOrdersJob.run(ctx);
+      rows = await stored();
+      expect(rows[901]).toMatchObject({ state: "expired", volumeRemain: 0, closedAt: noticed });
+      expect(rows[902]).toMatchObject({ state: "cancelled", volumeRemain: 70 });
+
+      // Access off: a run claimed before the planner disables the schedule reads nothing from ESI.
+      await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+      const before = requests;
+      expect((await characterMarketOrdersJob.run(ctx))?.summary).toBe("Market access is switched off");
+      expect(requests).toBe(before);
     });
   });
 

@@ -113,7 +113,7 @@ export const help = {
     },
     private: {
       title: "Only you",
-      body: "EVE Mail, the Mining P&L with your wallet imports, and industry jobs. No role, not even admin, can open them in Keystar.",
+      body: "EVE Mail, the Mining P&L with your wallet imports, industry jobs and market orders. No role, not even admin, can open them in Keystar.",
     },
     visibility: {
       title: "Who else sees your data",
@@ -129,7 +129,7 @@ export const help = {
     },
     delete: {
       title: "Removing data",
-      body: "Removing a character on My Characters deletes its token, revokes it at CCP and deletes its wallet, mail and industry data; its mining history stays with the corporation unless you delete it first on Mining access. Mining, skill, industry, mail and wallet data can also be deleted on their own pages. Keystar has no button to delete your account: ask a director or admin to disable it.",
+      body: "Removing a character on My Characters deletes its token, revokes it at CCP and deletes its wallet, mail, industry and market data; its mining history stays with the corporation unless you delete it first on Mining access. Mining, skill, industry, market, mail and wallet data can also be deleted on their own pages. Keystar has no button to delete your account: ask a director or admin to disable it.",
     },
     retention: (r: { appraisals: number; scans: number; pilots: number; killmails: number }) =>
       `Deleted automatically: appraisals after ${n(r.appraisals)} days, Threat Intel scans after ${n(r.scans)} days, pilot profiles after ${n(r.pilots)} days and killmail summaries after ${n(r.killmails)} days. Mining ledgers (until you delete your own) and the corporation wallet archive are kept for good.`,
