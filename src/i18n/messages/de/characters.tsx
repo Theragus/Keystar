@@ -10,12 +10,13 @@ export const characters: typeof en = {
     eyebrow: "Konto",
     title: "Meine Charaktere",
     description:
-      "Verknüpfe jeden Charakter, den du spielst. Keystar liest Daten ausschließlich über die hier aufgeführten ESI-Scopes.",
+      "Verknüpfe jeden Charakter, den du spielst. Das Verknüpfen bestätigt nur, wer der Charakter ist: Keystar liest Daten ausschließlich über den hier aufgeführten ESI-Zugriff, den du pro Charakter einschaltest.",
     link: "Charakter verknüpfen",
   },
   card: {
     main: "Hauptcharakter",
-    noToken: "Kein ESI-Token",
+    /** No token: nothing granted, which is fine (every ESI scope is opt-in). */
+    noToken: "Kein ESI-Zugriff",
     tokenRevoked: "Token widerrufen",
     scopesMissing: (count: number) => (count === 1 ? `${n(count)} Scope fehlt` : `${n(count)} Scopes fehlen`),
     esiActive: "ESI aktiv",
@@ -79,7 +80,12 @@ export const characters: typeof en = {
   },
   sso: {
     linked: (name: string) => `${name} verknüpft`,
-    linkedDetail: "Die Hintergrund-Syncs starten innerhalb einer Minute.",
+    linkedDetail:
+      "Optionalen Zugriff wie das Mining-Ledger schaltest du auf der Seite der jeweiligen Funktion ein; die Syncs starten innerhalb einer Minute.",
+    /** A plain link (no scopes) with a character that is already on the account. */
+    alreadyLinked: (name: string) => `${name} ist bereits verknüpft`,
+    alreadyLinkedDetail:
+      "Es hat sich nichts geändert. Optionalen Zugriff wie das Mining-Ledger schaltest du auf der Seite der jeweiligen Funktion ein.",
     reauthorized: (name: string) => `${name} neu autorisiert`,
     corpGranted: (name: string) => `Corporation-Zugriff für ${name} erteilt`,
     scopesChanged: (name: string) => `Zugriff für ${name} aktualisiert`,
@@ -113,7 +119,9 @@ export const characters: typeof en = {
     encrypted: "Refresh-Tokens werden mit AES-256-GCM verschlüsselt, bevor sie in die Datenbank gelangen.",
     readOnly: "Keystar fragt nur Lese-Scopes an und kann im Spiel nichts ausführen.",
     removal:
-      "Wenn du einen Charakter entfernst, wird sein Token gelöscht und bei CCP widerrufen. Der Mining-Verlauf bleibt bei der Corp.",
+      "Wenn du einen Charakter entfernst, wird sein Token gelöscht und bei CCP widerrufen. Sein Mining-Verlauf bleibt bei der Corp, außer du löschst ihn vorher (Mining → Zugriff).",
+    mining:
+      "Zugriff auf das Mining-Ledger ist optional und gilt pro Charakter (Mining → Zugriff). Synchronisierte Ledger-Einträge fließen in die Mining-Zahlen der Corporation ein; du kannst sie löschen, sobald der Zugriff aus ist.",
     wallet:
       "Wallet-Zugriff ist optional und gilt pro Charakter (Mining-GuV → Einstellungen). Importierte Wallet-Transaktionen siehst nur du, und sie werden gelöscht, wenn du den Charakter entfernst.",
     mail: "Mail-Zugriff ist optional und gilt pro Charakter (EVE-Mail). Importierte Mails siehst nur du, und sie werden gelöscht, wenn du den Charakter entfernst.",

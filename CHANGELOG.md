@@ -37,6 +37,19 @@ Sharing skills now includes the implants of the active clone, so the remap optim
   Release PRs add the highlights in English and German (`docs/releasing.md`).
   ([PR #182](https://github.com/Theragus/Keystar/pull/182))
 
+### Changed
+
+- **The mining ledger is opt-in per character, so every ESI scope is now optional.** Registering, signing in and
+  "Link a character" no longer ask EVE for any scope; they only prove who you are. Each pilot turns on the personal
+  mining ledger per character on the new **Mining access** page (the Access button on the Mining Overview and Ledger,
+  or via My Characters), can switch it off in Keystar without an EVE login, and can delete a character's stored mining
+  history once it is off. Moon-drill records of corporation refineries are kept either way. Characters that already
+  share their mining ledger keep sharing; nothing to do on the server or the EVE application.
+  - Characters without any ESI access are no longer flagged on My Characters, the dashboard, Users & Roles or Member
+    Audit; only revoked tokens are.
+  - Re-authorising a character with no access left removes its token and revokes it with CCP, and "Link a character"
+    with a character that is already on your account no longer changes its access.
+
 ### Fixed
 
 - The login page and the Privacy panel on My Characters now link to Authorized Apps on the EVE developers site for

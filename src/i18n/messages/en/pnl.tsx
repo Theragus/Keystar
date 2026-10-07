@@ -138,7 +138,7 @@ export const pnl = {
     empty: {
       title: "Nothing to show for this period",
       action: "P&L settings",
-      body: "Income comes from your characters' mining ledgers (synced every 15 minutes). Expenses come from wallet purchases you include and from manual entries. Wallet import is optional and off until you enable it per character.",
+      body: "Income comes from your characters' mining ledgers (synced every 15 minutes once you switch them on under Mining access). Expenses come from wallet purchases you include and from manual entries. Wallet import is optional and off until you enable it per character.",
     },
     tiles: {
       net: (from: string, to: string) => `Net profit · ${from} – ${to}`,
@@ -389,7 +389,10 @@ export const pnl = {
       nothing: "Nothing imported",
       activitySince: (date: string) => `Mining activity measured since ${date}`,
       activityNext: "Mining activity is measured from the next ledger sync",
-      activityNone: "No mining ledger access: activity can't be measured",
+      /** `link` renders the link to the Mining access page. */
+      activityNone: (link: (text: string) => ReactNode) => (
+        <>Mining ledger is off, so activity can&apos;t be measured. Switch it on under {link("Mining access")}.</>
+      ),
       autoCount: "Count tagged purchases automatically",
       autoCountSales: "Count tagged sales automatically",
       enable: "Enable wallet import",

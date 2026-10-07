@@ -201,10 +201,13 @@ export function ScopesTopic({ data, headingId }: { data: HelpData; headingId: st
           ]}
         />
       </div>
-      <Section title={s.member.title}>
-        <p className="text-xs text-ink-3">{s.member.body}</p>
-        <ScopeList rows={member} />
-      </Section>
+      {/* Empty while every character scope is opt-in; the facts above say registering asks for nothing. */}
+      {member.length > 0 && (
+        <Section title={s.member.title}>
+          <p className="text-xs text-ink-3">{s.member.body}</p>
+          <ScopeList rows={member} />
+        </Section>
+      )}
       <Section title={s.optional.title}>
         <p className="text-xs text-ink-3">{s.optional.body}</p>
         <ul className="space-y-2">

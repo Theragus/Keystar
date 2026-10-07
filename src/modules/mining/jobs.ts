@@ -5,12 +5,14 @@ import {
   miningCharacterLedger,
   miningObserverLedger,
   miningObservers,
+  type Db,
 } from "@/core/db";
 import { ensureNames, ensureSystems, ensureTypes } from "@/core/eve/resolver";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
 import { addDays, isoDate } from "@/lib/dates";
 import { observationTime, planActivity } from "./activity";
 import { dedupeCharacterLedger, dedupeObserverLedger } from "./dedupe";
+import { MINING_LEDGER_SCOPE } from "./module";
 
 interface CharacterMiningEntry {
   date: string;
@@ -35,14 +37,26 @@ interface ObserverEntry {
 
 const CHUNK = 1000;
 
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/** Whether the character's token currently shares its mining ledger; `lock` share-locks the token row. */
+async function sharesLedger(db: Db | Tx, characterId: number, lock = false): Promise<boolean> {
+  const [token] = await db.execute<{ status: string; scopes: string[] }>(
+    sql`SELECT status, scopes FROM esi_tokens WHERE character_id = ${characterId}${lock ? sql` FOR SHARE` : sql``}`,
+  );
+  return token?.status === "active" && token.scopes.includes(MINING_LEDGER_SCOPE);
+}
+
 export const characterLedgerJob: JobDefinition = {
   key: "mining.character-ledger",
   label: (t) => t.mining.module.jobs.characterLedger,
   module: "mining",
   owner: "character",
-  requiredScopes: ["esi-industry.read_character_mining.v1"],
+  requiredScopes: [MINING_LEDGER_SCOPE],
   intervalSeconds: 900,
   async run({ esi, db, characterId }) {
+    // Switching the ledger off promises to stop reading at once; the planner only disables this schedule on its next pass.
+    if (!(await sharesLedger(db, characterId!))) return { summary: "Mining ledger is switched off" };
     const res = await esi.getAllPages<CharacterMiningEntry>(`/characters/${characterId}/mining`, {
       characterId: characterId!,
     });
@@ -62,8 +76,15 @@ export const characterLedgerJob: JobDefinition = {
     const observedAt = observationTime(res.lastModified, new Date());
     let windows = 0;
     let stale = false;
+    let switchedOff = false;
 
     await db.transaction(async (tx) => {
+      // Switching the ledger off, then deleting the stored entries, must stay that way: the share lock makes those
+      // actions wait for this write, or this write see the switched-off token. Taken first, before the coverage row.
+      if (!(await sharesLedger(tx, characterId!, true))) {
+        switchedOff = true;
+        return;
+      }
       // Growth is measured against the stored ledger, so read it before the upsert.
       const recentFrom = addDays(isoDate(observedAt), -2);
       const [coverage] = await tx
@@ -136,6 +157,7 @@ export const characterLedgerJob: JobDefinition = {
         });
     });
 
+    if (switchedOff) return { summary: "Mining ledger was switched off during the sync" };
     await ensureTypes(rows.map((r) => r.typeId));
     await ensureSystems(rows.map((r) => r.solarSystemId));
     return {

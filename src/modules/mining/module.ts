@@ -1,6 +1,10 @@
 import { Calculator, Gem, Pickaxe, ReceiptText, TableProperties } from "lucide-react";
 import type { KeystarModule } from "@/core/modules/types";
 
+/** The character's personal mining ledger: optional per character, switched on on the Mining access page. */
+export const MINING_LEDGER_SCOPE = "esi-industry.read_character_mining.v1";
+export const MINING_MANAGE_HREF = "/mining/settings";
+
 export const MINING_PERMISSIONS = {
   viewOwn: "mining.view.own",
   viewCorp: "mining.view.corp",
@@ -8,15 +12,23 @@ export const MINING_PERMISSIONS = {
   pnl: "mining.pnl",
 } as const;
 
+/**
+ * Mining: personal ledgers and the corporation's moon drills. The personal ledger is opt-in per character (nobody is
+ * asked for it at sign-up); corporation figures include the members who share it, plus moon-drill records.
+ */
 export const miningModule: KeystarModule = {
   id: "mining",
   name: "Mining",
   description: "Personal and moon-observer mining ledgers with volume, value and member breakdowns.",
   scopes: [
     {
-      scope: "esi-industry.read_character_mining.v1",
+      scope: MINING_LEDGER_SCOPE,
       level: "character",
+      optional: true,
+      manageHref: MINING_MANAGE_HREF,
+      managePermission: MINING_PERMISSIONS.viewOwn,
       reason: (t) => t.mining.module.scopes.characterMining,
+      label: (t) => t.mining.module.scopes.characterMiningLabel,
     },
     {
       scope: "esi-industry.read_corporation_mining.v1",

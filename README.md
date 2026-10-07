@@ -47,15 +47,18 @@ local, fleets and d-scans, a **3D universe map**, an **appraisal** tool for Jita
 
 - **EVE SSO login** (OAuth 2.0 + PKCE, JWT validated against CCP's keys), multiple characters per account,
   automatic handling of character transfers.
-- **ESI token management** — encrypted refresh tokens (AES-256-GCM), per-character scope status, re-authorisation,
-  token revocation on removal, and a shareable `/join` link that explains every requested scope to members.
+- **ESI token management** — registering asks for no ESI scope: every kind of character data (mining ledger, wallet,
+  skills, industry, mail, fleet) is opt-in per character and can be switched off again in Keystar. Encrypted refresh
+  tokens (AES-256-GCM), per-character scope status, re-authorisation, token revocation on removal, and a shareable
+  `/join` link that explains what members can share.
 - **Roles inside Keystar**: Admin › Director › Contributor › Viewer › Member › Guest. Directors approve guests and
   manage roles below their own; admins can tune the minimum role of every permission.
 - **Industry jobs**: every job of your own characters (manufacturing, ME/TE research, copying, invention,
   reactions) with a progress bar, time left and end time, filterable by running/finished, character, activity, system
   and station. Opt-in per character on the Industry access page; only you see your characters' jobs.
 - **Mining**
-  - Personal ledgers *and* corporation moon-observer ledgers, de-duplicated in a combined view
+  - Personal ledgers (opt-in per character, deletable once switched off) *and* corporation moon-observer ledgers,
+    de-duplicated in a combined view
   - Filters for date range, members, ore class, ore type, system and data source — all in the URL
   - Daily stacked chart (ISK / m³ / units), resource mix with moon rarity, top miners (grouped by main or per
     character), ore and system breakdowns, data-coverage panel

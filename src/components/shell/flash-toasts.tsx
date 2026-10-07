@@ -50,6 +50,8 @@ function flashToast(flash: Flash, m: Messages["characters"], labels: Record<stri
   switch (flash.kind) {
     case "linked":
       return { tone: "good", title: m.sso.linked(name), description: m.sso.linkedDetail };
+    case "alreadyLinked":
+      return { tone: "neutral", title: m.sso.alreadyLinked(name), description: m.sso.alreadyLinkedDetail };
     case "reauthorized":
       return { tone: "good", title: m.sso.reauthorized(name) };
     case "corpGranted":

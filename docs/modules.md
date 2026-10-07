@@ -64,25 +64,25 @@ reuses an existing tone or keeps the accent.
 
 Register it in `src/core/modules/registry.ts` (`MODULES`). That alone:
 
-- adds its scopes to the SSO requests (`character` scopes for every member, `corporation` scopes for the "link with
-  corporation access" flow) and to the scope checklists in the UI,
+- adds its scopes to the SSO requests (`corporation` scopes for the "link with corporation access" flow; `character`
+  scopes when a pilot switches them on for a character) and to the scope lists in the UI,
 - adds its permissions to the role system and the Settings → Permissions matrix,
 - adds its navigation (filtered by permission), its page help, and its pages and scopes to the help dialog's
   "Who sees what" and "Scopes" topics.
 
-Remember to enable new scopes on the EVE developer application, and tell members to re-authorise (My Characters
-shows "missing scopes" automatically).
+Remember to enable new scopes on the EVE developer application.
 
-Sensitive scopes, or scopes that only some users need, can be **optional**:
-`{ scope, level: "character", optional: true, manageHref: "/your-page", managePermission, label, reason }`. They are left out of the
-member and corporation scope sets and never reported as missing. Let users enable them per character on the
+Character scopes are always **optional** (registering and linking ask for none; `tests/optional-scopes.test.ts`
+fails otherwise):
+`{ scope, level: "character", optional: true, manageHref: "/your-page", managePermission, label, reason }`. They are
+left out of the corporation scope set and never reported as missing. Let users enable them per character on the
 `manageHref` page (My Characters links there) with `reauthorizeHref(grantedScopes, { add: [scope] })`. Switching one
 off happens in Keystar, without an EVE login: an `ActionForm` around `setOptionalScope(characterId, scope, false)`
 (`src/app/(app)/characters/actions.ts`). The same action with `true` switches it back on while the token still holds
 it (`esi_tokens.disabled_scopes`); see "Optional scopes" in `docs/architecture.md`. `label` names the access in
 toasts and notes ("Fleet access"); `managePermission` is the permission `setOptionalScope` requires (the one
 the `manageHref` page checks). Jobs that require the scope are only planned for characters that use it. See the
-wallet, mail and fleet modules for examples.
+mining (`/mining/settings`), industry, wallet, mail and fleet modules for examples.
 
 ## 2. Schema — `src/modules/<name>/schema.ts`
 

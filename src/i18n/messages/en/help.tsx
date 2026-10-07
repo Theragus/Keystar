@@ -49,7 +49,7 @@ export const help = {
       },
       grant: {
         title: "Grant read-only access",
-        body: "To show your data, a character grants ESI scopes: read-only permissions for one kind of data each, such as its mining ledger. Most are optional and per character.",
+        body: "To show your data, a character grants ESI scopes: read-only permissions for one kind of data each, such as its mining ledger. All of them are optional: you switch them on per character on the feature's page.",
       },
       sync: {
         title: "Keystar syncs in the background",
@@ -68,7 +68,7 @@ export const help = {
     intro:
       "An ESI scope is a read-only permission for one kind of data of one character, such as its mining ledger or skill queue. EVE lists the scopes on its login page before you agree.",
     facts: {
-      signIn: "Signing in asks for no scopes: it only proves who you are.",
+      signIn: "Signing in, registering and linking a character ask for no scopes: they only prove who you are.",
       readOnly: "Every scope Keystar asks for only reads. Keystar can't move items, ISK or ships, or do anything in game.",
       perCharacter:
         "Each character has its own token. EVE replaces a character's scopes each time it logs in, so Keystar asks again for the ones the character already granted.",
@@ -100,7 +100,7 @@ export const help = {
   data: {
     stored: {
       title: "What Keystar stores",
-      body: "Your characters' names and corporations, your Keystar role, and the data your characters' scopes return, such as mining ledgers or, if you switch them on, skill queues and mail.",
+      body: "Your characters' names and corporations, your Keystar role, and the data your characters return for the access you switch on, such as mining ledgers, skill queues or mail.",
     },
     security: {
       title: "How it is protected",
@@ -129,10 +129,10 @@ export const help = {
     },
     delete: {
       title: "Removing data",
-      body: "Removing a character on My Characters deletes its token, revokes it at CCP and deletes its wallet, mail and industry data; its mining history stays with the corporation. Skill, industry, mail and wallet data can also be deleted on their own pages. Keystar has no button to delete your account: ask a director or admin to disable it.",
+      body: "Removing a character on My Characters deletes its token, revokes it at CCP and deletes its wallet, mail and industry data; its mining history stays with the corporation unless you delete it first on Mining access. Mining, skill, industry, mail and wallet data can also be deleted on their own pages. Keystar has no button to delete your account: ask a director or admin to disable it.",
     },
     retention: (r: { appraisals: number; scans: number; pilots: number; killmails: number }) =>
-      `Deleted automatically: appraisals after ${n(r.appraisals)} days, Threat Intel scans after ${n(r.scans)} days, pilot profiles after ${n(r.pilots)} days and killmail summaries after ${n(r.killmails)} days. Mining ledgers and the corporation wallet archive are kept for good.`,
+      `Deleted automatically: appraisals after ${n(r.appraisals)} days, Threat Intel scans after ${n(r.scans)} days, pilot profiles after ${n(r.pilots)} days and killmail summaries after ${n(r.killmails)} days. Mining ledgers (until you delete your own) and the corporation wallet archive are kept for good.`,
     ai: "This server has a Claude API key, so Claude (by Anthropic) writes the weekly situation report and Threat Intel briefings. It gets facts Keystar worked out from public killmails and scans, such as pilot, corporation and ship names, systems and standings; never your tokens, mail, wallets or skills.",
   },
 

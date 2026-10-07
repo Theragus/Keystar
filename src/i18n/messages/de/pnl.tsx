@@ -133,7 +133,7 @@ export const pnl: typeof en = {
     empty: {
       title: "Für diesen Zeitraum gibt es nichts anzuzeigen",
       action: "GuV-Einstellungen",
-      body: "Einnahmen stammen aus den Mining-Ledgern deiner Charaktere (Sync alle 15 Minuten). Ausgaben stammen aus Wallet-Käufen, die du übernimmst, und aus manuellen Einträgen. Der Wallet-Import ist optional und bleibt aus, bis du ihn pro Charakter einschaltest.",
+      body: "Einnahmen stammen aus den Mining-Ledgern deiner Charaktere (Sync alle 15 Minuten, sobald du sie unter Mining-Zugriff einschaltest). Ausgaben stammen aus Wallet-Käufen, die du übernimmst, und aus manuellen Einträgen. Der Wallet-Import ist optional und bleibt aus, bis du ihn pro Charakter einschaltest.",
     },
     tiles: {
       net: (from: string, to: string) => `Gewinn · ${from} – ${to}`,
@@ -396,7 +396,10 @@ export const pnl: typeof en = {
       nothing: "Nichts importiert",
       activitySince: (date: string) => `Mining-Aktivität gemessen seit ${date}`,
       activityNext: "Die Mining-Aktivität wird ab dem nächsten Ledger-Sync gemessen",
-      activityNone: "Kein Zugriff aufs Mining-Ledger: Aktivität kann nicht gemessen werden",
+      /** `link` renders the link to the Mining access page. */
+      activityNone: (link: (text: string) => ReactNode) => (
+        <>Das Mining-Ledger ist aus, daher kann keine Aktivität gemessen werden. Schalte es unter {link("Mining-Zugriff")} ein.</>
+      ),
       autoCount: "Erkannte Käufe automatisch zählen",
       autoCountSales: "Erkannte Verkäufe automatisch zählen",
       enable: "Wallet-Import einschalten",

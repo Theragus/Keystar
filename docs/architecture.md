@@ -69,8 +69,13 @@ docker/                entrypoint, Caddyfile
 1. `/auth/login?intent=…` creates a PKCE pair and a random `state`, stores them in an encrypted, short-lived
    cookie and redirects to `login.eveonline.com/v2/oauth/authorize`.
    - `login` — identity only, no scopes
-   - `join` — sign in and grant member scopes in one go (the `/join` link)
-   - `link` / `link-corp` — add a character (member scopes / plus corporation scopes) to the signed-in account
+   - `join` — register from the `/join` link; like `login`, no scopes
+   - `link` / `link-corp` — add a character to the signed-in account (no scopes / the corporation scopes), plus any
+     opt-in scopes named in `with=`
+
+   Every character scope is opt-in (enforced by `tests/optional-scopes.test.ts`), so registering and linking only
+   prove who the pilot is; a character without a token is a normal state, not a problem (`esiHealth()` in
+   `src/core/modules/registry.ts` tells it apart from a revoked token).
 2. `/auth/callback` exchanges the code, validates the JWT (signature via CCP's JWKS, issuer, audience contains the
    client id **and** `"EVE Online"`, expiry) and calls `provisionFromSso()`.
 3. Provisioning creates or finds the user, links the character, stores the encrypted refresh token, applies the role
@@ -98,7 +103,10 @@ Switching an optional scope off happens in Keystar, because EVE can't remove a s
 `src/core/auth/scope-switch.ts` moves it from `esi_tokens.scopes` (what Keystar uses, and what every query and the
 job planner read) to `esi_tokens.disabled_scopes` (still in the token, unused). Token refreshes keep it off, and
 switching it back on needs no login while the token holds it. My Characters notes such scopes. Re-authorising
-requests only the scopes in use, so the new token drops them, and every SSO consent clears `disabled_scopes`.
+requests only the scopes in use, so the new token drops them, and every SSO consent clears `disabled_scopes`. A
+re-authorisation that requests no scope at all (the character's last opt-in access was switched off or dropped)
+deletes the character's token and revokes its refresh token with CCP; any other login without scopes (signing in,
+`/join`, a plain "Link a character" with a character already on the account) leaves an existing token alone.
 
 After an SSO round trip the callback confirms the outcome (character linked, re-authorised, access changed) or
 explains a failed link with a one-shot `ks_flash` cookie (`src/core/flash.ts`), which `FlashToasts` in the app
@@ -363,7 +371,13 @@ character (enabled from the mail page). The page only ever shows the signed-in a
   orders can't be fetched keeps its previous values and counts as failed in the job summary; the rest are still
   written. On a rate limit the run stops fetching, writes what it has and retries when the limit lifts.
 
-ESI keeps 30 days of ledger history; Keystar keeps everything it has synced.
+The personal ledger is opt-in per character (Mining → Access, `/mining/settings`): `mining.character-ledger` is only
+planned for tokens holding the scope, and re-checks it before calling ESI and again under a share lock on the token
+row before writing, so switching the ledger off stops reading at once. The history stays (also in corporation
+figures) until the pilot deletes it on the same page (`deleteMiningData`, only while the ledger is off): the
+character's ledger rows, its mining activity and the cached ESI copy go; moon-drill records stay with the corporation.
+
+ESI keeps 30 days of ledger history; Keystar keeps everything it has synced until a pilot deletes their own.
 
 ## Mining P&L
 
