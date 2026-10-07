@@ -34,6 +34,8 @@ Sharing skills now includes the implants of the active clone, so the remap optim
     a fresh start reads the last few hours back. The map's travel check reads the same data instead of asking
     zKillboard for every system on the route.
 
+  ([PR #188](https://github.com/Theragus/Keystar/pull/188))
+
 - **Help, welcome tour and What's new.** A new **Help** button next to Alerts in the top bar (or the `?` key on any
   page) explains Keystar in five topics:
   - **This page:** what the page you are on shows, where its data comes from, which role can open it, and whether
