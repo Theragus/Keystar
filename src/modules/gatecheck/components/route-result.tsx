@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeftRight, Ban, ExternalLink, Radio } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Ban, ChevronDown, ExternalLink, Radio } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/glass";
@@ -14,6 +14,7 @@ import { gatecheckHref } from "../params";
 import type { RiskLevel, SystemPrediction } from "../predict";
 import type { FeedSummary, GatecheckResult } from "../service";
 import type { KillTag } from "../tags";
+import { KillList } from "./kill-list";
 
 type T = Messages["gatecheck"];
 type Tone = "neutral" | "accent" | "gold" | "good" | "warning" | "critical";
@@ -36,10 +37,6 @@ const FEED_TONE: Record<FeedHealth, Tone> = {
   delayed: "warning",
   offline: "critical",
 };
-const KILLS_SHOWN = 5;
-
-const eveTime = (d: Date) => d.toISOString().slice(11, 16);
-
 /** A system is worth a closer look: kills at its route gates or a likely camp. */
 export function isHotspot(check: SystemCheck, prediction: SystemPrediction | undefined): boolean {
   return check.status === "camp" || check.status === "recent" || prediction?.level === "high" || prediction?.level === "severe";
@@ -112,48 +109,47 @@ function KillLine({ kill, ctx }: { kill: CheckedKill; ctx: Ctx }) {
   const topGroups = [...groups.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
   const place = kill.place === "elsewhere" ? t.place.elsewhere : t.place[kill.place](systemName(ctx, kill.gateDestinationId));
   return (
-    <li className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1.5 text-xs">
-      <span className="w-28 shrink-0 whitespace-nowrap text-ink-3 tabular-nums" title={f.dateTime(kill.time)}>
-        {f.relativeTime(kill.time, result.now)}
-      </span>
-      <TypeIcon id={kill.victimShipTypeId} size={20} className="rounded" />
-      <span className="font-medium text-ink">{ship}</span>
-      {victim && <span className="text-ink-2">({victim})</span>}
-      {kill.value > 0 && <span className="text-ink-3 tabular-nums">{f.isk(kill.value, { compact: true })}</span>}
-      <span className="text-ink-3">{place}</span>
-      {kill.distanceKm !== null && <span className="text-ink-3">· {t.kill.distance(f.number(kill.distanceKm, 0))}</span>}
-      {kill.npc ? (
-        <Badge>{kill.tags.includes("gank") ? t.kill.gankLoss : t.kill.npc}</Badge>
-      ) : (
-        <span className="inline-flex items-center gap-1 text-ink-3">
-          {t.kill.by} {t.kill.attackers(kill.attackerCount)}
-          {topHulls.map(([id, n]) => (
-            <span key={id} className="inline-flex items-center" title={names.types.get(id)?.name}>
-              <TypeIcon id={id} size={18} className="rounded" />
-              {n > 1 && <span className="text-2xs">×{n}</span>}
-            </span>
-          ))}
-          {topGroups.length > 0 && (
-            <span className="text-ink-2">· {topGroups.map(([id]) => names.entities.get(id) ?? `#${id}`).join(", ")}</span>
-          )}
-        </span>
-      )}
-      <TagBadges tags={kill.tags.filter((tag) => tag !== "gank" || !kill.npc)} t={t} />
+    <li>
       <a
         href={`https://zkillboard.com/kill/${kill.killmailId}/`}
         target="_blank"
         rel="noreferrer"
-        className="ml-auto inline-flex items-center gap-1 text-accent hover:underline"
-        aria-label={t.kill.onZkill}
         title={t.kill.onZkill}
+        className="group/kill -mx-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded px-1.5 py-1.5 text-xs transition-colors hover:bg-surface-contrast/6 focus-visible:outline-2 focus-visible:outline-accent"
       >
-        <ExternalLink className="size-3" aria-hidden />
+        <span className="w-28 shrink-0 whitespace-nowrap text-ink-3 tabular-nums" title={f.dateTime(kill.time)}>
+          {f.relativeTime(kill.time, result.now)}
+        </span>
+        <TypeIcon id={kill.victimShipTypeId} size={20} className="rounded" />
+        <span className="font-medium text-ink">{ship}</span>
+        {victim && <span className="text-ink-2">({victim})</span>}
+        {kill.value > 0 && <span className="text-ink-3 tabular-nums">{f.isk(kill.value, { compact: true })}</span>}
+        <span className="text-ink-3">{place}</span>
+        {kill.distanceKm !== null && <span className="text-ink-3">· {t.kill.distance(f.number(kill.distanceKm, 0))}</span>}
+        {kill.npc ? (
+          <Badge>{kill.tags.includes("gank") ? t.kill.gankLoss : t.kill.npc}</Badge>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-ink-3">
+            {t.kill.by} {t.kill.attackers(kill.attackerCount)}
+            {topHulls.map(([id, n]) => (
+              <span key={id} className="inline-flex items-center" title={names.types.get(id)?.name}>
+                <TypeIcon id={id} size={18} className="rounded" />
+                {n > 1 && <span className="text-2xs">×{n}</span>}
+              </span>
+            ))}
+            {topGroups.length > 0 && (
+              <span className="text-ink-2">· {topGroups.map(([id]) => names.entities.get(id) ?? `#${id}`).join(", ")}</span>
+            )}
+          </span>
+        )}
+        <TagBadges tags={kill.tags.filter((tag) => tag !== "gank" || !kill.npc)} t={t} />
+        <ExternalLink className="ml-auto size-3 text-ink-3 transition-colors group-hover/kill:text-accent" aria-hidden />
       </a>
     </li>
   );
 }
 
-function HourlyStrip({ hourly, etaHour, t }: { hourly: number[]; etaHour: number; t: T }) {
+function HourlyStrip({ hourly, nowHour, t }: { hourly: number[]; nowHour: number; t: T }) {
   const max = Math.max(1, ...hourly);
   return (
     <figure className="space-y-1">
@@ -162,7 +158,7 @@ function HourlyStrip({ hourly, etaHour, t }: { hourly: number[]; etaHour: number
           <div
             key={h}
             title={`${String(h).padStart(2, "0")}:00 · ${v}`}
-            className={cn("flex-1 rounded-sm", h === etaHour ? "bg-accent" : v ? "bg-ink-3/60" : "bg-surface-contrast/8")}
+            className={cn("flex-1 rounded-sm", h === nowHour ? "bg-accent" : v ? "bg-ink-3/60" : "bg-surface-contrast/8")}
             style={{ height: `${Math.max(8, (v / max) * 100)}%` }}
           />
         ))}
@@ -199,7 +195,7 @@ function PredictionDetails({ p, ctx }: { p: SystemPrediction; ctx: Ctx }) {
           {p.sightings.length > 0 && <li>{t.prediction.regulars(p.sightings.length)}</li>}
         </ul>
         <p className="text-ink-3">{confidence}</p>
-        {p.historyDays > 0 && p.campDays > 0 && <HourlyStrip hourly={p.hourly} etaHour={p.eta.getUTCHours()} t={t} />}
+        {p.historyDays > 0 && p.campDays > 0 && <HourlyStrip hourly={p.hourly} nowHour={result.now.getUTCHours()} t={t} />}
         {Object.keys(p.tagCounts).length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-ink-3">{t.prediction.tagHistory}:</span>
@@ -237,7 +233,7 @@ function PredictionDetails({ p, ctx }: { p: SystemPrediction; ctx: Ctx }) {
                       {t.prediction.regularHours(r.hours.map((h) => `${String(h).padStart(2, "0")}:00`).join(", "))} ·{" "}
                       {t.prediction.lastSeen(f.relativeTime(r.lastSeen, result.now))}
                     </span>
-                    {r.nearEta && <Badge tone="warning">{t.prediction.nearEta}</Badge>}
+                    {r.nearNow && <Badge tone="warning">{t.prediction.nearNow}</Badge>}
                     {seen && (
                       <Badge tone="critical">
                         {t.prediction.sighting(systemName(ctx, seen.systemId), seen.jumps, f.relativeTime(seen.time, result.now))}
@@ -268,20 +264,23 @@ function SystemRow({ check, prediction, ctx }: { check: SystemCheck; prediction:
   const region = result.regions.get(check.systemId);
   const endpoint = check.index === 0 || check.index === result.check.systems.length - 1;
   const hot = isHotspot(check, prediction);
-  const shown = check.routeKills.slice(0, KILLS_SHOWN);
+  const counted = check.routeKills.filter((k) => !k.minor);
+  const minor = check.routeKills.length - counted.length;
   const elsewhere = check.otherKills.filter((k) => !k.npc).length;
   const avoidList = [query.avoid, name].filter(Boolean).join(", ");
   const interesting =
     check.routeKills.length > 0 ||
     (prediction && (prediction.level !== "low" || prediction.regulars.length > 0 || prediction.campDays > 0));
-  return (
-    <li
-      id={`sys-${check.systemId}`}
-      className={cn(
-        "scroll-mt-20 rounded-lg px-3 py-2",
-        check.status === "camp" ? "bg-critical/8 ring-1 ring-critical/30" : hot ? "bg-warning/6" : "bg-surface-contrast/3",
-      )}
-    >
+  const counts = [
+    counted.length > 0 ? t.kill.atGates(counted.length) : null,
+    minor > 0 ? t.kill.minorKills(minor) : null,
+    elsewhere > 0 ? t.kill.otherKills(elsewhere) : null,
+    check.npcKills > 0 ? t.kill.npcKills(check.npcKills) : null,
+  ].filter((c): c is string => c !== null);
+  const collapsible = counts.length > 0 || Boolean(prediction && interesting);
+
+  const header = (
+    <>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="w-6 text-right text-xs text-ink-3 tabular-nums">{check.index}</span>
         <Link href={mapSystemHref(check.systemId)} className="font-medium text-ink hover:text-accent">
@@ -289,11 +288,7 @@ function SystemRow({ check, prediction, ctx }: { check: SystemCheck; prediction:
         </Link>
         <SecurityStatus value={check.security} />
         {region && <span className="text-xs text-ink-3">{region}</span>}
-        {prediction && (
-          <span className="text-xs text-ink-3 tabular-nums" title={f.dateTime(prediction.eta)}>
-            {eveTime(prediction.eta)} {t.summary.eta}
-          </span>
-        )}
+        {collapsible && counts.length > 0 && <span className="text-xs text-ink-3 group-open/sys:hidden">{counts.join(" · ")}</span>}
         <span className="ml-auto flex flex-wrap items-center gap-1.5">
           <span title={check.status === "recent" ? t.statusHint.recent(result.check.windowHours) : t.statusHint[check.status]}>
             <Badge tone={STATUS_TONE[check.status]}>
@@ -320,6 +315,11 @@ function SystemRow({ check, prediction, ctx }: { check: SystemCheck; prediction:
               {t.summary.avoid}
             </Link>
           )}
+          {collapsible ? (
+            <ChevronDown className="size-4 text-ink-3 transition-transform group-open/sys:rotate-180" aria-hidden />
+          ) : (
+            <span className="size-4" aria-hidden />
+          )}
         </span>
       </div>
       {check.routeTags.length > 0 && (
@@ -327,33 +327,51 @@ function SystemRow({ check, prediction, ctx }: { check: SystemCheck; prediction:
           <TagBadges tags={check.routeTags} t={t} />
         </div>
       )}
-      {shown.length > 0 && (
-        <ul className="mt-1 divide-y divide-surface-contrast/6 pl-9">
-          {shown.map((k) => (
-            <KillLine key={k.killmailId} kill={k} ctx={ctx} />
-          ))}
-          {check.routeKills.length > shown.length && (
-            <li className="py-1 text-xs text-ink-3">{t.kill.more(check.routeKills.length - shown.length)}</li>
-          )}
-        </ul>
+    </>
+  );
+
+  return (
+    <li
+      id={`sys-${check.systemId}`}
+      className={cn(
+        "scroll-mt-20 rounded-lg px-3 py-2",
+        check.status === "camp" ? "bg-critical/8 ring-1 ring-critical/30" : hot ? "bg-warning/6" : "bg-surface-contrast/3",
       )}
-      {(elsewhere > 0 || check.npcKills > 0) && (
-        <p className="mt-1 pl-9 text-xs text-ink-3">
-          {[elsewhere > 0 ? t.kill.otherKills(elsewhere) : null, check.npcKills > 0 ? t.kill.npcKills(check.npcKills) : null]
-            .filter(Boolean)
-            .join(" · ")}
-          {check.systemTags.some((tag) => !check.routeTags.includes(tag)) && (
-            <span className="ml-2">
-              <TagBadges tags={check.systemTags.filter((tag) => !check.routeTags.includes(tag))} t={t} />
-            </span>
+    >
+      {collapsible ? (
+        <details className="group/sys" open={hot}>
+          <summary
+            className="cursor-pointer list-none rounded focus-visible:outline-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
+          >
+            {header}
+          </summary>
+          {counted.length > 0 && (
+            <div className="pl-9">
+              <KillList items={counted.map((k) => <KillLine key={k.killmailId} kill={k} ctx={ctx} />)} />
+            </div>
           )}
-        </p>
-      )}
-      {prediction && interesting && (
-        <details className="mt-1 pl-9" open={hot}>
-          <summary className="cursor-pointer text-xs text-ink-2 hover:text-ink">{t.prediction.title}</summary>
-          <PredictionDetails p={prediction} ctx={ctx} />
+          {minor > 0 && <p className="mt-1 pl-9 text-xs text-ink-3">{t.kill.minorKills(minor)}</p>}
+          {(elsewhere > 0 || check.npcKills > 0) && (
+            <p className="mt-1 pl-9 text-xs text-ink-3">
+              {[elsewhere > 0 ? t.kill.otherKills(elsewhere) : null, check.npcKills > 0 ? t.kill.npcKills(check.npcKills) : null]
+                .filter(Boolean)
+                .join(" · ")}
+              {check.systemTags.some((tag) => !check.routeTags.includes(tag)) && (
+                <span className="ml-2">
+                  <TagBadges tags={check.systemTags.filter((tag) => !check.routeTags.includes(tag))} t={t} />
+                </span>
+              )}
+            </p>
+          )}
+          {prediction && interesting && (
+            <details className="mt-1 pl-9" open={hot}>
+              <summary className="cursor-pointer text-xs text-ink-2 hover:text-ink">{t.prediction.title}</summary>
+              <PredictionDetails p={prediction} ctx={ctx} />
+            </details>
+          )}
         </details>
+      ) : (
+        header
       )}
     </li>
   );
@@ -363,7 +381,6 @@ export function RouteSummary({ result, query, t, f }: Ctx) {
   const ctx: Ctx = { result, query, t, f };
   const route = result.route ?? [];
   const hotspots = result.check.systems.filter((s) => isHotspot(s, result.predictions[s.index]));
-  const arrival = result.etas[result.etas.length - 1];
   return (
     <Panel
       title={t.summary.route}
@@ -380,7 +397,6 @@ export function RouteSummary({ result, query, t, f }: Ctx) {
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm">
         <span className="text-2xl font-semibold text-ink">{t.summary.jumps(route.length - 1)}</span>
         <span className="text-ink-2">{t.summary.mix(result.mix.high, result.mix.low, result.mix.null)}</span>
-        <span className="text-ink-2">{arrival && `${t.summary.arrival} ${eveTime(arrival)} ${t.summary.eta}`}</span>
         {result.resolved.avoid.length > 0 && (
           <span className="text-ink-3">{t.summary.avoiding(result.resolved.avoid.map((s) => s.name))}</span>
         )}

@@ -9,7 +9,7 @@ export const gatecheck = {
   module: {
     navItem: "Gate check",
     permissionGroup: "Gate check",
-    help: "Plan a stargate route (shortest, safer or less secure) and see kills at the gates along it, live from zKillboard's feed: camps, smartbombs, interdictors and gankers, gate by gate. Estimates how likely a camp is when you get to each gate, from the kills at those gates over the last weeks and the regular campers who are about right now.",
+    help: "Plan a stargate route (shortest, safer or less secure) and see kills at the gates along it, live from zKillboard's feed: camps, smartbombs, interdictors and gankers, gate by gate. Estimates how likely a camp is at each gate right now, from the kills at those gates over the last weeks and the regular campers who are about right now.",
     permissions: {
       use: {
         label: "Use the gate check",
@@ -20,7 +20,7 @@ export const gatecheck = {
   },
   page: {
     title: "Gate check",
-    description: "Kills at the gates along a route, live, and how likely a camp is when you get there.",
+    description: "Kills at the gates along a route, live, and how likely a camp is at each gate.",
   },
   form: {
     from: "From",
@@ -65,7 +65,6 @@ export const gatecheck = {
   summary: {
     jumps: (value: number) => count(value, "jump", "jumps"),
     mix: (high: number, low: number, nul: number) => `${n(high)} high · ${n(low)} low · ${n(nul)} null`,
-    arrival: "Arrival ≈",
     hotspots: "Watch out",
     noHotspots:
       "No kills at the route's gates in the last two hours and no likely camps. Stay alert anyway: camps that kill nothing leave no trace.",
@@ -73,7 +72,6 @@ export const gatecheck = {
     avoid: "Avoid",
     avoidTitle: (system: string) => `Plan the route around ${system}`,
     avoiding: (names: string[]) => `Avoiding ${list(names)}`,
-    eta: "ET",
   },
   status: {
     camp: "Camp",
@@ -85,7 +83,8 @@ export const gatecheck = {
   statusHint: {
     camp: "A player kill at a gate you use in the last 30 minutes, or three within the hour.",
     recent: (hours: number) => `Player kills at a gate you use in the last ${count(hours, "hour", "hours")}.`,
-    activity: "Player kills elsewhere in the system: at other gates or away from the gates.",
+    activity:
+      "Player kills elsewhere in the system (at other gates or away from the gates), or mobile depots and structures shot at a gate you use.",
     quiet: "No kills in the last two hours.",
     unknown: "No kills found, but the feed is behind, so that means little.",
   },
@@ -118,7 +117,11 @@ export const gatecheck = {
     npc: "NPCs only",
     gankLoss: "Ganker CONCORDed",
     by: "by",
-    more: (value: number) => `and ${count(value, "more kill", "more kills")}`,
+    atGates: (value: number) => count(value, "kill at the gates", "kills at the gates"),
+    minorKills: (value: number) =>
+      `${count(value, "deployable or structure", "deployables or structures")} shot at these gates (not counted as a camp)`,
+    showMore: (next: number, left: number) => `Show ${n(next)} more (${n(left)} left)`,
+    showFewer: "Show fewer",
     otherKills: (value: number) => count(value, "kill elsewhere in the system", "kills elsewhere in the system"),
     npcKills: (value: number) => count(value, "kill by NPCs", "kills by NPCs"),
   },
@@ -142,11 +145,11 @@ export const gatecheck = {
     live: (ago: string) => `Last kill at a route gate ${ago}`,
     regulars: (value: number) => `${count(value, "regular camper", "regular campers")} seen nearby in the last two hours`,
     quietHistory: "No kills at these gates in the history.",
-    hourly: "Kills at these gates by hour (EVE time); the marked hour is when you arrive.",
+    hourly: "Kills at these gates by hour (EVE time); the marked hour is now.",
     regularsTitle: "Regulars at these gates",
     regular: (days: number, kills: number) => `${count(days, "day", "days")}, ${count(kills, "kill", "kills")}`,
     regularHours: (hours: string) => `mostly ${hours}`,
-    nearEta: "Active around your arrival time",
+    nearNow: "Usually active at this time of day",
     lastSeen: (ago: string) => `last there ${ago}`,
     sighting: (system: string, jumps: number, ago: string) =>
       jumps === 0 ? `killed in ${system} ${ago}` : `killed in ${system} (${count(jumps, "jump", "jumps")} away) ${ago}`,
