@@ -9,7 +9,7 @@ import { ShipRender, TypeIcon } from "@/components/ui/eve-image";
 import { Glass } from "@/components/ui/glass";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
-import { bayItems, overflowItems, STATES } from "../engine/fit-state";
+import { bayItems, overflowItems } from "../engine/fit-state";
 import type { FitStats } from "../engine/stats";
 import type { ViolationText } from "../engine/violations";
 import { compatibleCharges, takesCharges, type ModuleSlot } from "../sde/catalog";
@@ -36,9 +36,6 @@ export interface ShipPanelProps {
   onName: (name: string) => void;
   onRemove: (index: number) => void;
   onCycleState: (index: number) => void;
-  onSetState: (index: number, state: State) => void;
-  /** Double-click on the wheel: active ↔ online. */
-  onToggleActive: (index: number) => void;
   onCharge: (index: number, chargeTypeId: number | null) => void;
   onQuantity: (index: number, quantity: number) => void;
   /** A type dropped on a module slot (or a charge dropped on a fitted module). */
@@ -190,7 +187,7 @@ export function ShipPanel(p: ShipPanelProps) {
           problems={problemsByItem}
           selection={p.selection}
           onSelect={p.onSelect}
-          onToggleActive={p.onToggleActive}
+          onCycleState={p.onCycleState}
           onDrop={p.onDrop}
         />
         <Rack title={e.selected}>
@@ -213,16 +210,7 @@ export function ShipPanel(p: ShipPanelProps) {
               {p.selection?.kind === "slot" ? e.emptySlotHint(e.slot[p.selection.slot], p.selection.index + 1) : e.selectHint}
             </li>
           )}
-          {selectedIndex !== null && (
-            <li className="flex flex-wrap items-center gap-2 px-2 pt-1">
-              <StateControl
-                state={calc?.items[selectedIndex]?.state ?? fit.items[selectedIndex].state}
-                max={calc?.items[selectedIndex]?.max_state ?? "active"}
-                onChange={(state) => p.onSetState(selectedIndex, state)}
-              />
-              <span className="text-2xs text-ink-3">{e.stateHint}</span>
-            </li>
-          )}
+          <li className="px-2 pt-1 text-2xs text-ink-3">{e.stateHint}</li>
         </Rack>
         {overflow.length > 0 && (
           <Rack title={e.overflow}>
@@ -301,41 +289,6 @@ function groupViolations(violations: ViolationText[]): { text: string; icon: Fit
     else out.set(v.text, { text: v.text, icon: violationIcon(v), count: 1 });
   }
   return [...out.values()];
-}
-
-const STATE_ICON: Partial<Record<State, FitIconName>> = { offline: "statePassive", active: "stateActive", overload: "stateOverheated" };
-
-/** The four module states as buttons, those beyond what the module allows disabled. */
-function StateControl({ state, max, onChange }: { state: State; max: State; onChange: (state: State) => void }) {
-  const { t } = useI18n();
-  const e = t.fitting.editor;
-  const allowed = STATES.indexOf(max);
-  return (
-    <div role="radiogroup" aria-label={e.state} className="glass-inset inline-flex items-center gap-0.5 rounded-lg p-0.5">
-      {STATES.map((s, i) => {
-        const disabled = i > allowed;
-        const icon = STATE_ICON[s];
-        return (
-          <button
-            key={s}
-            type="button"
-            role="radio"
-            aria-checked={s === state}
-            disabled={disabled}
-            title={disabled ? e.stateUnavailable(e.states[s]) : e.states[s]}
-            onClick={() => s !== state && onChange(s)}
-            className={cn(
-              "flex items-center gap-1 rounded-md px-2 py-1 text-2xs font-medium transition disabled:opacity-35",
-              s === state ? "glass-chip text-ink" : "text-ink-3 hover:text-ink",
-            )}
-          >
-            {icon ? <FitIcon name={icon} size={14} /> : <span className={cn("size-2 rounded-full", STATE_DOT[s])} />}
-            {e.states[s]}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 function Rack({ title, children }: { title: string; children: ReactNode }) {

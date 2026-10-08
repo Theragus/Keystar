@@ -7,7 +7,7 @@ import { useI18n } from "@/i18n/client";
 import { loadCharacterSkills } from "@/app/(app)/fitting/actions";
 import { readDraft, writeDraft, type SkillSource } from "../engine/draft";
 import type { FittingRuntime } from "../engine/engine";
-import { bayFor, emptyFit, fitReducer, freeSlotIndex, nextState, STATES, type FitAction } from "../engine/fit-state";
+import { bayFor, emptyFit, fitReducer, freeSlotIndex, nextState, type FitAction } from "../engine/fit-state";
 import { exportEft, extractLinkPayload, importFit, shareUrl } from "../engine/formats";
 import { fitStats } from "../engine/stats";
 import { describeViolations } from "../engine/violations";
@@ -263,15 +263,6 @@ export function Editor({ runtime, characters, esiFittings }: EditorProps) {
               if (!item) return;
               const max = calc?.items[index]?.max_state ?? "active";
               dispatch({ type: "setState", index, state: nextState(calc?.items[index]?.state ?? item.state, max) });
-            }}
-            onSetState={(index, state) => dispatch({ type: "setState", index, state })}
-            onToggleActive={(index) => {
-              const item = fit?.items[index];
-              if (!item) return;
-              const current = calc?.items[index]?.state ?? item.state;
-              const max = calc?.items[index]?.max_state ?? "active";
-              const next = current === "active" ? "online" : "active";
-              if (STATES.indexOf(next) <= STATES.indexOf(max)) dispatch({ type: "setState", index, state: next });
             }}
             onCharge={(index, chargeTypeId) => dispatch({ type: "setCharge", index, chargeTypeId })}
             onQuantity={(index, quantity) => dispatch({ type: "setQuantity", index, quantity })}

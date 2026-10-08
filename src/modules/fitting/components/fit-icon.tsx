@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import type { FitIconName } from "../icons";
 
@@ -14,7 +14,7 @@ export const FitIconsContext = createContext<Readonly<Record<string, string>>>({
  * One of the game's symbols (`src/modules/fitting/icons.ts`). Renders nothing when the build has no file for
  * it, so a missing icon costs a symbol, never a broken image.
  */
-export function FitIcon({ name, size = 16, className, title }: { name: FitIconName; size?: number; className?: string; title?: string }) {
+export function FitIcon({ name, size = 16, className, title, style }: { name: FitIconName; size?: number; className?: string; title?: string; style?: CSSProperties }) {
   const src = useContext(FitIconsContext)[name];
   if (!src) return null;
   return (
@@ -26,7 +26,7 @@ export function FitIcon({ name, size = 16, className, title }: { name: FitIconNa
       height={size}
       loading="lazy"
       className={cn("inline-block shrink-0 select-none", className)}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, ...style }}
     />
   );
 }

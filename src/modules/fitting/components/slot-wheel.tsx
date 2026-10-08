@@ -2,7 +2,8 @@
 
 import type { Calculation, Fit, FitItem, State } from "@eveshipfit/dogma-engine";
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { ShipRender, TypeIcon } from "@/components/ui/eve-image";
+import { TypeIcon } from "@/components/ui/eve-image";
+import { typeRender } from "@/core/eve/images";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { rackItems } from "../engine/fit-state";
@@ -45,8 +46,12 @@ const GLYPH: Record<ModuleSlot, FitIconName> = {
   service: "slotService",
 };
 
-/** The in-game gauge colours: CPU teal, powergrid red. */
-const GAUGE = { cpu: "#3fb8c6", power: "#d9534f", over: "#ff5a5a", track: "rgba(255,255,255,0.08)" };
+/** The in-game gauge colours: CPU blue, powergrid red. */
+const GAUGE = { cpu: "#4a90e2", power: "#d9534f", over: "#ff5a5a", track: "rgba(255,255,255,0.08)" };
+const GAUGE_FROM = 18;
+const GAUGE_TO = 72;
+const GAUGE_MID = (GAUGE_FROM + GAUGE_TO) / 2;
+const HULL_RADIUS = RING - TILE / 2 - 4;
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 const point = (radius: number, deg: number) => ({ x: C + radius * Math.cos(rad(deg)), y: C + radius * Math.sin(rad(deg)) });
@@ -58,32 +63,46 @@ function arcPath(radius: number, from: number, to: number): string {
   return `M ${a.x.toFixed(2)} ${a.y.toFixed(2)} A ${radius} ${radius} 0 ${large} 1 ${b.x.toFixed(2)} ${b.y.toFixed(2)}`;
 }
 
-/** A resource as an arc between two angles: a faint track and the used share, red when over. */
-function Gauge({ radius, from, to, value, color }: { radius: number; from: number; to: number; value: Resource; color: string }) {
-  const over = value.used > value.total + 1e-6;
-  const share = value.total > 0 ? Math.min(1, value.used / value.total) : value.used > 0 ? 1 : 0;
+/**
+ * CPU and powergrid on one arc, as in the game: both start from the middle, CPU grows counter-clockwise towards the
+ * medium slots, powergrid clockwise towards the low slots; each half fills with the share of used to total and
+ * turns red when over.
+ */
+function Gauge({ radius, cpu, power }: { radius: number; cpu: Resource; power: Resource }) {
+  const share = (v: Resource) => (v.total > 0 ? Math.min(1, v.used / v.total) : v.used > 0 ? 1 : 0);
+  const half = (GAUGE_TO - GAUGE_FROM) / 2;
+  const cpuShare = share(cpu);
+  const powerShare = share(power);
   return (
     <>
-      <path d={arcPath(radius, from, to)} stroke={GAUGE.track} strokeWidth={5} fill="none" strokeLinecap="round" />
-      {share > 0 && (
-        <path
-          d={arcPath(radius, from, from + (to - from) * share)}
-          stroke={over ? GAUGE.over : color}
-          strokeWidth={5}
-          fill="none"
-          strokeLinecap="round"
-        />
+      <path d={arcPath(radius, GAUGE_FROM, GAUGE_TO)} stroke={GAUGE.track} strokeWidth={6} fill="none" />
+      {cpuShare > 0 && (
+        <path d={arcPath(radius, GAUGE_MID - half * cpuShare, GAUGE_MID)} stroke={cpu.used > cpu.total + 1e-6 ? GAUGE.over : GAUGE.cpu} strokeWidth={6} fill="none" />
       )}
+      {powerShare > 0 && (
+        <path d={arcPath(radius, GAUGE_MID, GAUGE_MID + half * powerShare)} stroke={power.used > power.total + 1e-6 ? GAUGE.over : GAUGE.power} strokeWidth={6} fill="none" />
+      )}
+      {(() => {
+        const a = point(radius - 6, GAUGE_MID);
+        const b = point(radius + 6, GAUGE_MID);
+        return <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="rgba(255,255,255,0.5)" />;
+      })()}
     </>
   );
 }
 
-/** Hardpoints as dots: filled for a weapon fitted, hollow for a free one. */
-function Hardpoints({ icon, value, title, className }: { icon: FitIconName; value: Resource; title: string; className?: string }) {
+/** Hardpoints on the ring, leaning into it like a tile: the icon, then a dot per hardpoint (filled = fitted). */
+function Hardpoints({ icon, value, title, angle }: { icon: FitIconName; value: Resource; title: string; angle: number }) {
   if (value.total <= 0) return null;
+  const { x, y } = point(RING + 2, angle);
+  const width = 24 + value.total * 12;
   return (
-    <div className={cn("absolute flex items-center gap-1.5", className)} title={title}>
-      <FitIcon name={icon} size={18} />
+    <div
+      className="absolute flex items-center gap-1.5"
+      style={{ left: x - width / 2, top: y - 10, width, height: 20, transform: `rotate(${angle + 90}deg)` }}
+      title={title}
+    >
+      <FitIcon name={icon} size={18} className="shrink-0" style={{ transform: `rotate(${-(angle + 90)}deg)` }} />
       <div className="flex gap-1">
         {Array.from({ length: value.total }, (_, i) => (
           <span key={i} className={cn("size-2 rounded-full ring-1 ring-ink-2/70", i < value.used ? "bg-ink" : "bg-transparent")} />
@@ -116,8 +135,8 @@ export interface SlotWheelProps {
   problems: Map<number, string[]>;
   selection: Selection;
   onSelect: (selection: Selection) => void;
-  /** Double-click on a fitted module: active ↔ online, as the in-game click does. */
-  onToggleActive: (index: number) => void;
+  /** A click on a fitted module: the next state, as the in-game click does. */
+  onCycleState: (index: number) => void;
   onDrop: (typeId: number, target: { slot: ModuleSlot; index: number } | { item: number }) => void;
 }
 
@@ -161,23 +180,18 @@ function Wheel(p: SlotWheelProps) {
     <div className="relative select-none" style={{ width: SIZE, height: SIZE }} role="group" aria-label={e.wheel}>
       <svg className="absolute inset-0" width={SIZE} height={SIZE} aria-hidden>
         <circle cx={C} cy={C} r={RING + TILE / 2 + 6} fill="none" stroke="rgba(255,255,255,0.07)" />
-        <circle cx={C} cy={C} r={RING - TILE / 2 - 6} fill="none" stroke="rgba(255,255,255,0.05)" />
-        <circle cx={C} cy={C} r={126} fill="rgba(8,9,12,0.55)" stroke="rgba(255,255,255,0.1)" />
         {ticks.map((deg) => {
           const a = point(RING + TILE / 2 + 2, deg);
           const b = point(RING + TILE / 2 + 9, deg);
           return <line key={deg} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="rgba(255,255,255,0.22)" />;
         })}
-        {stats && (
-          <>
-            <Gauge radius={RING + TILE / 2 + 15} from={22} to={68} value={stats.resources.cpu} color={GAUGE.cpu} />
-            <Gauge radius={RING + TILE / 2 + 24} from={22} to={68} value={stats.resources.power} color={GAUGE.power} />
-          </>
-        )}
+        {stats && <Gauge radius={RING + TILE / 2 + 16} cpu={stats.resources.cpu} power={stats.resources.power} />}
       </svg>
 
-      <div className="absolute grid place-items-center overflow-hidden rounded-full" style={{ inset: C - 120 }}>
-        <ShipRender id={p.fit.ship.type_id} size={240} className="rounded-full" />
+      {/* The hull fills the inside of the ring; the square render is cropped to the circle. */}
+      <div className="absolute overflow-hidden rounded-full bg-space-900" style={{ inset: C - HULL_RADIUS }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={typeRender(p.fit.ship.type_id, 512)} alt="" className="size-full object-cover" draggable={false} />
       </div>
 
       {MODULE_SLOTS.filter((slot) => p.slotCounts[slot] > 0).map((slot) =>
@@ -192,7 +206,8 @@ function Wheel(p: SlotWheelProps) {
               slot={slot}
               index={index}
               size={arc.size}
-              style={{ left: x - arc.size / 2, top: y - arc.size / 2, transform: `rotate(${angle + 90}deg)` }}
+              angle={angle + 90}
+              style={{ left: x - arc.size / 2, top: y - arc.size / 2 }}
               entry={entry}
               state={entry ? (p.calc?.items[entry.index]?.state ?? entry.item.state) : null}
               problems={entry ? p.problems.get(entry.index) : undefined}
@@ -202,7 +217,7 @@ function Wheel(p: SlotWheelProps) {
                   : p.selection?.kind === "slot" && p.selection.slot === slot && p.selection.index === index
               }
               onSelect={() => p.onSelect(entry ? { kind: "item", index: entry.index } : { kind: "slot", slot, index })}
-              onToggle={() => entry && p.onToggleActive(entry.index)}
+              onCycle={() => entry && p.onCycleState(entry.index)}
               onDropType={(typeId) => p.onDrop(typeId, entry ? { item: entry.index } : { slot, index })}
             />
           );
@@ -215,13 +230,13 @@ function Wheel(p: SlotWheelProps) {
             icon="turrets"
             value={stats.resources.turrets}
             title={`${r.turrets}: ${r.hardpoints(stats.resources.turrets.total - stats.resources.turrets.used, stats.resources.turrets.total)}`}
-            className="top-[76px] left-[52px]"
+            angle={-143}
           />
           <Hardpoints
             icon="launchers"
             value={stats.resources.launchers}
             title={`${r.launchers}: ${r.hardpoints(stats.resources.launchers.total - stats.resources.launchers.used, stats.resources.launchers.total)}`}
-            className="top-[76px] right-[52px] flex-row-reverse"
+            angle={-37}
           />
           <Readout icon="cargo" value={stats.resources.cargo} unit={s.stats.units.m3} title={r.cargo} over={stats.resources.cargo.used > stats.resources.cargo.total} f={n1} className="bottom-[44px] left-0" />
           {stats.resources.droneBay.total > 0 && (
@@ -246,8 +261,9 @@ function Wheel(p: SlotWheelProps) {
   );
 }
 
+/** The state is the only thing a module's frame colour shows: offline dim, online plain, active green, overheated red. */
 const STATE_TILE: Record<State, string> = {
-  offline: "opacity-50",
+  offline: "opacity-50 saturate-50",
   online: "",
   active: "shadow-[0_0_10px_2px_rgba(60,207,60,0.55)] border-good-text/70",
   overload: "shadow-[0_0_10px_2px_rgba(240,122,122,0.6)] border-critical-text/80",
@@ -258,31 +274,35 @@ function Tile({
   slot,
   index,
   size,
+  angle,
   style,
   entry,
   state,
   problems,
   selected,
   onSelect,
-  onToggle,
+  onCycle,
   onDropType,
 }: {
   sde: Sde;
   slot: ModuleSlot;
   index: number;
   size: number;
+  /** The frame's rotation, so the tile leans into the ring. */
+  angle: number;
   style: CSSProperties;
   entry: { item: FitItem; index: number } | null;
   state: State | null;
   problems: string[] | undefined;
   selected: boolean;
   onSelect: () => void;
-  onToggle: () => void;
+  onCycle: () => void;
   onDropType: (typeId: number) => void;
 }) {
   const { t } = useI18n();
   const e = t.fitting.editor;
   const { over, handlers } = useDropTarget(onDropType);
+  const upright: CSSProperties = { transform: `rotate(${-angle}deg)` };
   const name = entry ? (sde.types.get(entry.item.type_id)?.name ?? String(entry.item.type_id)) : null;
   const charge = entry?.item.charge ? sde.types.get(entry.item.charge.type_id)?.name : null;
   const title = entry
@@ -292,8 +312,10 @@ function Tile({
   return (
     <button
       type="button"
-      onClick={onSelect}
-      onDoubleClick={onToggle}
+      onClick={() => {
+        onSelect();
+        if (entry) onCycle();
+      }}
       {...handlers}
       title={title}
       aria-label={entry ? `${e.slot[slot]} ${index + 1}: ${name}` : `${e.slot[slot]} ${index + 1}: ${e.emptySlot}`}
@@ -301,24 +323,31 @@ function Tile({
         "absolute grid place-items-center rounded-[3px] border border-surface-contrast/25 bg-black/40 transition",
         entry && state && STATE_TILE[state],
         !entry && "hover:border-surface-contrast/50",
-        problems && "border-critical ring-1 ring-critical/70",
         over && "scale-110 border-accent bg-accent/15",
         selected && "outline-2 outline-offset-1 outline-accent",
       )}
-      style={{ ...style, width: size, height: size }}
+      style={{ ...style, width: size, height: size, transform: `rotate(${angle}deg)` }}
     >
-      {entry ? (
-        <>
-          <TypeIcon id={entry.item.type_id} size={iconSize} className="rounded-[2px] bg-transparent" />
-          {entry.item.charge && (
-            <span className="absolute -right-1 -bottom-1 rounded-sm bg-space-900 ring-1 ring-surface-contrast/25">
-              <TypeIcon id={entry.item.charge.type_id} size={14} className="rounded-sm" />
-            </span>
-          )}
-        </>
-      ) : (
-        <FitIcon name={GLYPH[slot]} size={Math.round(size * 0.55)} className="opacity-45" />
-      )}
+      {/* Only the frame follows the ring; what is in it stays upright so it is recognisable in every slot. */}
+      <span className="relative grid place-items-center" style={{ ...upright, width: size, height: size }}>
+        {entry ? (
+          <>
+            <TypeIcon id={entry.item.type_id} size={iconSize} className="rounded-[2px] bg-transparent" />
+            {entry.item.charge && (
+              <span className="absolute right-0 bottom-0 rounded-sm bg-space-900 ring-1 ring-surface-contrast/25">
+                <TypeIcon id={entry.item.charge.type_id} size={14} className="rounded-sm" />
+              </span>
+            )}
+            {problems && (
+              <span className="absolute -top-1 -left-1 rounded-full bg-space-900/80">
+                <FitIcon name="slotWarning" size={14} />
+              </span>
+            )}
+          </>
+        ) : (
+          <FitIcon name={GLYPH[slot]} size={Math.round(size * 0.55)} className="opacity-45" />
+        )}
+      </span>
     </button>
   );
 }
