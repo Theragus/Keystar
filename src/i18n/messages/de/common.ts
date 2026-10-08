@@ -70,6 +70,9 @@ export const common: typeof en = {
     noMatches: "Keine Treffer",
     selected: (count: number) => `${n(count)} ausgewählt`,
     apply: (count: number) => (count ? `Übernehmen (${n(count)})` : "Übernehmen"),
+    variants: (count: number) => `${n(count)} Varianten`,
+    showVariants: (label: string) => `Varianten von ${label} anzeigen`,
+    hideVariants: (label: string) => `Varianten von ${label} ausblenden`,
   },
   toast: {
     region: "Benachrichtigungen",
