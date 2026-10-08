@@ -193,6 +193,21 @@ Route planning for ships with a jump drive.
 - Fuel per jump and per route (Jump Fuel Conservation, Jump Freighters skill) with an approximate ISK cost from Jita
   prices; midpoint stops and an estimate of jump fatigue
 
+## Fitting
+
+- ✅ **Fitting tool**: a ship fitting calculator in the browser (EVEShip.fit's dogma engine as WebAssembly with the
+  patched SDE): hull and item browser with market groups, search and filters, slot racks with drag and drop, charges,
+  drones, module states, CPU/powergrid/calibration/hardpoint bars, effective HP and resists per layer, DPS and
+  volley, capacitor stability, speed and align time, targeting, the engine's fitting-rule violations, all skills V
+  or a character's real skills, EFT/DNA/share-link import and export, drafts kept in the browser
+- ✅ **Saved fittings** from the game (`esi-fittings.read_fittings.v1`, opt-in per character): listed in the import
+  dialog and opened in the editor
+- 💡 Saved fits in Keystar and corporation doctrines with tags, and a "who can fly it" matrix against members' skills
+- 💡 Open a loss from the Combat Report or Threat Intel in the fitting tool (engine's killmail importer)
+- 💡 Push a fit to the game (`esi-fittings.write_fittings.v1`)
+- 💡 Mutated (Abyssal) modules, implants and boosters from the skills module, wormhole and beacon effects, fit
+  comparison, ISK value per fit from the price data
+
 ## Platform ideas
 
 - 💡 Discord notifications (sync failures, revoked tokens, new registrations)

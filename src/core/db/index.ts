@@ -4,6 +4,7 @@ import { env } from "@/core/env";
 import * as core from "./schema/core";
 import * as eve from "./schema/eve";
 import * as sync from "./schema/sync";
+import * as fitting from "@/modules/fitting/schema";
 import * as fleet from "@/modules/fleet/schema";
 import * as gatecheck from "@/modules/gatecheck/schema";
 import * as industry from "@/modules/industry/schema";
@@ -16,7 +17,7 @@ import * as social from "@/modules/social/schema";
 import * as trade from "@/modules/trade/schema";
 import * as wallet from "@/modules/wallet/schema";
 
-export const schema = { ...core, ...eve, ...sync, ...mining, ...killboard, ...fleet, ...trade, ...intel, ...wallet, ...social, ...skills, ...industry, ...gatecheck, ...market };
+export const schema = { ...core, ...eve, ...sync, ...mining, ...killboard, ...fleet, ...trade, ...intel, ...wallet, ...social, ...skills, ...industry, ...gatecheck, ...market, ...fitting };
 
 export type Db = PostgresJsDatabase<typeof schema>;
 
@@ -68,3 +69,4 @@ export * from "@/modules/social/schema";
 export * from "@/modules/skills/schema";
 export * from "@/modules/industry/schema";
 export * from "@/modules/market/schema";
+export * from "@/modules/fitting/schema";

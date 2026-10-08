@@ -45,3 +45,6 @@ next-env.d.ts
 
 # worker bundle
 /dist
+
+# fitting calculator assets (copied from node_modules by scripts/copy-fitting-assets.mjs)
+/public/fitting

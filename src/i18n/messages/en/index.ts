@@ -6,6 +6,7 @@ import { common } from "./common";
 import { core } from "./core";
 import { dashboard } from "./dashboard";
 import { eve } from "./eve";
+import { fitting } from "./fitting";
 import { fleet } from "./fleet";
 import { gatecheck } from "./gatecheck";
 import { industry } from "./industry";
@@ -50,6 +51,7 @@ export const en = {
   wallet,
   social,
   skills,
+  fitting,
   help,
   whatsNew,
 };

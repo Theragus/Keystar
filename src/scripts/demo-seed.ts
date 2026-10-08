@@ -45,6 +45,7 @@ import { generateSituationReport } from "@/modules/killboard/report/generate";
 import { runMigrations } from "@/scripts/migrate";
 import staticData from "./demo-data/eve-static.json";
 import { seedCorpWallet } from "./demo-data/corp-wallet";
+import { seedFittings } from "./demo-data/fitting";
 import { seedFleets } from "./demo-data/fleet";
 import { seedGatecheck } from "./demo-data/gatecheck";
 import { seedIndustry } from "./demo-data/industry";
@@ -202,7 +203,8 @@ async function main() {
     mining_pnl_characters, mining_pnl_price_rules, mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries,
     corp_wallet_divisions, corp_wallet_balance_history, corp_wallet_journal, corp_wallet_transactions,
     corp_wallet_sync_state, mail_messages, mail_labels, mail_lists, skills_queue, skills_character_skills, skills_character, skills_type_attributes,
-    industry_jobs, industry_locations, skills_implants, skills_implant_attributes, gatecheck_kills, gatecheck_feed, gatecheck_wars, market_orders
+    industry_jobs, industry_locations, skills_implants, skills_implant_attributes, gatecheck_kills, gatecheck_feed, gatecheck_wars, market_orders,
+    fitting_esi_fittings
     RESTART IDENTITY CASCADE`);
 
   // --- Static EVE data --------------------------------------------------
@@ -542,6 +544,7 @@ async function main() {
 
   // --- Market orders (a few characters trade in stations and structures) ------
   const orderCount = await seedMarket(db, { characters: allChars, now: new Date() });
+  const fittingCount = await seedFittings(db, allChars);
 
   await setSetting("corp.homeCorporationId", HOME_CORP.corporationId);
   await setSetting("demo.users", demoUserIds);
@@ -565,7 +568,7 @@ async function main() {
   console.log(
     `Seeded ${DEMO_USERS.length} users, ${allChars.length} characters, ${personalRows.length} personal and ${observerRows.length} observer ledger rows, ` +
       `${killboard.killmails} killmails, ${gatecheck.kills} gate check kills, ${fleetCount} fleets, ${pnl.transactions} wallet transactions, ${pnl.windows} ` +
-      `activity windows, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, ${queued} queued skills, ${industryCount} industry jobs, ${orderCount} market orders, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
+      `activity windows, ${corpWallet.entries} corporation journal entries, ${mails} mail rows, ${queued} queued skills, ${industryCount} industry jobs, ${orderCount} market orders, ${fittingCount} saved fittings, a ${report.source} situation report and a threat intel scan of ${intel.pilots} pilots.`,
   );
   console.log("Start the app with KEYSTAR_DEMO_MODE=true and open /login to sign in as any demo role.");
   await closeDb();

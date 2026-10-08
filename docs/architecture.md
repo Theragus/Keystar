@@ -63,6 +63,8 @@ src/
     wallet/            opt-in character wallet transactions (raw data used by the mining P&L); corp/: corporation
                        wallet archive (balances, journal, transactions), classification, finances pages' queries
     social/            opt-in EVE mail (read-only): mail sync, EVE HTML parser, link resolution, mail UI
+    fitting/           ship fitting calculator: SDE reader and catalog, engine glue (stats, fit state, formats),
+                       editor UI, opt-in ESI saved fittings (schema, sync job)
     jobs.ts            registry of background jobs (worker only)
   worker/index.ts      worker entry point
   scripts/             migrate, demo-seed
@@ -500,6 +502,39 @@ the owner deletes them.
 - **Planned on top of it**: corporation skill plans checked against `skills_character_skills`.
   ESI has no skill-plan endpoint, so plans would be pasted from the in-game "copy to clipboard" text and resolved
   with `/universe/ids`.
+
+## Fitting
+
+Pilots → Fitting tool is a ship fitting calculator that runs in the browser. The maths is EVEShip.fit's open-source
+dogma engine (`@eveshipfit/dogma-engine`, Rust compiled to WebAssembly, MIT) with the patched SDE it is built for
+(`@eveshipfit/sde`, `dist/sde.dat`, a 10 MB FlatBuffer with types, groups, market groups, dogma attributes and
+effects plus derived attributes such as `ehp`, `alignTime` and `damagePerSecondWithReload` under negative ids).
+Both packages are pinned exactly and bumped together: the engine refuses an SDE below its major version, and
+`tests/fitting-engine.test.ts` loads the real data file into the engine so a mismatch fails CI.
+
+- **Assets**: `scripts/copy-fitting-assets.mjs` (run by `pnpm dev` and `pnpm build`) copies the WebAssembly and
+  `sde.dat` into `public/fitting/` (ignored by git) under version-stamped names and writes `manifest.json`;
+  `next.config.ts` serves them with an immutable cache header, and `src/proxy.ts` lets the browser fetch them
+  without the session redirect. Nothing is calculated on the server.
+- **Runtime** (`src/modules/fitting/engine/engine.ts`): loaded once per page session; the same bytes go to the
+  engine (`load_sde`) and to the reader (`sde/reader.ts`, hand-written against the FlatBuffers runtime, field order
+  as in the package's `specs/eve.fbs`; per-type attributes and effects are read on demand). `sde/catalog.ts` derives
+  what the editor needs by attribute and effect *name*: the slot a type goes in (`hiPower`, `medPower`, `loPower`,
+  `rigSlot`, `subSystem`, `serviceSlot`), charge compatibility (`chargeGroup*`, `chargeSize`, capacity), hull
+  restrictions (`canFitShip*`, `rigSize`), skill requirements, market-group paths and a name search.
+- **State**: the editor's state is the engine's own `Fit` (`engine/fit-state.ts`, a reducer); every change
+  recalculates with `validate: true`. `engine/stats.ts` maps the calculation to the stats panel by attribute name
+  (`STAT_ATTRIBUTES`), `engine/violations.ts` turns the engine's rule violations into sentences. Drafts stay in
+  `localStorage`; share links carry the engine's compact link payload in the URL fragment (`/fitting#fit=…`), so no
+  fit is stored server-side. EFT, DNA (`fitting:` chat links) and ESI fittings go through the engine's parsers
+  (`engine/formats.ts`).
+- **Skills**: "All skills V" by default; a viewer's character that shares its skills (skills module) can lend its
+  real ones (`loadCharacterSkills`, own characters only, `active_level` so alpha clones are capped).
+- **ESI saved fittings**: `esi-fittings.read_fittings.v1` is opt-in per character (`/fitting/settings`).
+  `fitting.esi-fittings` replaces `fitting_esi_fittings` with GET `/characters/{id}/fittings/` every 30 minutes
+  (ESI caches 5 minutes, rate-limit group `fitting`); the editor's import dialog lists them and opens one through
+  `load_esi_fitting`. Nothing is written back to the game.
+- **Desktop only**: the three-column editor is hidden below the tablet breakpoint and replaced by a notice.
 
 ## Killboard
 

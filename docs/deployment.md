@@ -89,6 +89,7 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    esi-corporations.read_corporation_membership.v1
    esi-corporations.read_divisions.v1
    esi-corporations.read_structures.v1
+   esi-fittings.read_fittings.v1
    esi-fleets.read_fleet.v1
    esi-industry.read_character_jobs.v1
    esi-industry.read_character_mining.v1
@@ -106,11 +107,15 @@ IP. Caddy can only obtain a certificate once DNS resolves to the server — chec
    character with "corporation access", and every character scope only when a pilot switches it on for a character:
    the mining ledger on the Mining access page, wallet import in the mining P&L, mail on the EVE Mail page, fleet
    access on the Live fleet page, skill sharing on the Skills access page, industry access on the Industry access
-   page or market access on the Market access page. (The login page also shows this exact list while SSO is not
+   page, market access on the Market access page or saved fittings on the Fitting access page. (The login page also shows this exact list while SSO is not
    configured yet.)
 5. Save and keep the **Client ID** and **Secret Key** for the next step.
 
 When future modules (assets) are added, add their scopes to the application as well.
+
+> **Upgrading to the release with the fitting tool (see the CHANGELOG):** add `esi-fittings.read_fittings.v1` to the
+> EVE application. Without it, "Share saved fittings" on the Fitting access page fails at the EVE login with
+> `invalid_scope`. The fitting tool itself needs no scope; nobody is asked for this one unless they switch it on.
 
 > **Upgrading to the release with market orders (see the CHANGELOG):** add `esi-markets.read_character_orders.v1`
 > to the EVE application (and `esi-universe.read_structures.v1`, if it isn't there yet from industry jobs). Without

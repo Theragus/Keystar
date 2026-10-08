@@ -9,6 +9,7 @@ import {
 } from "@/core/sync/core-jobs";
 import type { JobDefinition, PriceInterestProvider } from "@/core/sync/types";
 import type { Messages } from "@/i18n/messages";
+import { fittingJobs } from "./fitting/jobs";
 import { fleetJobs } from "./fleet/jobs";
 import { gatecheckJobs } from "./gatecheck/jobs";
 import { industrySyncJobs } from "./industry/jobs";
@@ -46,6 +47,7 @@ export const JOBS: JobDefinition[] = [
   ...tradeJobs,
   ...gatecheckJobs,
   ...marketJobs,
+  ...fittingJobs,
 ];
 
 const JOBS_BY_KEY = new Map(JOBS.map((j) => [j.key, j]));

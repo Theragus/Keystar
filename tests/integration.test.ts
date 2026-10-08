@@ -39,7 +39,7 @@ describe.skipIf(!enabled)("integration", async () => {
     await db().execute(sql`TRUNCATE users, characters, esi_tokens, sessions, eve_types, eve_groups, eve_systems,
       eve_entities, type_values, type_value_history, market_prices, price_interest, mining_character_ledger,
       mining_observer_ledger, mining_observers, sync_jobs, app_settings, killmails, killmail_attackers, killboard_reports, appraisals, appraisal_attempts, esi_cache,
-      fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots,
+      fleets, fleet_members, fleet_trackers, eve_constellations, intel_scans, intel_scan_pilots, intel_pilots, fitting_esi_fittings,
       intel_pilot_killmails, intel_queue, intel_contacts, intel_ai_notes, wallet_transactions, wallet_fees, mining_activity,
       mining_activity_coverage, mining_pnl_settings, mining_pnl_characters, mining_pnl_price_rules,
       mining_pnl_tx_overrides, mining_pnl_fee_overrides, mining_pnl_entries, corp_wallet_divisions, corp_wallet_balance_history,
@@ -3196,6 +3196,73 @@ describe.skipIf(!enabled)("integration", async () => {
       const before = requests;
       expect((await characterMarketOrdersJob.run(ctx))?.summary).toBe("Market access is switched off");
       expect(requests).toBe(before);
+    });
+  });
+
+  describe("fitting access", async () => {
+    const { FITTINGS_SCOPE } = await import("@/modules/fitting/module");
+    const { esiFittingsJob } = await import("@/modules/fitting/jobs");
+    const { getEsiFittings, getFittingAccess, getSkillSources } = await import("@/modules/fitting/queries");
+
+    function fittingsEsi(fittings: unknown[]) {
+      return new EsiClient({
+        baseUrl: "https://esi.test",
+        userAgent: "t",
+        compatibilityDate: "2026-08-18",
+        tokenProvider: async () => "token",
+        maxRetries: 0,
+        fetchImpl: (async (url: string) => {
+          const path = new URL(String(url)).pathname;
+          const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+          if (/\/fittings\/?$/.test(path)) return reply(fittings);
+          if (/\/universe\/types\//.test(path)) return reply({ type_id: 587, name: "Rifter", group_id: 25, published: true });
+          return reply([]);
+        }) as typeof fetch,
+      });
+    }
+
+    beforeEach(async () => {
+      await db().insert(schema.esiTokens).values([
+        { characterId: 2, refreshTokenEnc: "x", scopes: [FITTINGS_SCOPE] },
+        { characterId: 3, refreshTokenEnc: "x", scopes: [] },
+      ]);
+    });
+
+    it("mirrors a character's saved fittings and replaces them on the next run", async () => {
+      const ctx = { jobId: 1, ownerType: "character" as const, ownerId: 2, characterId: 2, db: db(), log: undefined as never, meta: {} };
+      const fitting = (id: number, name: string) => ({
+        fitting_id: id,
+        name,
+        description: "",
+        ship_type_id: 587,
+        items: [{ flag: "HiSlot0", quantity: 1, type_id: 2889 }],
+      });
+      const first = await esiFittingsJob.run({ ...ctx, esi: fittingsEsi([fitting(1, "One"), fitting(2, "Two")]) });
+      expect(first?.summary).toBe("2 saved fittings");
+      expect((await getEsiFittings([2])).map((f) => f.name)).toEqual(["One", "Two"]);
+      // ESI no longer lists "One": it goes; "Two" is renamed.
+      await esiFittingsJob.run({ ...ctx, esi: fittingsEsi([fitting(2, "Two renamed")]) });
+      const after = await getEsiFittings([2]);
+      expect(after.map((f) => f.name)).toEqual(["Two renamed"]);
+      expect(after[0].items).toEqual([{ flag: "HiSlot0", quantity: 1, type_id: 2889 }]);
+      // Only characters that still share: switching the scope off hides the stored rows.
+      await db().update(schema.esiTokens).set({ scopes: [] }).where(sql`character_id = 2`);
+      expect(await getEsiFittings([2])).toEqual([]);
+    });
+
+    it("reports fitting access and skill sources per character", async () => {
+      const access = await getFittingAccess(userB);
+      expect(access.map((a) => [a.characterId, a.granted, a.stored])).toEqual([
+        [2, true, 0],
+        [3, false, 0],
+      ]);
+      // Skills can only come from a character that shares them and has been synced.
+      expect(await getSkillSources([{ characterId: 2, name: "Two" }])).toEqual([{ characterId: 2, name: "Two", skillsReady: false }]);
+      await db().update(schema.esiTokens).set({ scopes: [FITTINGS_SCOPE, "esi-skills.read_skills.v1"] }).where(sql`character_id = 2`);
+      await db().insert(schema.skillsCharacterSkills).values({ characterId: 2, skillId: 3300, trainedLevel: 5, activeLevel: 4, skillpoints: 256000 });
+      expect((await getSkillSources([{ characterId: 2, name: "Two" }]))[0].skillsReady).toBe(true);
+      const { getCharacterSkillLevels } = await import("@/modules/fitting/queries");
+      expect(await getCharacterSkillLevels(2)).toEqual({ 3300: 4 });
     });
   });
 

@@ -13,6 +13,7 @@ import {
   reauthorizeHref,
   scopesForIntent,
 } from "@/core/modules/registry";
+import { FITTINGS_SCOPE } from "@/modules/fitting/module";
 import { FLEET_SCOPE } from "@/modules/fleet/logic";
 import { IMPLANTS_SCOPE, SKILLQUEUE_SCOPE, SKILLS_SCOPE } from "@/modules/skills/module";
 import { INDUSTRY_JOBS_SCOPE, STRUCTURES_SCOPE } from "@/modules/industry/module";
@@ -32,6 +33,7 @@ describe("optional scopes", () => {
   it("keeps opt-in scopes out of the member and corporation sets", () => {
     expect(optionalScopes()).toEqual([
       IMPLANTS_SCOPE,
+      FITTINGS_SCOPE,
       FLEET_SCOPE,
       INDUSTRY_JOBS_SCOPE,
       MINING,

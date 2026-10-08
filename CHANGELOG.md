@@ -8,6 +8,15 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Added
 
+- **Fitting tool.** Pilots → Fitting tool is a ship fitting calculator that runs in your browser: pick a hull, fit
+  modules, rigs, charges and drones by click or drag and drop, and watch CPU, powergrid, calibration and hardpoints,
+  effective HP with resists per layer, DPS and volley, capacitor stability, speed, align time and targeting update
+  as you go, with every fitting-rule problem listed. It calculates with EVEShip.fit's open-source dogma engine and
+  EVE's static data (about 10 MB, fetched once and kept by the browser) with all skills at V or with the real skills
+  of one of your characters that shares them. Import EFT fits and `fitting:` chat links, export EFT, share a fit by
+  link, and open your in-game saved fittings once you switch on fitting access for a character on the new Fitting
+  access page (`esi-fittings.read_fittings.v1`, opt-in). The page needs a desktop browser.
+
 - **Collapsible sidebar sections.** Click a section heading in the sidebar (Industry, Combat, …) to fold its pages
   away, and again to slide them back open; the arrow beside it shows whether it is open. Folded sections are
   remembered in your browser, and a folded section's heading still lights up in the section colour while you are on

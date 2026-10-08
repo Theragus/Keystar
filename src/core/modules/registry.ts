@@ -1,4 +1,5 @@
 import { mapModule } from "@/modules/map/module";
+import { fittingModule } from "@/modules/fitting/module";
 import { fleetModule } from "@/modules/fleet/module";
 import { gatecheckModule } from "@/modules/gatecheck/module";
 import { industryModule } from "@/modules/industry/module";
@@ -24,6 +25,7 @@ import type { AlertDef, KeystarModule, NavSection, ScopeRequirement } from "./ty
 export const MODULES: KeystarModule[] = [
   coreModule,
   skillsModule,
+  fittingModule,
   miningModule,
   industryModule,
   killboardModule,
