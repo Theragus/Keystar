@@ -9,6 +9,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { displaySecurity } from "@/core/eve/images";
 import { ORE_CLASSES, type OreClass } from "@/core/eve/ore";
 import { useI18n } from "@/i18n/client";
+import { oreFilterTypes } from "../ore-groups";
 import { MINING_METRICS, MINING_SOURCES, miningQueryString, type MiningFilters, type MiningView } from "../filters";
 import type { FilterOptions } from "../queries";
 
@@ -87,11 +88,13 @@ export function MiningFilterBar({
         icon={<Gem className="size-3.5 text-accent" aria-hidden />}
         selected={filters.types}
         onApply={(v) => apply({ types: v.map(Number) })}
-        options={options.types.map((type) => ({
+        options={oreFilterTypes(options.types).map(({ type, family, gradeLabel }) => ({
           value: type.id,
           label: type.name,
           group: t.eve.oreClasses[type.oreClass].label,
           leading: <TypeIcon id={type.id} size={20} />,
+          family,
+          shortLabel: gradeLabel,
         }))}
       />
 

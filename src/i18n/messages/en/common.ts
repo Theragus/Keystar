@@ -74,6 +74,9 @@ export const common = {
     noMatches: "No matches",
     selected: (count: number) => `${n(count)} selected`,
     apply: (count: number) => (count ? `Apply (${n(count)})` : "Apply"),
+    variants: (count: number) => `${n(count)} variants`,
+    showVariants: (label: string) => `Show variants of ${label}`,
+    hideVariants: (label: string) => `Hide variants of ${label}`,
   },
   /** Toast notifications in the top-right corner. */
   toast: {

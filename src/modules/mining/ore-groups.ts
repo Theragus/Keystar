@@ -43,3 +43,23 @@ export function groupOreTypes(rows: TypeRow[]): OreRow[] {
       : { ...singleOreRow(first), key: row.key },
   );
 }
+
+export interface OreFilterType {
+  id: number;
+  name: string;
+  oreClass: TypeRow["oreClass"];
+}
+
+/**
+ * Ore picker entries in display order: by family, the plain ore first and better grades after,
+ * each tagged with its family and a short grade label so the picker can fold the grades away.
+ */
+export function oreFilterTypes<T extends OreFilterType>(types: T[]) {
+  return types
+    .map((type) => {
+      const { grade } = oreGrade(type.name);
+      const family = oreFamily(type.name, type.oreClass);
+      return { type, family: { key: family.key, label: family.name }, rank: family.rank, gradeLabel: grade === "Base" ? type.name : grade };
+    })
+    .sort((a, b) => a.family.label.localeCompare(b.family.label) || a.rank - b.rank || a.type.name.localeCompare(b.type.name));
+}

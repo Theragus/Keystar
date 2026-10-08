@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupOreTypes } from "@/modules/mining/ore-groups";
+import { groupOreTypes, oreFilterTypes } from "@/modules/mining/ore-groups";
 import type { TypeRow } from "@/modules/mining/queries";
 
 const row = (typeId: number, name: string, quantity: number, value: number, extra: Partial<TypeRow> = {}): TypeRow => ({
@@ -50,5 +50,25 @@ describe("groupOreTypes", () => {
   it("shows no unit price for a family without prices", () => {
     const [g] = groupOreTypes([row(1, "Mercoxit", 5, 0), row(2, "Mercoxit II-Grade", 5, 0)]);
     expect(g.unitPrice).toBe(0);
+  });
+});
+
+describe("oreFilterTypes", () => {
+  it("orders the picker by family, plain ore first, with short grade labels", () => {
+    const entries = oreFilterTypes([
+      { id: 46280, name: "Glistening Zeolites", oreClass: "moon_r4" },
+      { id: 46703, name: "Scordite III-Grade", oreClass: "ore" },
+      { id: 1228, name: "Scordite", oreClass: "ore" },
+      { id: 45490, name: "Zeolites", oreClass: "moon_r4" },
+      { id: 46687, name: "Scordite II-Grade", oreClass: "ore" },
+    ]);
+    expect(entries.map((e) => [e.type.id, e.family.label, e.gradeLabel])).toEqual([
+      [1228, "Scordite", "Scordite"],
+      [46687, "Scordite", "II-Grade"],
+      [46703, "Scordite", "III-Grade"],
+      [45490, "Zeolites", "Zeolites"],
+      [46280, "Zeolites", "Glistening"],
+    ]);
+    expect(entries[0].family.key).toBe("ore:Scordite");
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Search, X } from "lucide-react";
+import { Check, ChevronDown, Minus, Search, X } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,37 @@ export interface MultiOption {
   group?: string;
   hint?: string;
   leading?: ReactNode;
+  /** Options sharing a family fold under one row (an ore and its grades) that expands to list them. */
+  family?: { key: string; label: string };
+  /** Label inside an expanded family, e.g. "II-Grade" for Scordite II-Grade. */
+  shortLabel?: string;
+}
+
+type Entry =
+  | { kind: "option"; option: MultiOption }
+  | { kind: "family"; key: string; label: string; options: MultiOption[] };
+
+/** Families with more than one option, keyed by family key. */
+function familiesOf(options: MultiOption[]): Map<string, MultiOption[]> {
+  const map = new Map<string, MultiOption[]>();
+  for (const o of options) if (o.family) map.set(o.family.key, [...(map.get(o.family.key) ?? []), o]);
+  for (const [key, members] of map) if (members.length < 2) map.delete(key);
+  return map;
+}
+
+function CheckBox({ state, small }: { state: boolean | "mixed"; small?: boolean }) {
+  const Icon = state === "mixed" ? Minus : Check;
+  return (
+    <span
+      className={cn(
+        "grid shrink-0 place-items-center ring-1",
+        small ? "size-3.5 rounded-[4px]" : "size-4 rounded-[5px]",
+        state ? "bg-accent ring-accent" : "ring-surface-contrast/25",
+      )}
+    >
+      {state && <Icon className={cn("text-space-950", small ? "size-2.5" : "size-3")} strokeWidth={3} aria-hidden />}
+    </span>
+  );
 }
 
 /**
@@ -37,10 +68,23 @@ export function MultiSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<Set<number | string>>(new Set(selected));
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const families = useMemo(() => familiesOf(options), [options]);
 
   const openPopover = () => {
     setDraft(new Set(selected));
     setQuery("");
+    // Open the families with only some options picked, so the picked ones stay in view.
+    setExpanded(
+      new Set(
+        [...families]
+          .filter(([, members]) => {
+            const picked = members.filter((o) => selected.includes(o.value)).length;
+            return picked > 0 && picked < members.length;
+          })
+          .map(([key]) => key),
+      ),
+    );
     setOpen(true);
   };
   const close = () => {
@@ -52,17 +96,45 @@ export function MultiSelect({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? options.filter((o) => o.label.toLowerCase().includes(q) || o.group?.toLowerCase().includes(q)) : options;
+    return q
+      ? options.filter(
+          (o) => o.label.toLowerCase().includes(q) || o.group?.toLowerCase().includes(q) || o.family?.label.toLowerCase().includes(q),
+        )
+      : options;
   }, [options, query]);
 
   const groups = useMemo(() => {
-    const map = new Map<string, MultiOption[]>();
+    const map = new Map<string, Entry[]>();
+    const familyEntries = new Map<string, Extract<Entry, { kind: "family" }>>();
     for (const o of filtered) {
       const g = o.group ?? "";
-      map.set(g, [...(map.get(g) ?? []), o]);
+      const entries = map.get(g) ?? [];
+      map.set(g, entries);
+      const family = o.family && families.has(o.family.key) ? o.family : undefined;
+      if (!family) {
+        entries.push({ kind: "option", option: o });
+        continue;
+      }
+      const id = `${g}\u0000${family.key}`;
+      const entry = familyEntries.get(id);
+      if (entry) entry.options.push(o);
+      else {
+        const created = { kind: "family" as const, key: family.key, label: family.label, options: [o] };
+        familyEntries.set(id, created);
+        entries.push(created);
+      }
     }
-    return [...map.entries()];
-  }, [filtered]);
+    // A search can leave one match of a family: list it under its own name.
+    return [...map.entries()].map(
+      ([g, entries]) =>
+        [g, entries.map((e): Entry => (e.kind === "family" && e.options.length === 1 ? { kind: "option", option: e.options[0] } : e))] as const,
+    );
+  }, [filtered, families]);
+
+  const q = query.trim().toLowerCase();
+  // While searching for a grade ("III-Grade"), show the families it matched opened.
+  const isExpanded = (e: Extract<Entry, { kind: "family" }>) =>
+    expanded.has(e.key) || (q !== "" && !e.label.toLowerCase().includes(q));
 
   const toggle = (v: number | string) =>
     setDraft((d) => {
@@ -71,13 +143,61 @@ export function MultiSelect({
       else n.add(v);
       return n;
     });
+  const toggleFamily = (members: MultiOption[]) =>
+    setDraft((d) => {
+      const n = new Set(d);
+      const all = members.every((o) => n.has(o.value));
+      for (const o of members) {
+        if (all) n.delete(o.value);
+        else n.add(o.value);
+      }
+      return n;
+    });
+  const toggleExpanded = (key: string) =>
+    setExpanded((e) => {
+      const n = new Set(e);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
+      return n;
+    });
 
+  // Exactly one whole family picked reads as its name ("Scordite"), not "3 selected".
+  const selectedFamily = (() => {
+    const key = options.find((o) => o.value === selected[0])?.family?.key;
+    const members = key ? families.get(key) : undefined;
+    return members && members.length === selected.length && members.every((o) => selected.includes(o.value))
+      ? members[0].family?.label
+      : undefined;
+  })();
   const summary =
     selected.length === 0
       ? allLabel
       : selected.length === 1
         ? (options.find((o) => o.value === selected[0])?.label ?? t.common.multiSelect.selected(1))
-        : t.common.multiSelect.selected(selected.length);
+        : (selectedFamily ?? t.common.multiSelect.selected(selected.length));
+
+  const optionRow = (o: MultiOption, nested = false) => {
+    const checked = draft.has(o.value);
+    return (
+      <button
+        key={o.value}
+        type="button"
+        role="checkbox"
+        aria-checked={checked}
+        aria-label={nested ? o.label : undefined}
+        onClick={() => toggle(o.value)}
+        className={cn(
+          "flex w-full items-center rounded-md text-left hover:bg-surface-contrast/6",
+          nested ? "gap-2 py-1 pr-2 pl-8 text-xs" : "gap-2.5 px-2 py-1.5 text-sm",
+        )}
+      >
+        <CheckBox state={checked} small={nested} />
+        {nested ? o.leading && <span className="flex shrink-0 *:size-4!">{o.leading}</span> : o.leading}
+        <span className={cn("min-w-0 flex-1 truncate", nested ? "text-ink-2" : "text-ink")}>{nested ? (o.shortLabel ?? o.label) : o.label}</span>
+        {o.hint && <span className="shrink-0 text-2xs text-ink-3">{o.hint}</span>}
+      </button>
+    );
+  };
 
   return (
     <Popover
@@ -126,29 +246,40 @@ export function MultiSelect({
           {groups.map(([group, items]) => (
             <div key={group} className="py-1">
               {group && <div className="eve-label px-2 pt-2 pb-1 text-2xs text-ink-3">{group}</div>}
-              {items.map((o) => {
-                const checked = draft.has(o.value);
+              {items.map((e) => {
+                if (e.kind === "option") return optionRow(e.option);
+                const picked = e.options.filter((o) => draft.has(o.value)).length;
+                const state = picked === 0 ? false : picked === e.options.length ? true : "mixed";
+                const unfolded = isExpanded(e);
+                const foldLabel = unfolded ? t.common.multiSelect.hideVariants(e.label) : t.common.multiSelect.showVariants(e.label);
                 return (
-                  <button
-                    key={o.value}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={checked}
-                    onClick={() => toggle(o.value)}
-                    className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-contrast/6"
-                  >
-                    <span
-                      className={cn(
-                        "grid size-4 shrink-0 place-items-center rounded-[5px] ring-1",
-                        checked ? "bg-accent ring-accent" : "ring-surface-contrast/25",
-                      )}
-                    >
-                      {checked && <Check className="size-3 text-space-950" strokeWidth={3} aria-hidden />}
-                    </span>
-                    {o.leading}
-                    <span className="min-w-0 flex-1 truncate text-ink">{o.label}</span>
-                    {o.hint && <span className="shrink-0 text-2xs text-ink-3">{o.hint}</span>}
-                  </button>
+                  <div key={`family:${e.key}`}>
+                    <div className="flex items-center rounded-md hover:bg-surface-contrast/6">
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={state}
+                        onClick={() => toggleFamily(e.options)}
+                        className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 pl-2 text-left text-sm"
+                      >
+                        <CheckBox state={state} />
+                        {e.options[0].leading}
+                        <span className="min-w-0 flex-1 truncate text-ink">{e.label}</span>
+                        <span className="shrink-0 text-2xs text-ink-3">{t.common.multiSelect.variants(e.options.length)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-expanded={unfolded}
+                        aria-label={foldLabel}
+                        title={foldLabel}
+                        onClick={() => toggleExpanded(e.key)}
+                        className="mx-1 grid size-6 shrink-0 place-items-center rounded-md text-ink-3 transition hover:bg-surface-contrast/8 hover:text-ink"
+                      >
+                        <ChevronDown className={cn("size-3.5 transition-transform", unfolded && "rotate-180")} aria-hidden />
+                      </button>
+                    </div>
+                    {unfolded && e.options.map((o) => optionRow(o, true))}
+                  </div>
                 );
               })}
             </div>
