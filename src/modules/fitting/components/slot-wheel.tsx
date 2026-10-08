@@ -91,10 +91,12 @@ function Gauge({ radius, cpu, power }: { radius: number; cpu: Resource; power: R
   );
 }
 
-/** Hardpoints on the ring, leaning into it like a tile: the icon, then a dot per hardpoint (filled = fitted). */
+/** Hardpoints just inside the ring, between the rigs and the high slots, leaning into it: the icon, then a dot per hardpoint (filled = fitted). */
+const HARDPOINT_RADIUS = RING - TILE / 2 - 26;
+
 function Hardpoints({ icon, value, title, angle }: { icon: FitIconName; value: Resource; title: string; angle: number }) {
   if (value.total <= 0) return null;
-  const { x, y } = point(RING + 2, angle);
+  const { x, y } = point(HARDPOINT_RADIUS, angle);
   const width = 24 + value.total * 12;
   return (
     <div
@@ -230,13 +232,13 @@ function Wheel(p: SlotWheelProps) {
             icon="turrets"
             value={stats.resources.turrets}
             title={`${r.turrets}: ${r.hardpoints(stats.resources.turrets.total - stats.resources.turrets.used, stats.resources.turrets.total)}`}
-            angle={-143}
+            angle={-125}
           />
           <Hardpoints
             icon="launchers"
             value={stats.resources.launchers}
             title={`${r.launchers}: ${r.hardpoints(stats.resources.launchers.total - stats.resources.launchers.used, stats.resources.launchers.total)}`}
-            angle={-37}
+            angle={-55}
           />
           <Readout icon="cargo" value={stats.resources.cargo} unit={s.stats.units.m3} title={r.cargo} over={stats.resources.cargo.used > stats.resources.cargo.total} f={n1} className="bottom-[44px] left-0" />
           {stats.resources.droneBay.total > 0 && (
@@ -246,7 +248,7 @@ function Wheel(p: SlotWheelProps) {
           <Readout icon="powergrid" value={stats.resources.power} unit={s.stats.units.mw} title={r.power} over={stats.resources.power.used > stats.resources.power.total + 1e-6} f={n1} className="right-0 bottom-[2px]" align="right" />
           {stats.slots.rig > 0 && (
             <div
-              className={cn("absolute top-[132px] left-[8px] flex items-center gap-1.5 text-2xs", stats.resources.calibration.used > stats.resources.calibration.total ? "text-critical-text" : "text-ink-3")}
+              className={cn("absolute top-[212px] left-0 flex items-center gap-1.5 text-2xs", stats.resources.calibration.used > stats.resources.calibration.total ? "text-critical-text" : "text-ink-3")}
               title={r.calibration}
             >
               <FitIcon name="calibration" size={14} />
