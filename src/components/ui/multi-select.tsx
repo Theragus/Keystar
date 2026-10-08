@@ -4,6 +4,7 @@ import { Check, ChevronDown, Minus, Search, X } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
+import { familiesOf, groupEntries, partlyPicked, selectedFamilyLabel } from "./option-families";
 import { Popover } from "./popover";
 
 export interface MultiOption {
@@ -16,18 +17,6 @@ export interface MultiOption {
   family?: { key: string; label: string };
   /** Label inside an expanded family, e.g. "II-Grade" for Scordite II-Grade. */
   shortLabel?: string;
-}
-
-type Entry =
-  | { kind: "option"; option: MultiOption }
-  | { kind: "family"; key: string; label: string; options: MultiOption[] };
-
-/** Families with more than one option, keyed by family key. */
-function familiesOf(options: MultiOption[]): Map<string, MultiOption[]> {
-  const map = new Map<string, MultiOption[]>();
-  for (const o of options) if (o.family) map.set(o.family.key, [...(map.get(o.family.key) ?? []), o]);
-  for (const [key, members] of map) if (members.length < 2) map.delete(key);
-  return map;
 }
 
 function CheckBox({ state, small }: { state: boolean | "mixed"; small?: boolean }) {
@@ -75,16 +64,7 @@ export function MultiSelect({
     setDraft(new Set(selected));
     setQuery("");
     // Open the families with only some options picked, so the picked ones stay in view.
-    setExpanded(
-      new Set(
-        [...families]
-          .filter(([, members]) => {
-            const picked = members.filter((o) => selected.includes(o.value)).length;
-            return picked > 0 && picked < members.length;
-          })
-          .map(([key]) => key),
-      ),
-    );
+    setExpanded(partlyPicked(families, selected));
     setOpen(true);
   };
   const close = () => {
@@ -96,45 +76,10 @@ export function MultiSelect({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q
-      ? options.filter(
-          (o) => o.label.toLowerCase().includes(q) || o.group?.toLowerCase().includes(q) || o.family?.label.toLowerCase().includes(q),
-        )
-      : options;
+    return q ? options.filter((o) => o.label.toLowerCase().includes(q) || o.group?.toLowerCase().includes(q)) : options;
   }, [options, query]);
 
-  const groups = useMemo(() => {
-    const map = new Map<string, Entry[]>();
-    const familyEntries = new Map<string, Extract<Entry, { kind: "family" }>>();
-    for (const o of filtered) {
-      const g = o.group ?? "";
-      const entries = map.get(g) ?? [];
-      map.set(g, entries);
-      const family = o.family && families.has(o.family.key) ? o.family : undefined;
-      if (!family) {
-        entries.push({ kind: "option", option: o });
-        continue;
-      }
-      const id = `${g}\u0000${family.key}`;
-      const entry = familyEntries.get(id);
-      if (entry) entry.options.push(o);
-      else {
-        const created = { kind: "family" as const, key: family.key, label: family.label, options: [o] };
-        familyEntries.set(id, created);
-        entries.push(created);
-      }
-    }
-    // A search can leave one match of a family: list it under its own name.
-    return [...map.entries()].map(
-      ([g, entries]) =>
-        [g, entries.map((e): Entry => (e.kind === "family" && e.options.length === 1 ? { kind: "option", option: e.options[0] } : e))] as const,
-    );
-  }, [filtered, families]);
-
-  const q = query.trim().toLowerCase();
-  // While searching for a grade ("III-Grade"), show the families it matched opened.
-  const isExpanded = (e: Extract<Entry, { kind: "family" }>) =>
-    expanded.has(e.key) || (q !== "" && !e.label.toLowerCase().includes(q));
+  const groups = useMemo(() => groupEntries(filtered, families), [filtered, families]);
 
   const toggle = (v: number | string) =>
     setDraft((d) => {
@@ -161,20 +106,12 @@ export function MultiSelect({
       return n;
     });
 
-  // Exactly one whole family picked reads as its name ("Scordite"), not "3 selected".
-  const selectedFamily = (() => {
-    const key = options.find((o) => o.value === selected[0])?.family?.key;
-    const members = key ? families.get(key) : undefined;
-    return members && members.length === selected.length && members.every((o) => selected.includes(o.value))
-      ? members[0].family?.label
-      : undefined;
-  })();
   const summary =
     selected.length === 0
       ? allLabel
       : selected.length === 1
         ? (options.find((o) => o.value === selected[0])?.label ?? t.common.multiSelect.selected(1))
-        : (selectedFamily ?? t.common.multiSelect.selected(selected.length));
+        : (selectedFamilyLabel(families, selected) ?? t.common.multiSelect.selected(selected.length));
 
   const optionRow = (o: MultiOption, nested = false) => {
     const checked = draft.has(o.value);
@@ -250,7 +187,7 @@ export function MultiSelect({
                 if (e.kind === "option") return optionRow(e.option);
                 const picked = e.options.filter((o) => draft.has(o.value)).length;
                 const state = picked === 0 ? false : picked === e.options.length ? true : "mixed";
-                const unfolded = isExpanded(e);
+                const unfolded = expanded.has(e.key);
                 const foldLabel = unfolded ? t.common.multiSelect.hideVariants(e.label) : t.common.multiSelect.showVariants(e.label);
                 return (
                   <div key={`family:${e.key}`}>
