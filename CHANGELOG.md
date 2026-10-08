@@ -19,7 +19,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 - **Ore filter: grades fold under their ore.** The Ore picker on the mining pages now lists each ore once
   (Scordite, Veldspar, …); the arrow beside it unfolds its grades and variants (II-Grade, Glistening, Thick …) in
   smaller type. Ticking the ore picks all of its grades, a half-filled box shows that only some are picked, and
-  searching for a grade lists the matches directly.
+  searching for a grade lists the matches directly. ([PR #199](https://github.com/Theragus/Keystar/pull/199))
 
 - **Gate check: wars between others no longer raise camp alerts.** In high-sec, war targets may shoot each other at
   the gates, but nobody else: kills in wars between other corporations count as activity in the system, keep the
