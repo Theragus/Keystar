@@ -31,6 +31,9 @@ describe("fitting engine", () => {
     expect(stats.resources.cpu.used).toBeLessThanOrEqual(stats.resources.cpu.total);
     expect(stats.resources.turrets).toEqual({ used: 3, total: 3 });
     expect(stats.resources.launchers).toEqual({ used: 0, total: 2 });
+    expect(stats.resources.cargo.total).toBeCloseTo(112, 3); // 140 m³ hull, Overdrive Injector −20 %
+    expect(stats.resources.cargo.used).toBe(0);
+    expect(stats.drones.controlRange).toBeGreaterThan(20_000);
     expect(stats.offence.volley).toBeCloseTo(stats.offence.volley, 5);
     expect(stats.offence.volley).toBeGreaterThan(100);
     expect(stats.defence.rawHp).toBeCloseTo(stats.defence.shield.hp + stats.defence.armor.hp + stats.defence.hull.hp, 6);

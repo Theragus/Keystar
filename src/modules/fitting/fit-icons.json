@@ -1,53 +1,197 @@
 {
-  "cpu": { "attribute": 50 },
-  "powergrid": { "attribute": 30 },
-  "calibration": { "attribute": 1132 },
-  "turrets": { "ui": "classes/fitting/iconturrethardpoint" },
-  "launchers": { "ui": "classes/fitting/iconlauncherhardpoint" },
-  "drones": { "ui": "classes/fitting/filtericondrones" },
-  "droneBay": { "attribute": 283 },
-  "droneBandwidth": { "ui": "classes/fitting/statsicons/bandwidth" },
-  "defence": { "ui": "icons/defence" },
-  "shield": { "ui": "classes/fitting/statsicons/shieldhp" },
-  "armor": { "ui": "classes/fitting/statsicons/armorhp" },
-  "structure": { "ui": "classes/fitting/statsicons/structurehp" },
-  "shieldBoost": { "ui": "classes/fitting/statsicons/shieldboostrate" },
-  "armorRepair": { "ui": "classes/fitting/statsicons/armorrepairrate" },
-  "hullRepair": { "ui": "classes/fitting/statsicons/hullrepairrate" },
-  "passiveRecharge": { "ui": "classes/fitting/statsicons/passiveshieldrecharge" },
-  "offence": { "ui": "classes/fitting/statsicons/turretdps" },
-  "volley": { "ui": "classes/fitting/statsicons/alphastrike" },
-  "droneDps": { "ui": "classes/fitting/statsicons/dronedps" },
-  "fighterDps": { "ui": "classes/shipui/fighters/widgeticonfighters" },
-  "capacitor": { "attribute": 482 },
-  "navigation": { "ui": "icons/speed" },
-  "velocity": { "attribute": 37 },
-  "alignTime": { "ui": "classes/fitting/statsicons/aligntime" },
-  "inertia": { "ui": "classes/fitting/statsicons/inertiamodifier" },
-  "warpSpeed": { "ui": "classes/fitting/statsicons/warpspeed" },
-  "mass": { "ui": "classes/fitting/statsicons/mass" },
-  "signature": { "ui": "classes/fitting/statsicons/signatureradius" },
-  "targeting": { "ui": "icons/target" },
-  "lockRange": { "attribute": 76 },
-  "scanResolution": { "ui": "classes/fitting/statsicons/scanresolution" },
-  "sensorStrength": { "ui": "classes/fitting/statsicons/sensorstrength" },
-  "maxTargets": { "ui": "classes/fitting/statsicons/maximumlockedtargets" },
-  "skill": { "attribute": 182 },
-  "skillWarning": { "ui": "classes/fitting/warningskills" },
-  "slotHigh": { "ui": "classes/fitting/filtericonhighslot" },
-  "slotMedium": { "ui": "classes/fitting/filtericonmediumslot" },
-  "slotLow": { "ui": "classes/fitting/filtericonlowslot" },
-  "slotRig": { "ui": "classes/fitting/filtericonrigslot" },
-  "slotSubsystem": { "ui": "windowicons/subsystems" },
-  "slotService": { "ui": "classes/fitting/stationserviceslot" },
-  "stateActive": { "ui": "classes/fitting/slotactive_small" },
-  "stateOverheated": { "ui": "classes/fitting/slotoverheated_small" },
-  "statePassive": { "ui": "classes/fitting/slotpassive_small" },
-  "meta2": { "metaGroup": 2 },
-  "meta3": { "metaGroup": 3 },
-  "meta4": { "metaGroup": 4 },
-  "meta5": { "metaGroup": 5 },
-  "meta6": { "metaGroup": 6 },
-  "meta14": { "metaGroup": 14 },
-  "meta15": { "metaGroup": 15 }
+  "cpu": {
+    "attribute": 50
+  },
+  "powergrid": {
+    "attribute": 30
+  },
+  "calibration": {
+    "attribute": 1132
+  },
+  "turrets": {
+    "ui": "classes/fitting/iconturrethardpoint"
+  },
+  "launchers": {
+    "ui": "classes/fitting/iconlauncherhardpoint"
+  },
+  "drones": {
+    "ui": "classes/fitting/filtericondrones"
+  },
+  "droneBay": {
+    "attribute": 283
+  },
+  "droneBandwidth": {
+    "ui": "classes/fitting/statsicons/bandwidth"
+  },
+  "defence": {
+    "ui": "icons/defence"
+  },
+  "shield": {
+    "ui": "classes/fitting/statsicons/shieldhp"
+  },
+  "armor": {
+    "ui": "classes/fitting/statsicons/armorhp"
+  },
+  "structure": {
+    "ui": "classes/fitting/statsicons/structurehp"
+  },
+  "shieldBoost": {
+    "ui": "classes/fitting/statsicons/shieldboostrate"
+  },
+  "armorRepair": {
+    "ui": "classes/fitting/statsicons/armorrepairrate"
+  },
+  "hullRepair": {
+    "ui": "classes/fitting/statsicons/hullrepairrate"
+  },
+  "passiveRecharge": {
+    "ui": "classes/fitting/statsicons/passiveshieldrecharge"
+  },
+  "offence": {
+    "ui": "classes/fitting/statsicons/turretdps"
+  },
+  "volley": {
+    "ui": "classes/fitting/statsicons/alphastrike"
+  },
+  "droneDps": {
+    "ui": "classes/fitting/statsicons/dronedps"
+  },
+  "fighterDps": {
+    "ui": "classes/shipui/fighters/widgeticonfighters"
+  },
+  "capacitor": {
+    "attribute": 482
+  },
+  "navigation": {
+    "ui": "icons/speed"
+  },
+  "velocity": {
+    "attribute": 37
+  },
+  "alignTime": {
+    "ui": "classes/fitting/statsicons/aligntime"
+  },
+  "inertia": {
+    "ui": "classes/fitting/statsicons/inertiamodifier"
+  },
+  "warpSpeed": {
+    "ui": "classes/fitting/statsicons/warpspeed"
+  },
+  "mass": {
+    "ui": "classes/fitting/statsicons/mass"
+  },
+  "signature": {
+    "ui": "classes/fitting/statsicons/signatureradius"
+  },
+  "targeting": {
+    "ui": "icons/target"
+  },
+  "lockRange": {
+    "attribute": 76
+  },
+  "scanResolution": {
+    "ui": "classes/fitting/statsicons/scanresolution"
+  },
+  "sensorStrength": {
+    "ui": "classes/fitting/statsicons/sensorstrength"
+  },
+  "maxTargets": {
+    "ui": "classes/fitting/statsicons/maximumlockedtargets"
+  },
+  "skill": {
+    "attribute": 182
+  },
+  "skillWarning": {
+    "ui": "classes/fitting/warningskills"
+  },
+  "slotHigh": {
+    "ui": "classes/fitting/filtericonhighslot"
+  },
+  "slotMedium": {
+    "ui": "classes/fitting/filtericonmediumslot"
+  },
+  "slotLow": {
+    "ui": "classes/fitting/filtericonlowslot"
+  },
+  "slotRig": {
+    "ui": "classes/fitting/filtericonrigslot"
+  },
+  "slotSubsystem": {
+    "ui": "windowicons/subsystems"
+  },
+  "slotService": {
+    "ui": "classes/fitting/stationserviceslot"
+  },
+  "stateActive": {
+    "ui": "classes/fitting/slotactive_small"
+  },
+  "stateOverheated": {
+    "ui": "classes/fitting/slotoverheated_small"
+  },
+  "statePassive": {
+    "ui": "classes/fitting/slotpassive_small"
+  },
+  "meta2": {
+    "metaGroup": 2
+  },
+  "meta3": {
+    "metaGroup": 3
+  },
+  "meta4": {
+    "metaGroup": 4
+  },
+  "meta5": {
+    "metaGroup": 5
+  },
+  "meta6": {
+    "metaGroup": 6
+  },
+  "meta14": {
+    "metaGroup": 14
+  },
+  "meta15": {
+    "metaGroup": 15
+  },
+  "resistEm": {
+    "ui": "classes/fitting/statsicons/emresistance"
+  },
+  "resistThermal": {
+    "ui": "classes/fitting/statsicons/thermalresistance"
+  },
+  "resistKinetic": {
+    "ui": "classes/fitting/statsicons/kineticresistance"
+  },
+  "resistExplosive": {
+    "ui": "classes/fitting/statsicons/explosiveresistance"
+  },
+  "cargo": {
+    "ui": "windowicons/cargo"
+  },
+  "droneBayWindow": {
+    "ui": "windowicons/dronebay"
+  },
+  "droneRange": {
+    "ui": "classes/fitting/statsicons/dronerange"
+  },
+  "sensorRadar": {
+    "ui": "classes/fitting/statsicons/sensorstrengthamarr"
+  },
+  "sensorLadar": {
+    "ui": "classes/fitting/statsicons/sensorstrengthminmatar"
+  },
+  "sensorMagnetometric": {
+    "ui": "classes/fitting/statsicons/sensorstrengthgallente"
+  },
+  "sensorGravimetric": {
+    "ui": "classes/fitting/statsicons/sensorstrengthcaldari"
+  },
+  "glyphHigh": {
+    "ui": "classes/radialmenu/fitting/high"
+  },
+  "glyphMedium": {
+    "ui": "classes/radialmenu/fitting/med"
+  },
+  "glyphLow": {
+    "ui": "classes/radialmenu/fitting/low"
+  }
 }

@@ -35,6 +35,12 @@ export interface FitStats {
     droneBandwidth: Resource;
     /** Drones in space against the character's limit. */
     drones: Resource;
+    /** Cargo hold: the volume of the charges in cargo against the hull's capacity. */
+    cargo: Resource;
+  };
+  drones: {
+    /** Metres. */
+    controlRange: number;
   };
   slots: Record<ModuleSlot, number>;
   defence: {
@@ -108,6 +114,8 @@ export const STAT_ATTRIBUTES = [
   "droneBandwidthUsed",
   "droneActive",
   "maxActiveDrones",
+  "droneControlDistance",
+  "capacity",
   "hiSlots",
   "medSlots",
   "lowSlots",
@@ -235,6 +243,12 @@ export function fitStats(fit: Fit, calc: Calculation, sde: Sde): FitStats {
     }
   }
 
+  let cargoUsed = 0;
+  for (const item of fit.items) {
+    if (item.slot.type !== "cargo") continue;
+    cargoUsed += (sde.types.get(item.type_id)?.volume ?? 0) * (item.quantity ?? 1);
+  }
+
   const stable = ship("capacitorStablePercentage");
   const depletes = ship("capacitorDepletesIn");
   const dps = ship("damagePerSecondWithReload");
@@ -251,6 +265,10 @@ export function fitStats(fit: Fit, calc: Calculation, sde: Sde): FitStats {
       droneBay: { used: ship("droneCapacityLoad"), total: ship("droneCapacity") },
       droneBandwidth: { used: ship("droneBandwidthUsed"), total: ship("droneBandwidth") },
       drones: { used: ship("droneActive"), total: character("maxActiveDrones") },
+      cargo: { used: cargoUsed, total: ship("capacity") },
+    },
+    drones: {
+      controlRange: character("droneControlDistance") || ship("droneControlDistance"),
     },
     slots,
     defence: {

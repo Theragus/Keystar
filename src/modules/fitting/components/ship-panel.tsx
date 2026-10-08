@@ -10,7 +10,7 @@ import { Glass } from "@/components/ui/glass";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { bayItems, overflowItems, STATES } from "../engine/fit-state";
-import type { FitStats, Resource } from "../engine/stats";
+import type { FitStats } from "../engine/stats";
 import type { ViolationText } from "../engine/violations";
 import { compatibleCharges, takesCharges, type ModuleSlot } from "../sde/catalog";
 import { type FitIconName } from "../icons";
@@ -92,29 +92,9 @@ function violationIcon(v: ViolationText): FitIconName | null {
   return null;
 }
 
-function ResourceBar({ label, icon, value, unit, f }: { label: string; icon: FitIconName; value: Resource; unit?: string; f: (v: number) => string }) {
-  const over = value.used > value.total + 1e-6;
-  const pct = value.total > 0 ? Math.min(100, (value.used / value.total) * 100) : value.used > 0 ? 100 : 0;
-  return (
-    <div className="min-w-0">
-      <div className="flex items-center gap-1 truncate text-2xs text-ink-3">
-        <FitIcon name={icon} size={14} />
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="glass-inset mt-1 h-1.5 overflow-hidden rounded-full">
-        <div className={cn("h-full rounded-full transition-[width]", over ? "bg-critical" : "bg-accent")} style={{ width: `${pct}%` }} />
-      </div>
-      <div className={cn("tabular mt-0.5 text-right text-2xs whitespace-nowrap", over ? "text-critical-text" : "text-ink-2")}>
-        {f(value.used)} / {f(value.total)}
-        {unit ? ` ${unit}` : ""}
-      </div>
-    </div>
-  );
-}
-
 /** The ship: hull, toolbar, resource bars, slot racks, bays and the fit's problems. */
 export function ShipPanel(p: ShipPanelProps) {
-  const { t, f } = useI18n();
+  const { t } = useI18n();
   const s = t.fitting;
   const e = s.editor;
   const { sde, fit, calc, stats } = p;
@@ -142,8 +122,6 @@ export function ShipPanel(p: ShipPanelProps) {
     if (v.index === null) continue;
     problemsByItem.set(v.index, [...(problemsByItem.get(v.index) ?? []), v.text]);
   }
-  const n1 = (v: number) => f.number(v, 1);
-  const n0 = (v: number) => f.integer(Math.round(v));
   const selectedIndex = p.selection?.kind === "item" && fit.items[p.selection.index] ? p.selection.index : null;
 
   return (
@@ -202,28 +180,12 @@ export function ShipPanel(p: ShipPanelProps) {
         </label>
       </div>
 
-      {stats && (
-        <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-          <ResourceBar label={s.stats.resources.cpu} icon="cpu" value={stats.resources.cpu} unit={s.stats.units.tf} f={n1} />
-          <ResourceBar label={s.stats.resources.power} icon="powergrid" value={stats.resources.power} unit={s.stats.units.mw} f={n1} />
-          <ResourceBar label={s.stats.resources.calibration} icon="calibration" value={stats.resources.calibration} f={n0} />
-          <ResourceBar label={s.stats.resources.turrets} icon="turrets" value={stats.resources.turrets} f={n0} />
-          <ResourceBar label={s.stats.resources.launchers} icon="launchers" value={stats.resources.launchers} f={n0} />
-          <ResourceBar label={s.stats.resources.drones} icon="drones" value={stats.resources.drones} f={n0} />
-          {stats.resources.droneBay.total > 0 && (
-            <>
-              <ResourceBar label={s.stats.resources.droneBay} icon="droneBay" value={stats.resources.droneBay} unit={s.stats.units.m3} f={n0} />
-              <ResourceBar label={s.stats.resources.droneBandwidth} icon="droneBandwidth" value={stats.resources.droneBandwidth} unit={s.stats.units.mbit} f={n0} />
-            </>
-          )}
-        </div>
-      )}
-
       <div className="space-y-3">
         <SlotWheel
           sde={sde}
           fit={fit}
           calc={calc}
+          stats={stats}
           slotCounts={slotCounts}
           problems={problemsByItem}
           selection={p.selection}
