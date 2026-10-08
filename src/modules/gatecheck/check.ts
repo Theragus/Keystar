@@ -1,13 +1,16 @@
 import { ACTIVE_CAMP_MS, FEED_FRESH_MS, FEED_STALE_MS } from "./constants";
 import type { GatecheckKillRow } from "./schema";
-import { killTags, mergeTags, type GroupOf, type KillTag } from "./tags";
+import { isMinorVictim, isOthersWarKill, killTags, mergeTags, type CategoryOf, type GroupOf, type KillTag, type WarContext } from "./tags";
 import { gateTo, type Universe } from "./universe";
 
 /**
  * The gate check: what happened along a route in the last hours, gate by gate.
  * For every system it tells kills at the gates the route uses (the one you
  * arrive at and the one you leave by) from kills at its other gates and away
- * from gates, tags what the camp used, and sums it up as a status. Pure.
+ * from gates, tags what the camp used, and sums it up as a status. Only ship
+ * kills (and active deployables) make a camp; a mobile depot or structure shot
+ * at a gate, or a high-sec kill in a war between others, counts as activity in
+ * the system. Pure.
  */
 export type KillRecord = Pick<
   GatecheckKillRow,
@@ -29,6 +32,7 @@ export type KillRecord = Pick<
   | "attackerWeaponTypeIds"
   | "npc"
   | "concord"
+  | "warId"
 >;
 
 export type FeedHealth = "fresh" | "delayed" | "offline";
@@ -69,13 +73,18 @@ export interface CheckedKill {
     shipTypeId: number;
   }[];
   npc: boolean;
+  /** The victim was no ship (a mobile depot, a structure): it does not count towards a camp. */
+  minor: boolean;
+  /** A high-sec kill in a war between others: no threat to neutrals, it does not count towards a camp. */
+  war: boolean;
   tags: KillTag[];
 }
 
 /**
+ * Kills of ships (and active deployables), not in others' high-sec wars, only:
  * camp: a player kill at a route gate in the last 30 minutes, or three within the hour.
  * recent: player kills at a route gate in the window.
- * activity: player kills elsewhere in the system (other gates, off the gates).
+ * activity: player kills elsewhere in the system (other gates, off the gates), or background kills at a route gate.
  * quiet: nothing in the window, and the feed is up to date.
  * unknown: nothing in the window, but the feed is behind, so that means little.
  */
@@ -91,13 +100,18 @@ export interface SystemCheck {
   exitGateId: number | null;
   previousId: number | null;
   nextId: number | null;
-  /** Kills at the route's gates, newest first (NPC-only kills included, flagged). */
+  /** Kills at the route's gates, newest first (NPC-only kills, minor victims and others' war kills included, flagged). */
   routeKills: CheckedKill[];
   /** Player kills elsewhere in the system, newest first. */
   otherKills: CheckedKill[];
   /** Kills with only NPCs on the mail, anywhere in the system. */
   npcKills: number;
+  /** Newest player kill of a ship at a route gate. */
   lastRouteKill: Date | null;
+  /** Newest player kill of a ship elsewhere in the system. */
+  lastActivity: Date | null;
+  /** Newest background kill anywhere in the system: a minor victim (a mobile depot, a structure) or others' war. */
+  lastBackgroundKill: Date | null;
   /** What the camp at the route gates used, and what showed up anywhere in the system. */
   routeTags: KillTag[];
   systemTags: KillTag[];
@@ -110,7 +124,20 @@ export interface RouteCheck {
   feed: FeedHealth;
 }
 
-export function toCheckedKill(k: KillRecord, place: KillPlace, u: Universe, groupOf: GroupOf): CheckedKill {
+const newest = (kills: readonly CheckedKill[]) =>
+  kills.reduce<Date | null>((last, k) => (last && last >= k.time ? last : k.time), null);
+
+/** What classifies a kill: inventory groups and categories of the types, and the wars on the kills. */
+export interface KillClassifier {
+  groupOf: GroupOf;
+  categoryOf: CategoryOf;
+  wars: WarContext;
+}
+
+/** Counts towards a camp: neither a minor victim nor others' war. */
+export const isThreat = (k: CheckedKill) => !k.minor && !k.war;
+
+export function toCheckedKill(k: KillRecord, place: KillPlace, u: Universe, c: KillClassifier): CheckedKill {
   const gate = k.gateId === null ? null : (u.gates.get(k.solarSystemId)?.find((g) => g.id === k.gateId) ?? null);
   return {
     killmailId: k.killmailId,
@@ -132,7 +159,9 @@ export function toCheckedKill(k: KillRecord, place: KillPlace, u: Universe, grou
       shipTypeId: k.attackerShipTypeIds[i] ?? 0,
     })),
     npc: k.npc,
-    tags: killTags(k, groupOf),
+    minor: isMinorVictim(k.victimShipTypeId, c.groupOf, c.categoryOf),
+    war: isOthersWarKill(k.warId, u.systems.get(k.solarSystemId)?.security ?? 0, c.wars),
+    tags: killTags(k, c.groupOf, c.wars),
   };
 }
 
@@ -158,6 +187,8 @@ export function checkRoute(
     windowHours: number;
     feed: FeedStatus | null;
     groupOf: GroupOf;
+    categoryOf: CategoryOf;
+    wars: WarContext;
   },
 ): RouteCheck {
   const since = opts.now.getTime() - opts.windowHours * 3600_000;
@@ -180,11 +211,13 @@ export function checkRoute(
       if (k.npc) npcKills += 1;
       const place: KillPlace =
         k.gateId === null ? "elsewhere" : k.gateId === gates.entryGateId ? "entry" : k.gateId === gates.exitGateId ? "exit" : "gate";
-      if (place === "entry" || place === "exit") routeKills.push(toCheckedKill(k, place, u, opts.groupOf));
-      else if (!k.npc || k.concord) otherKills.push(toCheckedKill(k, place, u, opts.groupOf));
+      if (place === "entry" || place === "exit") routeKills.push(toCheckedKill(k, place, u, opts));
+      else if (!k.npc || k.concord) otherKills.push(toCheckedKill(k, place, u, opts));
     }
-    const playerRouteKills = routeKills.filter((k) => !k.npc);
+    const playerRouteKills = routeKills.filter((k) => !k.npc && isThreat(k));
     const lastRouteKill = playerRouteKills[0]?.time ?? null;
+    const shipActivity = otherKills.filter((k) => !k.npc && isThreat(k));
+    const background = [...routeKills, ...otherKills].filter((k) => !k.npc && !isThreat(k));
     const hourAgo = opts.now.getTime() - 3600_000;
     const camp =
       lastRouteKill !== null &&
@@ -194,7 +227,7 @@ export function checkRoute(
       ? "camp"
       : playerRouteKills.length
         ? "recent"
-        : otherKills.some((k) => !k.npc)
+        : shipActivity.length || background.length
           ? "activity"
           : health === "fresh"
             ? "quiet"
@@ -208,7 +241,9 @@ export function checkRoute(
       otherKills,
       npcKills,
       lastRouteKill,
-      routeTags: mergeTags(routeKills.map((k) => k.tags)),
+      lastActivity: newest(shipActivity),
+      lastBackgroundKill: newest(background),
+      routeTags: mergeTags(routeKills.filter(isThreat).map((k) => k.tags)),
       systemTags: mergeTags([...routeKills, ...otherKills].map((k) => k.tags)),
       status,
     };

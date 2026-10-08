@@ -3,11 +3,11 @@ import { ensureNames, ensureTypes } from "@/core/eve/resolver";
 import { env } from "@/core/env";
 import { createLogger, errorMessage } from "@/core/logger";
 import { lookupDisplayNames, type DisplayNames } from "@/modules/intel/names";
-import { checkRoute, feedHealth, routeGates, type FeedHealth, type RouteCheck } from "./check";
-import { NEARBY_MS, PREDICTION_DAYS, SECONDS_PER_JUMP, WINDOW_HOURS } from "./constants";
+import { checkRoute, feedHealth, routeGates, type FeedHealth, type KillRecord, type RouteCheck } from "./check";
+import { NEARBY_MS, PREDICTION_DAYS, WINDOW_HOURS } from "./constants";
 import { resolveQuery, type GatecheckQuery, type ResolvedQuery } from "./params";
-import { arrivalTimes, historyDays, predictRoute, routeRegulars, type SystemPrediction } from "./predict";
-import { killsAtGates, killsByPilots, killsInSystems, loadFeedStatus, systemRegions, typeGroups } from "./queries";
+import { historyDays, predictRoute, routeRegulars, type SystemPrediction } from "./predict";
+import { killsAtGates, killsByPilots, killsInSystems, loadFeedStatus, loadWarContext, systemRegions, typeGroups } from "./queries";
 import { planRoute, securityMix } from "./route";
 import { getUniverse } from "./universe-data";
 
@@ -28,7 +28,6 @@ export interface GatecheckResult {
   resolved: ResolvedQuery;
   route: number[] | null;
   mix: Record<"high" | "low" | "null", number>;
-  etas: Date[];
   check: RouteCheck;
   predictions: SystemPrediction[];
   feed: FeedSummary;
@@ -37,6 +36,17 @@ export interface GatecheckResult {
   /** Names of the route's systems, their neighbours and where regulars were seen (static data). */
   systemNames: Map<number, string>;
   now: Date;
+}
+
+/** Hull, weapon and victim types on kills, for their inventory groups. */
+function killTypes(kills: readonly KillRecord[]): number[] {
+  const ids = new Set<number>();
+  for (const k of kills) {
+    ids.add(k.victimShipTypeId);
+    k.attackerShipTypeIds.forEach((t) => ids.add(t));
+    k.attackerWeaponTypeIds.forEach((t) => ids.add(t));
+  }
+  return [...ids];
 }
 
 /** Ids a result shows that need names. */
@@ -70,8 +80,8 @@ function shownIds(check: RouteCheck, predictions: SystemPrediction[]) {
 
 /**
  * Plans the route and checks it: kills along it in the chosen window (live
- * from the database the live feed keeps current) and camp estimates for the
- * time each gate is reached. Names missing from the cache are looked up on
+ * from the database the live feed keeps current) and camp estimates for
+ * each gate right now. Names missing from the cache are looked up on
  * ESI (public, bounded); zKillboard is never asked from here.
  */
 export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise<GatecheckResult | null> {
@@ -96,7 +106,6 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
       resolved,
       route: null,
       mix: { high: 0, low: 0, null: 0 },
-      etas: [],
       check: {
         systems: [],
         windowHours: WINDOW_HOURS,
@@ -111,8 +120,6 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
     };
   }
 
-  // Departing now, at about a minute a jump.
-  const etas = arrivalTimes(route, now, SECONDS_PER_JUMP);
   const gateIds = route.flatMap((_, i) => {
     const g = routeGates(u, route, i);
     return [g.entryGateId, g.exitGateId].filter((id): id is number => id !== null);
@@ -121,29 +128,31 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
     killsInSystems(route, new Date(now.getTime() - WINDOW_HOURS * 3600_000)),
     days > 0 ? killsAtGates(route, gateIds, new Date(now.getTime() - days * DAY)) : Promise.resolve([]),
   ]);
-  const regulars = routeRegulars(u, route, history, { now, days, etas });
+  const [groups, routeWars] = await Promise.all([typeGroups(killTypes([...recent, ...history])), loadWarContext([...recent, ...history])]);
+  const groupOf = (typeId: number) => groups.get(typeId)?.groupId;
+  const categoryOf = (typeId: number) => groups.get(typeId)?.categoryId ?? undefined;
+  const regulars = routeRegulars(u, route, history, { now, days, groupOf, categoryOf, wars: routeWars });
   const sightings = await killsByPilots([...regulars], new Date(now.getTime() - NEARBY_MS));
-
-  const typeIds = new Set<number>();
-  for (const k of [...recent, ...history, ...sightings]) {
-    typeIds.add(k.victimShipTypeId);
-    k.attackerShipTypeIds.forEach((t) => typeIds.add(t));
-    k.attackerWeaponTypeIds.forEach((t) => typeIds.add(t));
-  }
-  const groups = await typeGroups(typeIds);
-  const groupOf = (typeId: number) => groups.get(typeId);
+  const [sightingGroups, wars] = await Promise.all([
+    typeGroups(killTypes(sightings).filter((id) => !groups.has(id))),
+    loadWarContext([...recent, ...history, ...sightings]),
+  ]);
+  for (const [id, group] of sightingGroups) groups.set(id, group);
 
   const check = checkRoute(u, route, recent, {
     now,
     windowHours: WINDOW_HOURS,
     feed,
     groupOf,
+    categoryOf,
+    wars,
   });
   const predictions = predictRoute(u, route, check, history, sightings, {
     now,
     days,
-    etas,
     groupOf,
+    categoryOf,
+    wars,
   });
 
   const ids = shownIds(check, predictions);
@@ -165,7 +174,6 @@ export async function runGatecheck(q: GatecheckQuery, now = new Date()): Promise
     resolved,
     route,
     mix: securityMix(u, route),
-    etas,
     check,
     predictions,
     feed: feedSummary,

@@ -16,9 +16,6 @@ export const PREDICTION_DAYS = 30;
 /** Recent kills are those of the last two hours (kills reach zKillboard up to half an hour late). */
 export const WINDOW_HOURS = 2;
 
-/** Rough time per jump (align, warp, jump) for the arrival time at each gate, departing now. */
-export const SECONDS_PER_JUMP = 60;
-
 /** The live feed counts as up to date while it caught up this recently (it polls every 10 s). */
 export const FEED_FRESH_MS = 3 * 60_000;
 /** Past this, the feed is offline and "no kills" means nothing. */

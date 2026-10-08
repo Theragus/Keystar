@@ -16,8 +16,38 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
 
 ### Changed
 
+- **Ore filter: grades fold under their ore.** The Ore picker on the mining pages now lists each ore once
+  (Scordite, Veldspar, …); the arrow beside it unfolds its grades and variants (II-Grade, Glistening, Thick …) in
+  smaller type. Ticking the ore picks all of its grades, a half-filled box shows that only some are picked, and
+  searching for a grade lists the matches directly. ([PR #199](https://github.com/Theragus/Keystar/pull/199))
+
+- **Gate check: wars between others no longer raise camp alerts.** In high-sec, war targets may shoot each other at
+  the gates, but nobody else: kills in wars between other corporations count as activity in the system, keep the
+  camp estimate low and are summarised under the kills. Kills in wars your corporation or alliance fights still count
+  as a camp and are tagged "War targets"; in low- and null-sec war kills count as before. Keystar looks up who fights
+  which war on ESI in the background (new job "Gate check: who fights which war").
+  ([PR #198](https://github.com/Theragus/Keystar/pull/198))
+- **Gate check: mobile depots no longer raise camp alerts.** Only ship kills (pods included) and kills of
+  deployables that are only out while their owner flies beside them, such as mobile tractor units, count as a camp.
+  Mobile depots and structures shot at a gate count as activity in the system, keep the camp estimate low, and are
+  summarised under the kills instead of filling the list. The map's travel check skips them too.
+  ([PR #197](https://github.com/Theragus/Keystar/pull/197))
+- **Gate check: systems fold.** Each system on the route can be folded away. Hotspots start open and the rest start
+  folded, and a folded system still shows its colour, status, camp estimate, tags and kill counts.
+  ([PR #197](https://github.com/Theragus/Keystar/pull/197))
+- **Gate check: arrival times are gone.** The page no longer shows an estimated arrival time per gate or for the
+  route, and the camp estimate is now for every gate right now. ([PR #197](https://github.com/Theragus/Keystar/pull/197))
+- **Gate check: more kills on demand.** A gate shows its newest five kills; "Show 5 more" reveals five more at a
+  time, and a click anywhere on a kill opens it on zKillboard. ([PR #197](https://github.com/Theragus/Keystar/pull/197))
 - Hovering a page in the sidebar now shows its icon in the section colour, as the current page already did.
   ([PR #196](https://github.com/Theragus/Keystar/pull/196))
+- **Keystar is usable on phones.** These changes apply only below tablet width; desktop is unchanged.
+  ([PR #192](https://github.com/Theragus/Keystar/pull/192))
+  - The sidebar is a menu that slides in from the ☰ button in the top bar and closes when you pick a page, tap beside
+    it or press Escape. The top bar keeps the page name, alerts, help and EVE time and no longer runs off the screen.
+  - Pages fit the screen instead of being shrunk to fit: wide tables scroll inside their panel, filter menus stay on
+    screen, and stat tiles, the mining observers and the killboard's top pilots fit two to a row.
+  - Tapping a text field no longer zooms the page in on iPhones, and filter menus don't open the keyboard by themselves.
 
 ## [0.15.0] - 2026-10-07
 

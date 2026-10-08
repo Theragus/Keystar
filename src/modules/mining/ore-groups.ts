@@ -10,9 +10,12 @@ export interface OreRow extends TypeRow {
 export const singleOreRow = (r: TypeRow): OreRow => ({ ...r, key: String(r.typeId), typeIds: [r.typeId] });
 
 /** The ore family a type belongs to: Scordite II-Grade → Scordite, keyed by class so families never span classes. */
-export function oreFamily(name: string, oreClass: TypeRow["oreClass"]): { key: string; name: string; rank: number } {
-  const { base, rank } = oreGrade(name);
-  return { key: `${oreClass}:${base}`, name: base, rank };
+export function oreFamily(
+  name: string,
+  oreClass: TypeRow["oreClass"],
+): { key: string; name: string; rank: number; grade: string } {
+  const { base, rank, grade } = oreGrade(name);
+  return { key: `${oreClass}:${base}`, name: base, rank, grade };
 }
 
 /** Combines the grades and variants of each ore (Scordite, Scordite II-Grade, …) into one row named after the family. */
@@ -42,4 +45,23 @@ export function groupOreTypes(rows: TypeRow[]): OreRow[] {
       ? { ...row, unitPrice: row.quantity && row.value ? row.value / row.quantity : 0 }
       : { ...singleOreRow(first), key: row.key },
   );
+}
+
+export interface OreFilterType {
+  id: number;
+  name: string;
+  oreClass: TypeRow["oreClass"];
+}
+
+/**
+ * Ore picker entries in display order: by family, the plain ore first and better grades after,
+ * each tagged with its family and a short grade label so the picker can fold the grades away.
+ */
+export function oreFilterTypes<T extends OreFilterType>(types: T[]) {
+  return types
+    .map((type) => {
+      const { key, name, rank, grade } = oreFamily(type.name, type.oreClass);
+      return { type, family: { key, label: name }, rank, gradeLabel: grade === "Base" ? type.name : grade };
+    })
+    .sort((a, b) => a.family.label.localeCompare(b.family.label) || a.rank - b.rank || a.type.name.localeCompare(b.type.name));
 }

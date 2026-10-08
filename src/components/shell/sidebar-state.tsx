@@ -1,10 +1,25 @@
 "use client";
 
-import { ChevronDown, Menu } from "lucide-react";
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown, Menu, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS_COOKIE, serializeClosedNavSections, SIDEBAR_COOKIE, SIDEBAR_COOKIE_MAX_AGE } from "./sidebar-config";
+
+/** Below this width the sidebar is an off-canvas drawer (Tailwind's `md`). */
+export const DESKTOP_QUERY = "(min-width: 48rem)";
+
+const subscribeDesktop = (onChange: () => void) => {
+  const query = window.matchMedia(DESKTOP_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+
+/** Whether the viewport is desktop width; the server and hydration assume it is. */
+export function useIsDesktop() {
+  return useSyncExternalStore(subscribeDesktop, () => window.matchMedia(DESKTOP_QUERY).matches, () => true);
+}
 
 const SidebarContext = createContext<{
   collapsed: boolean;
@@ -12,12 +27,16 @@ const SidebarContext = createContext<{
   toggle: () => void;
   closedSections: string[];
   toggleSection: (id: string) => void;
+  mobileOpen: boolean;
+  setMobileOpen: (open: boolean) => void;
 }>({
   collapsed: false,
   fading: false,
   toggle: () => {},
   closedSections: [],
   toggleSection: () => {},
+  mobileOpen: false,
+  setMobileOpen: () => {},
 });
 
 const writeCookie = (name: string, value: string) => {
@@ -28,6 +47,11 @@ const writeCookie = (name: string, value: string) => {
  * Collapsed/expanded state of the app sidebar and of its sections. The server
  * reads the cookies for the first render; toggling only writes them, so no
  * request is involved. The width changes without hiding the contents.
+ *
+ * On phones the sidebar is a drawer instead (`mobileOpen`): it closes on
+ * navigation, a link tap, Escape, or when the window grows to desktop width.
+ * While open the page behind it is inert and does not scroll; closing returns
+ * focus to the menu button.
  */
 export function SidebarProvider({
   collapsed: initial,
@@ -53,32 +77,126 @@ export function SidebarProvider({
     },
     [closedSections],
   );
+
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  // Navigating (back/forward included) closes the drawer.
+  const [shownPath, setShownPath] = useState(pathname);
+  if (pathname !== shownPath) {
+    setShownPath(pathname);
+    setMobileOpen(false);
+  }
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const close = () => setMobileOpen(false);
+    // A popover in the drawer takes its own Escape first (it prevents the default).
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !e.defaultPrevented && close();
+    // Any link closes it, also one to the current page (no pathname change).
+    const sidebar = document.getElementById("app-sidebar");
+    const onClick = (e: MouseEvent) => e.target instanceof Element && e.target.closest("a[href]") && close();
+    const desktop = window.matchMedia(DESKTOP_QUERY);
+    const onResize = () => desktop.matches && close();
+    window.addEventListener("keydown", onKey);
+    sidebar?.addEventListener("click", onClick);
+    desktop.addEventListener("change", onResize);
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    // Keep focus and taps in the drawer: the page column behind it is inert.
+    const page = document.getElementById("app-page");
+    if (page) page.inert = true;
+    document.getElementById("app-sidebar-close")?.focus();
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      sidebar?.removeEventListener("click", onClick);
+      desktop.removeEventListener("change", onResize);
+      root.style.overflow = overflow;
+      if (page) page.inert = false;
+      const focused = document.activeElement;
+      if (!focused || focused === document.body || sidebar?.contains(focused)) document.getElementById("app-nav-open")?.focus();
+    };
+  }, [mobileOpen]);
+
   const value = useMemo(
-    () => ({ collapsed, fading: false, toggle, closedSections, toggleSection }),
-    [collapsed, toggle, closedSections, toggleSection],
+    () => ({ collapsed, fading: false, toggle, closedSections, toggleSection, mobileOpen, setMobileOpen }),
+    [collapsed, toggle, closedSections, toggleSection, mobileOpen, setMobileOpen],
   );
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }
 
 export const useSidebar = () => useContext(SidebarContext);
 
-/** Burger button in the sidebar: collapses the sidebar to its icon rail and back. */
+const iconButton =
+  "grid size-8 shrink-0 place-items-center rounded-md text-ink-3 transition hover:bg-surface-contrast/[0.06] hover:text-ink";
+
+/**
+ * Burger button in the sidebar: collapses the sidebar to its icon rail and back.
+ * On phones it is replaced by a button that closes the drawer.
+ */
 export function SidebarToggle() {
   const { t } = useI18n();
-  const { collapsed, toggle } = useSidebar();
+  const { collapsed, toggle, setMobileOpen } = useSidebar();
   const label = collapsed ? t.shell.sidebar.expand : t.shell.sidebar.collapse;
   return (
+    <>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={!collapsed}
+        aria-controls="app-sidebar"
+        aria-label={label}
+        title={label}
+        className={`${iconButton} max-md:hidden`}
+      >
+        <Menu className="size-4" aria-hidden />
+      </button>
+      <button
+        id="app-sidebar-close"
+        type="button"
+        onClick={() => setMobileOpen(false)}
+        aria-controls="app-sidebar"
+        aria-label={t.shell.sidebar.closeMenu}
+        className={`${iconButton} md:hidden`}
+      >
+        <X className="size-4" aria-hidden />
+      </button>
+    </>
+  );
+}
+
+/** Top-bar burger on phones: opens the sidebar drawer. */
+export function MobileNavButton() {
+  const { t } = useI18n();
+  const { mobileOpen, setMobileOpen } = useSidebar();
+  return (
     <button
+      id="app-nav-open"
       type="button"
-      onClick={toggle}
-      aria-expanded={!collapsed}
+      onClick={() => setMobileOpen(true)}
+      aria-expanded={mobileOpen}
       aria-controls="app-sidebar"
-      aria-label={label}
-      title={label}
-      className="grid size-8 shrink-0 place-items-center rounded-md text-ink-3 transition hover:bg-surface-contrast/[0.06] hover:text-ink"
+      aria-label={t.shell.sidebar.openMenu}
+      className={`${iconButton} -ml-1 md:hidden`}
     >
       <Menu className="size-4" aria-hidden />
     </button>
+  );
+}
+
+/** Dims the page behind the open drawer; tapping it closes the drawer. */
+export function MobileNavBackdrop() {
+  const { t } = useI18n();
+  const { mobileOpen, setMobileOpen } = useSidebar();
+  if (!mobileOpen) return null;
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-label={t.shell.sidebar.closeMenu}
+      onClick={() => setMobileOpen(false)}
+      className="fixed inset-0 z-45 bg-black/50 md:hidden"
+    />
   );
 }
 
@@ -92,7 +210,10 @@ export function SidebarToggle() {
  * focus rings show when the section is open.
  */
 export function NavSectionGroup({ id, label, children }: { id: string; label: string; children: ReactNode }) {
-  const { collapsed: rail, closedSections, toggleSection } = useSidebar();
+  const { collapsed, closedSections, toggleSection } = useSidebar();
+  // The rail exists from `md` up; the phone drawer folds sections like the expanded sidebar.
+  const desktop = useIsDesktop();
+  const rail = collapsed && desktop;
   const closed = !rail && closedSections.includes(id);
   const [prevClosed, setPrevClosed] = useState(closed);
   const [moving, setMoving] = useState(false);
@@ -107,7 +228,7 @@ export function NavSectionGroup({ id, label, children }: { id: string; label: st
   const text = (
     <span>
       {chars.slice(0, 3).join("")}
-      <span className="group-data-[sidebar=collapsed]/shell:hidden">{chars.slice(3).join("")}</span>
+      <span className="md:group-data-[sidebar=collapsed]/shell:hidden">{chars.slice(3).join("")}</span>
     </span>
   );
   return (

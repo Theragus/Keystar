@@ -1,4 +1,4 @@
-import { eveEntities, eveGroups, eveTypes, gatecheckFeed, gatecheckKills, type Db } from "@/core/db";
+import { eveEntities, eveGroups, eveTypes, gatecheckFeed, gatecheckKills, gatecheckWars, type Db } from "@/core/db";
 import { gateKillRows } from "@/modules/gatecheck/ingest";
 import { getUniverse } from "@/modules/gatecheck/universe-data";
 import type { ZkillAttacker, ZkillKillmail } from "@/modules/killboard/zkill";
@@ -8,7 +8,10 @@ import { hostilePilots } from "./killboard";
  * Demo gate check: a month of camps at well-known gates (smartbombs in
  * Rancer, Sabres in Tama and Amamake, Catalyst ganks in Uedama, bubbles at
  * the EC-P8R gate), with the same regulars on most evenings, a live camp right
- * now and a regular seen next door. Stored through the same classification as
+ * now, a regular seen next door, mobile depots shot at a New Caldari gate
+ * (activity, no camp), war targets shooting each other at Perimeter's Jita gate
+ * (a war between others: no camp) and a war target of the home corporation
+ * killed at Jita's Perimeter gate (a camp hunting us). Stored through the same classification as
  * live feed data. Deterministic for a given PRNG.
  */
 const DAY = 86_400_000;
@@ -22,6 +25,7 @@ const GROUPS = [
   { groupId: 541, name: "Interdictor", categoryId: 6 },
   { groupId: 894, name: "Heavy Interdiction Cruiser", categoryId: 6 },
   { groupId: 963, name: "Strategic Cruiser", categoryId: 6 },
+  { groupId: 1246, name: "Mobile Depot", categoryId: 22 },
 ];
 
 // Type ids checked against ESI /universe/types.
@@ -35,6 +39,7 @@ const T = {
   machariel: 17738,
   smartbomb: 3955,
   capsule: 670,
+  mobileDepot: 33474,
 };
 const TYPES = [
   { typeId: T.sabre, name: "Sabre", groupId: 541 },
@@ -46,6 +51,7 @@ const TYPES = [
   { typeId: T.machariel, name: "Machariel", groupId: 27 },
   { typeId: T.smartbomb, name: "Medium EMP Smartbomb II", groupId: 72 },
   { typeId: T.capsule, name: "Capsule", groupId: 29 },
+  { typeId: T.mobileDepot, name: "Mobile Depot", groupId: 1246 },
 ];
 /** Victims: ships the killboard demo already names (Viator, Drake, Retriever, Raven, Ishkur). */
 const VICTIM_SHIPS = [12743, 24698, 17478, 638, 12042];
@@ -68,9 +74,19 @@ interface Camp {
   ships: number[];
   smartbombs?: boolean;
   gank?: boolean;
+  /** The war the kills are part of. */
+  warId?: number;
+  victimCorporationId?: number;
 }
 
-export async function seedGatecheck(db: Db, opts: { rand: () => number; now: Date }): Promise<{ kills: number }> {
+/** Demo wars: one between outsiders, one against the home corporation. */
+const OTHERS_WAR = 762_001;
+const OUR_WAR = 762_002;
+
+export async function seedGatecheck(
+  db: Db,
+  opts: { rand: () => number; now: Date; homeCorporationId: number },
+): Promise<{ kills: number }> {
   const { rand, now } = opts;
   const pick = <T>(arr: T[]): T => arr[Math.floor(rand() * arr.length)];
   const u = getUniverse();
@@ -144,7 +160,7 @@ export async function seedGatecheck(db: Db, opts: { rand: () => number; now: Dat
   const kill = (systemId: number, gateTo: number, time: Date, crew: number[], camp: Camp, victimShip?: number) => {
     const gate = u.gates.get(systemId)?.find((g) => g.destinationId === gateTo);
     if (!gate || time > now) return;
-    const corp = pick(VICTIM_CORPS);
+    const corp = camp.victimCorporationId ? { id: camp.victimCorporationId } : pick(VICTIM_CORPS);
     const attackers: ZkillAttacker[] = crew.map((c, i) => {
       const p = pilots[c % pilots.length];
       const ship = camp.smartbombs && i === 0 ? T.machariel : pick(camp.ships);
@@ -163,6 +179,7 @@ export async function seedGatecheck(db: Db, opts: { rand: () => number; now: Dat
       killmail_id: killmailId++,
       killmail_time: time.toISOString(),
       solar_system_id: systemId,
+      ...(camp.warId ? { war_id: camp.warId } : {}),
       victim: {
         corporation_id: corp.id,
         ship_type_id: ship,
@@ -177,7 +194,7 @@ export async function seedGatecheck(db: Db, opts: { rand: () => number; now: Dat
       zkb: {
         hash: hash(),
         locationID: gate.id,
-        totalValue: ship === T.capsule ? 10_000 : 20e6 + rand() * 300e6,
+        totalValue: ship === T.capsule ? 10_000 : ship === T.mobileDepot ? 1.3e6 : 20e6 + rand() * 300e6,
         npc: false,
       },
     });
@@ -245,6 +262,29 @@ export async function seedGatecheck(db: Db, opts: { rand: () => number; now: Dat
   live("Rancer", "Crielere", 12, camps[0]);
   live("Rancer", "Crielere", 11, camps[0], T.capsule);
   live("Tama", "Nourvukaiken", 25, camps[1]);
+  // Someone shooting abandoned mobile depots at New Caldari's Jita gate: activity, not a camp.
+  const depots: Camp = { system: "New Caldari", gates: ["Jita"], hours: [0, 0], daily: 0, crew: [15], ships: [T.thrasher] };
+  for (const minutesAgo of [3, 5, 9, 13, 14, 22, 31]) live("New Caldari", "Jita", minutesAgo, depots, T.mobileDepot);
+  // War targets shooting each other at Perimeter's Jita gate (no camp for neutrals); a war target of ours killed at Jita's Perimeter gate.
+  const othersWar: Camp = {
+    ...depots,
+    system: "Perimeter",
+    gates: ["Jita"],
+    crew: [16, 17],
+    ships: [T.thrasher, T.jaguar],
+    warId: OTHERS_WAR,
+    victimCorporationId: VICTIM_CORPS[0].id,
+  };
+  for (const minutesAgo of [4, 8, 15, 27]) live("Perimeter", "Jita", minutesAgo, othersWar);
+  const ourWar: Camp = { ...othersWar, crew: [18], warId: OUR_WAR, victimCorporationId: opts.homeCorporationId };
+  live("Jita", "Perimeter", 9, ourWar);
+  await db
+    .insert(gatecheckWars)
+    .values([
+      { warId: OTHERS_WAR, aggressorId: pilots[16 % pilots.length].corporationId, defenderId: VICTIM_CORPS[0].id, allyIds: [], fetchedAt: now },
+      { warId: OUR_WAR, aggressorId: pilots[18 % pilots.length].corporationId, defenderId: opts.homeCorporationId, allyIds: [], fetchedAt: now },
+    ])
+    .onConflictDoNothing();
   const sujarento = id("Sujarento");
   const sujarentoGate = id("Tama");
   if (sujarento !== undefined && sujarentoGate !== undefined) {
