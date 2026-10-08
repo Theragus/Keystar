@@ -14,6 +14,9 @@ importers:
       '@eveshipfit/dogma-engine':
         specifier: 13.6.0
         version: 13.6.0
+      '@eveshipfit/images':
+        specifier: 3.3579973.0
+        version: 3.3579973.0
       '@eveshipfit/sde':
         specifier: 12.3586130.0
         version: 12.3586130.0
@@ -702,6 +705,9 @@ packages:
 
   '@eveshipfit/dogma-engine@13.6.0':
     resolution: {integrity: sha512-Beaa5MgmyHeIPyEih1xqrjvaa0T40k46h5iUXVMzx6OT15t5xRrotcqoj+Wm6JHNw/twBq2hZWnDLieCzVyovA==}
+
+  '@eveshipfit/images@3.3579973.0':
+    resolution: {integrity: sha512-elHEUGVY0qc/F062SZxS2KZpKF60jImHOfdahXrY65cAswuKM3HICy0nssLZHXVb0aO3GQiHL1m0/dVAjguolA==}
 
   '@eveshipfit/sde@12.3586130.0':
     resolution: {integrity: sha512-Exy5mE/JBNuJt1kOrBACq959MVrEzdMws0PE+fsDJMO1ypYEQn5x7h+Q0zENxSaAVk+18do1WzC2kNJaQjEprw==}
@@ -3580,6 +3586,10 @@ snapshots:
       levn: 0.4.1
 
   '@eveshipfit/dogma-engine@13.6.0': {}
+
+  '@eveshipfit/images@3.3579973.0':
+    dependencies:
+      flatbuffers: 25.9.23
 
   '@eveshipfit/sde@12.3586130.0': {}
 

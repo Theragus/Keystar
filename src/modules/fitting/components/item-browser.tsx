@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Folder, Plus, Search, TriangleAlert, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Folder, Search, X } from "lucide-react";
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { TypeIcon } from "@/components/ui/eve-image";
@@ -8,8 +8,11 @@ import { Glass } from "@/components/ui/glass";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { romanLevel } from "../engine/violations";
+import { META_ICON } from "../icons";
+import { FitIcon } from "./fit-icon";
 import { fitsHull, kindOf, MODULE_SLOTS, requiredSkills, searchTypes, type ItemKind, type ModuleSlot } from "../sde/catalog";
 import type { Sde, SdeType } from "../sde/reader";
+import type { FitIconName } from "../icons";
 import { BROWSER_ROOTS, DRAG_MIME, metaColor, metaShort, type BrowserRoot } from "./shared";
 
 const SEARCH_LIMIT = 80;
@@ -203,6 +206,7 @@ export function ItemBrowser({ sde, shipTypeId, skills, selectedSlot, root, onRoo
           </li>
         ))}
         {items.map((type) => {
+          const kind = kindOf(sde, type.id);
           const missing = meetsSkills(sde, type.id, skills) ? null : firstMissingSkill(sde, type.id, skills);
           const metaLabel = metaShort(type.metaGroupId, sde.metaGroups.get(type.metaGroupId));
           return (
@@ -218,20 +222,17 @@ export function ItemBrowser({ sde, shipTypeId, skills, selectedSlot, root, onRoo
                 onClick={() => onPick(type.id)}
                 onKeyDown={(e) => onRowKey(e, type.id)}
                 title={b.tip}
-                className="group flex cursor-grab items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-ink-2 hover:bg-surface-contrast/6 hover:text-ink active:cursor-grabbing"
+                className="flex cursor-grab items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm text-ink-2 hover:bg-surface-contrast/6 hover:text-ink active:cursor-grabbing"
               >
+                {isModuleKind(kind) && <FitIcon name={SLOT_ICON_BY_KIND[kind]} size={16} title={t.fitting.editor.slot[kind]} />}
                 <TypeIcon id={type.id} size={24} />
                 <span className="min-w-0 flex-1 truncate">{type.name}</span>
                 {missing && (
-                  <TriangleAlert
-                    className="size-3.5 shrink-0 text-warning"
-                    aria-label={b.requires(missing.name, romanLevel(missing.level))}
-                  >
-                    <title>{b.requires(missing.name, romanLevel(missing.level))}</title>
-                  </TriangleAlert>
+                  <span role="img" aria-label={b.requires(missing.name, romanLevel(missing.level))} title={b.requires(missing.name, romanLevel(missing.level))}>
+                    <FitIcon name="skillWarning" size={16} />
+                  </span>
                 )}
-                {metaLabel && <MetaBadge label={metaLabel} color={metaColor(type.metaGroupId)} />}
-                <Plus className="size-3.5 shrink-0 text-ink-3 opacity-0 transition group-hover:opacity-100" aria-hidden />
+                {metaLabel && <MetaBadge label={metaLabel} color={metaColor(type.metaGroupId)} metaGroupId={type.metaGroupId} />}
               </div>
             </li>
           );
@@ -243,14 +244,25 @@ export function ItemBrowser({ sde, shipTypeId, skills, selectedSlot, root, onRoo
   );
 }
 
-/** A meta badge in the game's colour; Tech I stays a quiet neutral chip. */
-export function MetaBadge({ label, color }: { label: string; color: string | null }) {
+const SLOT_ICON_BY_KIND: Record<ModuleSlot, FitIconName> = {
+  high: "slotHigh",
+  medium: "slotMedium",
+  low: "slotLow",
+  rig: "slotRig",
+  subsystem: "slotSubsystem",
+  service: "slotService",
+};
+
+/** A meta badge in the game's colour with the game's marker; Tech I stays a quiet neutral chip. */
+export function MetaBadge({ label, color, metaGroupId }: { label: string; color: string | null; metaGroupId: number }) {
+  const marker = META_ICON[metaGroupId];
   if (!color) return <Badge className="shrink-0">{label}</Badge>;
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-2xs font-medium whitespace-nowrap text-white ring-1 ring-white/15 ring-inset"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full py-0.5 pr-2 pl-1.5 text-2xs font-medium whitespace-nowrap text-white ring-1 ring-white/15 ring-inset"
       style={{ background: color }}
     >
+      {marker && <FitIcon name={marker} size={12} />}
       {label}
     </span>
   );

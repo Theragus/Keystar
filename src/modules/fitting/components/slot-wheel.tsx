@@ -51,6 +51,8 @@ export interface SlotWheelProps {
   problems: Map<number, string[]>;
   selection: Selection;
   onSelect: (selection: Selection) => void;
+  /** Double-click on a fitted module: active ↔ online, as the in-game click does. */
+  onToggleActive: (index: number) => void;
   onDrop: (typeId: number, target: { slot: ModuleSlot; index: number } | { item: number }) => void;
 }
 
@@ -81,6 +83,7 @@ export function SlotWheel(p: SlotWheelProps) {
                 : p.selection?.kind === "slot" && p.selection.slot === slot && p.selection.index === index
             }
             onSelect={() => p.onSelect(entry ? { kind: "item", index: entry.index } : { kind: "slot", slot, index })}
+            onToggle={() => entry && p.onToggleActive(entry.index)}
             onDropType={(typeId) => p.onDrop(typeId, entry ? { item: entry.index } : { slot, index })}
           />
         )),
@@ -99,6 +102,7 @@ function WheelSlot({
   problems,
   selected,
   onSelect,
+  onToggle,
   onDropType,
 }: {
   sde: Sde;
@@ -110,6 +114,7 @@ function WheelSlot({
   problems: string[] | undefined;
   selected: boolean;
   onSelect: () => void;
+  onToggle: () => void;
   onDropType: (typeId: number) => void;
 }) {
   const { t } = useI18n();
@@ -124,6 +129,7 @@ function WheelSlot({
     <button
       type="button"
       onClick={onSelect}
+      onDoubleClick={onToggle}
       {...handlers}
       title={title}
       aria-label={entry ? `${e.slot[slot]} ${index + 1}: ${name}` : `${e.slot[slot]} ${index + 1}: ${e.emptySlot}`}

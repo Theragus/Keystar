@@ -9,14 +9,16 @@ import { ShipRender, TypeIcon } from "@/components/ui/eve-image";
 import { Glass } from "@/components/ui/glass";
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
-import { bayItems, overflowItems } from "../engine/fit-state";
+import { bayItems, overflowItems, STATES } from "../engine/fit-state";
 import type { FitStats, Resource } from "../engine/stats";
 import type { ViolationText } from "../engine/violations";
 import { compatibleCharges, takesCharges, type ModuleSlot } from "../sde/catalog";
+import { type FitIconName } from "../icons";
 import type { Sde } from "../sde/reader";
 import type { SkillSource } from "../engine/draft";
 import type { SkillSourceCharacter } from "../queries";
 import { useDropTarget } from "./drop-target";
+import { FitIcon } from "./fit-icon";
 import { MetaBadge } from "./item-browser";
 import { metaColor, metaShort } from "./shared";
 import { SlotWheel } from "./slot-wheel";
@@ -34,6 +36,9 @@ export interface ShipPanelProps {
   onName: (name: string) => void;
   onRemove: (index: number) => void;
   onCycleState: (index: number) => void;
+  onSetState: (index: number, state: State) => void;
+  /** Double-click on the wheel: active ↔ online. */
+  onToggleActive: (index: number) => void;
   onCharge: (index: number, chargeTypeId: number | null) => void;
   onQuantity: (index: number, quantity: number) => void;
   /** A type dropped on a module slot (or a charge dropped on a fitted module). */
@@ -55,12 +60,47 @@ const STATE_DOT: Record<State, string> = {
   overload: "bg-critical-text",
 };
 
-function ResourceBar({ label, value, unit, f }: { label: string; value: Resource; unit?: string; f: (v: number) => string }) {
+/** The game's symbol for a slot kind, shown before a module's name. */
+export const SLOT_ICON: Record<ModuleSlot, FitIconName> = {
+  high: "slotHigh",
+  medium: "slotMedium",
+  low: "slotLow",
+  rig: "slotRig",
+  subsystem: "slotSubsystem",
+  service: "slotService",
+};
+
+const RESOURCE_ICON: Record<string, FitIconName> = {
+  cpu: "cpu",
+  powergrid: "powergrid",
+  calibration: "calibration",
+  drone_bay: "droneBay",
+  drone_bandwidth: "droneBandwidth",
+  launched_drones: "drones",
+  fighter_bay: "fighterDps",
+  fighter_tubes: "fighterDps",
+  light_fighter_tubes: "fighterDps",
+  support_fighter_tubes: "fighterDps",
+  heavy_fighter_tubes: "fighterDps",
+};
+
+/** The symbol next to a problem: the skill book for a missing skill, the resource's icon for a shortage. */
+function violationIcon(v: ViolationText): FitIconName | null {
+  if (v.rule === "skill") return "skillWarning";
+  if (v.rule === "resource") return RESOURCE_ICON[v.resource ?? ""] ?? null;
+  if (v.rule === "slots" || v.rule === "wrong_slot" || v.rule === "slot_taken") return null;
+  return null;
+}
+
+function ResourceBar({ label, icon, value, unit, f }: { label: string; icon: FitIconName; value: Resource; unit?: string; f: (v: number) => string }) {
   const over = value.used > value.total + 1e-6;
   const pct = value.total > 0 ? Math.min(100, (value.used / value.total) * 100) : value.used > 0 ? 100 : 0;
   return (
     <div className="min-w-0">
-      <div className="truncate text-2xs text-ink-3">{label}</div>
+      <div className="flex items-center gap-1 truncate text-2xs text-ink-3">
+        <FitIcon name={icon} size={14} />
+        <span className="truncate">{label}</span>
+      </div>
       <div className="glass-inset mt-1 h-1.5 overflow-hidden rounded-full">
         <div className={cn("h-full rounded-full transition-[width]", over ? "bg-critical" : "bg-accent")} style={{ width: `${pct}%` }} />
       </div>
@@ -164,16 +204,16 @@ export function ShipPanel(p: ShipPanelProps) {
 
       {stats && (
         <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-          <ResourceBar label={s.stats.resources.cpu} value={stats.resources.cpu} unit={s.stats.units.tf} f={n1} />
-          <ResourceBar label={s.stats.resources.power} value={stats.resources.power} unit={s.stats.units.mw} f={n1} />
-          <ResourceBar label={s.stats.resources.calibration} value={stats.resources.calibration} f={n0} />
-          <ResourceBar label={s.stats.resources.turrets} value={stats.resources.turrets} f={n0} />
-          <ResourceBar label={s.stats.resources.launchers} value={stats.resources.launchers} f={n0} />
-          <ResourceBar label={s.stats.resources.drones} value={stats.resources.drones} f={n0} />
+          <ResourceBar label={s.stats.resources.cpu} icon="cpu" value={stats.resources.cpu} unit={s.stats.units.tf} f={n1} />
+          <ResourceBar label={s.stats.resources.power} icon="powergrid" value={stats.resources.power} unit={s.stats.units.mw} f={n1} />
+          <ResourceBar label={s.stats.resources.calibration} icon="calibration" value={stats.resources.calibration} f={n0} />
+          <ResourceBar label={s.stats.resources.turrets} icon="turrets" value={stats.resources.turrets} f={n0} />
+          <ResourceBar label={s.stats.resources.launchers} icon="launchers" value={stats.resources.launchers} f={n0} />
+          <ResourceBar label={s.stats.resources.drones} icon="drones" value={stats.resources.drones} f={n0} />
           {stats.resources.droneBay.total > 0 && (
             <>
-              <ResourceBar label={s.stats.resources.droneBay} value={stats.resources.droneBay} unit={s.stats.units.m3} f={n0} />
-              <ResourceBar label={s.stats.resources.droneBandwidth} value={stats.resources.droneBandwidth} unit={s.stats.units.mbit} f={n0} />
+              <ResourceBar label={s.stats.resources.droneBay} icon="droneBay" value={stats.resources.droneBay} unit={s.stats.units.m3} f={n0} />
+              <ResourceBar label={s.stats.resources.droneBandwidth} icon="droneBandwidth" value={stats.resources.droneBandwidth} unit={s.stats.units.mbit} f={n0} />
             </>
           )}
         </div>
@@ -188,6 +228,7 @@ export function ShipPanel(p: ShipPanelProps) {
           problems={problemsByItem}
           selection={p.selection}
           onSelect={p.onSelect}
+          onToggleActive={p.onToggleActive}
           onDrop={p.onDrop}
         />
         <Rack title={e.selected}>
@@ -208,6 +249,16 @@ export function ShipPanel(p: ShipPanelProps) {
           ) : (
             <li className="px-2 py-1 text-xs text-ink-3">
               {p.selection?.kind === "slot" ? e.emptySlotHint(e.slot[p.selection.slot], p.selection.index + 1) : e.selectHint}
+            </li>
+          )}
+          {selectedIndex !== null && (
+            <li className="flex flex-wrap items-center gap-2 px-2 pt-1">
+              <StateControl
+                state={calc?.items[selectedIndex]?.state ?? fit.items[selectedIndex].state}
+                max={calc?.items[selectedIndex]?.max_state ?? "active"}
+                onChange={(state) => p.onSetState(selectedIndex, state)}
+              />
+              <span className="text-2xs text-ink-3">{e.stateHint}</span>
             </li>
           )}
         </Rack>
@@ -265,10 +316,11 @@ export function ShipPanel(p: ShipPanelProps) {
           <p className="text-xs text-good-text">{s.violations.none}</p>
         ) : (
           <ul className="space-y-0.5 text-xs text-critical-text">
-            {groupTexts(p.violations.map((v) => v.text)).map(([text, count]) => (
-              <li key={text}>
-                {count > 1 && <span className="tabular mr-1.5 text-ink-3">{count}×</span>}
-                {text}
+            {groupViolations(p.violations).map(({ text, icon, count }) => (
+              <li key={text} className="flex items-center gap-1.5">
+                {icon ? <FitIcon name={icon} size={14} /> : <span className="size-3.5 shrink-0" />}
+                {count > 1 && <span className="tabular text-ink-3">{count}×</span>}
+                <span>{text}</span>
               </li>
             ))}
           </ul>
@@ -278,11 +330,50 @@ export function ShipPanel(p: ShipPanelProps) {
   );
 }
 
-/** Identical lines once, with how often they occur (three turrets missing the same skill). */
-function groupTexts(texts: string[]): [string, number][] {
-  const counts = new Map<string, number>();
-  for (const text of texts) counts.set(text, (counts.get(text) ?? 0) + 1);
-  return [...counts];
+/** Identical lines once, with how often they occur (three turrets missing the same skill), and their symbol. */
+function groupViolations(violations: ViolationText[]): { text: string; icon: FitIconName | null; count: number }[] {
+  const out = new Map<string, { text: string; icon: FitIconName | null; count: number }>();
+  for (const v of violations) {
+    const entry = out.get(v.text);
+    if (entry) entry.count++;
+    else out.set(v.text, { text: v.text, icon: violationIcon(v), count: 1 });
+  }
+  return [...out.values()];
+}
+
+const STATE_ICON: Partial<Record<State, FitIconName>> = { offline: "statePassive", active: "stateActive", overload: "stateOverheated" };
+
+/** The four module states as buttons, those beyond what the module allows disabled. */
+function StateControl({ state, max, onChange }: { state: State; max: State; onChange: (state: State) => void }) {
+  const { t } = useI18n();
+  const e = t.fitting.editor;
+  const allowed = STATES.indexOf(max);
+  return (
+    <div role="radiogroup" aria-label={e.state} className="glass-inset inline-flex items-center gap-0.5 rounded-lg p-0.5">
+      {STATES.map((s, i) => {
+        const disabled = i > allowed;
+        const icon = STATE_ICON[s];
+        return (
+          <button
+            key={s}
+            type="button"
+            role="radio"
+            aria-checked={s === state}
+            disabled={disabled}
+            title={disabled ? e.stateUnavailable(e.states[s]) : e.states[s]}
+            onClick={() => s !== state && onChange(s)}
+            className={cn(
+              "flex items-center gap-1 rounded-md px-2 py-1 text-2xs font-medium transition disabled:opacity-35",
+              s === state ? "glass-chip text-ink" : "text-ink-3 hover:text-ink",
+            )}
+          >
+            {icon ? <FitIcon name={icon} size={14} /> : <span className={cn("size-2 rounded-full", STATE_DOT[s])} />}
+            {e.states[s]}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function Rack({ title, children }: { title: string; children: ReactNode }) {
@@ -347,10 +438,11 @@ function ItemRow({
         <span className={cn("size-2.5 rounded-full", STATE_DOT[state])} />
       </button>
       <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+        {"index" in item.slot && (item.slot.type as ModuleSlot) in SLOT_ICON && <FitIcon name={SLOT_ICON[item.slot.type as ModuleSlot]} size={16} />}
         <TypeIcon id={item.type_id} size={24} />
         <span className={cn("min-w-0 flex-1 truncate", problems ? "text-critical-text" : "text-ink")}>{type?.name ?? item.type_id}</span>
       </button>
-      {metaLabel && type && <MetaBadge label={metaLabel} color={metaColor(type.metaGroupId)} />}
+      {metaLabel && type && <MetaBadge label={metaLabel} color={metaColor(type.metaGroupId)} metaGroupId={type.metaGroupId} />}
       {charges.length > 0 && (
         <select
           value={item.charge?.type_id ?? 0}

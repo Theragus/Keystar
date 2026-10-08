@@ -516,6 +516,14 @@ Both packages are pinned exactly and bumped together: the engine refuses an SDE 
   `sde.dat` into `public/fitting/` (ignored by git) under version-stamped names and writes `manifest.json`;
   `next.config.ts` serves them with an immutable cache header, and `src/proxy.ts` lets the browser fetch them
   without the session redirect. Nothing is calculated on the server.
+- **Game symbols**: `@eveshipfit/images` (same project; EVE's icons extracted from the client as WebP, with a
+  loader) is pinned too. `src/modules/fitting/fit-icons.json` names the few dozen symbols the tool shows (CPU and
+  powergrid, the fitting window's stats icons, the slot filter icons, the skill warning, the defence / speed /
+  target category icons, the meta markers), each as a dogma attribute icon, a UI texture path or a meta group. The
+  copy script resolves them with the package's loader, copies only those files to `public/fitting/icons/` and
+  writes their URLs into the manifest; a name that no longer resolves fails the build, and
+  `tests/fitting-icons.test.ts` checks the list against the real `images.dat`. `FitIcon` renders nothing for a
+  symbol the build lacks. Damage-type and meta colours follow the game on purpose, not the chart palette.
 - **Runtime** (`src/modules/fitting/engine/engine.ts`): loaded once per page session; the same bytes go to the
   engine (`load_sde`) and to the reader (`sde/reader.ts`, hand-written against the FlatBuffers runtime, field order
   as in the package's `specs/eve.fbs`; per-type attributes and effects are read on demand). `sde/catalog.ts` derives

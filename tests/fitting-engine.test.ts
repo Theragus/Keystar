@@ -33,7 +33,8 @@ describe("fitting engine", () => {
     expect(stats.resources.launchers).toEqual({ used: 0, total: 2 });
     expect(stats.offence.volley).toBeCloseTo(stats.offence.volley, 5);
     expect(stats.offence.volley).toBeGreaterThan(100);
-    expect(stats.defence.ehp).toBeGreaterThan(stats.defence.shield.hp + stats.defence.armor.hp + stats.defence.hull.hp);
+    expect(stats.defence.rawHp).toBeCloseTo(stats.defence.shield.hp + stats.defence.armor.hp + stats.defence.hull.hp, 6);
+    expect(stats.defence.ehp).toBeGreaterThan(stats.defence.rawHp);
     expect(stats.defence.armor.resists.em).toBeGreaterThan(stats.defence.armor.resists.explosive); // Minmatar armor
     expect(stats.offence.dps).toBeGreaterThan(100);
         expect(stats.capacitor.capacity).toBeGreaterThan(0);

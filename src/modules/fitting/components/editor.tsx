@@ -7,13 +7,14 @@ import { useI18n } from "@/i18n/client";
 import { loadCharacterSkills } from "@/app/(app)/fitting/actions";
 import { readDraft, writeDraft, type SkillSource } from "../engine/draft";
 import type { FittingRuntime } from "../engine/engine";
-import { bayFor, emptyFit, fitReducer, freeSlotIndex, nextState, type FitAction } from "../engine/fit-state";
+import { bayFor, emptyFit, fitReducer, freeSlotIndex, nextState, STATES, type FitAction } from "../engine/fit-state";
 import { exportEft, extractLinkPayload, importFit, shareUrl } from "../engine/formats";
 import { fitStats } from "../engine/stats";
 import { describeViolations } from "../engine/violations";
 import { allSkills, chargeFits, kindOf, MODULE_SLOTS, type ModuleSlot } from "../sde/catalog";
 import type { EsiFittingSummary, SkillSourceCharacter } from "../queries";
 import { ExportDialog, ImportDialog } from "./fit-dialogs";
+import { FitIconsContext } from "./fit-icon";
 import { ItemBrowser } from "./item-browser";
 import type { BrowserRoot } from "./shared";
 import { ShipPanel, type Selection } from "./ship-panel";
@@ -232,64 +233,75 @@ export function Editor({ runtime, characters, esiFittings }: EditorProps) {
   }, [fit, engine]);
 
   return (
-    <div className="overflow-x-auto">
-      <div className="grid min-w-[1100px] grid-cols-[300px_minmax(0,1fr)_340px] items-start gap-4">
-        <ItemBrowser
-          sde={sde}
-          shipTypeId={fit?.ship.type_id ?? null}
-          skills={currentSkills()}
-          selectedSlot={selectedSlot}
-          root={root}
-          onRootChange={setRoot}
-          onPick={pick}
-        />
-        <ShipPanel
-          sde={sde}
-          fit={fit}
-          calc={calc}
-          stats={stats}
-          violations={violations}
-          selection={selection}
-          onSelect={(sel) => setSelection((cur) => (JSON.stringify(cur) === JSON.stringify(sel) ? null : sel))}
-          onName={(name) => dispatch({ type: "setName", name })}
-          onRemove={(index) => {
-            dispatch({ type: "removeItem", index });
-            setSelection(null);
-          }}
-          onCycleState={(index) => {
-            const item = fit?.items[index];
-            if (!item) return;
-            const max = calc?.items[index]?.max_state ?? "active";
-            dispatch({ type: "setState", index, state: nextState(calc?.items[index]?.state ?? item.state, max) });
-          }}
-          onCharge={(index, chargeTypeId) => dispatch({ type: "setCharge", index, chargeTypeId })}
-          onQuantity={(index, quantity) => dispatch({ type: "setQuantity", index, quantity })}
-          onDrop={drop}
-          source={source}
-          characters={characters}
-          onSource={(next) => void applySkills(next)}
-          skillsLoading={skillsLoading}
-          onImport={() => importRef.current?.showModal()}
-          onExport={() => exportRef.current?.showModal()}
-          onClear={() => {
-            if (fit?.items.length && !window.confirm(s.editor.clearConfirm)) return;
-            dispatch({ type: "clearItems" });
-            setSelection(null);
-          }}
-          onChangeHull={() => setRoot("ships")}
-        />
-        <StatsPanel
-          stats={stats}
-          profile={fit?.environment?.damage_profile}
-          onProfile={(profile: DamageProfile) => dispatch({ type: "setDamageProfile", profile })}
-        />
+    <FitIconsContext.Provider value={runtime.manifest.icons ?? {}}>
+      <div className="overflow-x-auto">
+        <div className="grid min-w-[1100px] grid-cols-[320px_minmax(0,1fr)_340px] items-start gap-4">
+          <ItemBrowser
+            sde={sde}
+            shipTypeId={fit?.ship.type_id ?? null}
+            skills={currentSkills()}
+            selectedSlot={selectedSlot}
+            root={root}
+            onRootChange={setRoot}
+            onPick={pick}
+          />
+          <ShipPanel
+            sde={sde}
+            fit={fit}
+            calc={calc}
+            stats={stats}
+            violations={violations}
+            selection={selection}
+            onSelect={setSelection}
+            onName={(name) => dispatch({ type: "setName", name })}
+            onRemove={(index) => {
+              dispatch({ type: "removeItem", index });
+              setSelection(null);
+            }}
+            onCycleState={(index) => {
+              const item = fit?.items[index];
+              if (!item) return;
+              const max = calc?.items[index]?.max_state ?? "active";
+              dispatch({ type: "setState", index, state: nextState(calc?.items[index]?.state ?? item.state, max) });
+            }}
+            onSetState={(index, state) => dispatch({ type: "setState", index, state })}
+            onToggleActive={(index) => {
+              const item = fit?.items[index];
+              if (!item) return;
+              const current = calc?.items[index]?.state ?? item.state;
+              const max = calc?.items[index]?.max_state ?? "active";
+              const next = current === "active" ? "online" : "active";
+              if (STATES.indexOf(next) <= STATES.indexOf(max)) dispatch({ type: "setState", index, state: next });
+            }}
+            onCharge={(index, chargeTypeId) => dispatch({ type: "setCharge", index, chargeTypeId })}
+            onQuantity={(index, quantity) => dispatch({ type: "setQuantity", index, quantity })}
+            onDrop={drop}
+            source={source}
+            characters={characters}
+            onSource={(next) => void applySkills(next)}
+            skillsLoading={skillsLoading}
+            onImport={() => importRef.current?.showModal()}
+            onExport={() => exportRef.current?.showModal()}
+            onClear={() => {
+              if (fit?.items.length && !window.confirm(s.editor.clearConfirm)) return;
+              dispatch({ type: "clearItems" });
+              setSelection(null);
+            }}
+            onChangeHull={() => setRoot("ships")}
+          />
+          <StatsPanel
+            stats={stats}
+            profile={fit?.environment?.damage_profile}
+            onProfile={(profile: DamageProfile) => dispatch({ type: "setDamageProfile", profile })}
+          />
+        </div>
+        <p className="mt-3 text-2xs text-ink-3">
+          {s.page.data(f.integer(sde.buildNumber), f.shortDate(sde.releaseDate.slice(0, 10)))} · {s.page.engine(runtime.manifest.engineVersion)} ·{" "}
+          {s.page.attribution}
+        </p>
+        <ImportDialog ref={importRef} sde={sde} characters={characters} esiFittings={esiFittings} onImport={importText} onOpenEsi={openEsi} />
+        <ExportDialog ref={exportRef} eft={exported.eft} link={exported.link} />
       </div>
-      <p className="mt-3 text-2xs text-ink-3">
-        {s.page.data(f.integer(sde.buildNumber), f.shortDate(sde.releaseDate.slice(0, 10)))} · {s.page.engine(runtime.manifest.engineVersion)} ·{" "}
-        {s.page.attribution}
-      </p>
-      <ImportDialog ref={importRef} sde={sde} characters={characters} esiFittings={esiFittings} onImport={importText} onOpenEsi={openEsi} />
-      <ExportDialog ref={exportRef} eft={exported.eft} link={exported.link} />
-    </div>
+    </FitIconsContext.Provider>
   );
 }

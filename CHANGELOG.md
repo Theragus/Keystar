@@ -15,7 +15,10 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   EVE's static data (about 10 MB, fetched once and kept by the browser) with all skills at V or with the real skills
   of one of your characters that shares them. Import EFT fits and `fitting:` chat links, export EFT, share a fit by
   link, and open your in-game saved fittings once you switch on fitting access for a character on the new Fitting
-  access page (`esi-fittings.read_fittings.v1`, opt-in). The page needs a desktop browser.
+  access page (`esi-fittings.read_fittings.v1`, opt-in). The editor is laid out like the game's fitting window,
+  with the game's own symbols on the resource bars, the stats and the item list, its damage-type and meta colours,
+  and a four-state control (offline, online, active, overheated) for the selected module. The page needs a
+  desktop browser.
 
 - **Collapsible sidebar sections.** Click a section heading in the sidebar (Industry, Combat, …) to fold its pages
   away, and again to slide them back open; the arrow beside it shows whether it is open. Folded sections are

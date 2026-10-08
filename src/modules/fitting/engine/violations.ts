@@ -6,6 +6,10 @@ import type { Sde } from "../sde/reader";
 export interface ViolationText {
   /** The fit item the problem is about, or null for the ship as a whole. */
   index: number | null;
+  /** The engine's rule kind (`skill`, `resource`, …), for the symbol next to the line. */
+  rule: Violation["rule"]["type"];
+  /** For resource rules, which resource. */
+  resource?: string;
   text: string;
 }
 
@@ -61,10 +65,12 @@ export function describeViolations(
 ): ViolationText[] {
   return (calc.violations ?? []).map((v) => {
     const text = ruleText(v, sde, t, f);
-    if (v.target.type === "ship") return { index: null, text };
+    const rule = v.rule.type;
+    const resource = v.rule.type === "resource" ? v.rule.resource : undefined;
+    if (v.target.type === "ship") return { index: null, rule, resource, text };
     const item = fit.items[v.target.index];
     const typeId = v.target.type === "charge" ? item?.charge?.type_id : item?.type_id;
     const name = (typeId ? sde.types.get(typeId)?.name : undefined) ?? (v.target.type === "charge" ? t.charge : t.ship);
-    return { index: v.target.index, text: `${t.on(name)}${text}` };
+    return { index: v.target.index, rule, resource, text: `${t.on(name)}${text}` };
   });
 }

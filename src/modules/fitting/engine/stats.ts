@@ -39,6 +39,8 @@ export interface FitStats {
   slots: Record<ModuleSlot, number>;
   defence: {
     ehp: number;
+    /** Shield, armor and structure hit points added up, before resists. */
+    rawHp: number;
     shield: Layer;
     armor: Layer;
     hull: Layer;
@@ -253,6 +255,7 @@ export function fitStats(fit: Fit, calc: Calculation, sde: Sde): FitStats {
     slots,
     defence: {
       ehp: ship("ehp"),
+      rawHp: ship("shieldCapacity") + ship("armorHP") + ship("hp"),
       shield: layer(ship("shieldCapacity"), ship("shieldEhp"), [
         ship("shieldEmDamageResonance", 1),
         ship("shieldThermalDamageResonance", 1),

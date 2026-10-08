@@ -16,6 +16,10 @@ export interface FittingManifest {
   sdeVersion: string;
   sdeMajor: number;
   sdeBuild: number;
+  /** `@eveshipfit/images` version the icons came from. */
+  imagesVersion?: string;
+  /** Icon name (src/modules/fitting/icons.ts) → URL of the copied file. */
+  icons?: Record<string, string>;
 }
 
 export type Engine = typeof dogma;
