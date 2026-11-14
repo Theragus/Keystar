@@ -56,7 +56,7 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
   `use cache`, [GHSA-673q-mjm6-r5xr](https://github.com/advisories/GHSA-673q-mjm6-r5xr)) and a denial of service
   through Server Actions ([GHSA-p3m5-59mp-jv5r](https://github.com/advisories/GHSA-p3m5-59mp-jv5r)). Also updates
   zod to 4.6.7 ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)) and, for development only,
-  Vite to 8.3.8.
+  Vite to 8.3.8. ([PR #206](https://github.com/Theragus/Keystar/pull/206))
 
 ## [0.15.0] - 2026-10-07
 
