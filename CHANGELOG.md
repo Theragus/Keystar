@@ -49,6 +49,15 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
     screen, and stat tiles, the mining observers and the killboard's top pilots fit two to a row.
   - Tapping a text field no longer zooms the page in on iPhones, and filter menus don't open the keyboard by themselves.
 
+### Security
+
+- **Next.js 16.4.6.** Fixes two critical Next.js flaws that let anyone run code on the server without signing in
+  (one in image optimisation, [GHSA-2464-fhr4-w9xw](https://github.com/advisories/GHSA-2464-fhr4-w9xw), one in
+  `use cache`, [GHSA-673q-mjm6-r5xr](https://github.com/advisories/GHSA-673q-mjm6-r5xr)) and a denial of service
+  through Server Actions ([GHSA-p3m5-59mp-jv5r](https://github.com/advisories/GHSA-p3m5-59mp-jv5r)). Also updates
+  zod to 4.6.7 ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)) and, for development only,
+  Vite to 8.3.8. ([PR #206](https://github.com/Theragus/Keystar/pull/206))
+
 ## [0.15.0] - 2026-10-07
 
 ### Upgrade notes
