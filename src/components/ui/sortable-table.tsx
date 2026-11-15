@@ -25,8 +25,8 @@ export interface Column {
 export interface EntityRow {
   id: number;
   name: string;
-  /** Character portrait or item icon. */
-  image: "portrait" | "type";
+  /** Character portrait, item icon, or a blueprint's image (blueprints have no icon). */
+  image: "portrait" | "type" | "blueprint";
   href: string;
   values: Record<string, number | null>;
 }
@@ -201,7 +201,11 @@ export function SortableTable({
                     rel="noopener noreferrer"
                     className="flex min-w-0 items-center gap-2.5 hover:text-accent"
                   >
-                    {r.image === "portrait" ? <Portrait id={r.id} size={24} /> : <TypeIcon id={r.id} size={24} />}
+                    {r.image === "portrait" ? (
+                      <Portrait id={r.id} size={24} />
+                    ) : (
+                      <TypeIcon id={r.id} blueprint={r.image === "blueprint" ? "bp" : null} size={24} />
+                    )}
                     <span className="truncate font-medium">{r.name}</span>
                   </a>
                 </td>

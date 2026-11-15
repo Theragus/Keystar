@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/core/db";
+import { isBlueprintCategory } from "@/core/eve/images";
 import { scopesToSwitchOff } from "@/core/modules/registry";
 import { STRUCTURES_SCOPE } from "@/modules/industry/module";
 import type { MarketFilters } from "./filters";
@@ -64,6 +65,8 @@ export interface MarketOrder {
   characterName: string;
   typeId: number;
   typeName: string | null;
+  /** Blueprints have no icon, only the `bp` image (the market only trades originals). */
+  isBlueprint: boolean;
   isBuyOrder: boolean;
   isCorporation: boolean;
   price: number;
@@ -94,13 +97,14 @@ export async function getMarketOrders(
   const where = orderConds(f, scope);
   const [countRow] = await db.execute<{ total: unknown }>(sql`SELECT count(*) AS total ${FROM} WHERE ${where}`);
   const rows = await db.execute<Record<string, unknown>>(sql`
-    SELECT o.order_id, o.character_id, c.name AS character_name, o.type_id, it.name AS type_name, o.is_buy_order,
+    SELECT o.order_id, o.character_id, c.name AS character_name, o.type_id, it.name AS type_name, ig.category_id AS type_category_id, o.is_buy_order,
            o.is_corporation, o.price, o.volume_total, o.volume_remain, o.min_volume, o.escrow, o.range, o.issued,
            ${EXPIRES} AS expires_at, o.state, o.closed_at, o.location_id, loc.name AS location_name, loc.solar_system_id,
            s.name AS system_name, s.security_status, r.name AS region_name
     ${FROM}
     LEFT JOIN characters c ON c.character_id = o.character_id
     LEFT JOIN eve_types it ON it.type_id = o.type_id
+    LEFT JOIN eve_groups ig ON ig.group_id = it.group_id
     LEFT JOIN eve_systems s ON s.system_id = loc.solar_system_id
     LEFT JOIN eve_entities r ON r.id = o.region_id
     WHERE ${where}
@@ -116,6 +120,7 @@ export async function getMarketOrders(
       characterName: str(r.character_name) ?? String(r.character_id),
       typeId: num(r.type_id),
       typeName: str(r.type_name),
+      isBlueprint: isBlueprintCategory(numOrNull(r.type_category_id)),
       isBuyOrder: Boolean(r.is_buy_order),
       isCorporation: Boolean(r.is_corporation),
       price: num(r.price),

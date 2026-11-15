@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/core/db";
+import { isBlueprintCategory } from "@/core/eve/images";
 import { isOreClass, type OreClass } from "@/core/eve/ore";
 import { addDays, utcDayBounds } from "@/lib/dates";
 import { WALLET_SCOPE } from "@/modules/wallet/module";
@@ -278,6 +279,8 @@ interface WalletTx<C> {
   typeId: number;
   typeName: string | null;
   groupName: string | null;
+  /** Blueprints have no icon, only the `bp` image (the market only trades originals). */
+  isBlueprint: boolean;
   quantity: number;
   unitPrice: number;
   amount: number;
@@ -306,7 +309,7 @@ async function walletTransactionsPage<C>(
   const [rows, count] = await Promise.all([
     db.execute<Record<string, unknown>>(sql`
       WITH ${walletTxCte(s, side)}${sell ? sql`, ${taxPaidCte(s)}` : sql``}
-      SELECT c.*, ch.name AS character_name, g.name AS group_name,
+      SELECT c.*, ch.name AS character_name, g.name AS group_name, g.category_id AS type_category_id,
              ${sell ? sql`(SELECT SUM(tp.amount) FROM tax_paid tp WHERE tp.character_id = c.character_id AND tp.transaction_id = c.transaction_id)::float8` : sql`NULL::float8`} AS tax,
              to_char(c.date AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date_iso
       FROM classified c
@@ -329,6 +332,7 @@ async function walletTransactionsPage<C>(
       typeId: num(r.type_id),
       typeName: str(r.type_name),
       groupName: str(r.group_name),
+      isBlueprint: isBlueprintCategory(r.type_category_id === null || r.type_category_id === undefined ? null : num(r.type_category_id)),
       quantity: num(r.quantity),
       unitPrice: num(r.unit_price),
       amount: num(r.amount),

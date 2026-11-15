@@ -113,7 +113,7 @@ async function PurchaseTableRow({ purchase: p }: { purchase: PurchaseRow }) {
       <td className="whitespace-nowrap text-ink-2 tabular-nums">{f.shortDate(p.date.slice(0, 10))}</td>
       <td>
         <span className="flex items-center gap-2">
-          <TypeIcon id={p.typeId} size={24} />
+          <TypeIcon id={p.typeId} blueprint={p.isBlueprint ? "bp" : null} size={24} />
           <span className="min-w-0">
             <span className="block max-w-[18rem] truncate text-ink">{p.typeName ?? t.pnl.typeFallback(p.typeId)}</span>
             <span className="block max-w-[18rem] truncate text-2xs text-ink-3">{[p.groupName, p.characterName].filter(Boolean).join(" · ")}</span>

@@ -67,7 +67,7 @@ export function OrdersTable({
                   )}
                   <td>
                     <div className="flex items-center gap-2.5">
-                      <TypeIcon id={o.typeId} size={28} className="shrink-0" />
+                      <TypeIcon id={o.typeId} blueprint={o.isBlueprint ? "bp" : null} size={28} className="shrink-0" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="truncate font-medium text-ink" title={o.typeName ?? String(o.typeId)}>

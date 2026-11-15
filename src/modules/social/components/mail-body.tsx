@@ -1,6 +1,7 @@
 import { Crosshair, ExternalLink, Gamepad2 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { TypeIcon } from "@/components/ui/eve-image";
+import { isBlueprintCategory } from "@/core/eve/images";
 import type { Messages } from "@/i18n/messages";
 import { isPaleOnLight, plainText, type EveNode } from "../eve-html";
 import { classifyLink, killReportUrl, resolveShowinfo, webUrlFor } from "../links";
@@ -95,7 +96,12 @@ function MailLink({ node, links, t }: { node: Extract<EveNode, { t: "link" }>; l
         kind === "character" || kind === "corporation" || kind === "alliance" ? (
           <EntityAvatar id={id} category={kind} size={16} className="mr-1 inline-block align-[-3px]" />
         ) : kind === "type" || kind === "item" ? (
-          <TypeIcon id={link.typeId} size={16} className="mr-1 inline-block align-[-3px]" />
+          <TypeIcon
+            id={link.typeId}
+            blueprint={isBlueprintCategory(type?.categoryId) ? "bp" : null}
+            size={16}
+            className="mr-1 inline-block align-[-3px]"
+          />
         ) : null;
       const url = webUrlFor(kind, link.typeId, link.itemId);
       const content = (

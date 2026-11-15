@@ -1,4 +1,4 @@
-import { allianceLogo, characterPortrait, corporationLogo, typeIcon, typeRender } from "@/core/eve/images";
+import { allianceLogo, characterPortrait, corporationLogo, typeIconOf, typeRender, type BlueprintVariant } from "@/core/eve/images";
 import { cn } from "@/lib/utils";
 
 /* Plain <img>: images.evetech.net is already a sized CDN, no optimiser needed. */
@@ -58,10 +58,21 @@ export function AllianceLogo({ id, size = 32, className }: { id: number; size?: 
   );
 }
 
-export function TypeIcon({ id, size = 24, className }: { id: number; size?: number; className?: string }) {
+/** A type's icon; pass `blueprint` for blueprints and reaction formulas, which only have the `bp`/`bpc` images. */
+export function TypeIcon({
+  id,
+  size = 24,
+  className,
+  blueprint,
+}: {
+  id: number;
+  size?: number;
+  className?: string;
+  blueprint?: BlueprintVariant | null;
+}) {
   return (
     <img
-      src={typeIcon(id, size > 32 ? 64 : 32)}
+      src={typeIconOf(id, blueprint, size > 32 ? 64 : 32)}
       alt=""
       width={size}
       height={size}

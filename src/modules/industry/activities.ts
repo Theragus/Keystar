@@ -1,6 +1,7 @@
 /**
  * Industry job logic shared by the sync job, the pages and the tests. Pure: no database, no ESI.
  */
+import type { BlueprintVariant } from "@/core/eve/images";
 
 /** Industry activities as ESI reports them (`activity_id`), grouped the way the game's industry window does. */
 export const INDUSTRY_ACTIVITIES = ["manufacturing", "te_research", "me_research", "copying", "invention", "reaction", "other"] as const;
@@ -84,6 +85,33 @@ export interface JobProgress {
  * Progress of a job at `now`. ESI reports `status: active` until the installer opens the industry window after the
  * end date, so an active job whose end date has passed counts as ready. A paused job stays where it was paused.
  */
+/**
+ * The type a job row shows (its product, else its blueprint) and, when that is a blueprint, which image: research and
+ * copying need an original; copying and invention put out copies (invention also consumes one). Manufacturing and
+ * reactions make items; a manufacturing job without a product shows its blueprint, original or copy unknown, as `bp`.
+ */
+export function jobIcon(job: {
+  activity: IndustryActivity;
+  blueprintTypeId: number;
+  productTypeId: number | null;
+}): { typeId: number; blueprint: BlueprintVariant | null } {
+  const { activity, blueprintTypeId, productTypeId } = job;
+  if (productTypeId === null) return { typeId: blueprintTypeId, blueprint: activity === "invention" ? "bpc" : "bp" };
+  switch (activity) {
+    case "copying":
+    case "invention":
+      return { typeId: productTypeId, blueprint: "bpc" };
+    case "te_research":
+    case "me_research":
+      return { typeId: productTypeId, blueprint: "bp" };
+    case "manufacturing":
+    case "reaction":
+      return { typeId: productTypeId, blueprint: null };
+    default:
+      return { typeId: productTypeId, blueprint: productTypeId === blueprintTypeId ? "bp" : null };
+  }
+}
+
 export function jobProgress(job: JobTiming, now: Date): JobProgress {
   const span = job.endDate.getTime() - job.startDate.getTime();
   const elapsedAt = (t: number) => (span > 0 ? Math.min(1, Math.max(0, (t - job.startDate.getTime()) / span)) : 1);

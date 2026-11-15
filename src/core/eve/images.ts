@@ -7,6 +7,18 @@ export const characterPortrait = (id: number, size: Size = 64) => `${BASE}/chara
 export const corporationLogo = (id: number, size: Size = 64) => `${BASE}/corporations/${id}/logo?size=${size}`;
 export const allianceLogo = (id: number, size: Size = 64) => `${BASE}/alliances/${id}/logo?size=${size}`;
 export const typeIcon = (id: number, size: 32 | 64 = 32) => `${BASE}/types/${id}/icon?size=${size}`;
+/**
+ * Blueprints and reaction formulas (category 9) have no `icon` on the image server, only `bp` (original) and `bpc`
+ * (copy); asking for their icon answers 400 "bad category or variation".
+ */
+export const BLUEPRINT_CATEGORY_ID = 9;
+export type BlueprintVariant = "bp" | "bpc";
+export const isBlueprintCategory = (categoryId: number | null | undefined): boolean => categoryId === BLUEPRINT_CATEGORY_ID;
+export const blueprintIcon = (id: number, variant: BlueprintVariant = "bp", size: 32 | 64 = 32) =>
+  `${BASE}/types/${id}/${variant}?size=${size}`;
+/** `blueprintIcon` for a blueprint, else `typeIcon`. */
+export const typeIconOf = (id: number, blueprint: BlueprintVariant | null | undefined, size: 32 | 64 = 32) =>
+  blueprint ? blueprintIcon(id, blueprint, size) : typeIcon(id, size);
 export const typeRender = (id: number, size: Size = 128) => `${BASE}/types/${id}/render?size=${size}`;
 
 /**

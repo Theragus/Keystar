@@ -49,6 +49,13 @@ version (0.2.0 → 0.2.1). Releasing is described in [docs/releasing.md](docs/re
     screen, and stat tiles, the mining observers and the killboard's top pilots fit two to a row.
   - Tapping a text field no longer zooms the page in on iPhones, and filter menus don't open the keyboard by themselves.
 
+### Fixed
+
+- Blueprint pictures load again. Blueprints and reaction formulas have no icon on the EVE image server, only a picture
+  of the original or the copy, so the Industry page showed empty squares for research, copying and invention jobs.
+  It now shows the original for research and the copy for copying and invention; market orders, wallet purchases and
+  sales on the mining P&L, appraisals and item links in mail show blueprints as originals.
+
 ## [0.15.0] - 2026-10-07
 
 ### Upgrade notes

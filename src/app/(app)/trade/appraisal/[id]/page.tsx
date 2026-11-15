@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
@@ -7,7 +7,8 @@ import { CopyField } from "@/components/ui/copy-button";
 import { Glass, Panel } from "@/components/ui/glass";
 import { StatTile } from "@/components/ui/stat-tile";
 import { requirePermission } from "@/core/auth/dal";
-import { appraisals, getDb } from "@/core/db";
+import { appraisals, eveGroups, eveTypes, getDb } from "@/core/db";
+import { BLUEPRINT_CATEGORY_ID } from "@/core/eve/images";
 import { env } from "@/core/env";
 import { getI18n } from "@/i18n/server";
 import { SortableTable, type Column, type EntityRow } from "@/components/ui/sortable-table";
@@ -44,11 +45,25 @@ export default async function AppraisalResultPage({ params }: PageProps<"/trade/
   const totals = row.totals as AppraisalTotals;
   const unparsed = row.unparsed as UnparsedLine[];
   const pct = row.pricePercent;
+  // Blueprints have no icon on the image server, only the `bp`/`bpc` images; the paste doesn't say which (copy or
+  // original is dropped when parsing), so they get the original's.
+  const typeIds = [...new Set(items.map((i) => i.typeId))];
+  const blueprints = new Set(
+    typeIds.length
+      ? (
+          await getDb()
+            .select({ typeId: eveTypes.typeId })
+            .from(eveTypes)
+            .innerJoin(eveGroups, eq(eveGroups.groupId, eveTypes.groupId))
+            .where(and(inArray(eveTypes.typeId, typeIds), eq(eveGroups.categoryId, BLUEPRINT_CATEGORY_ID)))
+        ).map((r) => r.typeId)
+      : [],
+  );
 
   const rows: EntityRow[] = items.map((i) => ({
     id: i.typeId,
     name: i.name,
-    image: "type",
+    image: blueprints.has(i.typeId) ? "blueprint" : "type",
     href: `https://everef.net/types/${i.typeId}`,
     values: {
       quantity: i.quantity,

@@ -7,7 +7,7 @@ import { SecurityStatus } from "@/components/ui/security";
 import type { Messages } from "@/i18n/messages";
 import type { Formatter } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { jobProgress, type IndustryActivity } from "../activities";
+import { jobIcon, jobProgress, type IndustryActivity } from "../activities";
 import type { IndustryJob } from "../queries";
 import { JobProgress } from "./job-progress";
 
@@ -59,6 +59,7 @@ export function JobsTable({
           <tbody>
             {jobs.map((j) => {
               const p = jobProgress(j, now);
+              const icon = jobIcon(j);
               return (
                 <tr key={j.jobId} className={cn(p.phase === "finished" && "text-ink-2")}>
                   {showCharacter && (
@@ -70,7 +71,7 @@ export function JobsTable({
                   )}
                   <td>
                     <div className="flex items-center gap-2.5">
-                      <TypeIcon id={j.productTypeId ?? j.blueprintTypeId} size={28} className="shrink-0" />
+                      <TypeIcon id={icon.typeId} blueprint={icon.blueprint} size={28} className="shrink-0" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="truncate font-medium text-ink" title={j.blueprintName ?? String(j.blueprintTypeId)}>

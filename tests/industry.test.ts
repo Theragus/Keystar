@@ -5,6 +5,7 @@ import {
   durationParts,
   ENDING_SOON_MS,
   isStructureId,
+  jobIcon,
   jobProgress,
   jobRows,
   statusesOf,
@@ -58,6 +59,33 @@ describe("industry activities", () => {
     expect(statusesOf("running")).toEqual(["active", "paused", "ready"]);
     expect(statusesOf("finished")).toEqual(["delivered", "cancelled", "reverted"]);
     expect(statusesOf("all")).toHaveLength(6);
+  });
+});
+
+describe("job icon", () => {
+  // Demo types: Retriever Blueprint / Retriever, Hobgoblin I Blueprint, Mining Laser Upgrade I / II Blueprint.
+  it("shows a manufactured or reacted product's icon", () => {
+    expect(jobIcon({ activity: "manufacturing", blueprintTypeId: 17479, productTypeId: 17478 })).toEqual({ typeId: 17478, blueprint: null });
+    expect(jobIcon({ activity: "reaction", blueprintTypeId: 46166, productTypeId: 16670 })).toEqual({ typeId: 16670, blueprint: null });
+  });
+
+  it("shows research on the original blueprint", () => {
+    expect(jobIcon({ activity: "me_research", blueprintTypeId: 17479, productTypeId: null })).toEqual({ typeId: 17479, blueprint: "bp" });
+    expect(jobIcon({ activity: "te_research", blueprintTypeId: 17479, productTypeId: 17479 })).toEqual({ typeId: 17479, blueprint: "bp" });
+  });
+
+  it("shows copies for copying and invention", () => {
+    expect(jobIcon({ activity: "copying", blueprintTypeId: 2455, productTypeId: 2455 })).toEqual({ typeId: 2455, blueprint: "bpc" });
+    expect(jobIcon({ activity: "invention", blueprintTypeId: 22543, productTypeId: 28208 })).toEqual({ typeId: 28208, blueprint: "bpc" });
+    expect(jobIcon({ activity: "copying", blueprintTypeId: 2455, productTypeId: null })).toEqual({ typeId: 2455, blueprint: "bp" });
+    expect(jobIcon({ activity: "invention", blueprintTypeId: 22543, productTypeId: null })).toEqual({ typeId: 22543, blueprint: "bpc" });
+  });
+
+  it("shows the blueprint of a job without a product", () => {
+    expect(jobIcon({ activity: "manufacturing", blueprintTypeId: 17479, productTypeId: null })).toEqual({ typeId: 17479, blueprint: "bp" });
+    expect(jobIcon({ activity: "other", blueprintTypeId: 17479, productTypeId: null })).toEqual({ typeId: 17479, blueprint: "bp" });
+    expect(jobIcon({ activity: "other", blueprintTypeId: 17479, productTypeId: 17479 })).toEqual({ typeId: 17479, blueprint: "bp" });
+    expect(jobIcon({ activity: "other", blueprintTypeId: 17479, productTypeId: 17478 })).toEqual({ typeId: 17478, blueprint: null });
   });
 });
 
